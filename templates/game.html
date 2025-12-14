@@ -68,6 +68,129 @@
         font-size: 16px;
     }
 }
+
+.microphone-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: none;
+    background-color: #4CAF50;
+    color: white;
+    font-size: 28px;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+    z-index: 100;
+}
+
+.microphone-btn:hover {
+    background-color: #45a049;
+    transform: scale(1.1);
+}
+
+.microphone-btn.active {
+    background-color: #f44336;
+    animation: pulse 1.5s infinite;
+}
+
+.microphone-btn.active:hover {
+    background-color: #da190b;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    }
+    50% {
+        box-shadow: 0 4px 20px rgba(244, 67, 54, 0.6);
+    }
+}
+
+.noise-level-container {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(42, 42, 42, 0.95);
+    border: 2px solid #4CAF50;
+    border-radius: 10px;
+    padding: 15px 30px;
+    min-width: 600px;
+    z-index: 99;
+}
+
+.noise-level-label {
+    color: #fff;
+    font-size: 18px;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.noise-level-bar-container {
+    width: 100%;
+    height: 40px;
+    background-color: #2a2a2a;
+    border: 2px solid #555;
+    border-radius: 20px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+.noise-level-bar {
+    height: 100%;
+    background: #4CAF50; /* Цвет будет динамически меняться через JavaScript */
+    width: 0%;
+    transition: width 0.1s ease, background-color 0.2s ease;
+    border-radius: 20px;
+}
+
+.noise-level-value {
+    color: #4CAF50;
+    font-size: 24px;
+    font-weight: bold;
+    text-align: center;
+}
+
+@media (max-width: 768px) {
+    .microphone-btn {
+        width: 50px;
+        height: 50px;
+        font-size: 24px;
+        bottom: 15px;
+        right: 15px;
+    }
+    
+    .noise-level-container {
+        bottom: 15px;
+        left: 50%;
+        transform: translateX(-50%);
+        min-width: calc(100% - 160px);
+        max-width: 500px;
+        padding: 12px 20px;
+    }
+    
+    .noise-level-label {
+        font-size: 14px;
+        margin-bottom: 8px;
+    }
+    
+    .noise-level-bar-container {
+        height: 35px;
+        border-radius: 17px;
+        margin-bottom: 8px;
+    }
+    
+    .noise-level-bar {
+        border-radius: 17px;
+    }
+    
+    .noise-level-value {
+        font-size: 20px;
+    }
+}
 </style>
 {% endblock %}
 
@@ -112,6 +235,16 @@
     <button class="shop-icon-btn students-shop-btn" id="studentsShopBtn" title="Магазин для учащихся">🛒</button>
     <button class="shop-icon-btn students-lottery-btn" id="studentsLotteryBtn" title="Лавка для учащихся">🎲</button>
     <button class="shop-icon-btn valera-shop-btn" id="valeraShopBtn" title="Лавка Валеры">🎲</button>
+    
+    <!-- Кнопка и индикатор уровня шума -->
+    <button class="microphone-btn" id="microphoneBtn" title="Включить/выключить прослушивание микрофона">🎤</button>
+    <div class="noise-level-container" id="noiseLevelContainer" style="display: none;">
+        <div class="noise-level-label">Уровень шума:</div>
+        <div class="noise-level-bar-container">
+            <div class="noise-level-bar" id="noiseLevelBar"></div>
+        </div>
+        <div class="noise-level-value" id="noiseLevelValue">0%</div>
+    </div>
     
     <!-- Модальное окно с прайсом -->
     <div class="modal-overlay" id="priceModal">
@@ -275,6 +408,149 @@
         
         // Обновляем баланс при загрузке страницы
         getBalance();
+        
+        // Функционал микрофона и уровня шума
+        let audioContext = null;
+        let analyser = null;
+        let microphone = null;
+        let dataArray = null;
+        let isListening = false;
+        let animationFrameId = null;
+        
+        const microphoneBtn = document.getElementById('microphoneBtn');
+        const noiseLevelContainer = document.getElementById('noiseLevelContainer');
+        const noiseLevelBar = document.getElementById('noiseLevelBar');
+        const noiseLevelValue = document.getElementById('noiseLevelValue');
+        
+        async function startMicrophone() {
+            try {
+                // Запрашиваем доступ к микрофону
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false
+                    }
+                });
+                
+                // Создаем аудио контекст
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                microphone = audioContext.createMediaStreamSource(stream);
+                
+                // Настраиваем анализатор для измерения амплитуды (громкости)
+                analyser.fftSize = 2048;
+                analyser.smoothingTimeConstant = 0.8;
+                const bufferLength = analyser.fftSize;
+                dataArray = new Uint8Array(bufferLength);
+                
+                // Подключаем микрофон к анализатору
+                microphone.connect(analyser);
+                
+                // Показываем индикатор уровня шума
+                noiseLevelContainer.style.display = 'block';
+                microphoneBtn.classList.add('active');
+                isListening = true;
+                
+                // Запускаем обновление уровня шума
+                updateNoiseLevel();
+            } catch (error) {
+                console.error('Ошибка доступа к микрофону:', error);
+                alert('Не удалось получить доступ к микрофону. Проверьте разрешения браузера.');
+            }
+        }
+        
+        function stopMicrophone() {
+            if (microphone && microphone.mediaStream) {
+                microphone.mediaStream.getTracks().forEach(track => track.stop());
+            }
+            
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+            
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            
+            analyser = null;
+            microphone = null;
+            dataArray = null;
+            isListening = false;
+            
+            noiseLevelContainer.style.display = 'none';
+            microphoneBtn.classList.remove('active');
+            noiseLevelBar.style.width = '0%';
+            noiseLevelValue.textContent = '0%';
+        }
+        
+        function updateNoiseLevel() {
+            if (!isListening || !analyser || !dataArray) {
+                return;
+            }
+            
+            // Получаем данные об амплитуде сигнала (громкости) во времени
+            analyser.getByteTimeDomainData(dataArray);
+            
+            // Вычисляем максимальную амплитуду (пиковое значение)
+            let max = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+                // Значения от 0 до 255, где 128 - это тишина
+                const amplitude = Math.abs(dataArray[i] - 128);
+                if (amplitude > max) {
+                    max = amplitude;
+                }
+            }
+            
+            // Преобразуем в проценты (0-127 -> 0-100%)
+            // Используем квадратичную шкалу для более естественного восприятия громкости
+            const normalized = max / 127;
+            const percentage = Math.min(100, Math.round(Math.pow(normalized, 0.5) * 100));
+            
+            // Определяем цвет в зависимости от уровня
+            let barColor = '#4CAF50'; // Зеленый (тихо)
+            let textColor = '#4CAF50';
+            
+            if (percentage >= 80) {
+                barColor = '#f44336'; // Красный (очень громко)
+                textColor = '#f44336';
+            } else if (percentage >= 50) {
+                barColor = '#FFC107'; // Желтый (умеренно громко)
+                textColor = '#FFC107';
+            } else if (percentage >= 20) {
+                barColor = '#4CAF50'; // Зеленый (нормально)
+                textColor = '#4CAF50';
+            } else {
+                barColor = '#2196F3'; // Синий (тихо)
+                textColor = '#2196F3';
+            }
+            
+            // Обновляем визуализацию
+            noiseLevelBar.style.width = percentage + '%';
+            noiseLevelBar.style.background = barColor;
+            noiseLevelValue.textContent = percentage + '%';
+            noiseLevelValue.style.color = textColor;
+            
+            // Продолжаем обновление
+            animationFrameId = requestAnimationFrame(updateNoiseLevel);
+        }
+        
+        microphoneBtn.addEventListener('click', () => {
+            if (isListening) {
+                stopMicrophone();
+            } else {
+                startMicrophone();
+            }
+        });
+        
+        // Останавливаем микрофон при закрытии страницы
+        window.addEventListener('beforeunload', () => {
+            if (isListening) {
+                stopMicrophone();
+            }
+        });
     </script>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 {% endblock %}
