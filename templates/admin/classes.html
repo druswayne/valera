@@ -56,11 +56,11 @@
             </div>
             <div class="form-group" id="balanceGroup" style="display: none;">
                 <label>Монеты учащихся:</label>
-                <input type="number" id="studentsBalance" min="0" value="0">
+                <input type="number" id="studentsBalance" value="0">
             </div>
             <div class="form-group" id="valeraBalanceGroup" style="display: none;">
                 <label>Монеты Валеры:</label>
-                <input type="number" id="valeraBalance" min="0" value="0">
+                <input type="number" id="valeraBalance" value="0">
             </div>
             <button type="submit" class="save-btn">Сохранить</button>
         </form>
@@ -102,8 +102,10 @@ function saveClass(event) {
     event.preventDefault();
     const id = document.getElementById('classId').value;
     const name = document.getElementById('className').value;
-    const studentsBalance = parseInt(document.getElementById('studentsBalance').value) || 0;
-    const valeraBalance = parseInt(document.getElementById('valeraBalance').value) || 0;
+    const studentsBalanceInput = document.getElementById('studentsBalance').value;
+    const valeraBalanceInput = document.getElementById('valeraBalance').value;
+    const studentsBalance = studentsBalanceInput === '' ? 0 : parseInt(studentsBalanceInput);
+    const valeraBalance = valeraBalanceInput === '' ? 0 : parseInt(valeraBalanceInput);
     
     const url = id ? `/api/classes/${id}` : '/api/classes';
     const method = id ? 'PUT' : 'POST';
