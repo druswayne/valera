@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+
+{% block title %}Управление классами - Админ панель{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <h1 class="admin-title">Управление классами</h1>
+    <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+        <a href="{{ url_for('index') }}" class="back-link">← Назад к рейтингу</a>
+        <a href="{{ url_for('logout') }}" class="back-link" style="color: #f44336;">Выйти</a>
+    </div>
+    
+    <button class="add-btn" onclick="showAddClassModal()">+ Добавить класс</button>
+    
+    <div class="classes-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Название</th>
+                    <th>Монеты учащихся</th>
+                    <th>Монеты Валеры</th>
+                    <th>Всего</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody id="classesTableBody">
+                {% for class in classes %}
+                <tr data-id="{{ class.id }}">
+                    <td>{{ class.id }}</td>
+                    <td class="class-name-cell">{{ class.name }}</td>
+                    <td class="balance-cell">{{ class.students_balance }}</td>
+                    <td class="balance-cell">{{ class.valera_balance }}</td>
+                    <td class="total-cell">{{ class.students_balance + class.valera_balance }}</td>
+                    <td>
+                        <button class="edit-btn" onclick="editClass({{ class.id }}, '{{ class.name }}', {{ class.students_balance }}, {{ class.valera_balance }})">Редактировать</button>
+                        <button class="delete-btn" onclick="deleteClass({{ class.id }})">Удалить</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Модальное окно добавления/редактирования -->
+<div class="modal-overlay" id="classModal">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closeClassModal()">&times;</button>
+        <h2 class="modal-title" id="modalTitle">Добавить класс</h2>
+        <form id="classForm" onsubmit="saveClass(event)">
+            <input type="hidden" id="classId" value="">
+            <div class="form-group">
+                <label>Название класса:</label>
+                <input type="text" id="className" required>
+            </div>
+            <div class="form-group" id="balanceGroup" style="display: none;">
+                <label>Монеты учащихся:</label>
+                <input type="number" id="studentsBalance" min="0" value="0">
+            </div>
+            <div class="form-group" id="valeraBalanceGroup" style="display: none;">
+                <label>Монеты Валеры:</label>
+                <input type="number" id="valeraBalance" min="0" value="0">
+            </div>
+            <button type="submit" class="save-btn">Сохранить</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let editingClassId = null;
+
+function showAddClassModal() {
+    editingClassId = null;
+    document.getElementById('modalTitle').textContent = 'Добавить класс';
+    document.getElementById('classForm').reset();
+    document.getElementById('classId').value = '';
+    document.getElementById('balanceGroup').style.display = 'none';
+    document.getElementById('valeraBalanceGroup').style.display = 'none';
+    document.getElementById('classModal').classList.add('show');
+}
+
+function editClass(id, name, studentsBalance, valeraBalance) {
+    editingClassId = id;
+    document.getElementById('modalTitle').textContent = 'Редактировать класс';
+    document.getElementById('classId').value = id;
+    document.getElementById('className').value = name;
+    document.getElementById('studentsBalance').value = studentsBalance;
+    document.getElementById('valeraBalance').value = valeraBalance;
+    document.getElementById('balanceGroup').style.display = 'block';
+    document.getElementById('valeraBalanceGroup').style.display = 'block';
+    document.getElementById('classModal').classList.add('show');
+}
+
+function closeClassModal() {
+    document.getElementById('classModal').classList.remove('show');
+}
+
+function saveClass(event) {
+    event.preventDefault();
+    const id = document.getElementById('classId').value;
+    const name = document.getElementById('className').value;
+    const studentsBalance = parseInt(document.getElementById('studentsBalance').value) || 0;
+    const valeraBalance = parseInt(document.getElementById('valeraBalance').value) || 0;
+    
+    const url = id ? `/api/classes/${id}` : '/api/classes';
+    const method = id ? 'PUT' : 'POST';
+    const data = id ? {
+        name: name,
+        students_balance: studentsBalance,
+        valera_balance: valeraBalance
+    } : { name: name };
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.error || 'Ошибка при сохранении');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Ошибка при сохранении');
+    });
+}
+
+function deleteClass(id) {
+    if (!confirm('Вы уверены, что хотите удалить этот класс?')) {
+        return;
+    }
+    
+    fetch(`/api/classes/${id}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Ошибка при удалении');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Ошибка при удалении');
+    });
+}
+</script>
+<style>
+.admin-container {
+    max-width: 1200px;
+    margin: 30px auto;
+    padding: 20px;
+}
+
+.admin-title {
+    color: #fff;
+    font-size: 36px;
+    margin-bottom: 20px;
+}
+
+.back-link {
+    color: #4CAF50;
+    text-decoration: none;
+    margin-bottom: 20px;
+    display: inline-block;
+}
+
+.add-btn {
+    background-color: #4CAF50;
+    color: #fff;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-bottom: 20px;
+}
+
+.add-btn:hover {
+    background-color: #45a049;
+}
+
+.classes-table {
+    background-color: #2a2a2a;
+    border-radius: 10px;
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #333;
+    color: #fff;
+}
+
+th {
+    background-color: #1a1a1a;
+    font-weight: bold;
+}
+
+.edit-btn, .delete-btn {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-right: 5px;
+    font-size: 14px;
+}
+
+.edit-btn {
+    background-color: #2196F3;
+    color: #fff;
+}
+
+.delete-btn {
+    background-color: #f44336;
+    color: #fff;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    color: #fff;
+    margin-bottom: 5px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #333;
+    background-color: #1a1a1a;
+    color: #fff;
+    font-size: 16px;
+}
+
+.save-btn {
+    background-color: #4CAF50;
+    color: #fff;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    width: 100%;
+}
+
+.save-btn:hover {
+    background-color: #45a049;
+}
+</style>
+{% endblock %}
+

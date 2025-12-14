@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+
+{% block title %}{{ class_obj.name }} - Валера в пещере{% endblock %}
+
+{% block extra_head %}
+<style>
+.class-info {
+    position: fixed;
+    top: 120px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(42, 42, 42, 0.95);
+    border: 2px solid #4CAF50;
+    border-radius: 10px;
+    padding: 15px 25px;
+    z-index: 50;
+    text-align: center;
+}
+
+.class-info h2 {
+    color: #fff;
+    margin-bottom: 10px;
+    font-size: 24px;
+}
+
+.balance-info {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+}
+
+.balance-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.balance-label {
+    color: #aaa;
+    font-size: 14px;
+}
+
+.balance-value {
+    color: #4CAF50;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.balance-item:last-child .balance-value {
+    color: #f44336;
+}
+
+@media (max-width: 768px) {
+    .class-info {
+        top: 80px;
+        padding: 10px 15px;
+    }
+    
+    .class-info h2 {
+        font-size: 18px;
+    }
+    
+    .balance-info {
+        gap: 15px;
+    }
+    
+    .balance-value {
+        font-size: 16px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+    <!-- Кнопки управления -->
+    <button class="control-btn green-btn" id="greenBtn"></button>
+    <button class="control-btn red-btn" id="redBtn"></button>
+    
+    <!-- Сигнальные круги -->
+    <div class="signal-circles">
+        <div class="signal-circle" data-index="0"></div>
+        <div class="signal-circle" data-index="1"></div>
+        <div class="signal-circle" data-index="2"></div>
+        <div class="signal-circle" data-index="3"></div>
+        <div class="signal-circle" data-index="4"></div>
+    </div>
+    
+    <div class="cave-container">
+        <img src="{{ url_for('static', filename='peshhera.png') }}" alt="Пещера" class="cave-image">
+        <img src="{{ url_for('static', filename='valera.png') }}" alt="Валера" class="valera-image">
+        <img src="{{ url_for('static', filename='reshetka.png') }}" alt="Решетка" class="grill-image">
+        <div class="game-over-text" id="gameOverText">Вы проиграли!</div>
+    </div>
+    <button class="restart-btn" id="restartBtn">Начать заново</button>
+    
+    <!-- Информация о классе -->
+    <div class="class-info">
+        <h2>{{ class_obj.name }}</h2>
+        <div class="balance-info">
+            <div class="balance-item">
+                <span class="balance-label">Учащиеся:</span>
+                <span class="balance-value" id="studentsBalance">{{ class_obj.students_balance }}</span>
+            </div>
+            <div class="balance-item">
+                <span class="balance-label">Валера:</span>
+                <span class="balance-value" id="valeraBalance">{{ class_obj.valera_balance }}</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Кнопки магазинов -->
+    <button class="shop-icon-btn students-shop-btn" id="studentsShopBtn" title="Магазин для учащихся">🛒</button>
+    <button class="shop-icon-btn students-lottery-btn" id="studentsLotteryBtn" title="Лавка для учащихся">🎲</button>
+    <button class="shop-icon-btn valera-shop-btn" id="valeraShopBtn" title="Лавка Валеры">🎲</button>
+    
+    <!-- Модальное окно с прайсом -->
+    <div class="modal-overlay" id="priceModal">
+        <div class="modal-content">
+            <button class="modal-close" id="closeModal">&times;</button>
+            <h2 class="modal-title">Прайс</h2>
+            <ul class="price-list" id="priceList">
+                {% for item in shop_items %}
+                <li class="price-item">
+                    <span class="price-name">{{ item.name }}</span>
+                    <span class="price-value">{{ item.price }} монет</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    
+    <!-- Модальное окно с расчетом монет -->
+    <div class="modal-overlay" id="coinsModal">
+        <div class="modal-content">
+            <button class="modal-close" id="closeCoinsModal">&times;</button>
+            <h2 class="modal-title">Заработанные монеты</h2>
+            <div class="coins-result">
+                <div class="coins-summary-grid">
+                    <div class="coins-card">
+                        <div class="coins-amount" id="studentsCoinsAmount">0</div>
+                        <div class="coins-label">Учащиеся</div>
+                    </div>
+                    <div class="coins-card">
+                        <div class="coins-amount" id="valeraCoinsAmount">0</div>
+                        <div class="coins-label">Валера</div>
+                    </div>
+                </div>
+                <div class="extra-point-checkbox">
+                    <label>
+                        <input type="checkbox" id="extraPointCheckbox">
+                        <span>Дополнительный балл</span>
+                    </label>
+                </div>
+                <button class="submit-coins-btn" id="submitCoinsBtn">Зачислить</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Модальное окно магазина Валеры -->
+    <div class="modal-overlay" id="shopModal">
+        <div class="modal-content shop-modal-content">
+            <button class="modal-close" id="closeShopModal">&times;</button>
+            <h2 class="modal-title">Магазин валеры</h2>
+            <div class="shop-price-info">
+                <span>Стоимость выбора приза: <strong>5 монет</strong></span>
+                <span>Баланс Валеры: <strong id="valeraBalanceInShop">{{ class_obj.valera_balance }}</strong> монет</span>
+            </div>
+            <div class="shop-grid" id="shopGrid">
+                <!-- Ячейки будут созданы через JavaScript -->
+            </div>
+            <button class="shop-select-btn" id="selectPrizeBtn">Выбрать приз (5 монет)</button>
+        </div>
+    </div>
+    
+    <!-- Модальное окно лавки для учащихся -->
+    <div class="modal-overlay" id="studentsLotteryModal">
+        <div class="modal-content shop-modal-content">
+            <button class="modal-close" id="closeStudentsLotteryModal">&times;</button>
+            <h2 class="modal-title">Лавка для учащихся</h2>
+            <div class="shop-price-info">
+                <span>Стоимость выбора приза: <strong>8 монет</strong></span>
+                <span>Баланс учащихся: <strong id="studentsBalanceInShop">{{ class_obj.students_balance }}</strong> монет</span>
+            </div>
+            <div class="shop-grid" id="studentsLotteryGrid">
+                <!-- Ячейки будут созданы через JavaScript -->
+            </div>
+            <button class="shop-select-btn" id="selectStudentsPrizeBtn">Выбрать приз (8 монет)</button>
+        </div>
+    </div>
+    
+    <!-- Результат приза (отображается поверх всего) -->
+    <div class="prize-result" id="prizeResult"></div>
+    <div class="prize-result students-prize-result" id="studentsPrizeResult"></div>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        const CLASS_ID = {{ class_obj.id }};
+        const VALERA_PRIZES = {{ valera_prizes|tojson }};
+        const STUDENTS_PRIZES = {{ students_prizes|tojson }};
+        const STATIC_URL = '{{ url_for("static", filename="") }}';
+        
+        // Функция обновления баланса через API
+        async function updateBalance(studentsChange = 0, valeraChange = 0) {
+            try {
+                const response = await fetch(`/api/class/${CLASS_ID}/balance`);
+                const data = await response.json();
+                
+                const newStudentsBalance = data.students_balance + studentsChange;
+                const newValeraBalance = data.valera_balance + valeraChange;
+                
+                await fetch(`/api/class/${CLASS_ID}/balance`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        students_balance: newStudentsBalance,
+                        valera_balance: newValeraBalance
+                    })
+                });
+                
+                // Обновляем отображение
+                document.getElementById('studentsBalance').textContent = newStudentsBalance;
+                document.getElementById('valeraBalance').textContent = newValeraBalance;
+                
+                // Обновляем баланс в магазине, если он открыт
+                const valeraBalanceInShop = document.getElementById('valeraBalanceInShop');
+                if (valeraBalanceInShop) {
+                    valeraBalanceInShop.textContent = newValeraBalance;
+                }
+                
+                // Обновляем состояние кнопки в магазине, если он открыт
+                if (typeof updateShopButtonState === 'function') {
+                    updateShopButtonState();
+                }
+            } catch (error) {
+                console.error('Error updating balance:', error);
+            }
+        }
+        
+        // Функция получения текущего баланса
+        async function getBalance() {
+            try {
+                const response = await fetch(`/api/class/${CLASS_ID}/balance`);
+                const data = await response.json();
+                document.getElementById('studentsBalance').textContent = data.students_balance;
+                document.getElementById('valeraBalance').textContent = data.valera_balance;
+                
+                // Обновляем баланс в магазине, если он открыт
+                const valeraBalanceInShop = document.getElementById('valeraBalanceInShop');
+                if (valeraBalanceInShop) {
+                    valeraBalanceInShop.textContent = data.valera_balance;
+                }
+                
+                // Обновляем баланс учащихся в магазине, если он открыт
+                const studentsBalanceInShop = document.getElementById('studentsBalanceInShop');
+                if (studentsBalanceInShop) {
+                    studentsBalanceInShop.textContent = data.students_balance;
+                }
+                
+                // Обновляем состояние кнопки в магазине, если он открыт
+                if (typeof updateShopButtonState === 'function') {
+                    updateShopButtonState();
+                }
+                
+                // Обновляем состояние кнопки в лавке учащихся, если она открыта
+                if (typeof updateStudentsShopButtonState === 'function') {
+                    updateStudentsShopButtonState();
+                }
+            } catch (error) {
+                console.error('Error getting balance:', error);
+            }
+        }
+        
+        // Обновляем баланс при загрузке страницы
+        getBalance();
+    </script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+{% endblock %}
+

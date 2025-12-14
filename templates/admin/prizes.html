@@ -1,0 +1,334 @@
+{% extends "base.html" %}
+
+{% block title %}Управление призами - Админ панель{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <h1 class="admin-title">Управление призами</h1>
+    <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+        <a href="{{ url_for('index') }}" class="back-link">← Назад к рейтингу</a>
+        <a href="{{ url_for('logout') }}" class="back-link" style="color: #f44336;">Выйти</a>
+    </div>
+    
+    <div class="prizes-sections">
+        <div class="prize-section">
+            <h2>Призы магазина учащихся</h2>
+            <button class="add-btn" onclick="showAddShopItemModal()">+ Добавить приз</button>
+            <div class="prizes-list" id="shopItemsList">
+                {% for item in shop_items %}
+                <div class="prize-item" data-id="{{ item.id }}">
+                    <div class="prize-info">
+                        <span class="prize-name">{{ item.name }}</span>
+                        <span class="prize-price">{{ item.price }} монет</span>
+                    </div>
+                    <div class="prize-actions">
+                        <button class="edit-btn" onclick="editShopItem({{ item.id }}, '{{ item.name }}', {{ item.price }})">Редактировать</button>
+                        <button class="delete-btn" onclick="deleteShopItem({{ item.id }})">Удалить</button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="prize-section">
+            <h2>Призы лавки Валеры</h2>
+            <button class="add-btn" onclick="showAddPrizeModal('valera')">+ Добавить приз</button>
+            <div class="prizes-list" id="valeraPrizesList">
+                {% for prize in valera_prizes %}
+                <div class="prize-item" data-id="{{ prize.id }}">
+                    <span class="prize-name">{{ prize.name }}</span>
+                    <div class="prize-actions">
+                        <button class="edit-btn" onclick="editPrize({{ prize.id }}, '{{ prize.name }}', 'valera')">Редактировать</button>
+                        <button class="delete-btn" onclick="deletePrize({{ prize.id }})">Удалить</button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <div class="prize-section">
+            <h2>Призы лавки учащихся</h2>
+            <button class="add-btn" onclick="showAddPrizeModal('students')">+ Добавить приз</button>
+            <div class="prizes-list" id="studentsPrizesList">
+                {% for prize in students_prizes %}
+                <div class="prize-item" data-id="{{ prize.id }}">
+                    <span class="prize-name">{{ prize.name }}</span>
+                    <div class="prize-actions">
+                        <button class="edit-btn" onclick="editPrize({{ prize.id }}, '{{ prize.name }}', 'students')">Редактировать</button>
+                        <button class="delete-btn" onclick="deletePrize({{ prize.id }})">Удалить</button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно добавления/редактирования приза -->
+<div class="modal-overlay" id="prizeModal">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closePrizeModal()">&times;</button>
+        <h2 class="modal-title" id="prizeModalTitle">Добавить приз</h2>
+        <form id="prizeForm" onsubmit="savePrize(event)">
+            <input type="hidden" id="prizeId" value="">
+            <input type="hidden" id="prizeType" value="">
+            <div class="form-group">
+                <label>Название приза:</label>
+                <textarea id="prizeName" required rows="3"></textarea>
+            </div>
+            <button type="submit" class="save-btn">Сохранить</button>
+        </form>
+    </div>
+</div>
+
+<!-- Модальное окно добавления/редактирования приза магазина -->
+<div class="modal-overlay" id="shopItemModal">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closeShopItemModal()">&times;</button>
+        <h2 class="modal-title" id="shopItemModalTitle">Добавить приз магазина</h2>
+        <form id="shopItemForm" onsubmit="saveShopItem(event)">
+            <input type="hidden" id="shopItemId" value="">
+            <div class="form-group">
+                <label>Название приза:</label>
+                <input type="text" id="shopItemName" required>
+            </div>
+            <div class="form-group">
+                <label>Цена (монет):</label>
+                <input type="number" id="shopItemPrice" min="1" required>
+            </div>
+            <button type="submit" class="save-btn">Сохранить</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let editingPrizeId = null;
+
+function showAddPrizeModal(type) {
+    editingPrizeId = null;
+    document.getElementById('prizeModalTitle').textContent = 'Добавить приз';
+    document.getElementById('prizeForm').reset();
+    document.getElementById('prizeId').value = '';
+    document.getElementById('prizeType').value = type;
+    document.getElementById('prizeModal').classList.add('show');
+}
+
+function editPrize(id, name, type) {
+    editingPrizeId = id;
+    document.getElementById('prizeModalTitle').textContent = 'Редактировать приз';
+    document.getElementById('prizeId').value = id;
+    document.getElementById('prizeName').value = name;
+    document.getElementById('prizeType').value = type;
+    document.getElementById('prizeModal').classList.add('show');
+}
+
+function closePrizeModal() {
+    document.getElementById('prizeModal').classList.remove('show');
+}
+
+function savePrize(event) {
+    event.preventDefault();
+    const id = document.getElementById('prizeId').value;
+    const name = document.getElementById('prizeName').value;
+    const type = document.getElementById('prizeType').value;
+    
+    const url = id ? `/api/prizes/${id}` : '/api/prizes';
+    const method = id ? 'PUT' : 'POST';
+    const data = {
+        name: name,
+        prize_type: type
+    };
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.error || 'Ошибка при сохранении');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Ошибка при сохранении');
+    });
+}
+
+function deletePrize(id) {
+    if (!confirm('Вы уверены, что хотите удалить этот приз?')) {
+        return;
+    }
+    
+    fetch(`/api/prizes/${id}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Ошибка при удалении');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Ошибка при удалении');
+    });
+}
+
+// Функции для управления призами магазина
+function showAddShopItemModal() {
+    document.getElementById('shopItemModalTitle').textContent = 'Добавить приз магазина';
+    document.getElementById('shopItemForm').reset();
+    document.getElementById('shopItemId').value = '';
+    document.getElementById('shopItemModal').classList.add('show');
+}
+
+function editShopItem(id, name, price) {
+    document.getElementById('shopItemModalTitle').textContent = 'Редактировать приз магазина';
+    document.getElementById('shopItemId').value = id;
+    document.getElementById('shopItemName').value = name;
+    document.getElementById('shopItemPrice').value = price;
+    document.getElementById('shopItemModal').classList.add('show');
+}
+
+function closeShopItemModal() {
+    document.getElementById('shopItemModal').classList.remove('show');
+}
+
+function saveShopItem(event) {
+    event.preventDefault();
+    const id = document.getElementById('shopItemId').value;
+    const name = document.getElementById('shopItemName').value;
+    const price = parseInt(document.getElementById('shopItemPrice').value);
+    
+    const url = id ? `/api/shop-items/${id}` : '/api/shop-items';
+    const method = id ? 'PUT' : 'POST';
+    const data = {
+        name: name,
+        price: price
+    };
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.error || 'Ошибка при сохранении');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Ошибка при сохранении');
+    });
+}
+
+function deleteShopItem(id) {
+    if (!confirm('Вы уверены, что хотите удалить этот приз?')) {
+        return;
+    }
+    
+    fetch(`/api/shop-items/${id}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Ошибка при удалении');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Ошибка при удалении');
+    });
+}
+</script>
+<style>
+.prizes-sections {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin-top: 30px;
+}
+
+.prize-section {
+    background-color: #2a2a2a;
+    border-radius: 10px;
+    padding: 20px;
+    border: 2px solid #4CAF50;
+}
+
+.prize-section h2 {
+    color: #fff;
+    margin-bottom: 15px;
+}
+
+.prizes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.prize-item {
+    background-color: #1a1a1a;
+    padding: 15px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.prize-name {
+    color: #fff;
+    flex: 1;
+}
+
+.prize-info {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    flex: 1;
+}
+
+.prize-price {
+    color: #4CAF50;
+    font-size: 14px;
+}
+
+.form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #333;
+    background-color: #1a1a1a;
+    color: #fff;
+    font-size: 16px;
+    font-family: Arial, sans-serif;
+    resize: vertical;
+}
+
+@media (max-width: 768px) {
+    .prizes-sections {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}
+

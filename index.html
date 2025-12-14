@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Валера в пещере</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Кнопки управления -->
+    <button class="control-btn green-btn" id="greenBtn"></button>
+    <button class="control-btn red-btn" id="redBtn"></button>
+    
+    <!-- Сигнальные круги -->
+    <div class="signal-circles">
+        <div class="signal-circle" data-index="0"></div>
+        <div class="signal-circle" data-index="1"></div>
+        <div class="signal-circle" data-index="2"></div>
+        <div class="signal-circle" data-index="3"></div>
+        <div class="signal-circle" data-index="4"></div>
+    </div>
+    
+    <div class="cave-container">
+        <img src="peshhera.png" alt="Пещера" class="cave-image">
+        <img src="valera.png" alt="Валера" class="valera-image">
+        <img src="reshetka.png" alt="Решетка" class="grill-image">
+        <div class="game-over-text" id="gameOverText">Вы проиграли!</div>
+    </div>
+    <button class="restart-btn" id="restartBtn">Начать заново</button>
+    
+    <!-- Кнопки магазинов -->
+    <button class="shop-icon-btn students-shop-btn" id="studentsShopBtn" title="Магазин для учащихся">🛒</button>
+    <button class="shop-icon-btn students-lottery-btn" id="studentsLotteryBtn" title="Лавка для учащихся">🎲</button>
+    <button class="shop-icon-btn valera-shop-btn" id="valeraShopBtn" title="Лавка Валеры">🎲</button>
+    
+    <!-- Модальное окно с прайсом -->
+    <div class="modal-overlay" id="priceModal">
+        <div class="modal-content">
+            <button class="modal-close" id="closeModal">&times;</button>
+            <h2 class="modal-title">Прайс</h2>
+            <ul class="price-list">
+                <li class="price-item">
+                    <span class="price-name">Урок без ДЗ</span>
+                    <span class="price-value">10 монет</span>
+                </li>
+                <li class="price-item">
+                    <span class="price-name">Пересадка на весь урок</span>
+                    <span class="price-value">10 монет</span>
+                </li>
+                <li class="price-item">
+                    <span class="price-name">+5 мин к КР/СР</span>
+                    <span class="price-value">15 монет</span>
+                </li>
+                <li class="price-item">
+                    <span class="price-name">Играем весь урок</span>
+                    <span class="price-value">30 монет</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+    
+    <!-- Модальное окно с расчетом монет -->
+    <div class="modal-overlay" id="coinsModal">
+        <div class="modal-content">
+            <button class="modal-close" id="closeCoinsModal">&times;</button>
+            <h2 class="modal-title">Заработанные монеты</h2>
+            <div class="coins-result">
+                <div class="coins-summary-grid">
+                    <div class="coins-card">
+                        <div class="coins-amount" id="studentsCoinsAmount">0</div>
+                        <div class="coins-label">Учащиеся</div>
+                    </div>
+                    <div class="coins-card">
+                        <div class="coins-amount" id="valeraCoinsAmount">0</div>
+                        <div class="coins-label">Валера</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Модальное окно магазина Валеры -->
+    <div class="modal-overlay" id="shopModal">
+        <div class="modal-content shop-modal-content">
+            <button class="modal-close" id="closeShopModal">&times;</button>
+            <h2 class="modal-title">Магазин валеры</h2>
+            <div class="shop-grid" id="shopGrid">
+                <!-- Ячейки будут созданы через JavaScript -->
+            </div>
+            <button class="shop-select-btn" id="selectPrizeBtn">Выбрать приз</button>
+        </div>
+    </div>
+    
+    <!-- Модальное окно лавки для учащихся -->
+    <div class="modal-overlay" id="studentsLotteryModal">
+        <div class="modal-content shop-modal-content">
+            <button class="modal-close" id="closeStudentsLotteryModal">&times;</button>
+            <h2 class="modal-title">Лавка для учащихся</h2>
+            <div class="shop-grid" id="studentsLotteryGrid">
+                <!-- Ячейки будут созданы через JavaScript -->
+            </div>
+            <button class="shop-select-btn" id="selectStudentsPrizeBtn">Выбрать приз</button>
+        </div>
+    </div>
+    
+    <!-- Результат приза (отображается поверх всего) -->
+    <div class="prize-result" id="prizeResult"></div>
+    <div class="prize-result students-prize-result" id="studentsPrizeResult"></div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
+
