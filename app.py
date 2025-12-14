@@ -306,3 +306,5 @@ def delete_shop_item(item_id):
     return jsonify({'success': True})
 
 
+if __name__ == '__main__':
+    app.run(debug=False)
