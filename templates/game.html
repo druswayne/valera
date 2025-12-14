@@ -179,6 +179,57 @@
     box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
 }
 
+.settings-range {
+    width: 100%;
+    height: 8px;
+    border-radius: 5px;
+    background: #2a2a2a;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.settings-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #4CAF50;
+    cursor: pointer;
+    border: 2px solid #fff;
+    transition: background 0.3s ease;
+}
+
+.settings-range::-webkit-slider-thumb:hover {
+    background: #45a049;
+}
+
+.settings-range::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #4CAF50;
+    cursor: pointer;
+    border: 2px solid #fff;
+    transition: background 0.3s ease;
+}
+
+.settings-range::-moz-range-thumb:hover {
+    background: #45a049;
+}
+
+.sensitivity-value-display {
+    text-align: center;
+    margin: 10px 0;
+}
+
+.sensitivity-value-display span {
+    color: #4CAF50;
+    font-size: 24px;
+    font-weight: bold;
+}
+
 .settings-hint {
     color: #aaa;
     font-size: 14px;
@@ -477,6 +528,14 @@
                 <label for="thresholdInput">Пороговое значение (%):</label>
                 <input type="number" id="thresholdInput" min="0" max="100" value="80" class="settings-input">
                 <p class="settings-hint">При достижении этого уровня будет активирован сигнальный круг. Следующее предупреждение появится не раньше, чем через минуту.</p>
+                
+                <label for="sensitivityInput">Чувствительность микрофона (%):</label>
+                <input type="range" id="sensitivityInput" min="10" max="200" value="100" step="10" class="settings-range">
+                <div class="sensitivity-value-display">
+                    <span id="sensitivityValue">100%</span>
+                </div>
+                <p class="settings-hint">Регулирует чувствительность микрофона. Чем выше значение, тем чувствительнее микрофон.</p>
+                
                 <button class="settings-save-btn" id="saveNoiseSettingsBtn">Сохранить</button>
             </div>
         </div>
@@ -669,6 +728,7 @@
         
         // Настройки уровня шума
         let noiseThreshold = 80; // Пороговое значение по умолчанию
+        let microphoneSensitivity = 100; // Чувствительность микрофона по умолчанию (100%)
         let lastWarningTime = 0; // Время последнего предупреждения
         const WARNING_COOLDOWN = 60000; // 1 минута в миллисекундах
         let violationAlertTimeout = null; // Таймер для скрытия сообщения о нарушении
@@ -678,6 +738,8 @@
         const noiseSettingsModal = document.getElementById('noiseSettingsModal');
         const closeNoiseSettingsModal = document.getElementById('closeNoiseSettingsModal');
         const thresholdInput = document.getElementById('thresholdInput');
+        const sensitivityInput = document.getElementById('sensitivityInput');
+        const sensitivityValue = document.getElementById('sensitivityValue');
         const saveNoiseSettingsBtn = document.getElementById('saveNoiseSettingsBtn');
         
         // Загружаем сохраненное пороговое значение из localStorage
@@ -686,6 +748,19 @@
             noiseThreshold = parseInt(savedThreshold, 10);
             thresholdInput.value = noiseThreshold;
         }
+        
+        // Загружаем сохраненную чувствительность из localStorage
+        const savedSensitivity = localStorage.getItem('microphoneSensitivity');
+        if (savedSensitivity !== null) {
+            microphoneSensitivity = parseInt(savedSensitivity, 10);
+            sensitivityInput.value = microphoneSensitivity;
+            sensitivityValue.textContent = microphoneSensitivity + '%';
+        }
+        
+        // Обновление отображения значения чувствительности при изменении ползунка
+        sensitivityInput.addEventListener('input', (e) => {
+            sensitivityValue.textContent = e.target.value + '%';
+        });
         
         // Открытие модального окна настроек
         noiseSettingsBtn.addEventListener('click', () => {
@@ -707,13 +782,25 @@
         // Сохранение настроек
         saveNoiseSettingsBtn.addEventListener('click', () => {
             const newThreshold = parseInt(thresholdInput.value, 10);
+            const newSensitivity = parseInt(sensitivityInput.value, 10);
+            
             if (newThreshold >= 0 && newThreshold <= 100) {
                 noiseThreshold = newThreshold;
                 localStorage.setItem('noiseThreshold', noiseThreshold.toString());
-                noiseSettingsModal.classList.remove('show');
             } else {
                 alert('Пороговое значение должно быть от 0 до 100');
+                return;
             }
+            
+            if (newSensitivity >= 10 && newSensitivity <= 200) {
+                microphoneSensitivity = newSensitivity;
+                localStorage.setItem('microphoneSensitivity', microphoneSensitivity.toString());
+            } else {
+                alert('Чувствительность должна быть от 10 до 200');
+                return;
+            }
+            
+            noiseSettingsModal.classList.remove('show');
         });
         
         // Функция активации сигнального круга
@@ -839,7 +926,10 @@
             // Преобразуем в проценты (0-127 -> 0-100%)
             // Используем квадратичную шкалу для более естественного восприятия громкости
             const normalized = max / 127;
-            const percentage = Math.min(100, Math.round(Math.pow(normalized, 0.5) * 100));
+            let percentage = Math.min(100, Math.round(Math.pow(normalized, 0.5) * 100));
+            
+            // Применяем чувствительность микрофона
+            percentage = Math.min(100, Math.round(percentage * (microphoneSensitivity / 100)));
             
             // Определяем цвет в зависимости от уровня
             let barColor = '#4CAF50'; // Зеленый (тихо)
