@@ -305,6 +305,4 @@ def delete_shop_item(item_id):
     db.session.commit()
     return jsonify({'success': True})
 
-if __name__ == '__main__':
-    app.run(debug=True)
 

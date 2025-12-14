@@ -12,7 +12,7 @@
     background-color: rgba(42, 42, 42, 0.95);
     border: 2px solid #4CAF50;
     border-radius: 10px;
-    padding: 15px 25px;
+    padding: 12px 25px;
     z-index: 50;
     text-align: center;
 }
@@ -25,7 +25,7 @@
 
 .balance-info {
     display: flex;
-    gap: 20px;
+    gap: 50px;
     justify-content: center;
 }
 
@@ -42,7 +42,7 @@
 
 .balance-value {
     color: #4CAF50;
-    font-size: 20px;
+    font-size: 36px;
     font-weight: bold;
 }
 
@@ -56,16 +56,12 @@
         padding: 10px 15px;
     }
     
-    .class-info h2 {
-        font-size: 18px;
-    }
-    
     .balance-info {
-        gap: 15px;
+        gap: 40px;
     }
     
     .balance-value {
-        font-size: 16px;
+        font-size: 28px;
     }
 }
 
@@ -122,11 +118,201 @@
     z-index: 99;
 }
 
+.noise-level-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
 .noise-level-label {
     color: #fff;
     font-size: 18px;
-    margin-bottom: 10px;
     text-align: center;
+    flex: 1;
+}
+
+.noise-settings-btn {
+    background: transparent;
+    border: 2px solid #4CAF50;
+    border-radius: 5px;
+    color: #4CAF50;
+    font-size: 18px;
+    padding: 5px 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-left: 10px;
+}
+
+.noise-settings-btn:hover {
+    background-color: #4CAF50;
+    color: #fff;
+    transform: scale(1.1);
+}
+
+.settings-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.settings-form label {
+    color: #fff;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.settings-input {
+    padding: 10px;
+    font-size: 18px;
+    border: 2px solid #4CAF50;
+    border-radius: 5px;
+    background-color: #2a2a2a;
+    color: #fff;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.settings-input:focus {
+    outline: none;
+    border-color: #45a049;
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+}
+
+.settings-hint {
+    color: #aaa;
+    font-size: 14px;
+    margin: 0;
+}
+
+.settings-save-btn {
+    padding: 12px 30px;
+    font-size: 18px;
+    font-weight: bold;
+    color: #fff;
+    background-color: #4CAF50;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.settings-save-btn:hover {
+    background-color: #45a049;
+}
+
+/* Всплывающее сообщение о нарушении */
+.violation-alert {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(244, 67, 54, 0.95);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    animation: violationPulse 0.5s ease-in-out;
+}
+
+.violation-alert.show {
+    display: flex;
+}
+
+@keyframes violationPulse {
+    0% {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.violation-alert-content {
+    text-align: center;
+    color: #fff;
+    animation: violationShake 0.5s ease-in-out;
+}
+
+@keyframes violationShake {
+    0%, 100% {
+        transform: translateX(0);
+    }
+    10%, 30%, 50%, 70%, 90% {
+        transform: translateX(-10px);
+    }
+    20%, 40%, 60%, 80% {
+        transform: translateX(10px);
+    }
+}
+
+.violation-icon {
+    font-size: 120px;
+    margin-bottom: 30px;
+    animation: violationBlink 1s ease-in-out infinite;
+}
+
+@keyframes violationBlink {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.1);
+    }
+}
+
+.violation-title {
+    font-size: 72px;
+    font-weight: bold;
+    margin: 0 0 20px 0;
+    text-shadow: 0 0 20px rgba(0, 0, 0, 0.8), 0 0 40px rgba(255, 255, 255, 0.5);
+    letter-spacing: 5px;
+}
+
+.violation-message {
+    font-size: 36px;
+    margin: 0;
+    text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+}
+
+@media (max-width: 768px) {
+    .violation-icon {
+        font-size: 80px;
+        margin-bottom: 20px;
+    }
+    
+    .violation-title {
+        font-size: 48px;
+        letter-spacing: 3px;
+    }
+    
+    .violation-message {
+        font-size: 24px;
+    }
+}
+
+@media (max-width: 480px) {
+    .violation-icon {
+        font-size: 60px;
+        margin-bottom: 15px;
+    }
+    
+    .violation-title {
+        font-size: 36px;
+        letter-spacing: 2px;
+    }
+    
+    .violation-message {
+        font-size: 18px;
+    }
 }
 
 .noise-level-bar-container {
@@ -167,9 +353,10 @@
         bottom: 15px;
         left: 50%;
         transform: translateX(-50%);
-        min-width: calc(100% - 160px);
+        width: calc(100% - 100px);
         max-width: 500px;
-        padding: 12px 20px;
+        min-width: auto;
+        padding: 10px 15px;
     }
     
     .noise-level-label {
@@ -178,17 +365,52 @@
     }
     
     .noise-level-bar-container {
-        height: 35px;
-        border-radius: 17px;
+        height: 30px;
+        border-radius: 15px;
         margin-bottom: 8px;
     }
     
     .noise-level-bar {
-        border-radius: 17px;
+        border-radius: 15px;
     }
     
     .noise-level-value {
+        font-size: 18px;
+    }
+}
+
+@media (max-width: 480px) {
+    .noise-level-container {
+        bottom: 10px;
+        width: calc(100% - 80px);
+        padding: 8px 12px;
+    }
+    
+    .noise-level-label {
+        font-size: 12px;
+        margin-bottom: 6px;
+    }
+    
+    .noise-level-bar-container {
+        height: 25px;
+        border-radius: 12px;
+        margin-bottom: 6px;
+    }
+    
+    .noise-level-bar {
+        border-radius: 12px;
+    }
+    
+    .noise-level-value {
+        font-size: 16px;
+    }
+    
+    .microphone-btn {
+        width: 45px;
+        height: 45px;
         font-size: 20px;
+        bottom: 10px;
+        right: 10px;
     }
 }
 </style>
@@ -218,14 +440,11 @@
     
     <!-- Информация о классе -->
     <div class="class-info">
-        <h2>{{ class_obj.name }}</h2>
         <div class="balance-info">
             <div class="balance-item">
-                <span class="balance-label">Учащиеся:</span>
                 <span class="balance-value" id="studentsBalance">{{ class_obj.students_balance }}</span>
             </div>
             <div class="balance-item">
-                <span class="balance-label">Валера:</span>
                 <span class="balance-value" id="valeraBalance">{{ class_obj.valera_balance }}</span>
             </div>
         </div>
@@ -239,11 +458,37 @@
     <!-- Кнопка и индикатор уровня шума -->
     <button class="microphone-btn" id="microphoneBtn" title="Включить/выключить прослушивание микрофона">🎤</button>
     <div class="noise-level-container" id="noiseLevelContainer" style="display: none;">
-        <div class="noise-level-label">Уровень шума:</div>
+        <div class="noise-level-header">
+            <div class="noise-level-label">Уровень шума:</div>
+            <button class="noise-settings-btn" id="noiseSettingsBtn" title="Настройки">⚙️</button>
+        </div>
         <div class="noise-level-bar-container">
             <div class="noise-level-bar" id="noiseLevelBar"></div>
         </div>
         <div class="noise-level-value" id="noiseLevelValue">0%</div>
+    </div>
+    
+    <!-- Модальное окно настроек уровня шума -->
+    <div class="modal-overlay" id="noiseSettingsModal">
+        <div class="modal-content">
+            <button class="modal-close" id="closeNoiseSettingsModal">&times;</button>
+            <h2 class="modal-title">Настройки уровня шума</h2>
+            <div class="settings-form">
+                <label for="thresholdInput">Пороговое значение (%):</label>
+                <input type="number" id="thresholdInput" min="0" max="100" value="80" class="settings-input">
+                <p class="settings-hint">При достижении этого уровня будет активирован сигнальный круг. Следующее предупреждение появится не раньше, чем через минуту.</p>
+                <button class="settings-save-btn" id="saveNoiseSettingsBtn">Сохранить</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Всплывающее сообщение о нарушении -->
+    <div class="violation-alert" id="violationAlert">
+        <div class="violation-alert-content">
+            <div class="violation-icon">⚠️</div>
+            <h1 class="violation-title">НАРУШЕНИЕ!</h1>
+            <p class="violation-message">Превышен допустимый уровень шума</p>
+        </div>
     </div>
     
     <!-- Модальное окно с прайсом -->
@@ -422,6 +667,93 @@
         const noiseLevelBar = document.getElementById('noiseLevelBar');
         const noiseLevelValue = document.getElementById('noiseLevelValue');
         
+        // Настройки уровня шума
+        let noiseThreshold = 80; // Пороговое значение по умолчанию
+        let lastWarningTime = 0; // Время последнего предупреждения
+        const WARNING_COOLDOWN = 60000; // 1 минута в миллисекундах
+        let violationAlertTimeout = null; // Таймер для скрытия сообщения о нарушении
+        
+        // Элементы настроек
+        const noiseSettingsBtn = document.getElementById('noiseSettingsBtn');
+        const noiseSettingsModal = document.getElementById('noiseSettingsModal');
+        const closeNoiseSettingsModal = document.getElementById('closeNoiseSettingsModal');
+        const thresholdInput = document.getElementById('thresholdInput');
+        const saveNoiseSettingsBtn = document.getElementById('saveNoiseSettingsBtn');
+        
+        // Загружаем сохраненное пороговое значение из localStorage
+        const savedThreshold = localStorage.getItem('noiseThreshold');
+        if (savedThreshold !== null) {
+            noiseThreshold = parseInt(savedThreshold, 10);
+            thresholdInput.value = noiseThreshold;
+        }
+        
+        // Открытие модального окна настроек
+        noiseSettingsBtn.addEventListener('click', () => {
+            noiseSettingsModal.classList.add('show');
+        });
+        
+        // Закрытие модального окна настроек
+        closeNoiseSettingsModal.addEventListener('click', () => {
+            noiseSettingsModal.classList.remove('show');
+        });
+        
+        // Закрытие при клике вне модального окна
+        noiseSettingsModal.addEventListener('click', (e) => {
+            if (e.target === noiseSettingsModal) {
+                noiseSettingsModal.classList.remove('show');
+            }
+        });
+        
+        // Сохранение настроек
+        saveNoiseSettingsBtn.addEventListener('click', () => {
+            const newThreshold = parseInt(thresholdInput.value, 10);
+            if (newThreshold >= 0 && newThreshold <= 100) {
+                noiseThreshold = newThreshold;
+                localStorage.setItem('noiseThreshold', noiseThreshold.toString());
+                noiseSettingsModal.classList.remove('show');
+            } else {
+                alert('Пороговое значение должно быть от 0 до 100');
+            }
+        });
+        
+        // Функция активации сигнального круга
+        function activateWarningCircle() {
+            const signalCircles = document.querySelectorAll('.signal-circle');
+            const currentTime = Date.now();
+            const violationAlert = document.getElementById('violationAlert');
+            
+            // Проверяем, прошла ли минута с последнего предупреждения
+            if (currentTime - lastWarningTime < WARNING_COOLDOWN) {
+                return; // Слишком рано для нового предупреждения
+            }
+            
+            // Находим первый неактивный круг
+            for (let i = 0; i < signalCircles.length; i++) {
+                if (!signalCircles[i].classList.contains('active')) {
+                    signalCircles[i].classList.add('active');
+                    lastWarningTime = currentTime;
+                    
+                    // Показываем всплывающее сообщение о нарушении
+                    if (violationAlert) {
+                        violationAlert.classList.add('show');
+                        
+                        // Очищаем предыдущий таймер, если он есть
+                        if (violationAlertTimeout) {
+                            clearTimeout(violationAlertTimeout);
+                        }
+                        
+                        // Скрываем сообщение через 10 секунд
+                        violationAlertTimeout = setTimeout(() => {
+                            violationAlert.classList.remove('show');
+                            violationAlertTimeout = null;
+                        }, 10000);
+                    }
+                    
+                    break;
+                }
+            }
+        }
+        
         async function startMicrophone() {
             try {
                 // Запрашиваем доступ к микрофону
@@ -532,6 +864,11 @@
             noiseLevelBar.style.background = barColor;
             noiseLevelValue.textContent = percentage + '%';
             noiseLevelValue.style.color = textColor;
+            
+            // Проверяем пороговое значение и активируем предупреждение
+            if (percentage >= noiseThreshold) {
+                activateWarningCircle();
+            }
             
             // Продолжаем обновление
             animationFrameId = requestAnimationFrame(updateNoiseLevel);
