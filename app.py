@@ -58,13 +58,17 @@ class Prize(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)
     prize_type = db.Column(db.String(20), nullable=False)  # 'valera' или 'students'
+    students_change = db.Column(db.Integer, default=0, nullable=False)  # Изменение баланса учащихся
+    valera_change = db.Column(db.Integer, default=0, nullable=False)  # Изменение баланса Валеры
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
         return {
             'id': self.id,
             'name': self.name,
-            'prize_type': self.prize_type
+            'prize_type': self.prize_type,
+            'students_change': self.students_change,
+            'valera_change': self.valera_change
         }
 
 class ShopItem(db.Model):
@@ -94,6 +98,28 @@ def admin_required(f):
 # Создание таблиц
 with app.app_context():
     db.create_all()
+    
+    # Миграция: добавление новых колонок в таблицу Prize, если их нет
+    try:
+        from sqlalchemy import inspect, text
+        
+        inspector = inspect(db.engine)
+        
+        # Проверяем, существует ли таблица prize
+        if 'prize' in inspector.get_table_names():
+            columns = [col['name'] for col in inspector.get_columns('prize')]
+            
+            with db.engine.begin() as conn:
+                if 'students_change' not in columns:
+                    conn.execute(text('ALTER TABLE prize ADD COLUMN students_change INTEGER DEFAULT 0'))
+                    print("Добавлена колонка students_change в таблицу prize")
+                
+                if 'valera_change' not in columns:
+                    conn.execute(text('ALTER TABLE prize ADD COLUMN valera_change INTEGER DEFAULT 0'))
+                    print("Добавлена колонка valera_change в таблицу prize")
+    except Exception as e:
+        print(f"Ошибка при миграции таблицы prize: {e}")
+        # Если таблица не существует, db.create_all() создаст её с нужными колонками
     
     # Создание администратора по умолчанию (если его нет)
     admin = User.query.filter_by(username='admin').first()
@@ -141,6 +167,7 @@ def index():
 
 # Страница игры для класса
 @app.route('/class/<int:class_id>')
+@admin_required
 def class_game(class_id):
     class_obj = Class.query.get_or_404(class_id)
     valera_prizes = Prize.query.filter_by(prize_type='valera').all()
@@ -148,8 +175,8 @@ def class_game(class_id):
     shop_items = ShopItem.query.order_by(ShopItem.price).all()
     return render_template('game.html', 
                          class_obj=class_obj,
-                         valera_prizes=[p.name for p in valera_prizes],
-                         students_prizes=[p.name for p in students_prizes],
+                         valera_prizes=[p.to_dict() for p in valera_prizes],
+                         students_prizes=[p.to_dict() for p in students_prizes],
                          shop_items=shop_items)
 
 # API для получения баланса
@@ -242,7 +269,9 @@ def create_prize():
     data = request.json
     new_prize = Prize(
         name=data['name'],
-        prize_type=data['prize_type']
+        prize_type=data['prize_type'],
+        students_change=data.get('students_change', 0),
+        valera_change=data.get('valera_change', 0)
     )
     db.session.add(new_prize)
     db.session.commit()
@@ -258,6 +287,10 @@ def update_prize(prize_id):
         prize.name = data['name']
     if 'prize_type' in data:
         prize.prize_type = data['prize_type']
+    if 'students_change' in data:
+        prize.students_change = data['students_change']
+    if 'valera_change' in data:
+        prize.valera_change = data['valera_change']
     
     db.session.commit()
     return jsonify({'success': True, 'prize': prize.to_dict()})

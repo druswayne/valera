@@ -35,10 +35,18 @@
             <div class="prizes-list" id="valeraPrizesList">
                 {% for prize in valera_prizes %}
                 <div class="prize-item" data-id="{{ prize.id }}">
-                    <span class="prize-name">{{ prize.name }}</span>
+                    <div class="prize-info">
+                        <span class="prize-name">{{ prize.name }}</span>
+                        <span class="prize-rewards">Ученики: {{ prize.students_change }}, Валера: {{ prize.valera_change }}</span>
+                    </div>
                     <div class="prize-actions">
-                        <button class="edit-btn" onclick="editPrize({{ prize.id }}, '{{ prize.name }}', 'valera')">Редактировать</button>
-                        <button class="delete-btn" onclick="deletePrize({{ prize.id }})">Удалить</button>
+                        <button class="edit-btn" 
+                                data-prize-id="{{ prize.id }}"
+                                data-prize-name="{{ prize.name }}"
+                                data-prize-type="valera"
+                                data-students-change="{{ prize.students_change }}"
+                                data-valera-change="{{ prize.valera_change }}">Редактировать</button>
+                        <button class="delete-btn" data-prize-id="{{ prize.id }}">Удалить</button>
                     </div>
                 </div>
                 {% endfor %}
@@ -51,10 +59,18 @@
             <div class="prizes-list" id="studentsPrizesList">
                 {% for prize in students_prizes %}
                 <div class="prize-item" data-id="{{ prize.id }}">
-                    <span class="prize-name">{{ prize.name }}</span>
+                    <div class="prize-info">
+                        <span class="prize-name">{{ prize.name }}</span>
+                        <span class="prize-rewards">Ученики: {{ prize.students_change }}, Валера: {{ prize.valera_change }}</span>
+                    </div>
                     <div class="prize-actions">
-                        <button class="edit-btn" onclick="editPrize({{ prize.id }}, '{{ prize.name }}', 'students')">Редактировать</button>
-                        <button class="delete-btn" onclick="deletePrize({{ prize.id }})">Удалить</button>
+                        <button class="edit-btn" 
+                                data-prize-id="{{ prize.id }}"
+                                data-prize-name="{{ prize.name }}"
+                                data-prize-type="students"
+                                data-students-change="{{ prize.students_change }}"
+                                data-valera-change="{{ prize.valera_change }}">Редактировать</button>
+                        <button class="delete-btn" data-prize-id="{{ prize.id }}">Удалить</button>
                     </div>
                 </div>
                 {% endfor %}
@@ -74,6 +90,16 @@
             <div class="form-group">
                 <label>Название приза:</label>
                 <textarea id="prizeName" required rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Изменение баланса учащихся (монет):</label>
+                <input type="number" id="prizeStudentsChange" value="0" step="1">
+                <small style="color: #aaa; display: block; margin-top: 5px;">Может быть положительным или отрицательным</small>
+            </div>
+            <div class="form-group">
+                <label>Изменение баланса Валеры (монет):</label>
+                <input type="number" id="prizeValeraChange" value="0" step="1">
+                <small style="color: #aaa; display: block; margin-top: 5px;">Может быть положительным или отрицательным</small>
             </div>
             <button type="submit" class="save-btn">Сохранить</button>
         </form>
@@ -111,15 +137,19 @@ function showAddPrizeModal(type) {
     document.getElementById('prizeForm').reset();
     document.getElementById('prizeId').value = '';
     document.getElementById('prizeType').value = type;
+    document.getElementById('prizeStudentsChange').value = 0;
+    document.getElementById('prizeValeraChange').value = 0;
     document.getElementById('prizeModal').classList.add('show');
 }
 
-function editPrize(id, name, type) {
+function editPrize(id, name, type, studentsChange, valeraChange) {
     editingPrizeId = id;
     document.getElementById('prizeModalTitle').textContent = 'Редактировать приз';
     document.getElementById('prizeId').value = id;
     document.getElementById('prizeName').value = name;
     document.getElementById('prizeType').value = type;
+    document.getElementById('prizeStudentsChange').value = studentsChange || 0;
+    document.getElementById('prizeValeraChange').value = valeraChange || 0;
     document.getElementById('prizeModal').classList.add('show');
 }
 
@@ -132,12 +162,16 @@ function savePrize(event) {
     const id = document.getElementById('prizeId').value;
     const name = document.getElementById('prizeName').value;
     const type = document.getElementById('prizeType').value;
+    const studentsChange = parseInt(document.getElementById('prizeStudentsChange').value) || 0;
+    const valeraChange = parseInt(document.getElementById('prizeValeraChange').value) || 0;
     
     const url = id ? `/api/prizes/${id}` : '/api/prizes';
     const method = id ? 'PUT' : 'POST';
     const data = {
         name: name,
-        prize_type: type
+        prize_type: type,
+        students_change: studentsChange,
+        valera_change: valeraChange
     };
     
     fetch(url, {
@@ -182,6 +216,30 @@ function deletePrize(id) {
         alert('Ошибка при удалении');
     });
 }
+
+// Обработчики событий для кнопок редактирования и удаления
+document.addEventListener('DOMContentLoaded', function() {
+    // Делегирование событий для кнопок редактирования призов
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('edit-btn') && e.target.dataset.prizeId) {
+            e.preventDefault();
+            const id = parseInt(e.target.dataset.prizeId);
+            // Получаем значение из атрибута, HTML автоматически экранирует специальные символы
+            const name = e.target.getAttribute('data-prize-name') || '';
+            const type = e.target.dataset.prizeType || '';
+            const studentsChange = parseInt(e.target.dataset.studentsChange) || 0;
+            const valeraChange = parseInt(e.target.dataset.valeraChange) || 0;
+            editPrize(id, name, type, studentsChange, valeraChange);
+        }
+        
+        // Делегирование событий для кнопок удаления призов
+        if (e.target.classList.contains('delete-btn') && e.target.dataset.prizeId) {
+            e.preventDefault();
+            const id = parseInt(e.target.dataset.prizeId);
+            deletePrize(id);
+        }
+    });
+});
 
 // Функции для управления призами магазина
 function showAddShopItemModal() {
@@ -310,6 +368,12 @@ function deleteShopItem(id) {
 .prize-price {
     color: #4CAF50;
     font-size: 14px;
+}
+
+.prize-rewards {
+    color: #aaa;
+    font-size: 12px;
+    margin-top: 5px;
 }
 
 .form-group textarea {

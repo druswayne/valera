@@ -216,12 +216,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Зеленая кнопка - выключает активный круг
     greenBtn.addEventListener('click', function() {
-        if (currentActiveIndex >= 0) {
-            signalCircles[currentActiveIndex].classList.remove('active');
-            currentActiveIndex--;
+        // Находим последний активный круг напрямую из DOM
+        // Это работает независимо от того, как был активирован круг (кнопка или микрофон)
+        let lastActiveIndex = -1;
+        for (let i = signalCircles.length - 1; i >= 0; i--) {
+            if (signalCircles[i].classList.contains('active')) {
+                lastActiveIndex = i;
+                break;
+            }
+        }
+        
+        if (lastActiveIndex >= 0) {
+            signalCircles[lastActiveIndex].classList.remove('active');
+            // Синхронизируем currentActiveIndex с реальным состоянием
+            currentActiveIndex = lastActiveIndex - 1;
 
             // Показываем решетку обратно, если не все круги активированы
-            if (currentActiveIndex < signalCircles.length - 1) {
+            const activeCirclesCount = document.querySelectorAll('.signal-circle.active').length;
+            if (activeCirclesCount < signalCircles.length) {
                 if (grillImage) {
                     grillImage.style.opacity = '1';
                 }
@@ -535,15 +547,25 @@ document.addEventListener('DOMContentLoaded', function() {
     const closeShopModalBtn = document.getElementById('closeShopModal');
 
     // Призы - используются из глобальных переменных, если они определены
-    const prizes = typeof VALERA_PRIZES !== 'undefined' && VALERA_PRIZES.length > 0 
-        ? VALERA_PRIZES 
-        : [
-            'Самостоятельная работа',
-            'Дебаф: 1 замечания = 2 красных',
-            'Варишка: забирает у вас 5 монет',
-            'Дебаф: вы не получаете монеты за урок',
-            'Дебаф: вы получаете доп задание домой'
+    // Если призы - объекты, используем их, иначе создаем объекты из строк
+    let prizes = [];
+    if (typeof VALERA_PRIZES !== 'undefined' && VALERA_PRIZES.length > 0) {
+        // Проверяем, являются ли призы объектами или строками
+        if (typeof VALERA_PRIZES[0] === 'object' && VALERA_PRIZES[0].name) {
+            prizes = VALERA_PRIZES;
+        } else {
+            // Преобразуем строки в объекты
+            prizes = VALERA_PRIZES.map(name => ({ name: name, students_change: 0, valera_change: 0 }));
+        }
+    } else {
+        prizes = [
+            { name: 'Самостоятельная работа', students_change: 0, valera_change: 0 },
+            { name: 'Дебаф: 1 замечания = 2 красных', students_change: 0, valera_change: 0 },
+            { name: 'Варишка: забирает у вас 5 монет', students_change: 0, valera_change: 0 },
+            { name: 'Дебаф: вы не получаете монеты за урок', students_change: 0, valera_change: 0 },
+            { name: 'Дебаф: вы получаете доп задание домой', students_change: 0, valera_change: 0 }
         ];
+    }
 
     // Создание поля 3x3
     function createShopGrid() {
@@ -568,7 +590,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const cell = document.createElement('div');
             cell.className = 'shop-cell';
             cell.dataset.index = i;
-            cell.dataset.prize = prizeDistribution[i];
+            // Сохраняем приз как JSON строку для доступа к объекту
+            const prize = prizeDistribution[i];
+            cell.dataset.prize = typeof prize === 'object' ? prize.name : prize;
+            cell.dataset.prizeData = JSON.stringify(prize);
             
             const img = document.createElement('img');
             img.src = staticUrl + 'box.png';
@@ -749,41 +774,56 @@ document.addEventListener('DOMContentLoaded', function() {
                 cells.forEach(cell => cell.classList.remove('highlighted'));
                 
                 // Выбираем приз с учетом вероятности 5% для "Самостоятельная работа"
-                let selectedPrize;
+                let selectedPrizeObj;
                 const randomChance = Math.random() * 100; // 0-100
                 
                 if (randomChance < 5) {
                     // 5% вероятность - выпадает "Самостоятельная работа"
-                    selectedPrize = 'Самостоятельная работа';
+                    selectedPrizeObj = prizes.find(p => {
+                        const name = typeof p === 'object' ? p.name : p;
+                        return name === 'Самостоятельная работа';
+                    }) || prizes[0];
                 } else {
-                    // 95% вероятность - выбираем случайный приз из остальных 4
-                    const otherPrizes = prizes.filter(p => p !== 'Самостоятельная работа');
-                    selectedPrize = otherPrizes[Math.floor(Math.random() * otherPrizes.length)];
+                    // 95% вероятность - выбираем случайный приз из остальных
+                    const otherPrizes = prizes.filter(p => {
+                        const name = typeof p === 'object' ? p.name : p;
+                        return name !== 'Самостоятельная работа';
+                    });
+                    selectedPrizeObj = otherPrizes[Math.floor(Math.random() * otherPrizes.length)];
+                }
+                
+                // Нормализуем объект приза
+                if (typeof selectedPrizeObj !== 'object') {
+                    selectedPrizeObj = { name: selectedPrizeObj, students_change: 0, valera_change: 0 };
+                }
+                
+                // Если приз - Варишка, генерируем случайное число монет от 3 до 10
+                let prizeName = selectedPrizeObj.name;
+                if (prizeName.includes('Варишка')) {
+                    const randomCoins = Math.floor(Math.random() * (10 - 3 + 1)) + 3;
+                    prizeName = prizeName.replace(/\d+/, randomCoins);
                 }
                 
                 // Выбираем случайную ячейку для визуального эффекта
                 const randomIndex = Math.floor(Math.random() * cells.length);
                 const selectedCell = cells[randomIndex];
                 
-                // Если приз - Варишка, генерируем случайное число монет от 3 до 10
-                if (selectedPrize.includes('Варишка')) {
-                    const randomCoins = Math.floor(Math.random() * (10 - 3 + 1)) + 3;
-                    selectedPrize = selectedPrize.replace(/\d+/, randomCoins);
-                }
-                
                 // Подсвечиваем выбранную ячейку
                 selectedCell.classList.add('selected');
                 
                 // Показываем результат
                 if (prizeResult) {
-                    prizeResult.innerHTML = `<div class="prize-text">${selectedPrize}</div>`;
+                    prizeResult.innerHTML = `<div class="prize-text">${prizeName}</div>`;
                     prizeResult.classList.add('show');
                 }
 
-                // Списываем 5 монет с баланса Валеры
+                // Списываем стоимость приза и применяем награды
                 if (typeof updateBalance === 'function') {
                     try {
+                        // Списываем стоимость приза
                         await updateBalance(0, -PRIZE_COST);
+                        // Применяем награды приза
+                        await updateBalance(selectedPrizeObj.students_change || 0, selectedPrizeObj.valera_change || 0);
                         // Обновляем отображение баланса в магазине
                         updateShopBalanceDisplay();
                         // Обновляем состояние кнопки
@@ -860,14 +900,24 @@ document.addEventListener('DOMContentLoaded', function() {
     const studentsLotteryBtn = document.getElementById('studentsLotteryBtn');
 
     // Призы для учащихся - используются из глобальных переменных, если они определены
-    const studentsPrizes = typeof STUDENTS_PRIZES !== 'undefined' && STUDENTS_PRIZES.length > 0
-        ? STUDENTS_PRIZES
-        : [
-            'Воришка: забирает у Валеры 5 монет',
-            'Бафф: два замечания - 1 кружок',
-            'Бафф: Валера не получает монеты',
-            'Бафф: доступен таймер'
+    // Если призы - объекты, используем их, иначе создаем объекты из строк
+    let studentsPrizes = [];
+    if (typeof STUDENTS_PRIZES !== 'undefined' && STUDENTS_PRIZES.length > 0) {
+        // Проверяем, являются ли призы объектами или строками
+        if (typeof STUDENTS_PRIZES[0] === 'object' && STUDENTS_PRIZES[0].name) {
+            studentsPrizes = STUDENTS_PRIZES;
+        } else {
+            // Преобразуем строки в объекты
+            studentsPrizes = STUDENTS_PRIZES.map(name => ({ name: name, students_change: 0, valera_change: 0 }));
+        }
+    } else {
+        studentsPrizes = [
+            { name: 'Воришка: забирает у Валеры 5 монет', students_change: 0, valera_change: 0 },
+            { name: 'Бафф: два замечания - 1 кружок', students_change: 0, valera_change: 0 },
+            { name: 'Бафф: Валера не получает монеты', students_change: 0, valera_change: 0 },
+            { name: 'Бафф: доступен таймер', students_change: 0, valera_change: 0 }
         ];
+    }
 
     // Создание поля 3x3 для лавки учащихся
     function createStudentsLotteryGrid() {
@@ -892,7 +942,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const cell = document.createElement('div');
             cell.className = 'shop-cell';
             cell.dataset.index = i;
-            cell.dataset.prize = prizeDistribution[i];
+            // Сохраняем приз как JSON строку для доступа к объекту
+            const prize = prizeDistribution[i];
+            cell.dataset.prize = typeof prize === 'object' ? prize.name : prize;
+            cell.dataset.prizeData = JSON.stringify(prize);
             
             const img = document.createElement('img');
             img.src = staticUrl + 'box.png';
@@ -1070,26 +1123,44 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Выбираем случайный приз
                 const randomIndex = Math.floor(Math.random() * cells.length);
                 const selectedCell = cells[randomIndex];
-                let selectedPrize = selectedCell.dataset.prize;
+                
+                // Получаем объект приза из данных ячейки
+                let selectedPrizeObj;
+                if (selectedCell.dataset.prizeData) {
+                    try {
+                        selectedPrizeObj = JSON.parse(selectedCell.dataset.prizeData);
+                    } catch (e) {
+                        // Если не удалось распарсить, создаем объект из строки
+                        const prizeName = selectedCell.dataset.prize;
+                        selectedPrizeObj = { name: prizeName, students_change: 0, valera_change: 0 };
+                    }
+                } else {
+                    const prizeName = selectedCell.dataset.prize;
+                    selectedPrizeObj = { name: prizeName, students_change: 0, valera_change: 0 };
+                }
                 
                 // Если приз - Воришка, генерируем случайное число монет от 1 до 5
-                if (selectedPrize.includes('Воришка')) {
+                let prizeName = selectedPrizeObj.name;
+                if (prizeName.includes('Воришка')) {
                     const randomCoins = Math.floor(Math.random() * (5 - 1 + 1)) + 1;
-                    selectedPrize = selectedPrize.replace(/\d+/, randomCoins);
+                    prizeName = prizeName.replace(/\d+/, randomCoins);
                 }
                 
                 selectedCell.classList.add('selected');
                 
                 // Показываем результат
                 if (studentsPrizeResult) {
-                    studentsPrizeResult.innerHTML = `<div class="prize-text">${selectedPrize}</div>`;
+                    studentsPrizeResult.innerHTML = `<div class="prize-text">${prizeName}</div>`;
                     studentsPrizeResult.classList.add('show');
                 }
 
-                // Списываем 8 монет с баланса учащихся
+                // Списываем стоимость приза и применяем награды
                 if (typeof updateBalance === 'function') {
                     try {
+                        // Списываем стоимость приза
                         await updateBalance(-STUDENTS_PRIZE_COST_FOR_CALLBACK, 0);
+                        // Применяем награды приза
+                        await updateBalance(selectedPrizeObj.students_change || 0, selectedPrizeObj.valera_change || 0);
                         // Обновляем отображение баланса в магазине
                         updateStudentsShopBalanceDisplay();
                         // Обновляем состояние кнопки

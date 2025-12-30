@@ -22,7 +22,11 @@
                         </div>
                     </td>
                     <td class="action-cell">
+                        {% if current_user.is_authenticated and current_user.is_admin %}
                         <a href="{{ url_for('class_game', class_id=class.id) }}" class="play-btn">Играть</a>
+                        {% else %}
+                        <span class="play-btn" style="opacity: 0.5; cursor: not-allowed;">Играть</span>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
