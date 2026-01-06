@@ -306,7 +306,32 @@ with app.app_context():
     # Запуск планировщика задач
     if not scheduler.running:
         scheduler.start()
-        # Добавляем задачу на каждое воскресенье в 12:00
+        
+        # Проверяем, не пропущена ли дата обновления задачи
+        active_task = WeeklyTask.query.filter_by(is_active=True).first()
+        if active_task and active_task.last_updated:
+            # Вычисляем следующее воскресенье от времени последнего обновления
+            task_update_time = active_task.last_updated
+            if task_update_time.tzinfo:
+                task_update_time = task_update_time.replace(tzinfo=None)
+            
+            # Вычисляем следующее воскресенье в 12:00 от времени обновления задачи
+            days_until_sunday = (6 - task_update_time.weekday()) % 7
+            if days_until_sunday == 0:
+                target_time = task_update_time.replace(hour=12, minute=0, second=0, microsecond=0)
+                if task_update_time >= target_time:
+                    days_until_sunday = 7
+            
+            next_sunday_from_update = task_update_time.replace(hour=12, minute=0, second=0, microsecond=0) + timedelta(days=days_until_sunday)
+            
+            # Если следующее воскресенье уже прошло, обновляем задачу сейчас
+            now = datetime.now()
+            if next_sunday_from_update < now:
+                print(f"Обнаружена пропущенная дата обновления задачи ({next_sunday_from_update}). Обновляю задачу сейчас...")
+                update_weekly_task()
+                print("Задача обновлена. Планирую следующее обновление на воскресенье в 12:00")
+        
+        # Добавляем регулярную задачу на каждое воскресенье в 12:00
         scheduler.add_job(
             update_weekly_task,
             'cron',
@@ -603,7 +628,7 @@ def weekly_task():
         if task_update_time.tzinfo:
             task_update_time = task_update_time.replace(tzinfo=None)
     
-    # Вычисляем следующее воскресенье в 12:00
+    # Вычисляем следующее воскресенье в 12:00 от времени обновления задачи
     # Воскресенье = 6 (0 = понедельник, 6 = воскресенье)
     days_until_sunday = (6 - task_update_time.weekday()) % 7
     
@@ -615,6 +640,13 @@ def weekly_task():
             days_until_sunday = 7
     
     next_sunday = task_update_time.replace(hour=12, minute=0, second=0, microsecond=0) + timedelta(days=days_until_sunday)
+    
+    # Проверяем, не в прошлом ли это время. Если да, вычисляем следующее воскресенье от текущего времени
+    now = datetime.now()
+    if next_sunday < now:
+        # Если следующее воскресенье уже прошло, вычисляем следующее от текущего времени
+        next_sunday = get_next_sunday_12pm()
+    
     # Передаем и строку для отладки, и timestamp для JavaScript
     next_update_time = next_sunday.isoformat()
     next_update_timestamp = int(next_sunday.timestamp() * 1000)  # В миллисекундах для JavaScript
