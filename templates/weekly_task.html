@@ -1,0 +1,852 @@
+{% extends "base.html" %}
+
+{% block title %}Задача недели - Валера в пещере{% endblock %}
+
+{% block extra_head %}
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Comic Sans MS', 'Arial Rounded MT Bold', Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 10px;
+}
+
+.weekly-task-container {
+    max-width: 900px;
+    margin: 20px auto;
+    padding: 25px;
+    background: linear-gradient(135deg, #ffffff 0%, #f5f7fa 100%);
+    border-radius: 25px;
+    border: 4px solid #ff6b6b;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.task-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.task-header h1 {
+    color: #ff6b6b;
+    font-size: 42px;
+    margin-bottom: 15px;
+    text-shadow: 3px 3px 0px #ffd93d;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.task-content {
+    margin-bottom: 30px;
+    background: #fff;
+    padding: 25px;
+    border-radius: 20px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.task-title {
+    color: #7a8fb8;
+    font-size: 32px;
+    margin-bottom: 20px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.task-description {
+    color: #333;
+    font-size: 20px;
+    line-height: 1.8;
+    margin-bottom: 20px;
+    white-space: pre-wrap;
+}
+
+.task-image {
+    max-width: 100%;
+    height: auto;
+    border-radius: 20px;
+    margin: 20px auto;
+    display: block;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+    border: 3px solid #d4c5b0;
+}
+
+.task-form {
+    background: linear-gradient(135deg, #f5e6d3 0%, #e8d5c4 100%);
+    padding: 30px;
+    border-radius: 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    border: 3px solid #c8a2c8;
+}
+
+.form-group {
+    margin-bottom: 25px;
+}
+
+.form-group label {
+    display: block;
+    color: #333;
+    margin-bottom: 10px;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 18px;
+    border-radius: 15px;
+    border: 3px solid #a8b8d0;
+    background-color: #fff;
+    color: #333;
+    font-size: 18px;
+    box-sizing: border-box;
+    font-family: 'Comic Sans MS', Arial, sans-serif;
+    transition: all 0.3s ease;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #8b6fa8;
+    box-shadow: 0 0 15px rgba(139, 111, 168, 0.3);
+    transform: scale(1.02);
+}
+
+.submit-btn {
+    width: 100%;
+    padding: 20px;
+    background: linear-gradient(135deg, #8b9dc8 0%, #9b8fb8 100%);
+    color: #fff;
+    border: none;
+    border-radius: 15px;
+    font-size: 22px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 5px 15px rgba(139, 157, 200, 0.3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.submit-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(139, 157, 200, 0.4);
+}
+
+.submit-btn:active {
+    transform: translateY(0);
+}
+
+.submit-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.solution-display {
+    background: linear-gradient(135deg, #e0e8f0 0%, #f0e0e8 100%);
+    padding: 30px;
+    border-radius: 20px;
+    margin-bottom: 30px;
+    border: 3px solid #a8c0d0;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.solution-display h3 {
+    color: #7a8fb8;
+    font-size: 28px;
+    margin-bottom: 20px;
+    text-align: center;
+    font-weight: bold;
+    text-shadow: 1px 1px 0px #fff;
+}
+
+.solution-info {
+    color: #333;
+    font-size: 20px;
+    text-align: center;
+}
+
+.solution-info .solver-name {
+    color: #8b6fa8;
+    font-weight: bold;
+    font-size: 24px;
+    display: block;
+    margin: 10px 0;
+}
+
+.solution-info .correct-answer {
+    color: #7a8fb8;
+    margin-top: 15px;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.leaders-table {
+    background: #fff;
+    padding: 30px;
+    border-radius: 20px;
+    margin-top: 30px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    border: 3px solid #d4c5b0;
+    overflow-x: auto;
+}
+
+.leaders-table h2 {
+    color: #7a8fb8;
+    font-size: 32px;
+    margin-bottom: 25px;
+    text-align: center;
+    font-weight: bold;
+    text-shadow: 1px 1px 0px #e8d5c4;
+}
+
+.leaders-table table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.leaders-table th,
+.leaders-table td {
+    padding: 15px;
+    text-align: left;
+    border-bottom: 2px solid #d4c5b0;
+    color: #333;
+    font-size: 18px;
+}
+
+.leaders-table th {
+    background: linear-gradient(135deg, #8b9dc8 0%, #9b8fb8 100%);
+    color: #fff;
+    font-weight: bold;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.leaders-table tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+.leaders-table tr:hover {
+    background-color: #f0e8d8;
+    transform: scale(1.01);
+    transition: all 0.2s ease;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    margin-top: 25px;
+    flex-wrap: wrap;
+}
+
+.page-link {
+    color: #7a8fb8;
+    text-decoration: none;
+    padding: 12px 20px;
+    border-radius: 15px;
+    border: 3px solid #8b9dc8;
+    background: #fff;
+    transition: all 0.3s ease;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.page-link:hover {
+    background: linear-gradient(135deg, #8b9dc8 0%, #9b8fb8 100%);
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(139, 157, 200, 0.3);
+}
+
+.page-link.disabled {
+    color: #ccc;
+    border-color: #ccc;
+    cursor: not-allowed;
+    opacity: 0.5;
+    background: #f5f5f5;
+}
+
+.page-info {
+    color: #333;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.no-task-message {
+    text-align: center;
+    color: #7a8fb8;
+    font-size: 24px;
+    padding: 40px;
+    background: #fff;
+    border-radius: 20px;
+    border: 3px dashed #d4c5b0;
+}
+
+.back-link {
+    display: inline-block;
+    color: #fff;
+    text-decoration: none;
+    margin-bottom: 20px;
+    font-size: 18px;
+    background: linear-gradient(135deg, #9b8fb8 0%, #8b6fa8 100%);
+    padding: 12px 25px;
+    border-radius: 15px;
+    font-weight: bold;
+    box-shadow: 0 5px 15px rgba(139, 111, 168, 0.3);
+    transition: all 0.3s ease;
+}
+
+.back-link:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(139, 111, 168, 0.4);
+}
+
+.message {
+    padding: 20px;
+    border-radius: 15px;
+    margin-bottom: 20px;
+    text-align: center;
+    font-size: 18px;
+    font-weight: bold;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.message.error {
+    background: linear-gradient(135deg, #d4a5a5 0%, #c89595 100%);
+    color: #fff;
+}
+
+.message.success {
+    background: linear-gradient(135deg, #a8c0d0 0%, #98b0c0 100%);
+    color: #fff;
+}
+
+/* Мобильная адаптация */
+@media (max-width: 768px) {
+    body {
+        padding: 5px;
+    }
+    
+    .weekly-task-container {
+        margin: 10px auto;
+        padding: 20px;
+        border-radius: 20px;
+    }
+    
+    .task-header h1 {
+        font-size: 32px;
+        text-shadow: 2px 2px 0px #ffd93d;
+    }
+    
+    .task-title {
+        font-size: 26px;
+    }
+    
+    .task-description {
+        font-size: 18px;
+    }
+    
+    .task-form {
+        padding: 20px;
+    }
+    
+    .form-group label {
+        font-size: 18px;
+    }
+    
+    .form-group input {
+        padding: 15px;
+        font-size: 16px;
+    }
+    
+    .submit-btn {
+        padding: 18px;
+        font-size: 20px;
+    }
+    
+    .solution-display h3 {
+        font-size: 24px;
+    }
+    
+    .solution-info {
+        font-size: 18px;
+    }
+    
+    .solution-info .solver-name {
+        font-size: 20px;
+    }
+    
+    .leaders-table {
+        padding: 20px;
+    }
+    
+    .leaders-table h2 {
+        font-size: 26px;
+    }
+    
+    .leaders-table th,
+    .leaders-table td {
+        padding: 10px 8px;
+        font-size: 16px;
+    }
+    
+    .page-link {
+        padding: 10px 15px;
+        font-size: 16px;
+    }
+    
+    .page-info {
+        font-size: 16px;
+    }
+    
+    .back-link {
+        font-size: 16px;
+        padding: 10px 20px;
+    }
+    
+    .no-task-message {
+        font-size: 20px;
+        padding: 30px 20px;
+    }
+}
+
+.next-task-timer {
+    margin-top: 25px;
+    padding: 20px;
+    background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%);
+    border-radius: 15px;
+    border: 3px solid #ffc107;
+    text-align: center;
+    box-shadow: 0 5px 15px rgba(255, 193, 7, 0.3);
+}
+
+.timer-label {
+    color: #856404;
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 15px;
+}
+
+.timer-display {
+    color: #856404;
+    font-size: 24px;
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+}
+
+.timer-display span {
+    display: inline-block;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 8px;
+    min-width: 55px;
+    text-align: center;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.timer-display span:after {
+    content: attr(data-label);
+    display: block;
+    font-size: 0.65em;
+    color: #5a4203;
+    margin-top: 6px;
+    padding-top: 4px;
+    border-top: 1px solid rgba(133, 100, 4, 0.3);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+@media (max-width: 768px) {
+    .next-task-timer {
+        margin-top: 20px;
+        padding: 15px;
+        border-radius: 12px;
+        border-width: 2px;
+    }
+    
+    .timer-label {
+        font-size: 16px;
+        margin-bottom: 12px;
+    }
+    
+    .timer-display {
+        font-size: 20px;
+        gap: 6px;
+    }
+    
+    .timer-display span {
+        padding: 6px 10px;
+        min-width: 50px;
+        font-size: 18px;
+    }
+    
+    .timer-display span:after {
+        font-size: 0.7em;
+        margin-top: 5px;
+        padding-top: 3px;
+        border-top: 1px solid rgba(133, 100, 4, 0.35);
+        font-weight: 600;
+        color: #5a4203;
+        text-transform: uppercase;
+    }
+}
+
+@media (max-width: 480px) {
+    .next-task-timer {
+        margin-top: 15px;
+        padding: 12px;
+        border-radius: 10px;
+    }
+    
+    .timer-label {
+        font-size: 14px;
+        margin-bottom: 10px;
+    }
+    
+    .timer-display {
+        font-size: 18px;
+        gap: 5px;
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+    
+    .timer-display span {
+        padding: 8px 10px;
+        min-width: 50px;
+        font-size: 18px;
+        flex: 0 0 auto;
+        background: rgba(255, 255, 255, 0.95);
+    }
+    
+    .timer-display span:after {
+        font-size: 0.8em;
+        margin-top: 6px;
+        padding-top: 4px;
+        border-top: 1.5px solid rgba(133, 100, 4, 0.4);
+        font-weight: 700;
+        color: #3d2b02;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+}
+
+@media (max-width: 360px) {
+    .next-task-timer {
+        padding: 10px;
+    }
+    
+    .timer-label {
+        font-size: 13px;
+        margin-bottom: 8px;
+    }
+    
+    .timer-display {
+        font-size: 14px;
+        gap: 3px;
+    }
+    
+    .timer-display span {
+        padding: 5px 6px;
+        min-width: 40px;
+        font-size: 14px;
+    }
+    
+    .timer-display span {
+        padding: 7px 8px;
+        min-width: 45px;
+        font-size: 16px;
+        background: rgba(255, 255, 255, 0.95);
+    }
+    
+    .timer-display span:after {
+        font-size: 0.75em;
+        margin-top: 5px;
+        padding-top: 3px;
+        border-top: 1.5px solid rgba(133, 100, 4, 0.45);
+        font-weight: 700;
+        color: #3d2b02;
+        text-transform: uppercase;
+        letter-spacing: 0.2px;
+    }
+}
+
+@media (max-width: 480px) {
+    .task-header h1 {
+        font-size: 28px;
+    }
+    
+    .task-title {
+        font-size: 22px;
+    }
+    
+    .task-description {
+        font-size: 16px;
+    }
+    
+    .leaders-table th,
+    .leaders-table td {
+        padding: 8px 5px;
+        font-size: 14px;
+    }
+    
+    .pagination {
+        gap: 10px;
+    }
+    
+    .page-link {
+        padding: 8px 12px;
+        font-size: 14px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="weekly-task-container">
+    <a href="{{ url_for('index') }}" class="back-link">← Назад к рейтингу</a>
+    
+    <div class="task-header">
+        <h1>Задача недели</h1>
+    </div>
+    
+    {% if not task %}
+    <div class="no-task-message">
+        <p>На данный момент нет активной задачи.</p>
+    </div>
+    {% else %}
+    
+    <div class="task-content">
+        <h2 class="task-title">{{ task.title }}</h2>
+        
+        {% if task.description %}
+        <div class="task-description">{{ task.description }}</div>
+        {% endif %}
+        
+        {% if task.image_filename %}
+        <img src="{{ url_for('uploaded_task_image', filename=task.image_filename) }}" 
+             alt="{{ task.title }}" 
+             class="task-image">
+        {% endif %}
+    </div>
+    
+    {% if first_solver %}
+    <div class="solution-display">
+        <h3>Задача решена!</h3>
+        <div class="solution-info">
+            <div>Первым решил: <span class="solver-name">{{ first_solver.user_name }}</span></div>
+            <div class="correct-answer">Правильный ответ: {{ task.correct_answer }}</div>
+        </div>
+        {% if is_task_solved %}
+        <div class="next-task-timer" id="nextTaskTimer">
+            <div class="timer-label">До следующей задачи:</div>
+            <div class="timer-display" id="timerDisplay">
+                <span id="days" data-label="дн">0</span>
+                <span id="hours" data-label="ч">0</span>
+                <span id="minutes" data-label="мин">0</span>
+                <span id="seconds" data-label="сек">0</span>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="task-form" id="taskForm">
+        <form id="submitForm" onsubmit="submitAnswer(event)">
+            <div class="form-group">
+                <label for="userName">Ваше имя:</label>
+                <input type="text" id="userName" name="user_name" required>
+            </div>
+            <div class="form-group">
+                <label for="answer">Ваш ответ:</label>
+                <input type="text" id="answer" name="answer" required>
+            </div>
+            <button type="submit" class="submit-btn" id="submitBtn">Отправить ответ</button>
+        </form>
+        <div id="messageContainer"></div>
+    </div>
+    {% endif %}
+    {% endif %}
+    
+    <div class="leaders-table">
+        <h2>Таблица лидеров</h2>
+        {% if leaders_paginated and leaders_paginated.items %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Задача</th>
+                    <th>Имя решившего</th>
+                    <th>Дата решения</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for leader in leaders_paginated.items %}
+                <tr>
+                    <td>{{ leader.task_title }}</td>
+                    <td>{{ leader.user_name }}</td>
+                    <td>{{ leader.solved_at.strftime('%d.%m.%Y %H:%M') if leader.solved_at else '—' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <!-- Пагинация -->
+        {% if leaders_paginated.pages > 1 %}
+        <div class="pagination">
+            {% if leaders_paginated.has_prev %}
+            <a href="?page={{ leaders_paginated.prev_num }}" class="page-link">← Предыдущая</a>
+            {% else %}
+            <span class="page-link disabled">← Предыдущая</span>
+            {% endif %}
+            
+            <span class="page-info">Страница {{ leaders_paginated.page }} из {{ leaders_paginated.pages }}</span>
+            
+            {% if leaders_paginated.has_next %}
+            <a href="?page={{ leaders_paginated.next_num }}" class="page-link">Следующая →</a>
+            {% else %}
+            <span class="page-link disabled">Следующая →</span>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% else %}
+        <p style="text-align: center; color: #aaa; padding: 20px;">Пока нет решенных задач.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function submitAnswer(event) {
+    event.preventDefault();
+    
+    const userName = document.getElementById('userName').value.trim();
+    const answer = document.getElementById('answer').value.trim();
+    const submitBtn = document.getElementById('submitBtn');
+    const messageContainer = document.getElementById('messageContainer');
+    
+    if (!userName || !answer) {
+        showMessage('Пожалуйста, заполните все поля', 'error');
+        return;
+    }
+    
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Отправка...';
+    messageContainer.innerHTML = '';
+    
+    fetch('/api/weekly-task/submit', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            user_name: userName,
+            answer: answer
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (data.correct) {
+                // Задача решена правильно - перезагружаем страницу
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+                showMessage('Правильно! Задача решена!', 'success');
+            } else {
+                showMessage(data.message || 'Неверный ответ. Попробуйте еще раз!', 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Отправить ответ';
+            }
+        } else {
+            showMessage(data.error || 'Ошибка при отправке ответа', 'error');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Отправить ответ';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showMessage('Ошибка при отправке ответа', 'error');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Отправить ответ';
+    });
+}
+
+function showMessage(message, type) {
+    const messageContainer = document.getElementById('messageContainer');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${type}`;
+    messageDiv.textContent = message;
+    messageContainer.innerHTML = '';
+    messageContainer.appendChild(messageDiv);
+    
+    // Автоматически скрываем сообщение об ошибке через 5 секунд
+    if (type === 'error') {
+        setTimeout(() => {
+            messageDiv.remove();
+        }, 5000);
+    }
+}
+
+// Таймер до следующей задачи (показывается только если задача решена)
+{% if is_task_solved and next_update_timestamp %}
+(function() {
+    // Используем timestamp для более надежной работы с датами
+    const nextUpdateTimestamp = {{ next_update_timestamp }};
+    const nextUpdateTime = new Date(nextUpdateTimestamp);
+    
+    // Проверяем, что дата валидна
+    if (isNaN(nextUpdateTime.getTime())) {
+        console.error('Неверный timestamp:', nextUpdateTimestamp);
+        return;
+    }
+    
+    function updateTimer() {
+        const now = new Date();
+        const totalSeconds = Math.floor((nextUpdateTime - now) / 1000);
+        
+        if (totalSeconds <= 0) {
+            // Время истекло, перезагружаем страницу
+            location.reload();
+            return;
+        }
+        
+        const days = Math.floor(totalSeconds / 86400);
+        const hours = Math.floor((totalSeconds % 86400) / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        
+        const daysEl = document.getElementById('days');
+        const hoursEl = document.getElementById('hours');
+        const minutesEl = document.getElementById('minutes');
+        const secondsEl = document.getElementById('seconds');
+        
+        if (daysEl) daysEl.textContent = days;
+        if (hoursEl) hoursEl.textContent = String(hours).padStart(2, '0');
+        if (minutesEl) minutesEl.textContent = String(minutes).padStart(2, '0');
+        if (secondsEl) secondsEl.textContent = String(seconds).padStart(2, '0');
+    }
+    
+    // Обновляем таймер каждую секунду
+    const timerElement = document.getElementById('nextTaskTimer');
+    if (timerElement) {
+        updateTimer();
+        setInterval(updateTimer, 1000);
+    }
+})();
+{% endif %}
+</script>
+{% endblock %}
+

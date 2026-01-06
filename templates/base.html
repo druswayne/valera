@@ -5,6 +5,59 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Валера в пещере{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+    /* Общие стили для flash-сообщений */
+    .flash-messages {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 1000;
+        max-width: 400px;
+    }
+
+    .flash-message {
+        padding: 20px;
+        margin-bottom: 15px;
+        border-radius: 15px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        animation: slideIn 0.3s ease-out;
+        font-weight: bold;
+        font-size: 16px;
+        font-family: 'Comic Sans MS', 'Arial Rounded MT Bold', Arial, sans-serif;
+    }
+
+    .flash-error {
+        background: linear-gradient(135deg, #d4a5a5 0%, #c89595 100%);
+        color: #fff;
+        border: 3px solid #fff;
+    }
+
+    .flash-info {
+        background: linear-gradient(135deg, #a8c0d0 0%, #98b0c0 100%);
+        color: #fff;
+        border: 3px solid #fff;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .flash-messages {
+            top: 10px;
+            right: 10px;
+            left: 10px;
+            max-width: 100%;
+        }
+    }
+    </style>
     {% block extra_head %}{% endblock %}
 </head>
 <body>

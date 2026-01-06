@@ -555,15 +555,15 @@ document.addEventListener('DOMContentLoaded', function() {
             prizes = VALERA_PRIZES;
         } else {
             // Преобразуем строки в объекты
-            prizes = VALERA_PRIZES.map(name => ({ name: name, students_change: 0, valera_change: 0 }));
+            prizes = VALERA_PRIZES.map(name => ({ name: name, students_change: 0, valera_change: 0, probability: 'medium' }));
         }
     } else {
         prizes = [
-            { name: 'Самостоятельная работа', students_change: 0, valera_change: 0 },
-            { name: 'Дебаф: 1 замечания = 2 красных', students_change: 0, valera_change: 0 },
-            { name: 'Варишка: забирает у вас 5 монет', students_change: 0, valera_change: 0 },
-            { name: 'Дебаф: вы не получаете монеты за урок', students_change: 0, valera_change: 0 },
-            { name: 'Дебаф: вы получаете доп задание домой', students_change: 0, valera_change: 0 }
+            { name: 'Самостоятельная работа', students_change: 0, valera_change: 0, probability: 'low' },
+            { name: 'Дебаф: 1 замечания = 2 красных', students_change: 0, valera_change: 0, probability: 'medium' },
+            { name: 'Варишка: забирает у вас 5 монет', students_change: 0, valera_change: 0, probability: 'medium' },
+            { name: 'Дебаф: вы не получаете монеты за урок', students_change: 0, valera_change: 0, probability: 'medium' },
+            { name: 'Дебаф: вы получаете доп задание домой', students_change: 0, valera_change: 0, probability: 'medium' }
         ];
     }
 
@@ -706,6 +706,40 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Функция выбора приза с учетом вероятности
+    function selectPrizeByProbability(prizesList) {
+        if (!prizesList || prizesList.length === 0) {
+            return null;
+        }
+        
+        // Веса вероятности
+        const probabilityWeights = {
+            'high': 5,    // Высокая вероятность - вес 5
+            'medium': 3,  // Средняя вероятность - вес 3
+            'low': 2     // Низкая вероятность - вес 2
+        };
+        
+        // Создаем массив призов с весами
+        const weightedPrizes = [];
+        prizesList.forEach(prize => {
+            const prizeObj = typeof prize === 'object' ? prize : { name: prize, probability: 'medium' };
+            const weight = probabilityWeights[prizeObj.probability] || probabilityWeights['medium'];
+            
+            // Добавляем приз несколько раз в зависимости от веса
+            for (let i = 0; i < weight; i++) {
+                weightedPrizes.push(prizeObj);
+            }
+        });
+        
+        // Выбираем случайный приз из взвешенного списка
+        if (weightedPrizes.length === 0) {
+            return prizesList[0];
+        }
+        
+        const randomIndex = Math.floor(Math.random() * weightedPrizes.length);
+        return weightedPrizes[randomIndex];
+    }
+
     // Функция выбора приза
     async function selectPrize() {
         if (!selectPrizeBtn || selectPrizeBtn.disabled) return;
@@ -773,28 +807,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Убираем все подсветки
                 cells.forEach(cell => cell.classList.remove('highlighted'));
                 
-                // Выбираем приз с учетом вероятности 5% для "Самостоятельная работа"
-                let selectedPrizeObj;
-                const randomChance = Math.random() * 100; // 0-100
-                
-                if (randomChance < 5) {
-                    // 5% вероятность - выпадает "Самостоятельная работа"
-                    selectedPrizeObj = prizes.find(p => {
-                        const name = typeof p === 'object' ? p.name : p;
-                        return name === 'Самостоятельная работа';
-                    }) || prizes[0];
-                } else {
-                    // 95% вероятность - выбираем случайный приз из остальных
-                    const otherPrizes = prizes.filter(p => {
-                        const name = typeof p === 'object' ? p.name : p;
-                        return name !== 'Самостоятельная работа';
-                    });
-                    selectedPrizeObj = otherPrizes[Math.floor(Math.random() * otherPrizes.length)];
-                }
+                // Выбираем приз с учетом вероятности выпадения
+                let selectedPrizeObj = selectPrizeByProbability(prizes);
                 
                 // Нормализуем объект приза
-                if (typeof selectedPrizeObj !== 'object') {
-                    selectedPrizeObj = { name: selectedPrizeObj, students_change: 0, valera_change: 0 };
+                if (!selectedPrizeObj || typeof selectedPrizeObj !== 'object') {
+                    selectedPrizeObj = { name: selectedPrizeObj || 'Приз', students_change: 0, valera_change: 0, probability: 'medium' };
+                }
+                
+                // Убеждаемся, что у приза есть поле probability
+                if (!selectedPrizeObj.probability) {
+                    selectedPrizeObj.probability = 'medium';
                 }
                 
                 // Если приз - Варишка, генерируем случайное число монет от 3 до 10
@@ -908,14 +931,14 @@ document.addEventListener('DOMContentLoaded', function() {
             studentsPrizes = STUDENTS_PRIZES;
         } else {
             // Преобразуем строки в объекты
-            studentsPrizes = STUDENTS_PRIZES.map(name => ({ name: name, students_change: 0, valera_change: 0 }));
+            studentsPrizes = STUDENTS_PRIZES.map(name => ({ name: name, students_change: 0, valera_change: 0, probability: 'medium' }));
         }
     } else {
         studentsPrizes = [
-            { name: 'Воришка: забирает у Валеры 5 монет', students_change: 0, valera_change: 0 },
-            { name: 'Бафф: два замечания - 1 кружок', students_change: 0, valera_change: 0 },
-            { name: 'Бафф: Валера не получает монеты', students_change: 0, valera_change: 0 },
-            { name: 'Бафф: доступен таймер', students_change: 0, valera_change: 0 }
+            { name: 'Воришка: забирает у Валеры 5 монет', students_change: 0, valera_change: 0, probability: 'medium' },
+            { name: 'Бафф: два замечания - 1 кружок', students_change: 0, valera_change: 0, probability: 'medium' },
+            { name: 'Бафф: Валера не получает монеты', students_change: 0, valera_change: 0, probability: 'medium' },
+            { name: 'Бафф: доступен таймер', students_change: 0, valera_change: 0, probability: 'medium' }
         ];
     }
 
@@ -1120,24 +1143,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 cells.forEach(cell => cell.classList.remove('highlighted'));
                 
-                // Выбираем случайный приз
+                // Выбираем приз с учетом вероятности выпадения
+                let selectedPrizeObj = selectPrizeByProbability(studentsPrizes);
+                
+                // Убеждаемся, что у приза есть поле probability
+                if (!selectedPrizeObj.probability) {
+                    selectedPrizeObj.probability = 'medium';
+                }
+                
+                // Выбираем случайную ячейку для визуального эффекта
                 const randomIndex = Math.floor(Math.random() * cells.length);
                 const selectedCell = cells[randomIndex];
-                
-                // Получаем объект приза из данных ячейки
-                let selectedPrizeObj;
-                if (selectedCell.dataset.prizeData) {
-                    try {
-                        selectedPrizeObj = JSON.parse(selectedCell.dataset.prizeData);
-                    } catch (e) {
-                        // Если не удалось распарсить, создаем объект из строки
-                        const prizeName = selectedCell.dataset.prize;
-                        selectedPrizeObj = { name: prizeName, students_change: 0, valera_change: 0 };
-                    }
-                } else {
-                    const prizeName = selectedCell.dataset.prize;
-                    selectedPrizeObj = { name: prizeName, students_change: 0, valera_change: 0 };
-                }
                 
                 // Если приз - Воришка, генерируем случайное число монет от 1 до 5
                 let prizeName = selectedPrizeObj.name;

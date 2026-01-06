@@ -731,7 +731,9 @@
         let microphoneSensitivity = 100; // Чувствительность микрофона по умолчанию (100%)
         let lastWarningTime = 0; // Время последнего предупреждения
         const WARNING_COOLDOWN = 60000; // 1 минута в миллисекундах
+        const NOISE_THRESHOLD_DURATION = 2000; // 2 секунды в миллисекундах для фиксации нарушения
         let violationAlertTimeout = null; // Таймер для скрытия сообщения о нарушении
+        let noiseThresholdExceededStartTime = null; // Время начала превышения порога
         
         // Элементы настроек
         const noiseSettingsBtn = document.getElementById('noiseSettingsBtn');
@@ -903,6 +905,7 @@
             microphoneBtn.classList.remove('active');
             noiseLevelBar.style.width = '0%';
             noiseLevelValue.textContent = '0%';
+            noiseThresholdExceededStartTime = null; // Сбрасываем отслеживание превышения порога
         }
         
         function updateNoiseLevel() {
@@ -955,9 +958,23 @@
             noiseLevelValue.textContent = percentage + '%';
             noiseLevelValue.style.color = textColor;
             
-            // Проверяем пороговое значение и активируем предупреждение
+            // Проверяем пороговое значение и отслеживаем время превышения
+            const currentTime = Date.now();
             if (percentage >= noiseThreshold) {
-                activateWarningCircle();
+                // Если еще не начали отслеживать превышение, запоминаем текущее время
+                if (noiseThresholdExceededStartTime === null) {
+                    noiseThresholdExceededStartTime = currentTime;
+                } else {
+                    // Проверяем, прошло ли 2 секунды с начала превышения
+                    if (currentTime - noiseThresholdExceededStartTime >= NOISE_THRESHOLD_DURATION) {
+                        activateWarningCircle();
+                        // Сбрасываем время после активации предупреждения
+                        noiseThresholdExceededStartTime = null;
+                    }
+                }
+            } else {
+                // Если уровень ниже порога, сбрасываем время отслеживания
+                noiseThresholdExceededStartTime = null;
             }
             
             // Продолжаем обновление
