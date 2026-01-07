@@ -86,6 +86,8 @@ body {
     padding: 25px;
     margin-bottom: 30px;
     overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
     border: 3px solid #d4c5b0;
 }
@@ -294,83 +296,191 @@ body {
     
     .rating-container {
         margin: 10px auto;
-        padding: 20px;
-        border-radius: 20px;
+        padding: 15px;
+        border-radius: 15px;
+        border-width: 2px;
     }
     
     .rating-title {
-        font-size: 36px;
+        font-size: 32px;
+        margin-bottom: 20px;
+        letter-spacing: 0.5px;
     }
     
     .rating-table-wrapper {
-        padding: 15px;
+        padding: 10px;
+        border-radius: 15px;
+        border-width: 2px;
+        margin-bottom: 20px;
     }
     
     .rating-table {
         font-size: 14px;
+        min-width: 100%;
     }
     
     .rating-table td {
-        padding: 12px 8px;
+        padding: 10px 5px;
+        border-bottom-width: 1px;
+    }
+    
+    .rating-table tbody tr:hover {
+        transform: none;
     }
     
     .position-cell {
-        font-size: 24px;
-        width: 60px;
+        font-size: 20px;
+        width: 45px;
+        padding: 10px 5px;
     }
     
     .name-cell {
-        min-width: 150px;
-        font-size: 18px;
+        min-width: 120px;
+        font-size: 16px;
+        padding: 10px 8px;
     }
     
     .progress-cell {
-        min-width: 250px;
+        min-width: 180px;
+        padding: 10px 5px;
     }
     
     .progress-bar {
-        height: 45px;
-        border-radius: 22px;
+        height: 40px;
+        border-radius: 20px;
+        border-width: 2px;
     }
     
     .play-btn {
-        padding: 12px 20px;
-        font-size: 16px;
+        padding: 10px 16px;
+        font-size: 14px;
+        border-radius: 12px;
+        min-width: 80px;
     }
     
     .admin-links {
         flex-direction: column;
         gap: 10px;
+        margin-top: 20px;
     }
     
     .admin-link {
         width: 100%;
         text-align: center;
         padding: 12px 20px;
+        font-size: 15px;
+        border-width: 2px;
     }
 }
 
 @media (max-width: 480px) {
+    body {
+        padding: 3px;
+    }
+    
+    .rating-container {
+        margin: 5px auto;
+        padding: 12px;
+        border-radius: 12px;
+    }
+    
     .rating-title {
-        font-size: 28px;
+        font-size: 24px;
+        margin-bottom: 15px;
+        text-shadow: 1px 1px 0px #e8d5c4;
+    }
+    
+    .rating-table-wrapper {
+        padding: 8px;
+        border-radius: 12px;
+        margin-bottom: 15px;
+    }
+    
+    .rating-table {
+        font-size: 12px;
+    }
+    
+    .rating-table td {
+        padding: 8px 4px;
     }
     
     .position-cell {
-        font-size: 20px;
-        width: 50px;
+        font-size: 18px;
+        width: 35px;
+        padding: 8px 2px;
     }
     
     .name-cell {
-        font-size: 16px;
-        min-width: 120px;
+        font-size: 14px;
+        min-width: 100px;
+        padding: 8px 5px;
     }
     
     .progress-cell {
-        min-width: 200px;
+        min-width: 150px;
+        padding: 8px 4px;
     }
     
     .progress-bar {
-        height: 40px;
+        height: 35px;
+        border-radius: 17px;
+        border-width: 2px;
+    }
+    
+    .play-btn {
+        padding: 8px 12px;
+        font-size: 12px;
+        border-radius: 10px;
+        min-width: 70px;
+        letter-spacing: 0.5px;
+    }
+    
+    .admin-links {
+        gap: 8px;
+        margin-top: 15px;
+    }
+    
+    .admin-link {
+        padding: 10px 15px;
+        font-size: 14px;
+        border-radius: 12px;
+        border-width: 2px;
+    }
+}
+
+@media (max-width: 360px) {
+    .rating-title {
+        font-size: 20px;
+    }
+    
+    .position-cell {
+        font-size: 16px;
+        width: 30px;
+    }
+    
+    .name-cell {
+        font-size: 13px;
+        min-width: 90px;
+    }
+    
+    .progress-cell {
+        min-width: 130px;
+    }
+    
+    .progress-bar {
+        height: 30px;
+        border-radius: 15px;
+    }
+    
+    .play-btn {
+        padding: 7px 10px;
+        font-size: 11px;
+        min-width: 60px;
+    }
+    
+    .admin-link {
+        padding: 9px 12px;
+        font-size: 13px;
     }
 }
 </style>

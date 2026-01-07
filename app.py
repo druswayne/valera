@@ -8,6 +8,7 @@ from functools import wraps
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.executors.pool import ThreadPoolExecutor
+from sqlalchemy import case, cast, Float
 import random
 import os
 current_path = os.path.dirname(__file__)
@@ -376,7 +377,18 @@ def logout():
 # Главная страница - рейтинг классов
 @app.route('/')
 def index():
-    classes = Class.query.order_by((Class.students_balance + Class.valera_balance).desc()).all()
+    # Сортируем по отношению баллов учащихся к баллам Валеры
+    # Если valera_balance = 0 и students_balance > 0, то отношение = очень большое число (класс выше)
+    # Если valera_balance = 0 и students_balance = 0, то отношение = 0 (класс ниже)
+    # Иначе: students_balance / valera_balance
+    ratio = case(
+        (Class.valera_balance == 0, case(
+            (Class.students_balance > 0, 999999.0),  # Очень большое число для классов с баллами учащихся, но без баллов Валеры
+            else_=0.0  # Если оба баланса = 0, то отношение = 0
+        )),
+        else_=cast(Class.students_balance, Float) / cast(Class.valera_balance, Float)
+    )
+    classes = Class.query.order_by(ratio.desc()).all()
     return render_template('rating.html', classes=classes)
 
 # Страница игры для класса

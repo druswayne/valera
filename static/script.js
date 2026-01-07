@@ -311,10 +311,200 @@ document.addEventListener('DOMContentLoaded', function() {
     // Модальное окно с прайсом
     const priceModal = document.getElementById('priceModal');
     const closeModal = document.getElementById('closeModal');
+    const priceList = document.getElementById('priceList');
+
+    // Функция обновления баланса учащихся в модальном окне прайса
+    async function updatePriceModalBalance() {
+        const studentsBalanceInPriceModal = document.getElementById('studentsBalanceInPriceModal');
+        if (studentsBalanceInPriceModal) {
+            try {
+                if (typeof CLASS_ID !== 'undefined') {
+                    const response = await fetch(`/api/class/${CLASS_ID}/balance`);
+                    const data = await response.json();
+                    studentsBalanceInPriceModal.textContent = data.students_balance;
+                } else {
+                    const balanceElement = document.getElementById('studentsBalance');
+                    if (balanceElement) {
+                        studentsBalanceInPriceModal.textContent = balanceElement.textContent;
+                    }
+                }
+            } catch (error) {
+                console.error('Error updating price modal balance:', error);
+            }
+        }
+    }
+
+    // Переменные для хранения данных о покупке
+    let pendingPurchase = {
+        itemId: null,
+        itemPrice: null,
+        itemName: null
+    };
+
+    // Функция показа модального окна уведомлений
+    function showNotification(title, message, type = 'info') {
+        const notificationModal = document.getElementById('notificationModal');
+        const notificationIcon = document.getElementById('notificationIcon');
+        const notificationTitle = document.getElementById('notificationTitle');
+        const notificationMessage = document.getElementById('notificationMessage');
+        const notificationModalContent = notificationModal?.querySelector('.notification-modal-content');
+
+        if (!notificationModal || !notificationIcon || !notificationTitle || !notificationMessage) {
+            // Если элементы не найдены, используем стандартный alert
+            alert(message);
+            return;
+        }
+
+        // Устанавливаем тип уведомления (success, error, info)
+        if (notificationModalContent) {
+            notificationModalContent.className = 'modal-content notification-modal-content ' + type;
+        }
+
+        // Устанавливаем иконку в зависимости от типа
+        switch (type) {
+            case 'success':
+                notificationIcon.textContent = '✅';
+                break;
+            case 'error':
+                notificationIcon.textContent = '❌';
+                break;
+            case 'info':
+            default:
+                notificationIcon.textContent = 'ℹ️';
+                break;
+        }
+
+        notificationTitle.textContent = title;
+        notificationMessage.textContent = message;
+
+        // Показываем модальное окно
+        notificationModal.classList.add('show');
+    }
+
+    // Функция закрытия модального окна уведомлений
+    function closeNotificationModal() {
+        const notificationModal = document.getElementById('notificationModal');
+        if (notificationModal) {
+            notificationModal.classList.remove('show');
+        }
+    }
+
+    // Функция показа модального окна подтверждения покупки
+    async function showConfirmPurchaseModal(itemId, itemPrice, itemName) {
+        try {
+            // Получаем текущий баланс
+            let studentsBalance = 0;
+            if (typeof CLASS_ID !== 'undefined') {
+                const response = await fetch(`/api/class/${CLASS_ID}/balance`);
+                const data = await response.json();
+                studentsBalance = data.students_balance || 0;
+            } else {
+                const balanceElement = document.getElementById('studentsBalance');
+                if (balanceElement) {
+                    studentsBalance = parseInt(balanceElement.textContent) || 0;
+                }
+            }
+
+            // Проверяем, достаточно ли монет
+            if (studentsBalance < itemPrice) {
+                showNotification(
+                    'Недостаточно монет',
+                    `Нужно ${itemPrice} монет, у вас ${studentsBalance}`,
+                    'error'
+                );
+                return;
+            }
+
+            // Сохраняем данные о покупке
+            pendingPurchase = {
+                itemId: itemId,
+                itemPrice: itemPrice,
+                itemName: itemName
+            };
+
+            // Заполняем модальное окно данными
+            const confirmModal = document.getElementById('confirmPurchaseModal');
+            const itemNameElement = document.getElementById('confirmPurchaseItemName');
+            const priceElement = document.getElementById('confirmPurchasePrice');
+            const balanceAfterElement = document.getElementById('confirmPurchaseBalanceAfter');
+
+            if (confirmModal && itemNameElement && priceElement && balanceAfterElement) {
+                itemNameElement.textContent = itemName;
+                priceElement.textContent = itemPrice;
+                balanceAfterElement.textContent = studentsBalance - itemPrice;
+                
+                // Показываем модальное окно
+                confirmModal.classList.add('show');
+            }
+        } catch (error) {
+            console.error('Error showing confirm purchase modal:', error);
+            showNotification('Ошибка', 'Ошибка при загрузке данных. Попробуйте еще раз.', 'error');
+        }
+    }
+
+    // Функция выполнения покупки приза
+    async function executePurchase() {
+        const { itemId, itemPrice, itemName } = pendingPurchase;
+        
+        if (!itemId || !itemPrice || !itemName) {
+            console.error('No pending purchase data');
+            return;
+        }
+
+        try {
+            // Списываем стоимость приза
+            if (typeof updateBalance === 'function') {
+                await updateBalance(-itemPrice, 0);
+                
+                // Обновляем баланс в модальном окне прайса
+                await updatePriceModalBalance();
+                
+                // Обновляем основной баланс на странице
+                if (typeof getBalance === 'function') {
+                    await getBalance();
+                }
+                
+                // Закрываем модальное окно подтверждения
+                closeConfirmPurchaseModal();
+                
+                // Показываем сообщение об успешной покупке
+                showNotification(
+                    'Покупка успешна',
+                    `Приз "${itemName}" успешно куплен за ${itemPrice} монет!`,
+                    'success'
+                );
+                
+                // Сбрасываем данные о покупке
+                pendingPurchase = {
+                    itemId: null,
+                    itemPrice: null,
+                    itemName: null
+                };
+            } else {
+                console.error('updateBalance function is not defined');
+                showNotification('Ошибка', 'Ошибка: функция обновления баланса не найдена.', 'error');
+            }
+        } catch (error) {
+            console.error('Error executing purchase:', error);
+            showNotification('Ошибка', 'Ошибка при покупке приза. Попробуйте еще раз.', 'error');
+        }
+    }
+
+    // Функции управления модальным окном подтверждения
+    function closeConfirmPurchaseModal() {
+        const confirmModal = document.getElementById('confirmPurchaseModal');
+        if (confirmModal) {
+            confirmModal.classList.remove('show');
+        }
+    }
 
     function togglePriceModal() {
         if (priceModal) {
             priceModal.classList.toggle('show');
+            if (priceModal.classList.contains('show')) {
+                // Обновляем баланс при открытии модального окна
+                updatePriceModalBalance();
+            }
         }
     }
 
@@ -466,8 +656,12 @@ document.addEventListener('DOMContentLoaded', function() {
             closePriceModal();
             closeCoinsModal();
             closeShopModal();
+            closeNotificationModal();
             if (typeof closeStudentsLotteryModal === 'function') {
                 closeStudentsLotteryModal();
+            }
+            if (typeof closeConfirmPurchaseModal === 'function') {
+                closeConfirmPurchaseModal();
             }
         }
     });
@@ -482,6 +676,70 @@ document.addEventListener('DOMContentLoaded', function() {
         priceModal.addEventListener('click', function(event) {
             if (event.target === priceModal) {
                 closePriceModal();
+            }
+        });
+    }
+
+    // Обработчики кликов на элементы списка призов для покупки
+    if (priceList) {
+        priceList.addEventListener('click', function(event) {
+            const priceItem = event.target.closest('.price-item');
+            if (priceItem) {
+                const itemId = priceItem.dataset.itemId;
+                const itemPrice = parseInt(priceItem.dataset.itemPrice);
+                const itemName = priceItem.dataset.itemName;
+                
+                if (itemId && itemPrice && itemName) {
+                    // Показываем модальное окно подтверждения
+                    showConfirmPurchaseModal(itemId, itemPrice, itemName);
+                }
+            }
+        });
+    }
+
+    // Обработчики модального окна подтверждения покупки
+    const confirmPurchaseModal = document.getElementById('confirmPurchaseModal');
+    const closeConfirmPurchaseModalBtn = document.getElementById('closeConfirmPurchaseModal');
+    const confirmPurchaseBtn = document.getElementById('confirmPurchaseBtn');
+    const cancelPurchaseBtn = document.getElementById('cancelPurchaseBtn');
+
+    if (closeConfirmPurchaseModalBtn) {
+        closeConfirmPurchaseModalBtn.addEventListener('click', closeConfirmPurchaseModal);
+    }
+
+    if (confirmPurchaseBtn) {
+        confirmPurchaseBtn.addEventListener('click', executePurchase);
+    }
+
+    if (cancelPurchaseBtn) {
+        cancelPurchaseBtn.addEventListener('click', closeConfirmPurchaseModal);
+    }
+
+    if (confirmPurchaseModal) {
+        confirmPurchaseModal.addEventListener('click', function(event) {
+            if (event.target === confirmPurchaseModal) {
+                closeConfirmPurchaseModal();
+            }
+        });
+    }
+
+    // Обработчики модального окна уведомлений
+    const notificationModal = document.getElementById('notificationModal');
+    const closeNotificationModalBtn = document.getElementById('closeNotificationModal');
+    const notificationOkBtn = document.getElementById('notificationOkBtn');
+
+    if (closeNotificationModalBtn) {
+        closeNotificationModalBtn.addEventListener('click', closeNotificationModal);
+    }
+
+    if (notificationOkBtn) {
+        notificationOkBtn.addEventListener('click', closeNotificationModal);
+    }
+
+    if (notificationModal) {
+        notificationModal.addEventListener('click', function(event) {
+            if (event.target === notificationModal) {
+                closeNotificationModal();
             }
         });
     }
@@ -525,11 +783,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 resetGame();
             } catch (error) {
                 console.error('Error submitting coins:', error);
-                alert('Ошибка при зачислении монет. Попробуйте еще раз.');
+                showNotification('Ошибка', 'Ошибка при зачислении монет. Попробуйте еще раз.', 'error');
             }
         } else {
             console.error('updateBalance function is not defined');
-            alert('Ошибка: функция обновления баланса не найдена.');
+            showNotification('Ошибка', 'Ошибка: функция обновления баланса не найдена.', 'error');
         }
     }
 
@@ -762,12 +1020,12 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Если баланс недостаточен, не позволяем выбрать приз
             if (valeraBalance < PRIZE_COST) {
-                alert('Недостаточно монет! Нужно 5 монет, у вас ' + valeraBalance);
+                showNotification('Недостаточно монет', `Нужно 5 монет, у вас ${valeraBalance}`, 'error');
                 return;
             }
         } catch (error) {
             console.error('Error checking balance:', error);
-            alert('Ошибка при проверке баланса');
+            showNotification('Ошибка', 'Ошибка при проверке баланса', 'error');
             return;
         }
         
@@ -1102,12 +1360,12 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Если баланс недостаточен, не позволяем выбрать приз
             if (studentsBalance < STUDENTS_PRIZE_COST) {
-                alert('Недостаточно монет! Нужно 8 монет, у вас ' + studentsBalance);
+                showNotification('Недостаточно монет', `Нужно 8 монет, у вас ${studentsBalance}`, 'error');
                 return;
             }
         } catch (error) {
             console.error('Error checking balance:', error);
-            alert('Ошибка при проверке баланса');
+            showNotification('Ошибка', 'Ошибка при проверке баланса', 'error');
             return;
         }
         
