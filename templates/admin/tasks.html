@@ -59,7 +59,14 @@
                     </td>
                     <td>{{ task.created_at.strftime('%d.%m.%Y %H:%M') if task.created_at else '—' }}</td>
                     <td>
-                        <button class="edit-btn" onclick="editTask({{ task.id }}, '{{ task.title|replace("'", "\\'") }}', {{ task.description|tojson if task.description else 'null' }}, {{ task.correct_answer|tojson }}, {{ 'true' if task.is_active else 'false' }}, {{ 'true' if task.image_filename else 'false' }})">Редактировать</button>
+                        <button class="edit-btn" 
+                                data-task-id="{{ task.id }}"
+                                data-task-title='{{ task.title|tojson }}'
+                                data-task-description='{{ task.description|tojson if task.description else "null" }}'
+                                data-task-correct-answer='{{ task.correct_answer|tojson }}'
+                                data-task-is-active="{{ 'true' if task.is_active else 'false' }}"
+                                data-task-has-image="{{ 'true' if task.image_filename else 'false' }}"
+                                onclick="editTaskFromButton(this)">Редактировать</button>
                         <button class="toggle-btn {{ 'deactivate' if task.is_active else 'activate' }}" 
                                 onclick="toggleTaskActive({{ task.id }}, {{ 'true' if task.is_active else 'false' }})">
                             {{ 'Деактивировать' if task.is_active else 'Активировать' }}
@@ -151,6 +158,51 @@ function showAddTaskModal() {
     document.getElementById('taskModal').classList.add('show');
 }
 
+function editTaskFromButton(button) {
+    try {
+        const id = parseInt(button.getAttribute('data-task-id'));
+        if (isNaN(id)) {
+            throw new Error('Invalid task ID');
+        }
+        
+        // Безопасный парсинг JSON с обработкой ошибок
+        function safeJsonParse(value, defaultValue = '') {
+            if (!value || value === '' || value === undefined || value === null) {
+                return defaultValue;
+            }
+            // Если значение уже строка "null", возвращаем null
+            if (value === 'null' || value === '"null"') {
+                return null;
+            }
+            try {
+                const parsed = JSON.parse(value);
+                return parsed === null ? defaultValue : parsed;
+            } catch (e) {
+                console.error('JSON parse error:', e, 'Value:', value);
+                // Если не удалось распарсить, возвращаем значение как строку (на случай если это уже строка без кавычек)
+                return value || defaultValue;
+            }
+        }
+        
+        const titleAttr = button.getAttribute('data-task-title');
+        const title = safeJsonParse(titleAttr, '');
+        
+        const descriptionAttr = button.getAttribute('data-task-description');
+        const description = descriptionAttr === 'null' || !descriptionAttr || descriptionAttr === '' ? null : safeJsonParse(descriptionAttr, '');
+        
+        const correctAnswerAttr = button.getAttribute('data-task-correct-answer');
+        const correctAnswer = safeJsonParse(correctAnswerAttr, '');
+        
+        const isActive = button.getAttribute('data-task-is-active') === 'true';
+        const hasImage = button.getAttribute('data-task-has-image') === 'true';
+        
+        editTask(id, title, description, correctAnswer, isActive, hasImage);
+    } catch (error) {
+        console.error('Error in editTaskFromButton:', error);
+        alert('Ошибка при открытии формы редактирования. Попробуйте обновить страницу.');
+    }
+}
+
 function editTask(id, title, description, correctAnswer, isActive, hasImage) {
     editingTaskId = id;
     document.getElementById('modalTitle').textContent = 'Редактировать задачу';
@@ -158,10 +210,10 @@ function editTask(id, title, description, correctAnswer, isActive, hasImage) {
     document.getElementById('taskTitle').value = title;
     document.getElementById('taskDescription').value = description || '';
     document.getElementById('taskCorrectAnswer').value = correctAnswer;
-    document.getElementById('taskIsActive').checked = isActive === 'true' || isActive === true;
+    document.getElementById('taskIsActive').checked = isActive === true || isActive === 'true';
     
     // Показываем текущее изображение, если есть
-    if (hasImage === 'true' || hasImage === true) {
+    if (hasImage === true || hasImage === 'true') {
         hasCurrentImage = true;
         const row = document.querySelector(`tr[data-id="${id}"]`);
         const img = row.querySelector('img');

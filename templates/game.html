@@ -65,26 +65,100 @@
     }
 }
 
-.microphone-btn {
+.results-btn {
     position: fixed;
-    bottom: 20px;
+    bottom: 100px;
     right: 20px;
     width: 60px;
     height: 60px;
     border-radius: 50%;
-    border: none;
+    border: 3px solid #fff;
+    cursor: pointer;
+    z-index: 100;
+    font-size: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    background-color: #4CAF50;
+    color: white;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.results-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+    background-color: #45a049;
+}
+
+.results-btn:active {
+    transform: scale(0.95);
+}
+
+.random-student-btn {
+    position: fixed;
+    bottom: 170px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 3px solid #fff;
+    cursor: pointer;
+    z-index: 100;
+    font-size: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    background-color: #4CAF50;
+    color: white;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.random-student-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+    background-color: #45a049;
+}
+
+.random-student-btn:active {
+    transform: scale(0.95);
+}
+
+.microphone-btn {
+    position: fixed;
+    bottom: 30px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 3px solid #fff;
     background-color: #4CAF50;
     color: white;
     font-size: 28px;
     cursor: pointer;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s;
     z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .microphone-btn:hover {
-    background-color: #45a049;
     transform: scale(1.1);
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+    background-color: #45a049;
+}
+
+.microphone-btn:active {
+    transform: scale(0.95);
 }
 
 .microphone-btn.active {
@@ -396,8 +470,36 @@
         width: 50px;
         height: 50px;
         font-size: 24px;
-        bottom: 15px;
-        right: 15px;
+        bottom: 20px;
+        right: 20px;
+    }
+    
+    .random-student-btn {
+        width: 50px;
+        height: 50px;
+        font-size: 24px;
+        bottom: 20px;
+        right: 80px;
+        border-width: 2px;
+    }
+    
+    .results-btn {
+        width: 50px;
+        height: 50px;
+        font-size: 24px;
+        bottom: 20px;
+        right: 140px;
+        border-width: 2px;
+    }
+    
+    .students-lottery-btn {
+        right: 200px;
+        bottom: 20px;
+    }
+    
+    .students-shop-btn {
+        right: 260px;
+        bottom: 20px;
     }
     
     .noise-level-container {
@@ -460,8 +562,232 @@
         width: 45px;
         height: 45px;
         font-size: 20px;
-        bottom: 10px;
-        right: 10px;
+        bottom: 15px;
+        right: 15px;
+    }
+    
+    .random-student-btn {
+        width: 45px;
+        height: 45px;
+        font-size: 20px;
+        bottom: 15px;
+        right: 65px;
+        border-width: 2px;
+    }
+    
+    .results-btn {
+        width: 45px;
+        height: 45px;
+        font-size: 20px;
+        bottom: 15px;
+        right: 115px;
+        border-width: 2px;
+    }
+    
+    .students-lottery-btn {
+        right: 165px;
+        bottom: 15px;
+    }
+    
+    .students-shop-btn {
+        right: 215px;
+        bottom: 15px;
+    }
+}
+
+/* Стили для модального окна выбора учащегося */
+.random-student-modal {
+    max-width: 600px;
+}
+
+.random-student-container {
+    text-align: center;
+    padding: 20px 0;
+}
+
+.student-selector {
+    position: relative;
+    margin: 30px auto;
+    width: 300px;
+    height: 300px;
+}
+
+.selector-wheel {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 8px solid #4CAF50;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    transition: transform 0.1s linear;
+}
+
+.selector-wheel::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: conic-gradient(
+        from 0deg,
+        #4CAF50 0deg 30deg,
+        #45a049 30deg 60deg,
+        #4CAF50 60deg 90deg,
+        #45a049 90deg 120deg,
+        #4CAF50 120deg 150deg,
+        #45a049 150deg 180deg,
+        #4CAF50 180deg 210deg,
+        #45a049 210deg 240deg,
+        #4CAF50 240deg 270deg,
+        #45a049 270deg 300deg,
+        #4CAF50 300deg 330deg,
+        #45a049 330deg 360deg
+    );
+    animation: spin 2s linear infinite;
+    opacity: 0.3;
+}
+
+.selector-wheel.spinning {
+    animation: spin-fast 0.5s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes spin-fast {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.selected-student-display {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 50%;
+    width: 200px;
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+    border: 4px solid #4CAF50;
+}
+
+.student-name-large {
+    font-size: 32px;
+    font-weight: bold;
+    color: #333;
+    text-align: center;
+    padding: 20px;
+    animation: pulse-name 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-name {
+    0%, 100% {
+        transform: scale(1);
+        color: #333;
+    }
+    50% {
+        transform: scale(1.1);
+        color: #4CAF50;
+    }
+}
+
+.student-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 30px;
+}
+
+.confirm-student-btn, .reroll-student-btn {
+    padding: 15px 30px;
+    font-size: 18px;
+    font-weight: bold;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.confirm-student-btn {
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+    color: #fff;
+}
+
+.confirm-student-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(76, 175, 80, 0.4);
+}
+
+.reroll-student-btn {
+    background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+    color: #fff;
+}
+
+.reroll-student-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(33, 150, 243, 0.4);
+}
+
+@media (max-width: 768px) {
+    .random-student-modal {
+        max-width: 95%;
+        padding: 20px;
+    }
+    
+    .student-selector {
+        width: 250px;
+        height: 250px;
+    }
+    
+    .selected-student-display {
+        width: 160px;
+        height: 160px;
+    }
+    
+    .student-name-large {
+        font-size: 24px;
+        padding: 15px;
+    }
+    
+    .student-actions {
+        flex-direction: column;
+    }
+    
+    .confirm-student-btn, .reroll-student-btn {
+        width: 100%;
+        padding: 12px 20px;
+        font-size: 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    .student-selector {
+        width: 200px;
+        height: 200px;
+    }
+    
+    .selected-student-display {
+        width: 130px;
+        height: 130px;
+    }
+    
+    .student-name-large {
+        font-size: 20px;
+        padding: 10px;
     }
 }
 </style>
@@ -505,6 +831,12 @@
     <button class="shop-icon-btn students-shop-btn" id="studentsShopBtn" title="Магазин для учащихся">🛒</button>
     <button class="shop-icon-btn students-lottery-btn" id="studentsLotteryBtn" title="Лавка для учащихся">🎲</button>
     <button class="shop-icon-btn valera-shop-btn" id="valeraShopBtn" title="Лавка Валеры">🎲</button>
+    
+    <!-- Кнопка подведения итогов -->
+    <button class="results-btn" id="resultsBtn" title="Подвести итоги (F)">📊</button>
+    
+    <!-- Кнопка случайного выбора учащегося -->
+    <button class="random-student-btn" id="randomStudentBtn" title="Выбрать учащегося">🎯</button>
     
     <!-- Кнопка и индикатор уровня шума -->
     <button class="microphone-btn" id="microphoneBtn" title="Включить/выключить прослушивание микрофона">🎤</button>
@@ -676,6 +1008,26 @@
     <!-- Результат приза (отображается поверх всего) -->
     <div class="prize-result" id="prizeResult"></div>
     <div class="prize-result students-prize-result" id="studentsPrizeResult"></div>
+    
+    <!-- Модальное окно случайного выбора учащегося -->
+    <div class="modal-overlay" id="randomStudentModal">
+        <div class="modal-content random-student-modal">
+            <button class="modal-close" id="closeRandomStudentModal">&times;</button>
+            <h2 class="modal-title">Случайный выбор учащегося</h2>
+            <div class="random-student-container">
+                <div class="student-selector" id="studentSelector">
+                    <div class="selector-wheel" id="selectorWheel"></div>
+                    <div class="selected-student-display" id="selectedStudentDisplay">
+                        <div class="student-name-large" id="selectedStudentName">?</div>
+                    </div>
+                </div>
+                <div class="student-actions" id="studentActions" style="display: none;">
+                    <button class="confirm-student-btn" id="confirmStudentBtn">Подтвердить выбор</button>
+                    <button class="reroll-student-btn" id="rerollStudentBtn">Выбрать снова</button>
+                </div>
+            </div>
+        </div>
+    </div>
 {% endblock %}
 
 {% block scripts %}
@@ -1042,6 +1394,157 @@
             if (isListening) {
                 stopMicrophone();
             }
+        });
+        
+        // Обработчик кнопки подведения итогов
+        // Используем setTimeout, чтобы убедиться, что script.js загружен
+        setTimeout(() => {
+            const resultsBtn = document.getElementById('resultsBtn');
+            if (resultsBtn) {
+                resultsBtn.addEventListener('click', () => {
+                    // Вызываем функцию showCoinsResult из script.js
+                    if (typeof window.showCoinsResult === 'function') {
+                        window.showCoinsResult();
+                    } else if (typeof showCoinsResult === 'function') {
+                        showCoinsResult();
+                    }
+                });
+            }
+        }, 100);
+        
+        // Функционал случайного выбора учащегося
+        let studentsData = [];
+        let currentSelectedStudent = null;
+        let isSpinning = false;
+        
+        const randomStudentBtn = document.getElementById('randomStudentBtn');
+        const randomStudentModal = document.getElementById('randomStudentModal');
+        const closeRandomStudentModal = document.getElementById('closeRandomStudentModal');
+        const selectorWheel = document.getElementById('selectorWheel');
+        const selectedStudentName = document.getElementById('selectedStudentName');
+        const studentActions = document.getElementById('studentActions');
+        const confirmStudentBtn = document.getElementById('confirmStudentBtn');
+        const rerollStudentBtn = document.getElementById('rerollStudentBtn');
+        
+        // Открытие модального окна
+        randomStudentBtn.addEventListener('click', () => {
+            loadStudentsAndSelect();
+        });
+        
+        // Закрытие модального окна
+        closeRandomStudentModal.addEventListener('click', () => {
+            closeRandomStudentModalFunc();
+        });
+        
+        randomStudentModal.addEventListener('click', (e) => {
+            if (e.target === randomStudentModal) {
+                closeRandomStudentModalFunc();
+            }
+        });
+        
+        function closeRandomStudentModalFunc() {
+            randomStudentModal.classList.remove('show');
+            currentSelectedStudent = null;
+            studentActions.style.display = 'none';
+            selectedStudentName.textContent = '?';
+        }
+        
+        // Загрузка учащихся и выбор
+        async function loadStudentsAndSelect() {
+            try {
+                const response = await fetch(`/api/class/${CLASS_ID}/students/random`);
+                const data = await response.json();
+                
+                if (!data.success) {
+                    alert(data.error || 'Ошибка при загрузке учащихся');
+                    return;
+                }
+                
+                studentsData = data.students;
+                
+                if (studentsData.length === 0) {
+                    alert('В классе нет учащихся');
+                    return;
+                }
+                
+                randomStudentModal.classList.add('show');
+                studentActions.style.display = 'none';
+                selectedStudentName.textContent = '?';
+                currentSelectedStudent = null;
+                
+                // Запускаем анимацию выбора
+                selectRandomStudent();
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Ошибка при загрузке учащихся');
+            }
+        }
+        
+        // Выбор случайного учащегося с весами
+        function selectRandomStudent() {
+            if (isSpinning) return;
+            
+            isSpinning = true;
+            selectorWheel.classList.add('spinning');
+            selectedStudentName.textContent = '...';
+            
+            // Вычисляем общую сумму весов
+            const totalWeight = studentsData.reduce((sum, item) => sum + item.weight, 0);
+            
+            // Генерируем случайное число от 0 до totalWeight
+            let random = Math.random() * totalWeight;
+            
+            // Выбираем учащегося на основе весов
+            let selected = null;
+            for (let item of studentsData) {
+                random -= item.weight;
+                if (random <= 0) {
+                    selected = item;
+                    break;
+                }
+            }
+            
+            // Если не выбрали (на всякий случай), берем первого
+            if (!selected) {
+                selected = studentsData[0];
+            }
+            
+            // Анимация выбора (2 секунды)
+            setTimeout(() => {
+                selectorWheel.classList.remove('spinning');
+                currentSelectedStudent = selected;
+                selectedStudentName.textContent = selected.student.name;
+                studentActions.style.display = 'flex';
+                isSpinning = false;
+            }, 2000);
+        }
+        
+        // Подтверждение выбора
+        confirmStudentBtn.addEventListener('click', async () => {
+            if (!currentSelectedStudent) return;
+            
+            try {
+                const response = await fetch(`/api/class/${CLASS_ID}/students/${currentSelectedStudent.student.id}/select`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`Выбран учащийся: ${currentSelectedStudent.student.name}`);
+                    closeRandomStudentModalFunc();
+                } else {
+                    alert(data.error || 'Ошибка при сохранении выбора');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Ошибка при сохранении выбора');
+            }
+        });
+        
+        // Повторный выбор
+        rerollStudentBtn.addEventListener('click', () => {
+            if (isSpinning) return;
+            selectRandomStudent();
         });
     </script>
     <script src="{{ url_for('static', filename='script.js') }}"></script>

@@ -36,6 +36,7 @@
                     <td class="total-cell">{{ class.students_balance + class.valera_balance }}</td>
                     <td>
                         <button class="edit-btn" onclick="editClass({{ class.id }}, '{{ class.name }}', {{ class.students_balance }}, {{ class.valera_balance }})">Редактировать</button>
+                        <button class="students-btn" onclick="manageStudents({{ class.id }}, '{{ class.name }}')">Учащиеся</button>
                         <button class="delete-btn" onclick="deleteClass({{ class.id }})">Удалить</button>
                     </td>
                 </tr>
@@ -66,6 +67,25 @@
             </div>
             <button type="submit" class="save-btn">Сохранить</button>
         </form>
+    </div>
+</div>
+
+<!-- Модальное окно управления учащимися -->
+<div class="modal-overlay" id="studentsModal">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closeStudentsModal()">&times;</button>
+        <h2 class="modal-title" id="studentsModalTitle">Управление учащимися</h2>
+        <div class="students-container">
+            <div class="form-group">
+                <label>Добавить учащихся (через запятую):</label>
+                <textarea id="studentsNamesInput" rows="3" placeholder="Иван, Мария, Петр, Анна"></textarea>
+                <button type="button" class="add-students-btn" onclick="addStudents()">Добавить</button>
+            </div>
+            <div class="students-list-container">
+                <h3>Список учащихся:</h3>
+                <div id="studentsList" class="students-list"></div>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -164,6 +184,139 @@ function deleteClass(id) {
 document.getElementById('classModal').addEventListener('click', function(e) {
     if (e.target === this) {
         closeClassModal();
+    }
+});
+
+// Управление учащимися
+let currentClassId = null;
+
+function manageStudents(classId, className) {
+    currentClassId = classId;
+    document.getElementById('studentsModalTitle').textContent = `Учащиеся класса: ${className}`;
+    document.getElementById('studentsNamesInput').value = '';
+    document.getElementById('studentsModal').classList.add('show');
+    loadStudents(classId);
+}
+
+function closeStudentsModal() {
+    document.getElementById('studentsModal').classList.remove('show');
+    currentClassId = null;
+}
+
+function loadStudents(classId) {
+    fetch(`/api/classes/${classId}/students`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayStudents(data.students);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Ошибка при загрузке учащихся');
+        });
+}
+
+function displayStudents(students) {
+    const list = document.getElementById('studentsList');
+    if (students.length === 0) {
+        list.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">Нет учащихся в классе</p>';
+        return;
+    }
+    
+    list.innerHTML = students.map(student => `
+        <div class="student-item" data-id="${student.id}">
+            <span class="student-name" id="student-name-${student.id}">${student.name}</span>
+            <div class="student-actions">
+                <button class="edit-student-btn" onclick="editStudent(${student.id}, '${student.name.replace(/'/g, "\\'")}')">✏️</button>
+                <button class="delete-student-btn" onclick="deleteStudent(${student.id})">🗑️</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function addStudents() {
+    if (!currentClassId) return;
+    
+    const namesInput = document.getElementById('studentsNamesInput').value.trim();
+    if (!namesInput) {
+        alert('Введите имена учащихся');
+        return;
+    }
+    
+    fetch(`/api/classes/${currentClassId}/students`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ names: namesInput })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('studentsNamesInput').value = '';
+            loadStudents(currentClassId);
+        } else {
+            alert(data.error || 'Ошибка при добавлении учащихся');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Ошибка при добавлении учащихся');
+    });
+}
+
+function editStudent(studentId, currentName) {
+    const newName = prompt('Введите новое имя:', currentName);
+    if (newName && newName.trim() && newName !== currentName) {
+        fetch(`/api/students/${studentId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ name: newName.trim() })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                loadStudents(currentClassId);
+            } else {
+                alert(data.error || 'Ошибка при редактировании');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Ошибка при редактировании');
+        });
+    }
+}
+
+function deleteStudent(studentId) {
+    if (!confirm('Вы уверены, что хотите удалить этого учащегося?')) {
+        return;
+    }
+    
+    fetch(`/api/students/${studentId}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadStudents(currentClassId);
+        } else {
+            alert('Ошибка при удалении');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Ошибка при удалении');
+    });
+}
+
+// Закрытие модального окна учащихся при клике вне его
+document.getElementById('studentsModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeStudentsModal();
     }
 });
 </script>
@@ -311,6 +464,26 @@ tr:hover {
     box-shadow: 0 5px 12px rgba(139, 157, 200, 0.3);
 }
 
+.students-btn {
+    background: linear-gradient(135deg, #9b8fb8 0%, #8b6fa8 100%);
+    color: #fff;
+    padding: 10px 18px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    margin-right: 8px;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+}
+
+.students-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 12px rgba(155, 143, 184, 0.3);
+}
+
 .delete-btn {
     background: linear-gradient(135deg, #d4a5a5 0%, #c89595 100%);
     color: #fff;
@@ -446,6 +619,118 @@ tr:hover {
     box-shadow: 0 8px 20px rgba(139, 157, 200, 0.4);
 }
 
+/* Стили для управления учащимися */
+.students-container {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.students-list-container {
+    margin-top: 25px;
+}
+
+.students-list-container h3 {
+    color: #8b6fa8;
+    font-size: 20px;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.students-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.student-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border-radius: 12px;
+    border: 2px solid #d4c5b0;
+    transition: all 0.3s ease;
+}
+
+.student-item:hover {
+    border-color: #8b6fa8;
+    box-shadow: 0 3px 10px rgba(139, 111, 168, 0.2);
+}
+
+.student-name {
+    font-size: 16px;
+    color: #333;
+    font-weight: bold;
+    flex: 1;
+}
+
+.student-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.edit-student-btn, .delete-student-btn {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.edit-student-btn:hover {
+    background-color: #8b9dc8;
+    transform: scale(1.1);
+}
+
+.delete-student-btn:hover {
+    background-color: #d4a5a5;
+    transform: scale(1.1);
+}
+
+.form-group textarea {
+    width: 100%;
+    padding: 15px;
+    border-radius: 12px;
+    border: 3px solid #a8b8d0;
+    background-color: #fff;
+    color: #333;
+    font-size: 16px;
+    font-family: 'Comic Sans MS', Arial, sans-serif;
+    transition: all 0.3s ease;
+    resize: vertical;
+    min-height: 80px;
+}
+
+.form-group textarea:focus {
+    outline: none;
+    border-color: #8b6fa8;
+    box-shadow: 0 0 15px rgba(139, 111, 168, 0.3);
+    transform: scale(1.02);
+}
+
+.add-students-btn {
+    background: linear-gradient(135deg, #8b9dc8 0%, #9b8fb8 100%);
+    color: #fff;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 10px;
+    box-shadow: 0 3px 10px rgba(139, 157, 200, 0.3);
+    transition: all 0.3s ease;
+    width: 100%;
+}
+
+.add-students-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(139, 157, 200, 0.4);
+}
+
 /* Мобильная адаптация */
 @media (max-width: 768px) {
     body {
@@ -485,7 +770,7 @@ tr:hover {
         font-size: 14px;
     }
     
-    .edit-btn, .delete-btn {
+    .edit-btn, .delete-btn, .students-btn {
         padding: 8px 12px;
         font-size: 12px;
         margin-right: 5px;
@@ -522,12 +807,13 @@ tr:hover {
         font-size: 12px;
     }
     
-    .edit-btn, .delete-btn {
+    .edit-btn, .delete-btn, .students-btn {
         padding: 6px 10px;
         font-size: 11px;
         display: block;
         width: 100%;
         margin-right: 0;
+        margin-bottom: 5px;
     }
 }
 </style>

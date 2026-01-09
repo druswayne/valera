@@ -626,6 +626,9 @@ document.addEventListener('DOMContentLoaded', function() {
             coinsModal.classList.add('show');
         }
     }
+    
+    // Делаем функцию глобальной для доступа из других скриптов
+    window.showCoinsResult = showCoinsResult;
 
     function closeCoinsModal() {
         const coinsModal = document.getElementById('coinsModal');

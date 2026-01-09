@@ -67,6 +67,8 @@ class Class(db.Model):
     students_balance = db.Column(db.Integer, default=0)
     valera_balance = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    students = db.relationship('Student', backref='class_obj', lazy=True, cascade='all, delete-orphan')
+    student_selections = db.relationship('StudentSelection', backref='class_obj', lazy=True, cascade='all, delete-orphan')
 
     def to_dict(self):
         return {
@@ -75,6 +77,34 @@ class Class(db.Model):
             'students_balance': self.students_balance,
             'valera_balance': self.valera_balance,
             'total_balance': self.students_balance + self.valera_balance
+        }
+
+class Student(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    class_id = db.Column(db.Integer, db.ForeignKey('class.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    selections = db.relationship('StudentSelection', backref='student', lazy=True, cascade='all, delete-orphan')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'class_id': self.class_id
+        }
+
+class StudentSelection(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
+    class_id = db.Column(db.Integer, db.ForeignKey('class.id'), nullable=False)
+    selected_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'student_id': self.student_id,
+            'class_id': self.class_id,
+            'selected_at': self.selected_at.isoformat() if self.selected_at else None
         }
 
 class Prize(db.Model):
@@ -475,6 +505,115 @@ def delete_class(class_id):
     db.session.delete(class_obj)
     db.session.commit()
     return jsonify({'success': True})
+
+# API для управления учащимися
+@app.route('/api/classes/<int:class_id>/students', methods=['GET'])
+@admin_required
+def get_students(class_id):
+    class_obj = db.get_or_404(Class, class_id)
+    students = Student.query.filter_by(class_id=class_id).all()
+    return jsonify({'success': True, 'students': [s.to_dict() for s in students]})
+
+@app.route('/api/classes/<int:class_id>/students', methods=['POST'])
+@admin_required
+def add_students(class_id):
+    class_obj = db.get_or_404(Class, class_id)
+    data = request.json
+    
+    if 'names' not in data or not data['names']:
+        return jsonify({'success': False, 'error': 'Не указаны имена учащихся'}), 400
+    
+    # Разбиваем строку имен через запятую
+    names_list = [name.strip() for name in data['names'].split(',') if name.strip()]
+    
+    if not names_list:
+        return jsonify({'success': False, 'error': 'Не указаны имена учащихся'}), 400
+    
+    added_students = []
+    for name in names_list:
+        # Проверяем, не существует ли уже учащийся с таким именем в этом классе
+        existing = Student.query.filter_by(class_id=class_id, name=name).first()
+        if not existing:
+            student = Student(name=name, class_id=class_id)
+            db.session.add(student)
+            added_students.append(student)
+    
+    db.session.commit()
+    return jsonify({'success': True, 'students': [s.to_dict() for s in added_students]})
+
+@app.route('/api/students/<int:student_id>', methods=['PUT'])
+@admin_required
+def update_student(student_id):
+    student = db.get_or_404(Student, student_id)
+    data = request.json
+    
+    if 'name' in data:
+        # Проверяем, не существует ли уже учащийся с таким именем в этом классе
+        existing = Student.query.filter_by(class_id=student.class_id, name=data['name']).first()
+        if existing and existing.id != student_id:
+            return jsonify({'success': False, 'error': 'Учащийся с таким именем уже существует в этом классе'}), 400
+        student.name = data['name']
+    
+    db.session.commit()
+    return jsonify({'success': True, 'student': student.to_dict()})
+
+@app.route('/api/students/<int:student_id>', methods=['DELETE'])
+@admin_required
+def delete_student(student_id):
+    student = db.get_or_404(Student, student_id)
+    db.session.delete(student)
+    db.session.commit()
+    return jsonify({'success': True})
+
+# API для случайного выбора учащегося
+@app.route('/api/class/<int:class_id>/students/random', methods=['GET'])
+@admin_required
+def get_students_for_random(class_id):
+    class_obj = db.get_or_404(Class, class_id)
+    students = Student.query.filter_by(class_id=class_id).all()
+    
+    if not students:
+        return jsonify({'success': False, 'error': 'В классе нет учащихся'}), 400
+    
+    # Подсчитываем количество выборов для каждого учащегося
+    selection_counts = {}
+    for student in students:
+        count = StudentSelection.query.filter_by(student_id=student.id, class_id=class_id).count()
+        selection_counts[student.id] = count
+    
+    # Находим минимальное количество выборов
+    min_count = min(selection_counts.values()) if selection_counts else 0
+    
+    # Вычисляем веса: чем меньше выборов, тем больше вес
+    # Вес = (min_count + 1) / (count + 1)
+    student_weights = []
+    for student in students:
+        count = selection_counts[student.id]
+        weight = (min_count + 1) / (count + 1)
+        student_weights.append({
+            'student': student.to_dict(),
+            'weight': weight,
+            'selection_count': count
+        })
+    
+    return jsonify({'success': True, 'students': student_weights})
+
+@app.route('/api/class/<int:class_id>/students/<int:student_id>/select', methods=['POST'])
+@admin_required
+def confirm_student_selection(class_id, student_id):
+    class_obj = db.get_or_404(Class, class_id)
+    student = db.get_or_404(Student, student_id)
+    
+    # Проверяем, что учащийся принадлежит классу
+    if student.class_id != class_id:
+        return jsonify({'success': False, 'error': 'Учащийся не принадлежит этому классу'}), 400
+    
+    # Сохраняем выбор
+    selection = StudentSelection(student_id=student_id, class_id=class_id)
+    db.session.add(selection)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'selection': selection.to_dict()})
 
 # Панель администратора - призы
 @app.route('/admin/prizes')
