@@ -5,6 +5,18 @@
 {% block content %}
 <div class="rating-container">
     <h1 class="rating-title">Рейтинг классов</h1>
+    
+    <div class="main-buttons">
+        <a href="{{ url_for('raid_boss_page') }}" class="raid-boss-btn">
+            <span class="btn-icon">⚔️</span>
+            <span class="btn-text">РЕЙД БОССА</span>
+        </a>
+        <a href="{{ url_for('weekly_task') }}" class="weekly-task-btn">
+            <span class="btn-icon">📝</span>
+            <span class="btn-text">Задача недели</span>
+        </a>
+    </div>
+    
     <div class="rating-table-wrapper">
         <table class="rating-table">
             <tbody>
@@ -34,11 +46,11 @@
         </table>
     </div>
     <div class="admin-links">
-        <a href="{{ url_for('weekly_task') }}" class="admin-link">Задача недели</a>
         {% if current_user.is_authenticated and current_user.is_admin %}
         <a href="{{ url_for('admin_classes') }}" class="admin-link">Управление классами</a>
         <a href="{{ url_for('admin_prizes') }}" class="admin-link">Управление призами</a>
         <a href="{{ url_for('admin_tasks') }}" class="admin-link">Управление задачами</a>
+        <a href="{{ url_for('admin_boss_raid') }}" class="admin-link">Управление рейд боссом</a>
         <a href="{{ url_for('logout') }}" class="admin-link logout-link">Выйти</a>
         {% elif not current_user.is_authenticated %}
         <a href="{{ url_for('login') }}" class="admin-link">Вход в админ панель</a>
@@ -78,6 +90,69 @@ body {
     text-shadow: 2px 2px 0px #e8d5c4;
     font-weight: bold;
     letter-spacing: 1px;
+}
+
+.main-buttons {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+
+.raid-boss-btn, .weekly-task-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 35px;
+    border-radius: 20px;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 20px;
+    transition: all 0.3s ease;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    border: 4px solid #000;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.raid-boss-btn {
+    background: linear-gradient(135deg, #dc143c 0%, #8b0000 100%);
+    color: white;
+    text-shadow: 2px 2px 0px #000;
+}
+
+.raid-boss-btn:hover {
+    transform: translateY(-5px) scale(1.05);
+    box-shadow: 0 12px 35px rgba(220, 20, 60, 0.6);
+}
+
+.raid-boss-btn:active {
+    transform: translateY(-2px) scale(1.02);
+}
+
+.weekly-task-btn {
+    background: linear-gradient(135deg, #8b9dc8 0%, #9b8fb8 100%);
+    color: white;
+    text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.3);
+    border-color: #6b7fa8;
+}
+
+.weekly-task-btn:hover {
+    transform: translateY(-5px) scale(1.05);
+    box-shadow: 0 12px 35px rgba(139, 157, 200, 0.6);
+}
+
+.weekly-task-btn:active {
+    transform: translateY(-2px) scale(1.02);
+}
+
+.btn-icon {
+    font-size: 28px;
+}
+
+.btn-text {
+    font-size: 18px;
 }
 
 .rating-table-wrapper {
@@ -371,6 +446,25 @@ body {
         font-size: 15px;
         border-width: 2px;
     }
+    
+    .main-buttons {
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .raid-boss-btn, .weekly-task-btn {
+        padding: 16px 25px;
+        font-size: 16px;
+        border-width: 3px;
+    }
+    
+    .btn-icon {
+        font-size: 24px;
+    }
+    
+    .btn-text {
+        font-size: 16px;
+    }
 }
 
 @media (max-width: 480px) {
@@ -446,6 +540,28 @@ body {
         border-radius: 12px;
         border-width: 2px;
     }
+    
+    .main-buttons {
+        gap: 12px;
+        margin-bottom: 15px;
+    }
+    
+    .raid-boss-btn, .weekly-task-btn {
+        padding: 14px 20px;
+        font-size: 14px;
+        border-width: 2px;
+        letter-spacing: 1px;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .btn-icon {
+        font-size: 20px;
+    }
+    
+    .btn-text {
+        font-size: 14px;
+    }
 }
 
 @media (max-width: 360px) {
@@ -481,6 +597,24 @@ body {
     .admin-link {
         padding: 9px 12px;
         font-size: 13px;
+    }
+    
+    .main-buttons {
+        gap: 10px;
+    }
+    
+    .raid-boss-btn, .weekly-task-btn {
+        padding: 12px 16px;
+        font-size: 13px;
+        border-width: 2px;
+    }
+    
+    .btn-icon {
+        font-size: 18px;
+    }
+    
+    .btn-text {
+        font-size: 12px;
     }
 }
 </style>

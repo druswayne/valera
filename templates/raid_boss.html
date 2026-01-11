@@ -1,0 +1,1151 @@
+{% extends "base.html" %}
+
+{% block title %}Рейд босса - Валера в пещере{% endblock %}
+
+{% block extra_head %}
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Comic Sans MS', 'Arial Rounded MT Bold', Arial, sans-serif;
+    background: linear-gradient(135deg, #8b0000 0%, #ff4500 100%);
+    min-height: 100vh;
+    padding: 10px;
+}
+
+.raid-boss-container {
+    max-width: 1000px;
+    margin: 20px auto;
+    padding: 25px;
+    background: linear-gradient(135deg, #ffffff 0%, #f5f7fa 100%);
+    border-radius: 25px;
+    border: 4px solid #dc143c;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.boss-header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: linear-gradient(135deg, #dc143c 0%, #8b0000 100%);
+    border-radius: 20px;
+    color: white;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.boss-header h1 {
+    font-size: 48px;
+    margin-bottom: 15px;
+    text-shadow: 3px 3px 0px #000;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+.boss-health-bar {
+    margin-top: 20px;
+    background: #333;
+    border-radius: 25px;
+    height: 40px;
+    overflow: hidden;
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.3);
+    border: 3px solid #000;
+}
+
+.boss-health-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ff0000 0%, #ff4500 50%, #ff6b6b 100%);
+    transition: width 0.5s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 18px;
+    color: white;
+    text-shadow: 2px 2px 0px #000;
+}
+
+.boss-health-text {
+    margin-top: 10px;
+    font-size: 20px;
+    font-weight: bold;
+    text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.3);
+}
+
+.class-damage-table {
+    margin-bottom: 30px;
+    background: #fff;
+    padding: 20px;
+    border-radius: 20px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    border: 3px solid #d4c5b0;
+}
+
+.class-damage-table h2 {
+    color: #8b6fa8;
+    font-size: 28px;
+    margin-bottom: 20px;
+    text-align: center;
+    text-shadow: 1px 1px 0px #e8d5c4;
+}
+
+.class-damage-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.class-damage-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border-radius: 12px;
+    border: 2px solid #d4c5b0;
+    transition: all 0.3s ease;
+}
+
+.class-damage-item:hover {
+    border-color: #8b6fa8;
+    box-shadow: 0 3px 10px rgba(139, 111, 168, 0.2);
+}
+
+.class-name {
+    font-size: 18px;
+    font-weight: bold;
+    color: #8b6fa8;
+}
+
+.damage-value {
+    font-size: 20px;
+    font-weight: bold;
+    color: #dc143c;
+}
+
+.battle-button-container {
+    text-align: center;
+    margin: 40px 0;
+}
+
+.battle-btn {
+    background: linear-gradient(135deg, #dc143c 0%, #8b0000 100%);
+    color: white;
+    border: none;
+    padding: 25px 50px;
+    border-radius: 25px;
+    font-size: 32px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 8px 25px rgba(220, 20, 60, 0.4);
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-shadow: 2px 2px 0px #000;
+    border: 4px solid #000;
+}
+
+.battle-btn:hover {
+    transform: translateY(-5px) scale(1.05);
+    box-shadow: 0 12px 35px rgba(220, 20, 60, 0.6);
+}
+
+.battle-btn:active {
+    transform: translateY(-2px) scale(1.02);
+}
+
+.battle-btn:disabled {
+    background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.task-card {
+    background: #fff;
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    border: 3px solid #d4c5b0;
+    margin-top: 30px;
+}
+
+.task-title {
+    color: #7a8fb8;
+    font-size: 32px;
+    margin-bottom: 20px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.task-description {
+    color: #333;
+    font-size: 18px;
+    line-height: 1.8;
+    margin-bottom: 20px;
+    white-space: pre-wrap;
+}
+
+.task-image {
+    max-width: 100%;
+    height: auto;
+    border-radius: 20px;
+    margin: 20px auto;
+    display: block;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+    border: 3px solid #d4c5b0;
+}
+
+.task-form {
+    background: linear-gradient(135deg, #f5e6d3 0%, #e8d5c4 100%);
+    padding: 30px;
+    border-radius: 20px;
+    margin-top: 20px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    border: 3px solid #c8a2c8;
+}
+
+.form-group {
+    margin-bottom: 25px;
+}
+
+.form-group label {
+    display: block;
+    color: #333;
+    margin-bottom: 10px;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 18px;
+    border-radius: 15px;
+    border: 3px solid #a8b8d0;
+    background-color: #fff;
+    color: #333;
+    font-size: 18px;
+    font-family: 'Comic Sans MS', Arial, sans-serif;
+    transition: all 0.3s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #8b6fa8;
+    box-shadow: 0 0 15px rgba(139, 111, 168, 0.3);
+    transform: scale(1.02);
+}
+
+.submit-btn {
+    background: linear-gradient(135deg, #8b9dc8 0%, #9b8fb8 100%);
+    color: #fff;
+    border: none;
+    padding: 18px 40px;
+    border-radius: 15px;
+    font-size: 22px;
+    font-weight: bold;
+    cursor: pointer;
+    width: 100%;
+    box-shadow: 0 5px 15px rgba(139, 157, 200, 0.3);
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.submit-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(139, 157, 200, 0.4);
+}
+
+.submit-btn:disabled {
+    background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+    cursor: not-allowed;
+    opacity: 0.6;
+    transform: none;
+    box-shadow: none;
+}
+
+.message-box {
+    padding: 20px;
+    border-radius: 15px;
+    margin-top: 20px;
+    text-align: center;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.message-success {
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+    color: white;
+    border: 3px solid #2e7d32;
+}
+
+.message-error {
+    background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+    color: white;
+    border: 3px solid #c62828;
+}
+
+.message-info {
+    background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+    color: white;
+    border: 3px solid #1565C0;
+}
+
+.retry-btn {
+    background: linear-gradient(135deg, #8b9dc8 0%, #9b8fb8 100%);
+    color: #fff;
+    border: none;
+    padding: 15px 30px;
+    border-radius: 15px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 15px;
+    box-shadow: 0 5px 15px rgba(139, 157, 200, 0.3);
+    transition: all 0.3s ease;
+}
+
+.retry-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(139, 157, 200, 0.4);
+}
+
+.no-boss-message {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+    font-size: 24px;
+}
+
+.defeated-boss {
+    text-align: center;
+    padding: 40px;
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+    color: white;
+    border-radius: 20px;
+    margin-top: 30px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.defeated-boss h2 {
+    font-size: 36px;
+    margin-bottom: 15px;
+    text-shadow: 2px 2px 0px #2e7d32;
+}
+
+.defeated-boss p {
+    font-size: 20px;
+    margin: 10px 0;
+}
+
+@media (max-width: 768px) {
+    body {
+        padding: 5px;
+    }
+    
+    .raid-boss-container {
+        margin: 10px auto;
+        padding: 15px;
+        border-radius: 20px;
+        border-width: 3px;
+    }
+    
+    .boss-header {
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 15px;
+    }
+    
+    .boss-header h1 {
+        font-size: 28px;
+        margin-bottom: 12px;
+        letter-spacing: 1px;
+    }
+    
+    .boss-health-bar {
+        height: 35px;
+        border-radius: 20px;
+        border-width: 2px;
+        margin-top: 15px;
+    }
+    
+    .boss-health-fill {
+        font-size: 16px;
+    }
+    
+    .boss-health-text {
+        font-size: 16px;
+        margin-top: 8px;
+    }
+    
+    .class-damage-table {
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 15px;
+        border-width: 2px;
+    }
+    
+    .class-damage-table h2 {
+        font-size: 22px;
+        margin-bottom: 15px;
+    }
+    
+    .class-damage-item {
+        padding: 12px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .class-name {
+        font-size: 16px;
+        width: 100%;
+    }
+    
+    .damage-value {
+        font-size: 18px;
+        width: 100%;
+        text-align: left;
+    }
+    
+    .battle-button-container {
+        margin: 30px 0;
+    }
+    
+    .battle-btn {
+        padding: 18px 30px;
+        font-size: 22px;
+        letter-spacing: 1px;
+        border-width: 3px;
+        width: 100%;
+        max-width: 100%;
+    }
+    
+    .task-card {
+        padding: 20px;
+        border-radius: 15px;
+        border-width: 2px;
+        margin-top: 20px;
+    }
+    
+    .task-title {
+        font-size: 22px;
+        margin-bottom: 15px;
+    }
+    
+    .task-description {
+        font-size: 16px;
+        margin-bottom: 15px;
+        line-height: 1.6;
+    }
+    
+    .task-image {
+        max-width: 100%;
+        border-radius: 15px;
+        border-width: 2px;
+        margin: 15px auto;
+    }
+    
+    .task-form {
+        padding: 20px;
+        border-radius: 15px;
+        border-width: 2px;
+        margin-top: 15px;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-group label {
+        font-size: 16px;
+        margin-bottom: 8px;
+    }
+    
+    .form-group input,
+    .form-group select {
+        padding: 14px;
+        font-size: 16px;
+        border-radius: 12px;
+        border-width: 2px;
+    }
+    
+    .submit-btn {
+        padding: 16px 30px;
+        font-size: 18px;
+        border-radius: 12px;
+    }
+    
+    .message-box {
+        padding: 18px;
+        font-size: 18px;
+        border-radius: 12px;
+        border-width: 2px;
+    }
+    
+    .retry-btn {
+        padding: 14px 25px;
+        font-size: 16px;
+        border-radius: 12px;
+        width: 100%;
+        max-width: 100%;
+    }
+    
+    .defeated-boss {
+        padding: 30px 20px;
+        border-radius: 15px;
+    }
+    
+    .defeated-boss h2 {
+        font-size: 28px;
+        margin-bottom: 12px;
+    }
+    
+    .defeated-boss p {
+        font-size: 16px;
+        margin: 8px 0;
+    }
+    
+    .no-boss-message {
+        padding: 40px 15px;
+        font-size: 18px;
+    }
+    
+    .no-boss-message h2 {
+        font-size: 24px;
+        margin-bottom: 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 3px;
+    }
+    
+    .raid-boss-container {
+        margin: 5px auto;
+        padding: 12px;
+        border-radius: 15px;
+        border-width: 2px;
+    }
+    
+    .boss-header {
+        padding: 12px;
+        margin-bottom: 15px;
+        border-radius: 12px;
+    }
+    
+    .boss-header h1 {
+        font-size: 24px;
+        margin-bottom: 10px;
+        letter-spacing: 0.5px;
+    }
+    
+    .boss-health-bar {
+        height: 30px;
+        border-radius: 15px;
+        border-width: 2px;
+        margin-top: 12px;
+    }
+    
+    .boss-health-fill {
+        font-size: 14px;
+    }
+    
+    .boss-health-text {
+        font-size: 14px;
+        margin-top: 6px;
+    }
+    
+    .class-damage-table {
+        padding: 12px;
+        margin-bottom: 15px;
+        border-radius: 12px;
+        border-width: 2px;
+    }
+    
+    .class-damage-table h2 {
+        font-size: 20px;
+        margin-bottom: 12px;
+    }
+    
+    .class-damage-item {
+        padding: 10px;
+        gap: 6px;
+        border-radius: 10px;
+        border-width: 2px;
+    }
+    
+    .class-name {
+        font-size: 15px;
+    }
+    
+    .damage-value {
+        font-size: 16px;
+    }
+    
+    .battle-button-container {
+        margin: 20px 0;
+    }
+    
+    .battle-btn {
+        padding: 15px 20px;
+        font-size: 18px;
+        letter-spacing: 0.5px;
+        border-width: 2px;
+        border-radius: 20px;
+    }
+    
+    .task-card {
+        padding: 15px;
+        border-radius: 12px;
+        border-width: 2px;
+        margin-top: 15px;
+    }
+    
+    .task-title {
+        font-size: 20px;
+        margin-bottom: 12px;
+    }
+    
+    .task-description {
+        font-size: 15px;
+        margin-bottom: 12px;
+        line-height: 1.5;
+    }
+    
+    .task-image {
+        border-radius: 12px;
+        border-width: 2px;
+        margin: 12px auto;
+    }
+    
+    .task-form {
+        padding: 15px;
+        border-radius: 12px;
+        border-width: 2px;
+        margin-top: 12px;
+    }
+    
+    .form-group {
+        margin-bottom: 15px;
+    }
+    
+    .form-group label {
+        font-size: 15px;
+        margin-bottom: 6px;
+    }
+    
+    .form-group input,
+    .form-group select {
+        padding: 12px;
+        font-size: 15px;
+        border-radius: 10px;
+        border-width: 2px;
+    }
+    
+    .submit-btn {
+        padding: 14px 25px;
+        font-size: 16px;
+        border-radius: 10px;
+        letter-spacing: 0.5px;
+    }
+    
+    .message-box {
+        padding: 15px;
+        font-size: 16px;
+        border-radius: 10px;
+        border-width: 2px;
+    }
+    
+    .retry-btn {
+        padding: 12px 20px;
+        font-size: 15px;
+        border-radius: 10px;
+    }
+    
+    .defeated-boss {
+        padding: 25px 15px;
+        border-radius: 12px;
+    }
+    
+    .defeated-boss h2 {
+        font-size: 24px;
+        margin-bottom: 10px;
+    }
+    
+    .defeated-boss p {
+        font-size: 15px;
+        margin: 6px 0;
+    }
+    
+    .no-boss-message {
+        padding: 30px 12px;
+        font-size: 16px;
+    }
+    
+    .no-boss-message h2 {
+        font-size: 20px;
+        margin-bottom: 12px;
+    }
+}
+
+@media (max-width: 360px) {
+    .boss-header h1 {
+        font-size: 20px;
+    }
+    
+    .boss-health-bar {
+        height: 28px;
+    }
+    
+    .boss-health-fill {
+        font-size: 12px;
+    }
+    
+    .boss-health-text {
+        font-size: 13px;
+    }
+    
+    .class-damage-table h2 {
+        font-size: 18px;
+    }
+    
+    .class-name {
+        font-size: 14px;
+    }
+    
+    .damage-value {
+        font-size: 15px;
+    }
+    
+    .battle-btn {
+        padding: 12px 18px;
+        font-size: 16px;
+    }
+    
+    .task-title {
+        font-size: 18px;
+    }
+    
+    .task-description {
+        font-size: 14px;
+    }
+    
+    .form-group label {
+        font-size: 14px;
+    }
+    
+    .form-group input,
+    .form-group select {
+        padding: 10px;
+        font-size: 14px;
+    }
+    
+    .submit-btn {
+        padding: 12px 20px;
+        font-size: 15px;
+    }
+    
+    .message-box {
+        font-size: 15px;
+        padding: 12px;
+    }
+    
+    .defeated-boss h2 {
+        font-size: 20px;
+    }
+    
+    .defeated-boss p {
+        font-size: 14px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="raid-boss-container">
+    {% if not boss %}
+    <div class="no-boss-message">
+        <h2>Рейд босса не активен</h2>
+        <p>Администратор еще не включил рейд босса. Проверьте позже!</p>
+    </div>
+    {% else %}
+    <div class="boss-header">
+        <h1>{{ boss.name }}</h1>
+        <div class="boss-health-bar">
+            <div class="boss-health-fill" id="healthFill" style="width: 100%;">
+                <span id="healthText">100%</span>
+            </div>
+        </div>
+        <div class="boss-health-text">
+            Здоровье: <span id="currentHealth">{{ boss.to_dict().current_health }}</span> / <span id="totalHealth">{{ boss.to_dict().total_health }}</span>
+        </div>
+    </div>
+    
+    <div class="class-damage-table">
+        <h2>Урон</h2>
+        <div class="class-damage-list" id="classDamageList">
+            {% for class_obj in classes %}
+            <div class="class-damage-item">
+                <span class="class-name">{{ class_obj.name }}</span>
+                <span class="damage-value" data-class-id="{{ class_obj.id }}">{{ class_damage.get(class_obj.id, 0) }} урона</span>
+            </div>
+            {% endfor %}
+            {% if not classes %}
+            <p style="text-align: center; color: #999; padding: 20px;">Нет классов</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="battle-button-container" id="battleButtonContainer">
+        <button class="battle-btn" id="battleBtn" onclick="startBattle()">⚔️ СРАЖАТЬСЯ ⚔️</button>
+    </div>
+    
+    <div id="taskCard" style="display: none;">
+        <div class="task-card">
+            <h2 class="task-title" id="taskTitle"></h2>
+            <div class="task-description" id="taskDescription"></div>
+            <img id="taskImage" class="task-image" style="display: none;" alt="Изображение задачи">
+            
+            <form class="task-form" id="taskForm" onsubmit="submitAnswer(event)">
+                <input type="hidden" id="taskId" value="">
+                <div class="form-group">
+                    <label for="className">Выберите класс:</label>
+                    <select id="className" required>
+                        <option value="">-- Выберите класс --</option>
+                        {% for class_obj in classes %}
+                        <option value="{{ class_obj.id }}">{{ class_obj.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="userName">Ваше имя:</label>
+                    <input type="text" id="userName" required placeholder="Введите ваше имя">
+                </div>
+                <div class="form-group">
+                    <label for="answer">Ваш ответ:</label>
+                    <input type="text" id="answer" required placeholder="Введите ответ">
+                </div>
+                <button type="submit" class="submit-btn" id="submitBtn" disabled>Отправить ответ</button>
+            </form>
+        </div>
+    </div>
+    
+    <div id="messageBox"></div>
+    
+    <div id="defeatedBox" style="display: none;">
+        <div class="defeated-boss">
+            <h2>🎉 БОСС ПОБЕЖДЕН! 🎉</h2>
+            <p>Все задачи решены!</p>
+            <p>Благодарим всех участников за участие в рейде!</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentTask = null;
+let bossId = {{ boss.id if boss else 'null' }};
+
+function startBattle() {
+    if (!bossId) {
+        alert('Босс не активен');
+        return;
+    }
+    
+    document.getElementById('battleBtn').disabled = true;
+    document.getElementById('battleBtn').textContent = 'Загрузка...';
+    document.getElementById('taskCard').style.display = 'none';
+    document.getElementById('messageBox').innerHTML = '';
+    
+    fetch('/api/raid-boss/task')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                if (data.boss_defeated) {
+                    showDefeatedMessage();
+                } else {
+                    showTask(data.task);
+                }
+            } else {
+                alert(data.error || 'Ошибка при получении задачи');
+                const battleBtn = document.getElementById('battleBtn');
+                if (battleBtn) {
+                    battleBtn.disabled = false;
+                    battleBtn.textContent = '⚔️ СРАЖАТЬСЯ ⚔️';
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Ошибка при получении задачи');
+            const battleBtn = document.getElementById('battleBtn');
+            if (battleBtn) {
+                battleBtn.disabled = false;
+                battleBtn.textContent = '⚔️ СРАЖАТЬСЯ ⚔️';
+            }
+        });
+}
+
+function showTask(task) {
+    currentTask = task;
+    document.getElementById('taskId').value = task.id;
+    document.getElementById('taskTitle').textContent = task.title;
+    document.getElementById('taskDescription').textContent = task.description || '';
+    
+    if (task.image_filename) {
+        document.getElementById('taskImage').src = `/uploads/tasks/${task.image_filename}`;
+        document.getElementById('taskImage').style.display = 'block';
+    } else {
+        document.getElementById('taskImage').style.display = 'none';
+    }
+    
+    document.getElementById('taskForm').reset();
+    document.getElementById('taskCard').style.display = 'block';
+    document.getElementById('messageBox').innerHTML = '';
+    
+    // Скрываем кнопку "Сражаться" когда показывается задача
+    const battleButtonContainer = document.getElementById('battleButtonContainer');
+    if (battleButtonContainer) {
+        battleButtonContainer.style.display = 'none';
+    }
+    
+    // Восстанавливаем видимость формы, если она была скрыта
+    document.getElementById('taskForm').style.display = 'block';
+    
+    // Сбрасываем состояние кнопки отправки (после reset форма пустая)
+    setTimeout(validateForm, 0);
+    
+    // Прокрутка к задаче
+    document.getElementById('taskCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function validateForm() {
+    const className = document.getElementById('className');
+    const userName = document.getElementById('userName');
+    const answer = document.getElementById('answer');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    if (!className || !userName || !answer || !submitBtn) {
+        return;
+    }
+    
+    const classId = className.value;
+    const userNameValue = userName.value.trim();
+    const answerValue = answer.value.trim();
+    
+    // Проверяем, что все поля заполнены и выбран класс
+    if (classId && userNameValue && answerValue) {
+        submitBtn.disabled = false;
+    } else {
+        submitBtn.disabled = true;
+    }
+}
+
+function submitAnswer(event) {
+    event.preventDefault();
+    
+    const taskId = document.getElementById('taskId').value;
+    const classId = document.getElementById('className').value;
+    const userName = document.getElementById('userName').value.trim();
+    const answer = document.getElementById('answer').value.trim();
+    
+    if (!taskId || !classId || !userName || !answer) {
+        alert('Заполните все поля');
+        return;
+    }
+    
+    const submitBtn = event.target.querySelector('.submit-btn');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Отправка...';
+    
+    fetch('/api/raid-boss/submit', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            task_id: parseInt(taskId),
+            class_id: parseInt(classId),
+            user_name: userName,
+            answer: answer
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showMessage(data.correct ? 'success' : 'error', data.message);
+            
+            if (data.correct) {
+                // Обновляем статистику
+                updateStats();
+            }
+            
+            // Показываем кнопку для повторного участия
+            setTimeout(() => {
+                showRetryButton();
+            }, 2000);
+        } else {
+            alert(data.error || 'Ошибка при отправке ответа');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Отправить ответ';
+            validateForm(); // Проверяем форму снова после ошибки
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Ошибка при отправке ответа');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Отправить ответ';
+        validateForm(); // Проверяем форму снова после ошибки
+    });
+}
+
+function showMessage(type, message) {
+    const messageBox = document.getElementById('messageBox');
+    const messageClass = type === 'success' ? 'message-success' : (type === 'error' ? 'message-error' : 'message-info');
+    
+    messageBox.innerHTML = `
+        <div class="message-box ${messageClass}">
+            ${message}
+        </div>
+    `;
+    
+    if (type === 'error') {
+        // При неверном ответе скрываем всю карточку задачи
+        document.getElementById('taskCard').style.display = 'none';
+    } else {
+        // При правильном ответе скрываем только форму
+        document.getElementById('taskForm').style.display = 'none';
+    }
+    
+    // Прокрутка к сообщению
+    messageBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function showRetryButton() {
+    const messageBox = document.getElementById('messageBox');
+    messageBox.innerHTML += `
+        <div style="text-align: center; margin-top: 20px;">
+            <button class="retry-btn" onclick="resetBattle()">Принять участие еще раз</button>
+        </div>
+    `;
+}
+
+function resetBattle() {
+    document.getElementById('taskCard').style.display = 'none';
+    document.getElementById('messageBox').innerHTML = '';
+    
+    // Показываем кнопку "Сражаться" снова
+    const battleButtonContainer = document.getElementById('battleButtonContainer');
+    if (battleButtonContainer) {
+        battleButtonContainer.style.display = 'block';
+    }
+    
+    // Восстанавливаем кнопку "Сражаться"
+    const battleBtn = document.getElementById('battleBtn');
+    if (battleBtn) {
+        battleBtn.disabled = false;
+        battleBtn.textContent = '⚔️ СРАЖАТЬСЯ ⚔️';
+    }
+    
+    // Восстанавливаем видимость формы для следующей попытки
+    const taskForm = document.getElementById('taskForm');
+    if (taskForm) {
+        taskForm.style.display = 'block';
+    }
+    // Сбрасываем состояние кнопки отправки
+    const submitBtn = document.getElementById('submitBtn');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Отправить ответ';
+    }
+    currentTask = null;
+}
+
+function showDefeatedMessage() {
+    document.getElementById('defeatedBox').style.display = 'block';
+    
+    // Скрываем контейнер с кнопкой "Сражаться"
+    const battleButtonContainer = document.getElementById('battleButtonContainer');
+    if (battleButtonContainer) {
+        battleButtonContainer.style.display = 'none';
+    }
+    
+    // Скрываем карточку задачи, если она была показана
+    const taskCard = document.getElementById('taskCard');
+    if (taskCard) {
+        taskCard.style.display = 'none';
+    }
+}
+
+function updateStats() {
+    // Обновляем статистику босса
+    fetch('/api/raid-boss/stats')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Обновляем здоровье
+                const currentHealth = data.boss.current_health;
+                const totalHealth = data.boss.total_health;
+                const healthPercent = totalHealth > 0 ? (currentHealth / totalHealth) * 100 : 0;
+                
+                document.getElementById('currentHealth').textContent = currentHealth;
+                document.getElementById('totalHealth').textContent = totalHealth;
+                document.getElementById('healthFill').style.width = healthPercent + '%';
+                document.getElementById('healthText').textContent = Math.round(healthPercent) + '%';
+                
+                // Обновляем урон по классам
+                const classDamageList = document.getElementById('classDamageList');
+                Object.keys(data.class_damage).forEach(classId => {
+                    const damageElement = document.querySelector(`[data-class-id="${classId}"]`);
+                    if (damageElement) {
+                        damageElement.textContent = data.class_damage[classId].damage + ' урона';
+                    }
+                });
+                
+                // Если здоровье = 0, показываем сообщение о победе
+                if (currentHealth <= 0) {
+                    showDefeatedMessage();
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error updating stats:', error);
+        });
+}
+
+// Обновляем статистику каждые 5 секунд
+if (bossId) {
+    setInterval(updateStats, 5000);
+    // Обновляем сразу при загрузке
+    updateStats();
+}
+
+// Инициализация обработчиков при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    const className = document.getElementById('className');
+    const userName = document.getElementById('userName');
+    const answer = document.getElementById('answer');
+    
+    if (className) {
+        className.addEventListener('change', validateForm);
+    }
+    if (userName) {
+        userName.addEventListener('input', validateForm);
+        userName.addEventListener('keyup', validateForm);
+    }
+    if (answer) {
+        answer.addEventListener('input', validateForm);
+        answer.addEventListener('keyup', validateForm);
+    }
+});
+</script>
+{% endblock %}

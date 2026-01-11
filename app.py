@@ -189,6 +189,97 @@ class TaskSolution(db.Model):
             'solved_at': self.solved_at.isoformat() if self.solved_at else None
         }
 
+# Модели для рейд босса
+class Boss(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    rewards_list = db.Column(db.Text, nullable=True)  # Список наград (текст)
+    is_active = db.Column(db.Boolean, default=False, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    tasks = db.relationship('BossTask', backref='boss', lazy=True, cascade='all, delete-orphan')
+    solutions = db.relationship('BossTaskSolution', backref='boss', lazy=True, cascade='all, delete-orphan')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'rewards_list': self.rewards_list,
+            'is_active': self.is_active,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'total_health': sum(task.points for task in self.tasks) if self.tasks else 0,
+            'current_health': self.get_current_health()
+        }
+    
+    def get_current_health(self):
+        """Возвращает текущее здоровье босса (сумма очков всех задач минус нанесенный урон)"""
+        from sqlalchemy import func
+        total_health = sum(task.points for task in self.tasks) if self.tasks else 0
+        # Вычисляем суммарный урон из правильно решенных задач
+        damage_dealt = db.session.query(func.sum(BossTask.points)).join(
+            BossTaskSolution, BossTaskSolution.task_id == BossTask.id
+        ).filter(
+            BossTaskSolution.boss_id == self.id,
+            BossTaskSolution.is_correct == True
+        ).scalar() or 0
+        return max(0, total_health - damage_dealt)
+
+class BossTask(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    boss_id = db.Column(db.Integer, db.ForeignKey('boss.id'), nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    image_filename = db.Column(db.String(255), nullable=True)
+    correct_answer = db.Column(db.String(200), nullable=False)
+    points = db.Column(db.Integer, nullable=False, default=0)  # Стоимость в баллах (урон)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    solutions = db.relationship('BossTaskSolution', backref='task', lazy=True, cascade='all, delete-orphan')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'boss_id': self.boss_id,
+            'title': self.title,
+            'description': self.description,
+            'image_filename': self.image_filename,
+            'correct_answer': self.correct_answer,
+            'points': self.points,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'is_solved': self.is_solved()
+        }
+    
+    def is_solved(self):
+        """Проверяет, решена ли задача правильно"""
+        return BossTaskSolution.query.filter_by(
+            task_id=self.id,
+            is_correct=True
+        ).first() is not None
+
+class BossTaskSolution(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    boss_id = db.Column(db.Integer, db.ForeignKey('boss.id'), nullable=False)
+    task_id = db.Column(db.Integer, db.ForeignKey('boss_task.id'), nullable=False)
+    class_id = db.Column(db.Integer, db.ForeignKey('class.id'), nullable=False)
+    user_name = db.Column(db.String(100), nullable=False)
+    answer = db.Column(db.String(200), nullable=False)
+    is_correct = db.Column(db.Boolean, default=False, nullable=False)
+    solved_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'boss_id': self.boss_id,
+            'task_id': self.task_id,
+            'class_id': self.class_id,
+            'user_name': self.user_name,
+            'answer': self.answer,
+            'is_correct': self.is_correct,
+            'solved_at': self.solved_at.isoformat() if self.solved_at else None
+        }
+
 # Декоратор для проверки прав администратора
 def admin_required(f):
     @wraps(f)
@@ -300,6 +391,19 @@ with app.app_context():
                         print("Добавлена колонка last_updated в таблицу weekly_task")
     except Exception as e:
         print(f"Ошибка при создании таблиц для задач: {e}")
+        db.create_all()
+    
+    # Миграция: добавление таблиц для рейд босса
+    try:
+        from sqlalchemy import inspect, text
+        inspector = inspect(db.engine)
+        tables = inspector.get_table_names()
+        
+        if 'boss' not in tables or 'boss_task' not in tables or 'boss_task_solution' not in tables:
+            db.create_all()
+            print("Созданы таблицы для рейд босса")
+    except Exception as e:
+        print(f"Ошибка при создании таблиц для рейд босса: {e}")
         db.create_all()
     
     # Создание директории для загрузки изображений
@@ -1062,6 +1166,367 @@ def get_next_update_time():
         'days': time_until.days,
         'hours': time_until.seconds // 3600,
         'minutes': (time_until.seconds % 3600) // 60
+    })
+
+# ==================== РЕЙД БОССА ====================
+
+# Панель администратора - рейд босса
+@app.route('/admin/boss-raid')
+@admin_required
+def admin_boss_raid():
+    bosses = Boss.query.all()
+    return render_template('admin/boss_raid.html', bosses=bosses)
+
+# API для создания босса
+@app.route('/api/bosses', methods=['POST'])
+@admin_required
+def create_boss():
+    data = request.json
+    name = data.get('name', '').strip()
+    rewards_list = data.get('rewards_list', '').strip() or None
+    
+    if not name:
+        return jsonify({'success': False, 'error': 'Имя босса обязательно'}), 400
+    
+    new_boss = Boss(
+        name=name,
+        rewards_list=rewards_list,
+        is_active=False
+    )
+    db.session.add(new_boss)
+    db.session.commit()
+    return jsonify({'success': True, 'boss': new_boss.to_dict()})
+
+# API для обновления босса
+@app.route('/api/bosses/<int:boss_id>', methods=['PUT'])
+@admin_required
+def update_boss(boss_id):
+    boss = db.get_or_404(Boss, boss_id)
+    data = request.json
+    
+    if 'name' in data:
+        boss.name = data['name'].strip()
+    if 'rewards_list' in data:
+        boss.rewards_list = data['rewards_list'].strip() or None
+    
+    boss.updated_at = datetime.utcnow()
+    db.session.commit()
+    return jsonify({'success': True, 'boss': boss.to_dict()})
+
+# API для удаления босса
+@app.route('/api/bosses/<int:boss_id>', methods=['DELETE'])
+@admin_required
+def delete_boss(boss_id):
+    boss = db.get_or_404(Boss, boss_id)
+    
+    # Удаляем изображения задач босса
+    for task in boss.tasks:
+        if task.image_filename:
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], task.image_filename)
+            if os.path.exists(filepath):
+                os.remove(filepath)
+    
+    db.session.delete(boss)
+    db.session.commit()
+    return jsonify({'success': True})
+
+# API для переключения активности босса
+@app.route('/api/bosses/<int:boss_id>/toggle-active', methods=['POST'])
+@admin_required
+def toggle_boss_active(boss_id):
+    boss = db.get_or_404(Boss, boss_id)
+    
+    if boss.is_active:
+        boss.is_active = False
+    else:
+        # Деактивируем всех остальных боссов
+        Boss.query.filter(Boss.id != boss_id).update({Boss.is_active: False})
+        boss.is_active = True
+    
+    boss.updated_at = datetime.utcnow()
+    db.session.commit()
+    return jsonify({'success': True, 'boss': boss.to_dict()})
+
+# API для получения задач босса
+@app.route('/api/bosses/<int:boss_id>/tasks')
+@admin_required
+def get_boss_tasks(boss_id):
+    boss = db.get_or_404(Boss, boss_id)
+    tasks = BossTask.query.filter_by(boss_id=boss_id).all()
+    return jsonify({'success': True, 'tasks': [task.to_dict() for task in tasks]})
+
+# API для создания задачи босса
+@app.route('/api/bosses/<int:boss_id>/tasks', methods=['POST'])
+@admin_required
+def create_boss_task(boss_id):
+    boss = db.get_or_404(Boss, boss_id)
+    
+    try:
+        title = request.form.get('title', '').strip()
+        description = request.form.get('description', '').strip() or None
+        correct_answer = request.form.get('correct_answer', '').strip()
+        points = int(request.form.get('points', 0))
+        
+        if not title or not correct_answer:
+            return jsonify({'success': False, 'error': 'Название и правильный ответ обязательны'}), 400
+        
+        if points < 0:
+            return jsonify({'success': False, 'error': 'Стоимость в баллах не может быть отрицательной'}), 400
+        
+        # Обработка загрузки изображения
+        image_filename = None
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                filename = f"boss_{timestamp}_{filename}"
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                file.save(filepath)
+                image_filename = filename
+        
+        new_task = BossTask(
+            boss_id=boss_id,
+            title=title,
+            description=description,
+            image_filename=image_filename,
+            correct_answer=correct_answer,
+            points=points
+        )
+        db.session.add(new_task)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'task': new_task.to_dict()})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# API для обновления задачи босса
+@app.route('/api/bosses/<int:boss_id>/tasks/<int:task_id>', methods=['PUT'])
+@admin_required
+def update_boss_task(boss_id, task_id):
+    boss = db.get_or_404(Boss, boss_id)
+    task = db.get_or_404(BossTask, task_id)
+    
+    if task.boss_id != boss_id:
+        return jsonify({'success': False, 'error': 'Задача не принадлежит этому боссу'}), 400
+    
+    try:
+        if request.is_json:
+            data = request.json
+            title = data.get('title', '').strip()
+            description = data.get('description', '').strip() or None
+            correct_answer = data.get('correct_answer', '').strip()
+            points = data.get('points', task.points)
+            delete_image = data.get('delete_image', False)
+        else:
+            title = request.form.get('title', '').strip()
+            description = request.form.get('description', '').strip() or None
+            correct_answer = request.form.get('correct_answer', '').strip()
+            points = request.form.get('points', task.points)
+            if isinstance(points, str):
+                try:
+                    points = int(points)
+                except ValueError:
+                    points = task.points
+            delete_image = request.form.get('delete_image', 'false').lower() == 'true'
+        
+        if title:
+            task.title = title
+        if description is not None:
+            task.description = description
+        if correct_answer:
+            task.correct_answer = correct_answer
+        if points is not None and points >= 0:
+            task.points = points
+        
+        # Обработка изображения
+        if delete_image and task.image_filename:
+            old_filepath = os.path.join(app.config['UPLOAD_FOLDER'], task.image_filename)
+            if os.path.exists(old_filepath):
+                os.remove(old_filepath)
+            task.image_filename = None
+        
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename and allowed_file(file.filename):
+                if task.image_filename:
+                    old_filepath = os.path.join(app.config['UPLOAD_FOLDER'], task.image_filename)
+                    if os.path.exists(old_filepath):
+                        os.remove(old_filepath)
+                
+                filename = secure_filename(file.filename)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                filename = f"boss_{timestamp}_{filename}"
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                file.save(filepath)
+                task.image_filename = filename
+        
+        db.session.commit()
+        return jsonify({'success': True, 'task': task.to_dict()})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# API для удаления задачи босса
+@app.route('/api/bosses/<int:boss_id>/tasks/<int:task_id>', methods=['DELETE'])
+@admin_required
+def delete_boss_task(boss_id, task_id):
+    boss = db.get_or_404(Boss, boss_id)
+    task = db.get_or_404(BossTask, task_id)
+    
+    if task.boss_id != boss_id:
+        return jsonify({'success': False, 'error': 'Задача не принадлежит этому боссу'}), 400
+    
+    # Удаляем изображение, если есть
+    if task.image_filename:
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], task.image_filename)
+        if os.path.exists(filepath):
+            os.remove(filepath)
+    
+    db.session.delete(task)
+    db.session.commit()
+    return jsonify({'success': True})
+
+# Страница рейд босса (доступна для всех)
+@app.route('/raid-boss')
+def raid_boss_page():
+    active_boss = Boss.query.filter_by(is_active=True).first()
+    if not active_boss:
+        return render_template('raid_boss.html', boss=None, classes=[])
+    
+    # Получаем все классы для выбора
+    classes = Class.query.all()
+    
+    # Вычисляем урон по классам
+    class_damage = {}
+    for class_obj in classes:
+        damage = db.session.query(db.func.sum(BossTask.points)).join(
+            BossTaskSolution, BossTaskSolution.task_id == BossTask.id
+        ).filter(
+            BossTaskSolution.boss_id == active_boss.id,
+            BossTaskSolution.class_id == class_obj.id,
+            BossTaskSolution.is_correct == True
+        ).scalar() or 0
+        class_damage[class_obj.id] = damage
+    
+    return render_template('raid_boss.html', 
+                         boss=active_boss, 
+                         classes=classes,
+                         class_damage=class_damage)
+
+# API для получения случайной доступной задачи босса
+@app.route('/api/raid-boss/task', methods=['GET'])
+def get_random_boss_task():
+    active_boss = Boss.query.filter_by(is_active=True).first()
+    if not active_boss:
+        return jsonify({'success': False, 'error': 'Нет активного босса'}), 404
+    
+    # Получаем все задачи, которые еще не решены
+    all_tasks = BossTask.query.filter_by(boss_id=active_boss.id).all()
+    available_tasks = [task for task in all_tasks if not task.is_solved()]
+    
+    if not available_tasks:
+        return jsonify({
+            'success': True, 
+            'boss_defeated': True,
+            'message': 'Босс побежден! Все задачи решены.'
+        })
+    
+    # Выбираем случайную задачу
+    random_task = random.choice(available_tasks)
+    return jsonify({
+        'success': True,
+        'task': random_task.to_dict(),
+        'boss_defeated': False
+    })
+
+# API для отправки ответа на задачу босса
+@app.route('/api/raid-boss/submit', methods=['POST'])
+def submit_boss_task_answer():
+    data = request.json
+    task_id = data.get('task_id')
+    class_id = data.get('class_id')
+    user_name = data.get('user_name', '').strip()
+    answer = data.get('answer', '').strip()
+    
+    if not task_id or not class_id or not user_name or not answer:
+        return jsonify({'success': False, 'error': 'Все поля обязательны'}), 400
+    
+    task = db.get_or_404(BossTask, task_id)
+    active_boss = Boss.query.filter_by(is_active=True, id=task.boss_id).first()
+    
+    if not active_boss:
+        return jsonify({'success': False, 'error': 'Босс не активен'}), 404
+    
+    # Проверяем, не решена ли задача уже
+    if task.is_solved():
+        return jsonify({'success': False, 'error': 'Задача уже решена'}), 400
+    
+    # Проверяем правильность ответа
+    is_correct = task.correct_answer.strip().lower() == answer.strip().lower()
+    
+    # Сохраняем решение
+    solution = BossTaskSolution(
+        boss_id=active_boss.id,
+        task_id=task.id,
+        class_id=class_id,
+        user_name=user_name,
+        answer=answer,
+        is_correct=is_correct
+    )
+    db.session.add(solution)
+    db.session.commit()
+    
+    if is_correct:
+        return jsonify({
+            'success': True,
+            'correct': True,
+            'message': f'Правильно! Вы нанесли {task.points} урона боссу!'
+        })
+    else:
+        return jsonify({
+            'success': True,
+            'correct': False,
+            'message': 'Неверный ответ. Попробуйте еще раз!'
+        })
+
+# API для получения статистики босса
+@app.route('/api/raid-boss/stats')
+def get_boss_stats():
+    active_boss = Boss.query.filter_by(is_active=True).first()
+    if not active_boss:
+        return jsonify({'success': False, 'error': 'Нет активного босса'}), 404
+    
+    # Получаем все классы
+    classes = Class.query.all()
+    class_damage = {}
+    
+    for class_obj in classes:
+        damage = db.session.query(db.func.sum(BossTask.points)).join(
+            BossTaskSolution, BossTaskSolution.task_id == BossTask.id
+        ).filter(
+            BossTaskSolution.boss_id == active_boss.id,
+            BossTaskSolution.class_id == class_obj.id,
+            BossTaskSolution.is_correct == True
+        ).scalar() or 0
+        class_damage[class_obj.id] = {
+            'class_name': class_obj.name,
+            'damage': damage
+        }
+    
+    total_health = sum(task.points for task in active_boss.tasks)
+    current_health = active_boss.get_current_health()
+    
+    return jsonify({
+        'success': True,
+        'boss': {
+            'id': active_boss.id,
+            'name': active_boss.name,
+            'total_health': total_health,
+            'current_health': current_health
+        },
+        'class_damage': class_damage
     })
 
 # Обработчик завершения приложения для остановки планировщика
