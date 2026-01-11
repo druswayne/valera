@@ -302,10 +302,21 @@ def update_weekly_task():
         try:
             # Получаем все задачи, которые еще не решены
             all_tasks = WeeklyTask.query.all()
+            if not all_tasks:
+                print("Нет задач для обновления")
+                return
+            
             unsolved_tasks = [task for task in all_tasks if not task.is_solved()]
             
             if not unsolved_tasks:
-                print("Нет нерешенных задач для обновления")
+                # Если все задачи решены, активируем первую задачу
+                print("Все задачи решены. Активирую первую задачу.")
+                first_task = all_tasks[0]
+                WeeklyTask.query.update({WeeklyTask.is_active: False})
+                first_task.is_active = True
+                first_task.last_updated = datetime.utcnow()
+                db.session.commit()
+                print(f"Задача недели обновлена (все задачи решены): {first_task.title}")
                 return
             
             # Выбираем случайную задачу из нерешенных
@@ -1391,7 +1402,12 @@ def delete_boss_task(boss_id, task_id):
 # Страница рейд босса (доступна для всех)
 @app.route('/raid-boss')
 def raid_boss_page():
+    # Получаем активного босса, если есть, иначе последнего созданного
     active_boss = Boss.query.filter_by(is_active=True).first()
+    if not active_boss:
+        # Если нет активного, берем последнего созданного босса
+        active_boss = Boss.query.order_by(Boss.created_at.desc()).first()
+    
     if not active_boss:
         return render_template('raid_boss.html', boss=None, classes=[])
     
@@ -1478,7 +1494,30 @@ def submit_boss_task_answer():
     db.session.add(solution)
     db.session.commit()
     
+    # Если ответ правильный, проверяем race condition после коммита
     if is_correct:
+        # Проверяем, сколько правильных решений существует для этой задачи
+        correct_solutions = BossTaskSolution.query.filter_by(
+            task_id=task.id,
+            is_correct=True
+        ).order_by(BossTaskSolution.solved_at.asc()).all()
+        
+        # Если правильных решений больше одного, значит был race condition
+        if len(correct_solutions) > 1:
+            # Оставляем только первое решение как правильное
+            first_solution = correct_solutions[0]
+            # Помечаем остальные как неправильные
+            for sol in correct_solutions[1:]:
+                sol.is_correct = False
+            db.session.commit()
+            
+            # Если текущее решение не было первым, сообщаем, что задача уже решена
+            if solution.id != first_solution.id:
+                return jsonify({
+                    'success': False,
+                    'error': 'Задача уже решена другим пользователем'
+                }), 400
+        
         return jsonify({
             'success': True,
             'correct': True,
@@ -1494,9 +1533,19 @@ def submit_boss_task_answer():
 # API для получения статистики босса
 @app.route('/api/raid-boss/stats')
 def get_boss_stats():
-    active_boss = Boss.query.filter_by(is_active=True).first()
-    if not active_boss:
-        return jsonify({'success': False, 'error': 'Нет активного босса'}), 404
+    # Получаем boss_id из параметров запроса, если есть
+    boss_id = request.args.get('boss_id', type=int)
+    
+    if boss_id:
+        boss = Boss.query.get(boss_id)
+    else:
+        # Если не указан, ищем активного, иначе последнего
+        boss = Boss.query.filter_by(is_active=True).first()
+        if not boss:
+            boss = Boss.query.order_by(Boss.created_at.desc()).first()
+    
+    if not boss:
+        return jsonify({'success': False, 'error': 'Нет босса'}), 404
     
     # Получаем все классы
     classes = Class.query.all()
@@ -1506,7 +1555,7 @@ def get_boss_stats():
         damage = db.session.query(db.func.sum(BossTask.points)).join(
             BossTaskSolution, BossTaskSolution.task_id == BossTask.id
         ).filter(
-            BossTaskSolution.boss_id == active_boss.id,
+            BossTaskSolution.boss_id == boss.id,
             BossTaskSolution.class_id == class_obj.id,
             BossTaskSolution.is_correct == True
         ).scalar() or 0
@@ -1515,16 +1564,17 @@ def get_boss_stats():
             'damage': damage
         }
     
-    total_health = sum(task.points for task in active_boss.tasks)
-    current_health = active_boss.get_current_health()
+    total_health = sum(task.points for task in boss.tasks)
+    current_health = boss.get_current_health()
     
     return jsonify({
         'success': True,
         'boss': {
-            'id': active_boss.id,
-            'name': active_boss.name,
+            'id': boss.id,
+            'name': boss.name,
             'total_health': total_health,
-            'current_health': current_health
+            'current_health': current_health,
+            'is_active': boss.is_active
         },
         'class_damage': class_damage
     })
