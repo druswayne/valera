@@ -1,0 +1,892 @@
+{% extends "base.html" %}
+
+{% block title %}Управление рейд боссом - Админ панель{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <h1 class="admin-title">Управление рейд боссом</h1>
+    <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
+        <a href="{{ url_for('index') }}" class="back-link">← Назад к рейтингу</a>
+        <a href="{{ url_for('admin_classes') }}" class="back-link">Классы</a>
+        <a href="{{ url_for('admin_prizes') }}" class="back-link">Призы</a>
+        <a href="{{ url_for('admin_tasks') }}" class="back-link">Задачи</a>
+        <a href="{{ url_for('logout') }}" class="back-link logout-link">Выйти</a>
+    </div>
+    
+    <button class="add-btn" onclick="showAddBossModal()">+ Добавить рейд босса</button>
+    
+    <div class="bosses-list">
+        {% for boss in bosses %}
+        <div class="boss-card" data-id="{{ boss.id }}">
+            <div class="boss-header">
+                <h2 class="boss-name">{{ boss.name }}</h2>
+                <div class="boss-status">
+                    <span class="status-badge {{ 'active' if boss.is_active else 'inactive' }}">
+                        {{ 'Активен' if boss.is_active else 'Неактивен' }}
+                    </span>
+                </div>
+            </div>
+            
+            <div class="boss-info">
+                <div class="boss-health">
+                    <strong>Здоровье:</strong> 
+                    <span id="boss-health-{{ boss.id }}">{{ boss.to_dict().current_health }} / {{ boss.to_dict().total_health }}</span>
+                </div>
+                {% if boss.rewards_list %}
+                <div class="boss-rewards">
+                    <strong>Награды:</strong> {{ boss.rewards_list }}
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="boss-actions">
+                <button class="edit-btn" onclick="editBoss({{ boss.id }}, '{{ boss.name|replace("'", "\\'") }}', '{{ boss.rewards_list|replace("'", "\\'") if boss.rewards_list else "" }}')">Редактировать</button>
+                <button class="toggle-btn {{ 'deactivate' if boss.is_active else 'activate' }}" onclick="toggleBossActive({{ boss.id }}, {{ 'true' if boss.is_active else 'false' }})">
+                    {{ 'Отключить' if boss.is_active else 'Включить' }}
+                </button>
+                <button class="tasks-btn" onclick="manageBossTasks({{ boss.id }}, '{{ boss.name|replace("'", "\\'") }}')">Управление задачами</button>
+                <button class="delete-btn" onclick="deleteBoss({{ boss.id }})">Удалить</button>
+            </div>
+            
+            <div class="boss-tasks-preview" id="boss-tasks-{{ boss.id }}">
+                <strong>Задач:</strong> <span id="boss-tasks-count-{{ boss.id }}">Загрузка...</span>
+            </div>
+        </div>
+        {% endfor %}
+        
+        {% if not bosses %}
+        <p style="text-align: center; color: #999; padding: 40px; font-size: 18px;">
+            Нет рейд боссов. Создайте первого босса для начала.
+        </p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Модальное окно добавления/редактирования босса -->
+<div class="modal-overlay" id="bossModal">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closeBossModal()">&times;</button>
+        <h2 class="modal-title" id="bossModalTitle">Добавить рейд босса</h2>
+        <form id="bossForm" onsubmit="saveBoss(event)">
+            <input type="hidden" id="bossId" value="">
+            <div class="form-group">
+                <label>Имя босса:</label>
+                <input type="text" id="bossName" required>
+            </div>
+            <div class="form-group">
+                <label>Список наград (необязательно):</label>
+                <textarea id="bossRewards" rows="4" placeholder="Награда 1, Награда 2, Награда 3"></textarea>
+            </div>
+            <button type="submit" class="save-btn">Сохранить</button>
+        </form>
+    </div>
+</div>
+
+<!-- Модальное окно управления задачами босса -->
+<div class="modal-overlay" id="tasksModal">
+    <div class="modal-content large-modal">
+        <button class="modal-close" onclick="closeTasksModal()">&times;</button>
+        <h2 class="modal-title" id="tasksModalTitle">Управление задачами</h2>
+        <div class="tasks-container">
+            <button class="add-btn" onclick="showAddTaskModal()" style="margin-bottom: 20px;">+ Добавить задачу</button>
+            <div id="tasksList" class="tasks-list"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно добавления/редактирования задачи босса -->
+<div class="modal-overlay" id="taskModal">
+    <div class="modal-content large-modal">
+        <button class="modal-close" onclick="closeTaskModal()">&times;</button>
+        <h2 class="modal-title" id="taskModalTitle">Добавить задачу</h2>
+        <form id="taskForm" onsubmit="saveTask(event)" enctype="multipart/form-data">
+            <input type="hidden" id="taskId" value="">
+            <div class="form-group">
+                <label>Название задачи:</label>
+                <input type="text" id="taskTitle" required>
+            </div>
+            <div class="form-group">
+                <label>Условие/Описание (необязательно):</label>
+                <textarea id="taskDescription" rows="4"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Правильный ответ:</label>
+                <input type="text" id="taskCorrectAnswer" required>
+            </div>
+            <div class="form-group">
+                <label>Стоимость в баллах (урон):</label>
+                <input type="number" id="taskPoints" min="0" value="0" required>
+            </div>
+            <div class="form-group">
+                <label>Изображение (необязательно):</label>
+                <input type="file" id="taskImage" accept="image/*">
+                <div id="taskImagePreview" style="margin-top: 10px;"></div>
+                <div id="taskCurrentImage" style="margin-top: 10px;"></div>
+                <button type="button" id="deleteImageBtn" class="delete-image-btn" onclick="deleteTaskImage()" style="display: none;">Удалить изображение</button>
+            </div>
+            <button type="submit" class="save-btn">Сохранить</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentBossId = null;
+let editingTaskId = null;
+
+// Управление боссами
+function showAddBossModal() {
+    document.getElementById('bossModalTitle').textContent = 'Добавить рейд босса';
+    document.getElementById('bossForm').reset();
+    document.getElementById('bossId').value = '';
+    document.getElementById('bossModal').classList.add('show');
+}
+
+function editBoss(id, name, rewards) {
+    document.getElementById('bossModalTitle').textContent = 'Редактировать рейд босса';
+    document.getElementById('bossId').value = id;
+    document.getElementById('bossName').value = name;
+    document.getElementById('bossRewards').value = rewards || '';
+    document.getElementById('bossModal').classList.add('show');
+}
+
+function closeBossModal() {
+    document.getElementById('bossModal').classList.remove('show');
+}
+
+function saveBoss(event) {
+    event.preventDefault();
+    const id = document.getElementById('bossId').value;
+    const name = document.getElementById('bossName').value.trim();
+    const rewards = document.getElementById('bossRewards').value.trim();
+    
+    const url = id ? `/api/bosses/${id}` : '/api/bosses';
+    const method = id ? 'PUT' : 'POST';
+    const data = {
+        name: name,
+        rewards_list: rewards || null
+    };
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.error || 'Ошибка при сохранении');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Ошибка при сохранении');
+    });
+}
+
+function deleteBoss(id) {
+    if (!confirm('Вы уверены, что хотите удалить этого босса? Все задачи будут удалены!')) {
+        return;
+    }
+    
+    fetch(`/api/bosses/${id}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Ошибка при удалении');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Ошибка при удалении');
+    });
+}
+
+function toggleBossActive(id, isActive) {
+    fetch(`/api/bosses/${id}/toggle-active`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Ошибка при переключении статуса');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Ошибка при переключении статуса');
+    });
+}
+
+// Управление задачами босса
+function manageBossTasks(bossId, bossName) {
+    currentBossId = bossId;
+    document.getElementById('tasksModalTitle').textContent = `Задачи босса: ${bossName}`;
+    document.getElementById('tasksModal').classList.add('show');
+    loadBossTasks(bossId);
+}
+
+function closeTasksModal() {
+    document.getElementById('tasksModal').classList.remove('show');
+    currentBossId = null;
+    editingTaskId = null;
+}
+
+function loadBossTasks(bossId) {
+    fetch(`/api/bosses/${bossId}/tasks`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayBossTasks(data.tasks);
+            } else {
+                alert('Ошибка при загрузке задач');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Ошибка при загрузке задач');
+        });
+}
+
+function displayBossTasks(tasks) {
+    const list = document.getElementById('tasksList');
+    if (tasks.length === 0) {
+        list.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">Нет задач у этого босса</p>';
+        return;
+    }
+    
+    list.innerHTML = tasks.map(task => `
+        <div class="task-item" data-id="${task.id}">
+            <div class="task-info">
+                <div class="task-title">${task.title}</div>
+                <div class="task-details">
+                    ${task.description ? `<div><strong>Описание:</strong> ${task.description.substring(0, 100)}${task.description.length > 100 ? '...' : ''}</div>` : ''}
+                    <div><strong>Стоимость:</strong> ${task.points} баллов</div>
+                    <div><strong>Статус:</strong> <span class="${task.is_solved ? 'solved' : 'not-solved'}">${task.is_solved ? 'Решена' : 'Не решена'}</span></div>
+                    ${task.image_filename ? `<div><img src="/uploads/tasks/${task.image_filename}" style="max-width: 100px; max-height: 60px; border-radius: 5px; margin-top: 5px;"></div>` : ''}
+                </div>
+            </div>
+            <div class="task-actions">
+                <button class="edit-btn" onclick="editTask(${task.id}, ${currentBossId})">Редактировать</button>
+                <button class="delete-btn" onclick="deleteTask(${task.id})">Удалить</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function showAddTaskModal() {
+    editingTaskId = null;
+    document.getElementById('taskModalTitle').textContent = 'Добавить задачу';
+    document.getElementById('taskForm').reset();
+    document.getElementById('taskId').value = '';
+    document.getElementById('taskImagePreview').innerHTML = '';
+    document.getElementById('taskCurrentImage').innerHTML = '';
+    document.getElementById('deleteImageBtn').style.display = 'none';
+    document.getElementById('taskModal').classList.add('show');
+}
+
+function editTask(taskId, bossId) {
+    // Получаем задачу из уже загруженного списка
+    const taskElement = document.querySelector(`.task-item[data-id="${taskId}"]`);
+    if (!taskElement) {
+        alert('Задача не найдена');
+        return;
+    }
+    
+    // Загружаем задачи снова, чтобы получить актуальные данные
+    fetch(`/api/bosses/${bossId}/tasks`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const task = data.tasks.find(t => t.id === taskId);
+                if (!task) {
+                    alert('Задача не найдена');
+                    return;
+                }
+                
+                editingTaskId = taskId;
+                document.getElementById('taskModalTitle').textContent = 'Редактировать задачу';
+                document.getElementById('taskId').value = taskId;
+                document.getElementById('taskTitle').value = task.title;
+                document.getElementById('taskDescription').value = task.description || '';
+                document.getElementById('taskCorrectAnswer').value = task.correct_answer;
+                document.getElementById('taskPoints').value = task.points;
+                
+                if (task.image_filename) {
+                    document.getElementById('taskCurrentImage').innerHTML = `
+                        <img src="/uploads/tasks/${task.image_filename}" style="max-width: 200px; max-height: 150px; border-radius: 5px;">
+                    `;
+                    document.getElementById('deleteImageBtn').style.display = 'block';
+                } else {
+                    document.getElementById('taskCurrentImage').innerHTML = '';
+                    document.getElementById('deleteImageBtn').style.display = 'none';
+                }
+                
+                document.getElementById('taskImagePreview').innerHTML = '';
+                document.getElementById('taskForm').removeAttribute('data-delete-image');
+                document.getElementById('taskModal').classList.add('show');
+            } else {
+                alert('Ошибка при загрузке задачи');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Ошибка при загрузке задачи');
+        });
+}
+
+function closeTaskModal() {
+    document.getElementById('taskModal').classList.remove('show');
+    editingTaskId = null;
+}
+
+function deleteTaskImage() {
+    if (confirm('Удалить изображение?')) {
+        document.getElementById('taskCurrentImage').innerHTML = '';
+        document.getElementById('deleteImageBtn').style.display = 'none';
+        // Помечаем для удаления при сохранении
+        document.getElementById('taskForm').setAttribute('data-delete-image', 'true');
+    }
+}
+
+function saveTask(event) {
+    event.preventDefault();
+    if (!currentBossId) {
+        alert('Выберите босса');
+        return;
+    }
+    
+    const taskId = document.getElementById('taskId').value;
+    const formData = new FormData();
+    
+    formData.append('title', document.getElementById('taskTitle').value.trim());
+    formData.append('description', document.getElementById('taskDescription').value.trim() || '');
+    formData.append('correct_answer', document.getElementById('taskCorrectAnswer').value.trim());
+    formData.append('points', document.getElementById('taskPoints').value);
+    
+    const imageFile = document.getElementById('taskImage').files[0];
+    if (imageFile) {
+        formData.append('image', imageFile);
+    }
+    
+    if (taskId && document.getElementById('taskForm').getAttribute('data-delete-image') === 'true') {
+        formData.append('delete_image', 'true');
+        document.getElementById('taskForm').removeAttribute('data-delete-image');
+    }
+    
+    const url = taskId ? `/api/bosses/${currentBossId}/tasks/${taskId}` : `/api/bosses/${currentBossId}/tasks`;
+    const method = taskId ? 'PUT' : 'POST';
+    
+    fetch(url, {
+        method: method,
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeTaskModal();
+            loadBossTasks(currentBossId);
+        } else {
+            alert(data.error || 'Ошибка при сохранении задачи');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Ошибка при сохранении задачи');
+    });
+}
+
+function deleteTask(taskId) {
+    if (!confirm('Вы уверены, что хотите удалить эту задачу?')) {
+        return;
+    }
+    
+    fetch(`/api/bosses/${currentBossId}/tasks/${taskId}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadBossTasks(currentBossId);
+        } else {
+            alert('Ошибка при удалении задачи');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Ошибка при удалении задачи');
+    });
+}
+
+// Превью изображения
+document.getElementById('taskImage')?.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('taskImagePreview').innerHTML = `
+                <img src="${e.target.result}" style="max-width: 200px; max-height: 150px; border-radius: 5px;">
+            `;
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+// Закрытие модальных окон при клике вне них
+document.getElementById('bossModal')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeBossModal();
+    }
+});
+
+document.getElementById('tasksModal')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeTasksModal();
+    }
+});
+
+document.getElementById('taskModal')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeTaskModal();
+    }
+});
+
+// Загрузка количества задач для каждого босса
+document.addEventListener('DOMContentLoaded', function() {
+    {% for boss in bosses %}
+    fetch(`/api/bosses/{{ boss.id }}/tasks`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('boss-tasks-count-{{ boss.id }}').textContent = data.tasks.length;
+            }
+        })
+        .catch(error => {
+            document.getElementById('boss-tasks-count-{{ boss.id }}').textContent = 'Ошибка';
+        });
+    {% endfor %}
+});
+</script>
+
+<style>
+.admin-container {
+    max-width: 1400px;
+    margin: 20px auto;
+    padding: 25px;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border-radius: 25px;
+    border: 3px solid #c8a2c8;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+}
+
+.admin-title {
+    color: #8b6fa8;
+    font-size: 42px;
+    margin-bottom: 25px;
+    text-shadow: 2px 2px 0px #e8d5c4;
+    font-weight: bold;
+    text-align: center;
+}
+
+.back-link {
+    color: #fff;
+    text-decoration: none;
+    margin-bottom: 15px;
+    display: inline-block;
+    background: linear-gradient(135deg, #9b8fb8 0%, #8b6fa8 100%);
+    padding: 12px 25px;
+    border-radius: 15px;
+    font-weight: bold;
+    box-shadow: 0 5px 15px rgba(139, 111, 168, 0.3);
+    transition: all 0.3s ease;
+    font-size: 16px;
+    margin-right: 10px;
+}
+
+.back-link:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(139, 111, 168, 0.4);
+}
+
+.back-link.logout-link {
+    background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+}
+
+.add-btn {
+    background: linear-gradient(135deg, #8b9dc8 0%, #9b8fb8 100%);
+    color: #fff;
+    border: none;
+    padding: 18px 30px;
+    border-radius: 15px;
+    font-size: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-bottom: 25px;
+    box-shadow: 0 5px 15px rgba(139, 157, 200, 0.3);
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.add-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(139, 157, 200, 0.4);
+}
+
+.bosses-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.boss-card {
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border: 3px solid #d4c5b0;
+    border-radius: 20px;
+    padding: 25px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.boss-card:hover {
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+
+.boss-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.boss-name {
+    color: #8b6fa8;
+    font-size: 28px;
+    margin: 0;
+    text-shadow: 1px 1px 0px #e8d5c4;
+}
+
+.status-badge {
+    padding: 8px 16px;
+    border-radius: 12px;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.status-badge.active {
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+    color: white;
+}
+
+.status-badge.inactive {
+    background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+    color: white;
+}
+
+.boss-info {
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.boss-health, .boss-rewards {
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+.boss-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 15px;
+}
+
+.boss-tasks-preview {
+    color: #666;
+    font-size: 14px;
+}
+
+.edit-btn, .delete-btn, .tasks-btn, .toggle-btn {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+}
+
+.edit-btn {
+    background: linear-gradient(135deg, #8b9dc8 0%, #9b8fb8 100%);
+    color: #fff;
+}
+
+.tasks-btn {
+    background: linear-gradient(135deg, #9b8fb8 0%, #8b6fa8 100%);
+    color: #fff;
+}
+
+.toggle-btn.activate {
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+    color: #fff;
+}
+
+.toggle-btn.deactivate {
+    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+    color: #fff;
+}
+
+.delete-btn {
+    background: linear-gradient(135deg, #d4a5a5 0%, #c89595 100%);
+    color: #fff;
+}
+
+.edit-btn:hover, .delete-btn:hover, .tasks-btn:hover, .toggle-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 12px rgba(0, 0, 0, 0.3);
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, visibility 0.3s;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.modal-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-content {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border-radius: 25px;
+    padding: 30px;
+    max-width: 500px;
+    width: 100%;
+    position: relative;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+    border: 3px solid #c8a2c8;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-content.large-modal {
+    max-width: 800px;
+}
+
+.modal-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: linear-gradient(135deg, #d4a5a5 0%, #c89595 100%);
+    border: none;
+    color: #fff;
+    font-size: 28px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    border-radius: 50%;
+    font-weight: bold;
+    box-shadow: 0 3px 8px rgba(212, 165, 165, 0.3);
+}
+
+.modal-close:hover {
+    transform: rotate(90deg) scale(1.1);
+}
+
+.modal-title {
+    color: #8b6fa8;
+    font-size: 32px;
+    margin-bottom: 25px;
+    text-align: center;
+    font-weight: bold;
+    text-shadow: 1px 1px 0px #e8d5c4;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    color: #333;
+    margin-bottom: 10px;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.form-group input, .form-group textarea {
+    width: 100%;
+    padding: 15px;
+    border-radius: 12px;
+    border: 3px solid #a8b8d0;
+    background-color: #fff;
+    color: #333;
+    font-size: 16px;
+    font-family: 'Comic Sans MS', Arial, sans-serif;
+    transition: all 0.3s ease;
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.form-group input:focus, .form-group textarea:focus {
+    outline: none;
+    border-color: #8b6fa8;
+    box-shadow: 0 0 15px rgba(139, 111, 168, 0.3);
+}
+
+.save-btn {
+    background: linear-gradient(135deg, #8b9dc8 0%, #9b8fb8 100%);
+    color: #fff;
+    border: none;
+    padding: 18px 30px;
+    border-radius: 15px;
+    font-size: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    width: 100%;
+    box-shadow: 0 5px 15px rgba(139, 157, 200, 0.3);
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.save-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(139, 157, 200, 0.4);
+}
+
+.tasks-container {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.tasks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.task-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 15px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border-radius: 12px;
+    border: 2px solid #d4c5b0;
+    transition: all 0.3s ease;
+}
+
+.task-item:hover {
+    border-color: #8b6fa8;
+    box-shadow: 0 3px 10px rgba(139, 111, 168, 0.2);
+}
+
+.task-info {
+    flex: 1;
+}
+
+.task-title {
+    font-size: 18px;
+    font-weight: bold;
+    color: #8b6fa8;
+    margin-bottom: 10px;
+}
+
+.task-details {
+    color: #666;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.task-details div {
+    margin-bottom: 5px;
+}
+
+.task-actions {
+    display: flex;
+    gap: 8px;
+    flex-direction: column;
+}
+
+.solved {
+    color: #4CAF50;
+    font-weight: bold;
+}
+
+.not-solved {
+    color: #f44336;
+    font-weight: bold;
+}
+
+.delete-image-btn {
+    background: linear-gradient(135deg, #d4a5a5 0%, #c89595 100%);
+    color: #fff;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    margin-top: 10px;
+}
+
+@media (max-width: 768px) {
+    .boss-actions {
+        flex-direction: column;
+    }
+    
+    .edit-btn, .delete-btn, .tasks-btn, .toggle-btn {
+        width: 100%;
+    }
+    
+    .modal-content.large-modal {
+        max-width: 95%;
+    }
+    
+    .task-item {
+        flex-direction: column;
+    }
+    
+    .task-actions {
+        flex-direction: row;
+        width: 100%;
+        margin-top: 10px;
+    }
+}
+</style>
+{% endblock %}
