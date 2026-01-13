@@ -23,6 +23,9 @@ body {
     border-radius: 25px;
     border: 4px solid #dc143c;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    box-sizing: border-box;
+    overflow: hidden;
+    word-wrap: break-word;
 }
 
 .boss-header {
@@ -225,6 +228,10 @@ body {
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
     border: 3px solid #d4c5b0;
     margin-top: 30px;
+    box-sizing: border-box;
+    overflow: hidden;
+    word-wrap: break-word;
+    max-width: 100%;
 }
 
 .task-title {
@@ -241,6 +248,9 @@ body {
     line-height: 1.8;
     margin-bottom: 20px;
     white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
 }
 
 .task-image {
@@ -260,6 +270,10 @@ body {
     margin-top: 20px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
     border: 3px solid #c8a2c8;
+    box-sizing: border-box;
+    overflow: hidden;
+    word-wrap: break-word;
+    max-width: 100%;
 }
 
 .form-group {
@@ -285,6 +299,9 @@ body {
     font-size: 18px;
     font-family: 'Comic Sans MS', Arial, sans-serif;
     transition: all 0.3s ease;
+    box-sizing: border-box;
+    max-width: 100%;
+    word-wrap: break-word;
 }
 
 .form-group input:focus,
@@ -331,6 +348,9 @@ body {
     text-align: center;
     font-size: 20px;
     font-weight: bold;
+    box-sizing: border-box;
+    overflow: hidden;
+    word-wrap: break-word;
 }
 
 .message-success {
@@ -352,22 +372,47 @@ body {
 }
 
 .retry-btn {
-    background: linear-gradient(135deg, #8b9dc8 0%, #9b8fb8 100%);
+    background: linear-gradient(135deg, #dc143c 0%, #8b0000 100%);
     color: #fff;
     border: none;
-    padding: 15px 30px;
-    border-radius: 15px;
-    font-size: 18px;
+    padding: 20px 50px;
+    border-radius: 25px;
+    font-size: 24px;
     font-weight: bold;
     cursor: pointer;
-    margin-top: 15px;
-    box-shadow: 0 5px 15px rgba(139, 157, 200, 0.3);
+    margin-top: 20px;
+    box-shadow: 0 8px 25px rgba(220, 20, 60, 0.5);
     transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-shadow: 2px 2px 0px #000;
+    border: 4px solid #000;
+    display: inline-block;
+    animation: pulse 2s infinite;
+    white-space: nowrap;
+    max-width: 100%;
+    box-sizing: border-box;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .retry-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(139, 157, 200, 0.4);
+    transform: translateY(-5px) scale(1.05);
+    box-shadow: 0 12px 35px rgba(220, 20, 60, 0.7);
+    background: linear-gradient(135deg, #ff1744 0%, #b71c1c 100%);
+}
+
+.retry-btn:active {
+    transform: translateY(-2px) scale(1.02);
+}
+
+@keyframes pulse {
+    0%, 100% {
+        box-shadow: 0 8px 25px rgba(220, 20, 60, 0.5);
+    }
+    50% {
+        box-shadow: 0 8px 35px rgba(220, 20, 60, 0.8);
+    }
 }
 
 .no-boss-message {
@@ -408,6 +453,34 @@ body {
         padding: 15px;
         border-radius: 20px;
         border-width: 3px;
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+    
+    /* Адаптация модального окна для планшетов */
+    .modal-overlay {
+        padding: 15px;
+    }
+    
+    .modal-content {
+        padding: 25px;
+        width: 95%;
+        max-width: 450px;
+        border-radius: 20px;
+        border-width: 2px;
+    }
+    
+    .modal-title {
+        font-size: 24px;
+        margin-bottom: 15px;
+    }
+    
+    .modal-close {
+        width: 35px;
+        height: 35px;
+        font-size: 24px;
+        top: 10px;
+        right: 10px;
     }
     
     .boss-header {
@@ -472,20 +545,25 @@ body {
     
     .class-damage-item {
         padding: 12px;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        box-sizing: border-box;
     }
     
     .class-name {
         font-size: 16px;
-        width: 100%;
+        flex: 1;
+        word-wrap: break-word;
     }
     
     .damage-value {
         font-size: 18px;
-        width: 100%;
-        text-align: left;
+        flex-shrink: 0;
+        text-align: right;
+        word-wrap: break-word;
+        white-space: nowrap;
     }
     
     .battle-button-container {
@@ -499,6 +577,8 @@ body {
         border-width: 3px;
         width: 100%;
         max-width: 100%;
+        box-sizing: border-box;
+        word-wrap: break-word;
     }
     
     .task-card {
@@ -506,6 +586,9 @@ body {
         border-radius: 15px;
         border-width: 2px;
         margin-top: 20px;
+        box-sizing: border-box;
+        overflow: hidden;
+        max-width: 100%;
     }
     
     .task-title {
@@ -531,6 +614,9 @@ body {
         border-radius: 15px;
         border-width: 2px;
         margin-top: 15px;
+        box-sizing: border-box;
+        overflow: hidden;
+        max-width: 100%;
     }
     
     .form-group {
@@ -548,6 +634,9 @@ body {
         font-size: 16px;
         border-radius: 12px;
         border-width: 2px;
+        box-sizing: border-box;
+        width: 100%;
+        max-width: 100%;
     }
     
     .submit-btn {
@@ -564,11 +653,16 @@ body {
     }
     
     .retry-btn {
-        padding: 14px 25px;
-        font-size: 16px;
-        border-radius: 12px;
-        width: 100%;
-        max-width: 100%;
+        padding: 16px 30px;
+        font-size: 18px;
+        border-radius: 20px;
+        width: auto;
+        max-width: calc(100% - 40px);
+        letter-spacing: 1px;
+        border-width: 3px;
+        white-space: normal;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
     }
     
     .defeated-boss {
@@ -622,6 +716,57 @@ body {
         padding: 12px;
         border-radius: 15px;
         border-width: 2px;
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+    
+    /* Адаптация модального окна для мобильных */
+    .modal-overlay {
+        padding: 10px;
+        align-items: flex-start;
+        padding-top: 20px;
+    }
+    
+    .modal-content {
+        padding: 20px;
+        width: calc(100% - 20px);
+        max-width: 100%;
+        border-radius: 15px;
+        border-width: 2px;
+        margin: 0;
+        max-height: calc(100vh - 40px);
+    }
+    
+    .modal-title {
+        font-size: 20px;
+        margin-bottom: 15px;
+        padding-right: 40px;
+    }
+    
+    .modal-close {
+        width: 32px;
+        height: 32px;
+        font-size: 20px;
+        top: 8px;
+        right: 8px;
+    }
+    
+    .form-group label {
+        font-size: 16px;
+    }
+    
+    .form-group input {
+        font-size: 16px;
+        padding: 12px;
+    }
+    
+    .form-group small {
+        font-size: 11px;
+    }
+    
+    .submit-btn {
+        font-size: 18px;
+        padding: 14px 25px;
     }
     
     .boss-header {
@@ -686,17 +831,24 @@ body {
     
     .class-damage-item {
         padding: 10px;
-        gap: 6px;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
         border-radius: 10px;
         border-width: 2px;
     }
     
     .class-name {
         font-size: 15px;
+        flex: 1;
     }
     
     .damage-value {
         font-size: 16px;
+        flex-shrink: 0;
+        text-align: right;
+        white-space: nowrap;
     }
     
     .battle-button-container {
@@ -716,6 +868,9 @@ body {
         border-radius: 12px;
         border-width: 2px;
         margin-top: 15px;
+        box-sizing: border-box;
+        overflow: hidden;
+        max-width: 100%;
     }
     
     .task-title {
@@ -740,6 +895,9 @@ body {
         border-radius: 12px;
         border-width: 2px;
         margin-top: 12px;
+        box-sizing: border-box;
+        overflow: hidden;
+        max-width: 100%;
     }
     
     .form-group {
@@ -757,6 +915,9 @@ body {
         font-size: 15px;
         border-radius: 10px;
         border-width: 2px;
+        box-sizing: border-box;
+        width: 100%;
+        max-width: 100%;
     }
     
     .submit-btn {
@@ -774,9 +935,16 @@ body {
     }
     
     .retry-btn {
-        padding: 12px 20px;
-        font-size: 15px;
-        border-radius: 10px;
+        padding: 14px 25px;
+        font-size: 16px;
+        border-radius: 18px;
+        letter-spacing: 0.5px;
+        border-width: 3px;
+        width: auto;
+        max-width: calc(100% - 30px);
+        white-space: normal;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
     }
     
     .defeated-boss {
@@ -848,10 +1016,14 @@ body {
     
     .class-name {
         font-size: 14px;
+        flex: 1;
     }
     
     .damage-value {
         font-size: 15px;
+        flex-shrink: 0;
+        text-align: right;
+        white-space: nowrap;
     }
     
     .battle-btn {
@@ -894,6 +1066,243 @@ body {
     .defeated-boss p {
         font-size: 14px;
     }
+    
+    /* Адаптация модального окна для очень маленьких экранов */
+    .modal-overlay {
+        padding: 5px;
+        padding-top: 15px;
+    }
+    
+    .modal-content {
+        padding: 15px;
+        width: calc(100% - 10px);
+        border-radius: 12px;
+        max-height: calc(100vh - 30px);
+    }
+    
+    .modal-title {
+        font-size: 18px;
+        margin-bottom: 12px;
+        padding-right: 35px;
+    }
+    
+    .modal-close {
+        width: 28px;
+        height: 28px;
+        font-size: 18px;
+        top: 5px;
+        right: 5px;
+    }
+    
+    .form-group label {
+        font-size: 14px;
+    }
+    
+    .form-group input {
+        font-size: 14px;
+        padding: 10px;
+    }
+    
+    .form-group small {
+        font-size: 10px;
+    }
+    
+    .submit-btn {
+        font-size: 16px;
+        padding: 12px 20px;
+    }
+}
+
+.user-progress {
+    margin: 20px 0;
+    padding: 15px;
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+    border-radius: 15px;
+    border: 3px solid #2e7d32;
+    box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+    text-align: center;
+}
+
+.user-progress-content {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+}
+
+.progress-label {
+    font-size: 18px;
+    font-weight: bold;
+    color: white;
+    text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.3);
+}
+
+    .progress-value {
+        font-size: 20px;
+        font-weight: bold;
+        color: white;
+        text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.3);
+        padding: 5px 15px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 10px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        display: none; /* По умолчанию скрыто */
+        justify-content: center;
+        align-items: center;
+        z-index: 10000; /* Высокий z-index чтобы быть поверх всего */
+        padding: 10px;
+        box-sizing: border-box;
+        overflow-y: auto;
+    }
+    
+    .modal-overlay.show {
+        display: flex !important;
+    }
+    
+    .modal-content {
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        border-radius: 25px;
+        padding: 30px;
+        max-width: 500px;
+        width: 90%;
+        position: relative;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+        border: 3px solid #c8a2c8;
+        box-sizing: border-box;
+        max-height: 90vh;
+        overflow-y: auto;
+        margin: auto;
+    }
+    
+    .modal-content .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .modal-content .form-group label {
+        font-size: 18px;
+        margin-bottom: 10px;
+    }
+    
+    .modal-content .form-group input {
+        width: 100%;
+        padding: 15px;
+        font-size: 16px;
+        box-sizing: border-box;
+    }
+    
+    .modal-content .submit-btn {
+        width: 100%;
+        padding: 15px;
+        font-size: 18px;
+    }
+    
+    .modal-title {
+        color: #8b6fa8;
+        font-size: 28px;
+        margin-bottom: 20px;
+        text-align: center;
+        font-weight: bold;
+        text-shadow: 1px 1px 0px #e8d5c4;
+        word-wrap: break-word;
+    }
+    
+    .modal-close {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        background: linear-gradient(135deg, #d4a5a5 0%, #c89595 100%);
+        border: none;
+        color: #fff;
+        font-size: 28px;
+        cursor: pointer;
+        line-height: 1;
+        padding: 0;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+        border-radius: 50%;
+        font-weight: bold;
+        box-shadow: 0 3px 8px rgba(212, 165, 165, 0.3);
+        z-index: 10;
+        box-sizing: border-box;
+    }
+    
+    .modal-close:hover {
+        transform: rotate(90deg) scale(1.1);
+        box-shadow: 0 5px 12px rgba(212, 165, 165, 0.5);
+    }
+    
+    .modal-close:active {
+        transform: rotate(90deg) scale(0.95);
+    }
+
+@media (max-width: 768px) {
+    .user-progress {
+        margin: 15px 0;
+        padding: 12px;
+        border-radius: 12px;
+        border-width: 2px;
+    }
+    
+    .progress-label {
+        font-size: 16px;
+    }
+    
+    .progress-value {
+        font-size: 18px;
+        padding: 4px 12px;
+        border-radius: 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .user-progress {
+        margin: 12px 0;
+        padding: 10px;
+        border-radius: 10px;
+    }
+    
+    .user-progress-content {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .progress-label {
+        font-size: 15px;
+    }
+    
+    .progress-value {
+        font-size: 16px;
+        padding: 3px 10px;
+    }
+}
+
+@media (max-width: 360px) {
+    .user-progress {
+        margin: 10px 0;
+        padding: 8px;
+    }
+    
+    .progress-label {
+        font-size: 14px;
+    }
+    
+    .progress-value {
+        font-size: 15px;
+        padding: 2px 8px;
+    }
 }
 </style>
 {% endblock %}
@@ -915,6 +1324,13 @@ body {
         </div>
         <div class="boss-animation-container">
             <img id="bossAnimation" class="boss-animation" src="/static/animation/boss/1.png" alt="Босс">
+            <!-- Предзагрузка всех кадров анимации -->
+            <img src="/static/animation/boss/1.png" alt="" style="display: none;" loading="eager">
+            <img src="/static/animation/boss/2.png" alt="" style="display: none;" loading="eager">
+            <img src="/static/animation/boss/3.png" alt="" style="display: none;" loading="eager">
+            <img src="/static/animation/boss/4.png" alt="" style="display: none;" loading="eager">
+            <img src="/static/animation/boss/5.png" alt="" style="display: none;" loading="eager">
+            <img src="/static/animation/boss/6.png" alt="" style="display: none;" loading="eager">
         </div>
         {% if boss.rewards_list %}
         <div class="boss-rewards">
@@ -923,6 +1339,16 @@ body {
         </div>
         {% endif %}
     </div>
+    
+    {% if boss.is_active %}
+    <div class="user-progress" id="userProgress" style="display: none;">
+        <div class="user-progress-content">
+            <span class="progress-label">Ваш прогресс:</span>
+            <span class="progress-value" id="progressValue">0/0</span>
+            <span class="progress-label" id="userIdLabel" style="display: none;">ID: <span id="userIdValue"></span></span>
+        </div>
+    </div>
+    {% endif %}
     
     <div class="class-damage-table">
         <h2>Урон</h2>
@@ -969,10 +1395,6 @@ body {
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="userName">Ваше имя:</label>
-                    <input type="text" id="userName" required placeholder="Введите ваше имя">
-                </div>
-                <div class="form-group">
                     <label for="answer">Ваш ответ:</label>
                     <input type="text" id="answer" required placeholder="Введите ответ">
                 </div>
@@ -992,16 +1414,107 @@ body {
     </div>
     {% endif %}
 </div>
+
+<!-- Модальное окно для ввода имени -->
+<div class="modal-overlay" id="nameModal" style="display: none;">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closeNameModal()">&times;</button>
+        <h2 class="modal-title">Введите ваше имя</h2>
+        <form id="nameForm" onsubmit="saveUserName(event)">
+            <div class="form-group">
+                <label for="userNameInput">Фамилия и Имя:</label>
+                <input type="text" id="userNameInput" required placeholder="Введите Фамилию и Имя" autocomplete="off" maxlength="200">
+                <small style="color: #666; font-size: 12px; display: block; margin-top: 5px; word-wrap: break-word;">
+                    Минимум 2 символа. Только буквы, цифры, пробелы, дефисы и точки.
+                </small>
+            </div>
+            <button type="submit" class="submit-btn">Сохранить</button>
+        </form>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
 let currentTask = null;
 let bossId = {{ boss.id if boss else 'null' }};
-let bossIsActive = {{ 'true' if boss and boss.is_active else 'false' }};
+let bossIsActive = {% if boss and boss.is_active %}true{% else %}false{% endif %};
+
+// Функции для работы с куками
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+}
+
+function setCookie(name, value, days = null) {
+    // Если days = null, устанавливаем куки без срока истечения (максимальный срок)
+    let expires = '';
+    if (days !== null) {
+        const date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        expires = `expires=${date.toUTCString()};`;
+    } else {
+        // Устанавливаем максимальный срок (20 лет)
+        const date = new Date();
+        date.setTime(date.getTime() + (20 * 365 * 24 * 60 * 60 * 1000));
+        expires = `expires=${date.toUTCString()};`;
+    }
+    document.cookie = `${name}=${value};${expires}path=/`;
+}
+
+function getBossProgress() {
+    const correctAnswers = parseInt(getCookie('boss_correct_answers') || '0');
+    const totalAnswers = parseInt(getCookie('boss_total_answers') || '0');
+    return { correctAnswers, totalAnswers };
+}
+
+function updateBossProgress(isCorrect) {
+    const progress = getBossProgress();
+    const newTotal = progress.totalAnswers + 1;
+    const newCorrect = isCorrect ? progress.correctAnswers + 1 : progress.correctAnswers;
+    
+    setCookie('boss_correct_answers', newCorrect.toString());
+    setCookie('boss_total_answers', newTotal.toString());
+    
+    return { correctAnswers: newCorrect, totalAnswers: newTotal };
+}
+
+function displayProgress() {
+    if (!bossIsActive) {
+        const progressDiv = document.getElementById('userProgress');
+        if (progressDiv) {
+            progressDiv.style.display = 'none';
+        }
+        return;
+    }
+    
+    const progress = getBossProgress();
+    const progressDiv = document.getElementById('userProgress');
+    const progressValue = document.getElementById('progressValue');
+    const userIdLabel = document.getElementById('userIdLabel');
+    const userIdValue = document.getElementById('userIdValue');
+    
+    if (progressDiv && progressValue) {
+        if (progress.totalAnswers > 0) {
+            progressValue.textContent = `${progress.correctAnswers}/${progress.totalAnswers}`;
+            progressDiv.style.display = 'block';
+            
+            // Показываем ID пользователя, если он сохранен
+            const savedUserId = getCookie('boss_user_id');
+            if (savedUserId && userIdLabel && userIdValue) {
+                userIdValue.textContent = savedUserId;
+                userIdLabel.style.display = 'inline';
+            }
+        } else {
+            progressDiv.style.display = 'none';
+        }
+    }
+}
 
 function startBattle() {
-    if (!bossId) {
+    if (!bossId || bossId === 'null' || bossId === null) {
         alert('Босс не найден');
         return;
     }
@@ -1011,10 +1524,149 @@ function startBattle() {
         return;
     }
     
-    document.getElementById('battleBtn').disabled = true;
-    document.getElementById('battleBtn').textContent = 'Загрузка...';
-    document.getElementById('taskCard').style.display = 'none';
-    document.getElementById('messageBox').innerHTML = '';
+    // Проверяем, есть ли сохраненное имя пользователя
+    const savedUserId = getCookie('boss_user_id');
+    const savedUserName = getCookie('boss_user_name');
+    
+    if (!savedUserId || !savedUserName) {
+        // Показываем модальное окно для ввода имени
+        showNameModal();
+        return;
+    }
+    
+    // Если имя есть, продолжаем как обычно
+    proceedWithBattle();
+}
+
+function showNameModal() {
+    const nameModal = document.getElementById('nameModal');
+    if (!nameModal) {
+        alert('Ошибка: модальное окно не найдено');
+        return;
+    }
+    
+    // Используем класс для показа модального окна
+    nameModal.classList.add('show');
+    nameModal.style.display = 'flex';
+    
+    // Убеждаемся, что модальное окно видимо
+    setTimeout(() => {
+        const userNameInput = document.getElementById('userNameInput');
+        if (userNameInput) {
+            userNameInput.focus();
+        }
+    }, 100);
+}
+
+function closeNameModal() {
+    const nameModal = document.getElementById('nameModal');
+    if (nameModal) {
+        nameModal.classList.remove('show');
+        nameModal.style.display = 'none';
+    }
+}
+
+function validateUserName(name) {
+    // Валидация на клиенте (должна совпадать с серверной)
+    if (!name || !name.trim()) {
+        return { valid: false, error: 'Имя не может быть пустым' };
+    }
+    
+    name = name.trim();
+    
+    if (name.length < 2) {
+        return { valid: false, error: 'Имя должно содержать минимум 2 символа' };
+    }
+    
+    if (name.length > 200) {
+        return { valid: false, error: 'Имя не может быть длиннее 200 символов' };
+    }
+    
+    // Проверка на опасные символы
+    const dangerousPatterns = /[<>'"\/\\]|javascript:|onerror=|onclick=/i;
+    if (dangerousPatterns.test(name)) {
+        return { valid: false, error: 'Имя содержит недопустимые символы' };
+    }
+    
+    // Разрешаем только буквы, цифры, пробелы, дефисы и точки
+    const validPattern = /^[а-яА-ЯёЁa-zA-Z0-9\s\-\.]+$/;
+    if (!validPattern.test(name)) {
+        return { valid: false, error: 'Имя может содержать только буквы, цифры, пробелы, дефисы и точки' };
+    }
+    
+    return { valid: true, error: null };
+}
+
+function saveUserName(event) {
+    event.preventDefault();
+    const nameInput = document.getElementById('userNameInput');
+    const name = nameInput.value.trim();
+    const submitBtn = event.target.querySelector('button[type="submit"]');
+    
+    // Валидация на клиенте
+    const validation = validateUserName(name);
+    if (!validation.valid) {
+        alert(validation.error);
+        nameInput.focus();
+        return;
+    }
+    
+    // Показываем индикатор загрузки
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Сохранение...';
+    }
+    
+    // Сохраняем имя на сервере
+    fetch('/api/raid-boss/save-user', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ name: name })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Сохраняем в куки с неограниченным временем жизни
+            setCookie('boss_user_id', data.user_id.toString(), null);
+            setCookie('boss_user_name', data.user_name, null);
+            
+            // Закрываем модальное окно
+            closeNameModal();
+            
+            // Продолжаем сражение
+            proceedWithBattle();
+        } else {
+            alert(data.error || 'Ошибка при сохранении имени');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Сохранить';
+            }
+        }
+    })
+    .catch(error => {
+        alert('Ошибка при сохранении имени');
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Сохранить';
+        }
+    });
+}
+
+function proceedWithBattle() {
+    const battleBtn = document.getElementById('battleBtn');
+    if (!battleBtn) {
+        return;
+    }
+    
+    battleBtn.disabled = true;
+    battleBtn.textContent = 'Загрузка...';
+    
+    const taskCard = document.getElementById('taskCard');
+    const messageBox = document.getElementById('messageBox');
+    if (taskCard) taskCard.style.display = 'none';
+    if (messageBox) messageBox.innerHTML = '';
     
     fetch('/api/raid-boss/task')
         .then(response => response.json())
@@ -1027,7 +1679,6 @@ function startBattle() {
                 }
             } else {
                 alert(data.error || 'Ошибка при получении задачи');
-                const battleBtn = document.getElementById('battleBtn');
                 if (battleBtn) {
                     battleBtn.disabled = !bossIsActive;
                     battleBtn.textContent = bossIsActive ? '⚔️ СРАЖАТЬСЯ ⚔️' : 'РЕЙД НЕАКТИВЕН';
@@ -1035,9 +1686,7 @@ function startBattle() {
             }
         })
         .catch(error => {
-            console.error('Error:', error);
             alert('Ошибка при получении задачи');
-            const battleBtn = document.getElementById('battleBtn');
             if (battleBtn) {
                 battleBtn.disabled = !bossIsActive;
                 battleBtn.textContent = bossIsActive ? '⚔️ СРАЖАТЬСЯ ⚔️' : 'РЕЙД НЕАКТИВЕН';
@@ -1080,20 +1729,18 @@ function showTask(task) {
 
 function validateForm() {
     const className = document.getElementById('className');
-    const userName = document.getElementById('userName');
     const answer = document.getElementById('answer');
     const submitBtn = document.getElementById('submitBtn');
     
-    if (!className || !userName || !answer || !submitBtn) {
+    if (!className || !answer || !submitBtn) {
         return;
     }
     
     const classId = className.value;
-    const userNameValue = userName.value.trim();
     const answerValue = answer.value.trim();
     
     // Проверяем, что все поля заполнены и выбран класс
-    if (classId && userNameValue && answerValue) {
+    if (classId && answerValue) {
         submitBtn.disabled = false;
     } else {
         submitBtn.disabled = true;
@@ -1105,13 +1752,18 @@ function submitAnswer(event) {
     
     const taskId = document.getElementById('taskId').value;
     const classId = document.getElementById('className').value;
-    const userName = document.getElementById('userName').value.trim();
+    const classNameSelect = document.getElementById('className');
+    const classNameText = classNameSelect.options[classNameSelect.selectedIndex].text;
     const answer = document.getElementById('answer').value.trim();
     
-    if (!taskId || !classId || !userName || !answer) {
+    if (!taskId || !classId || !answer) {
         alert('Заполните все поля');
         return;
     }
+    
+    // Получаем сохраненные данные пользователя
+    const savedUserId = getCookie('boss_user_id');
+    const savedUserName = getCookie('boss_user_name');
     
     const submitBtn = event.target.querySelector('.submit-btn');
     submitBtn.disabled = true;
@@ -1125,14 +1777,28 @@ function submitAnswer(event) {
         body: JSON.stringify({
             task_id: parseInt(taskId),
             class_id: parseInt(classId),
-            user_name: userName,
+            user_name: savedUserName || classNameText,
+            user_id: savedUserId ? parseInt(savedUserId) : null,
             answer: answer
         })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showMessage(data.correct ? 'success' : 'error', data.message);
+            let message = data.message;
+            
+            // Если выпал дроп, добавляем информацию о нем
+            if (data.drop_reward && data.drop_reward.drop_name) {
+                message += `\n🎁 Вам выпал дроп: ${data.drop_reward.drop_name}!`;
+            }
+            
+            showMessage(data.correct ? 'success' : 'error', message);
+            
+            // Обновляем прогресс в куки
+            if (data.update_progress) {
+                const progress = updateBossProgress(data.is_correct);
+                displayProgress();
+            }
             
             if (data.correct) {
                 // Обновляем статистику
@@ -1151,7 +1817,6 @@ function submitAnswer(event) {
         }
     })
     .catch(error => {
-        console.error('Error:', error);
         alert('Ошибка при отправке ответа');
         submitBtn.disabled = false;
         submitBtn.textContent = 'Отправить ответ';
@@ -1163,9 +1828,12 @@ function showMessage(type, message) {
     const messageBox = document.getElementById('messageBox');
     const messageClass = type === 'success' ? 'message-success' : (type === 'error' ? 'message-error' : 'message-info');
     
+    // Заменяем переносы строк на <br> для правильного отображения
+    const formattedMessage = message.replace(/\n/g, '<br>');
+    
     messageBox.innerHTML = `
         <div class="message-box ${messageClass}">
-            ${message}
+            ${formattedMessage}
         </div>
     `;
     
@@ -1183,11 +1851,19 @@ function showMessage(type, message) {
 
 function showRetryButton() {
     const messageBox = document.getElementById('messageBox');
-    messageBox.innerHTML += `
-        <div style="text-align: center; margin-top: 20px;">
-            <button class="retry-btn" onclick="resetBattle()">Принять участие еще раз</button>
-        </div>
+    const retryContainer = document.createElement('div');
+    retryContainer.style.cssText = 'text-align: center; margin-top: 30px; padding: 20px; box-sizing: border-box; overflow: hidden;';
+    retryContainer.innerHTML = `
+        <button class="retry-btn" onclick="resetBattle()">
+            🔄 ПРИНЯТЬ УЧАСТИЕ ЕЩЕ РАЗ 🔄
+        </button>
     `;
+    messageBox.appendChild(retryContainer);
+    
+    // Прокрутка к кнопке для лучшей видимости
+    setTimeout(() => {
+        retryContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
 }
 
 function resetBattle() {
@@ -1271,42 +1947,26 @@ function updateStats() {
             }
         })
         .catch(error => {
-            console.error('Error updating stats:', error);
+            // Ошибка обновления статистики не критична
         });
 }
 
-// Обновляем статистику каждые 5 секунд (работает для активного и неактивного босса)
+// Обновляем статистику каждые 20 секунд (работает для активного и неактивного босса)
 if (bossId) {
-    setInterval(updateStats, 5000);
+    setInterval(updateStats, 20000);
     // Обновляем сразу при загрузке
     updateStats();
 }
 
-// Предзагрузка кадров анимации босса
+// Предзагрузка кадров анимации босса (теперь кадры загружаются сразу в HTML)
 function preloadBossAnimationFrames(callback) {
-    const totalFrames = 6;
-    let loadedFrames = 0;
-    const images = [];
-    
-    for (let i = 1; i <= totalFrames; i++) {
-        const img = new Image();
-        img.onload = function() {
-            loadedFrames++;
-            if (loadedFrames === totalFrames && callback) {
-                callback();
-            }
-        };
-        img.onerror = function() {
-            loadedFrames++;
-            if (loadedFrames === totalFrames && callback) {
-                callback();
-            }
-        };
-        img.src = `/static/animation/boss/${i}.png`;
-        images.push(img);
+    // Кадры уже загружаются через скрытые img теги в HTML,
+    // поэтому просто запускаем callback сразу или после небольшой задержки
+    // для гарантии, что браузер начал загрузку
+    if (callback) {
+        // Небольшая задержка для гарантии начала загрузки изображений
+        setTimeout(callback, 100);
     }
-    
-    return images;
 }
 
 // Анимация босса
@@ -1331,21 +1991,48 @@ document.addEventListener('DOMContentLoaded', function() {
         startBossAnimation();
     });
     
+    // Отображаем прогресс пользователя при загрузке страницы
+    displayProgress();
+    
     const className = document.getElementById('className');
-    const userName = document.getElementById('userName');
     const answer = document.getElementById('answer');
     
     if (className) {
         className.addEventListener('change', validateForm);
     }
-    if (userName) {
-        userName.addEventListener('input', validateForm);
-        userName.addEventListener('keyup', validateForm);
-    }
     if (answer) {
         answer.addEventListener('input', validateForm);
         answer.addEventListener('keyup', validateForm);
     }
+    
+    // Проверяем, что кнопка сражения существует и привязана
+    const battleBtn = document.getElementById('battleBtn');
+    if (battleBtn) {
+        // Убеждаемся, что обработчик привязан
+        battleBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            startBattle();
+        });
+    }
+    
+    // Закрытие модального окна при клике вне его
+    const nameModal = document.getElementById('nameModal');
+    if (nameModal) {
+        nameModal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeNameModal();
+            }
+        });
+    }
+    
+    // Закрытие модального окна по Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            if (nameModal && (nameModal.classList.contains('show') || nameModal.style.display === 'flex')) {
+                closeNameModal();
+            }
+        }
+    });
 });
 </script>
 {% endblock %}

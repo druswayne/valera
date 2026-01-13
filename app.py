@@ -8,11 +8,26 @@ from functools import wraps
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.executors.pool import ThreadPoolExecutor
-from sqlalchemy import case, cast, Float
+from sqlalchemy import case, cast, Float, Index, and_
+from sqlalchemy.exc import IntegrityError
 import random
 import os
+import logging
+import re
 current_path = os.path.dirname(__file__)
 os.chdir(current_path)
+
+# Настройка логирования
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('app.log', encoding='utf-8'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-here'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///valera.db'
@@ -20,6 +35,10 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads/tasks'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
+# Константы валидации
+MAX_USER_NAME_LENGTH = 200
+MIN_USER_NAME_LENGTH = 2
 
 # Настройка планировщика задач
 jobstores = {
@@ -200,6 +219,8 @@ class Boss(db.Model):
     
     tasks = db.relationship('BossTask', backref='boss', lazy=True, cascade='all, delete-orphan')
     solutions = db.relationship('BossTaskSolution', backref='boss', lazy=True, cascade='all, delete-orphan')
+    drops = db.relationship('BossDrop', backref='boss', lazy=True, cascade='all, delete-orphan')
+    drop_rewards = db.relationship('BossDropReward', backref='boss', lazy=True, cascade='all, delete-orphan')
     
     def to_dict(self):
         return {
@@ -264,9 +285,19 @@ class BossTaskSolution(db.Model):
     task_id = db.Column(db.Integer, db.ForeignKey('boss_task.id'), nullable=False)
     class_id = db.Column(db.Integer, db.ForeignKey('class.id'), nullable=False)
     user_name = db.Column(db.String(100), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('boss_user.id'), nullable=True)  # Связь с пользователем
     answer = db.Column(db.String(200), nullable=False)
     is_correct = db.Column(db.Boolean, default=False, nullable=False)
     solved_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Индексы для оптимизации запросов
+    __table_args__ = (
+        Index('idx_boss_task_solution_boss_id', 'boss_id'),
+        Index('idx_boss_task_solution_task_id', 'task_id'),
+        Index('idx_boss_task_solution_user_id', 'user_id'),
+        Index('idx_boss_task_solution_is_correct', 'is_correct'),
+        Index('idx_boss_task_solution_boss_task_correct', 'boss_id', 'task_id', 'is_correct'),
+    )
     
     def to_dict(self):
         return {
@@ -275,9 +306,90 @@ class BossTaskSolution(db.Model):
             'task_id': self.task_id,
             'class_id': self.class_id,
             'user_name': self.user_name,
+            'user_id': self.user_id,
             'answer': self.answer,
             'is_correct': self.is_correct,
             'solved_at': self.solved_at.isoformat() if self.solved_at else None
+        }
+
+class BossUser(db.Model):
+    """Пользователь босса (сохраненные имена)"""
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)  # Фамилия и Имя
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Связи
+    solutions = db.relationship('BossTaskSolution', backref='user', lazy=True)
+    drop_rewards = db.relationship('BossDropReward', backref='user', lazy=True)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+class BossDrop(db.Model):
+    """Дроп босса"""
+    id = db.Column(db.Integer, primary_key=True)
+    boss_id = db.Column(db.Integer, db.ForeignKey('boss.id'), nullable=False)
+    name = db.Column(db.String(200), nullable=False)  # Название дропа
+    probability = db.Column(db.String(20), nullable=False)  # 'high', 'medium', 'very_low'
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Связи
+    rewards = db.relationship('BossDropReward', backref='drop', lazy=True)
+    
+    # Индексы для оптимизации запросов
+    __table_args__ = (
+        Index('idx_boss_drop_boss_id', 'boss_id'),
+    )
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'boss_id': self.boss_id,
+            'name': self.name,
+            'probability': self.probability,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+    
+    def get_probability_value(self):
+        """Возвращает числовое значение вероятности для расчета"""
+        if self.probability == 'high':
+            return 0.3  # 30%
+        elif self.probability == 'medium':
+            return 0.15  # 15%
+        elif self.probability == 'very_low':
+            return 0.05  # 5%
+        return 0.1  # По умолчанию 10%
+
+class BossDropReward(db.Model):
+    """Выпавший дроп пользователю"""
+    id = db.Column(db.Integer, primary_key=True)
+    boss_id = db.Column(db.Integer, db.ForeignKey('boss.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('boss_user.id'), nullable=False)
+    drop_id = db.Column(db.Integer, db.ForeignKey('boss_drop.id'), nullable=False)
+    received_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Индексы для оптимизации запросов
+    __table_args__ = (
+        Index('idx_boss_drop_reward_boss_id', 'boss_id'),
+        Index('idx_boss_drop_reward_user_id', 'user_id'),
+        Index('idx_boss_drop_reward_drop_id', 'drop_id'),
+        Index('idx_boss_drop_reward_boss_user', 'boss_id', 'user_id'),
+        Index('idx_boss_drop_reward_received_at', 'received_at'),
+    )
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'boss_id': self.boss_id,
+            'user_id': self.user_id,
+            'drop_id': self.drop_id,
+            'user_name': self.user.name if self.user else '',
+            'drop_name': self.drop.name if self.drop else '',
+            'received_at': self.received_at.isoformat() if self.received_at else None
         }
 
 # Декоратор для проверки прав администратора
@@ -290,6 +402,172 @@ def admin_required(f):
             return redirect(url_for('index'))
         return f(*args, **kwargs)
     return decorated_function
+
+# Функции валидации
+def validate_user_name(name):
+    """
+    Валидация имени пользователя
+    Возвращает (is_valid, error_message)
+    """
+    if not name or not name.strip():
+        return False, 'Имя не может быть пустым'
+    
+    name = name.strip()
+    
+    if len(name) < MIN_USER_NAME_LENGTH:
+        return False, f'Имя должно содержать минимум {MIN_USER_NAME_LENGTH} символа'
+    
+    if len(name) > MAX_USER_NAME_LENGTH:
+        return False, f'Имя не может быть длиннее {MAX_USER_NAME_LENGTH} символов'
+    
+    # Проверка на опасные символы (XSS защита)
+    dangerous_patterns = ['<', '>', '&', '"', "'", '/', '\\', 'javascript:', 'onerror=', 'onclick=']
+    for pattern in dangerous_patterns:
+        if pattern.lower() in name.lower():
+            return False, 'Имя содержит недопустимые символы'
+    
+    # Разрешаем только буквы, цифры, пробелы, дефисы и точки
+    if not re.match(r'^[а-яА-ЯёЁa-zA-Z0-9\s\-\.]+$', name):
+        return False, 'Имя может содержать только буквы, цифры, пробелы, дефисы и точки'
+    
+    return True, None
+
+def validate_user_id(user_id):
+    """
+    Валидация и проверка существования user_id
+    Возвращает (is_valid, user_object, error_message)
+    """
+    if user_id is None:
+        return False, None, 'ID пользователя не указан'
+    
+    try:
+        user_id = int(user_id)
+    except (ValueError, TypeError):
+        return False, None, 'Неверный формат ID пользователя'
+    
+    user = BossUser.query.get(user_id)
+    if not user:
+        return False, None, 'Пользователь не найден'
+    
+    return True, user, None
+
+def process_drop_reward(boss_id, user_id, task_id, allow_multiple_drops_per_task=False):
+    """
+    Обрабатывает выпадение дропа при правильном ответе
+    Возвращает (drop_reward_object, error_message)
+    Использует транзакции для атомарности
+    
+    Args:
+        boss_id: ID босса
+        user_id: ID пользователя
+        task_id: ID задачи
+        allow_multiple_drops_per_task: Если False, пользователь может получить дроп только один раз за задачу
+    """
+    try:
+        # Проверяем существование пользователя
+        is_valid, user, error = validate_user_id(user_id)
+        if not is_valid:
+            return None, error
+        
+        # Получаем все дропы для этого босса
+        drops = BossDrop.query.filter_by(boss_id=boss_id).all()
+        if not drops:
+            return None, None  # Нет дропов - это нормально
+        
+        # Проверяем, не получил ли уже пользователь дроп за эту задачу
+        if not allow_multiple_drops_per_task:
+            # Проверяем, есть ли уже дроп для этого пользователя за эту задачу
+            existing_reward = db.session.query(BossDropReward).join(
+                BossTaskSolution,
+                and_(
+                    BossDropReward.user_id == BossTaskSolution.user_id,
+                    BossDropReward.boss_id == boss_id,
+                    BossTaskSolution.task_id == task_id,
+                    BossTaskSolution.is_correct == True,
+                    BossTaskSolution.user_id == user_id
+                )
+            ).first()
+            
+            if existing_reward:
+                logger.info(f"Пользователь {user_id} уже получил дроп за задачу {task_id}")
+                return None, None  # Уже получил дроп за эту задачу
+        
+        # Сначала проверяем, выпал ли вообще шанс на дроп (20% вероятность)
+        drop_chance = random.random()
+        if drop_chance > 0.2:  # 20% вероятность получить дроп
+            logger.info(f"Дроп не выпал: drop_chance={drop_chance:.3f} > 0.2 (пользователь {user_id}, задача {task_id})")
+            return None, None  # Дроп не выпал
+        
+        logger.info(f"Дроп выпал! drop_chance={drop_chance:.3f} <= 0.2 (пользователь {user_id}, задача {task_id})")
+        
+        # Если шанс выпал, выбираем конкретный дроп с учетом их вероятностей
+        # Всегда нормализуем вероятности для корректного расчета
+        total_probability = sum(drop.get_probability_value() for drop in drops)
+        
+        if total_probability <= 0:
+            return None, None
+        
+        # Нормализуем вероятности (сумма должна быть = 1.0)
+        rand_value = random.random()
+        cumulative = 0
+        selected_drop = None
+        
+        for drop in drops:
+            # Нормализуем вероятность каждого дропа
+            prob = drop.get_probability_value() / total_probability
+            cumulative += prob
+            if rand_value <= cumulative:
+                selected_drop = drop
+                break
+        
+        # Если дроп выпал, сохраняем его в транзакции
+        if selected_drop:
+            try:
+                # Дополнительная проверка на дубликаты перед сохранением
+                # (защита от race condition)
+                duplicate_check = BossDropReward.query.filter_by(
+                    boss_id=boss_id,
+                    user_id=user_id,
+                    drop_id=selected_drop.id
+                ).join(
+                    BossTaskSolution,
+                    and_(
+                        BossDropReward.user_id == BossTaskSolution.user_id,
+                        BossTaskSolution.task_id == task_id,
+                        BossTaskSolution.is_correct == True
+                    )
+                ).first()
+                
+                if duplicate_check and not allow_multiple_drops_per_task:
+                    logger.info(f"Дроп уже был выдан пользователю {user_id} за задачу {task_id} (race condition)")
+                    return None, None
+                
+                drop_reward = BossDropReward(
+                    boss_id=boss_id,
+                    user_id=user_id,
+                    drop_id=selected_drop.id
+                )
+                db.session.add(drop_reward)
+                db.session.commit()
+                
+                logger.info(f"Дроп выпал: user_id={user_id}, drop_id={selected_drop.id}, boss_id={boss_id}, task_id={task_id}")
+                return drop_reward, None
+            except IntegrityError as e:
+                db.session.rollback()
+                logger.error(f"Ошибка целостности при сохранении дропа: {e}")
+                # Возможно, дроп уже был сохранен параллельно
+                return None, None
+            except Exception as e:
+                db.session.rollback()
+                logger.error(f"Неожиданная ошибка при сохранении дропа: {e}")
+                return None, 'Ошибка при сохранении дропа'
+        
+        return None, None  # Дроп не выпал - это нормально
+        
+    except Exception as e:
+        logger.error(f"Ошибка при обработке дропа: {e}")
+        db.session.rollback()
+        return None, 'Ошибка при обработке дропа'
 
 # Функция для проверки расширения файла
 def allowed_file(filename):
@@ -413,6 +691,70 @@ with app.app_context():
         if 'boss' not in tables or 'boss_task' not in tables or 'boss_task_solution' not in tables:
             db.create_all()
             print("Созданы таблицы для рейд босса")
+        
+        # Миграция: добавление новых таблиц для пользователей, дропов и выпавших дропов
+        if 'boss_user' not in tables:
+            db.create_all()
+            print("Созданы таблицы для пользователей босса")
+        
+        if 'boss_drop' not in tables:
+            db.create_all()
+            print("Созданы таблицы для дропов босса")
+        
+        if 'boss_drop_reward' not in tables:
+            db.create_all()
+            print("Созданы таблицы для выпавших дропов")
+        
+        # Миграция: добавление колонки user_id в boss_task_solution, если её нет
+        if 'boss_task_solution' in tables:
+            columns = [col['name'] for col in inspector.get_columns('boss_task_solution')]
+            if 'user_id' not in columns:
+                with db.engine.begin() as conn:
+                    # SQLite не поддерживает REFERENCES в ALTER TABLE, добавляем просто INTEGER
+                    conn.execute(text('ALTER TABLE boss_task_solution ADD COLUMN user_id INTEGER'))
+                    print("Добавлена колонка user_id в таблицу boss_task_solution")
+        
+        # Создание индексов для оптимизации (если их еще нет)
+        try:
+            # Проверяем и создаем индексы для boss_task_solution
+            if 'boss_task_solution' in tables:
+                existing_indexes = [idx['name'] for idx in inspector.get_indexes('boss_task_solution')]
+                indexes_to_create = [
+                    ('idx_boss_task_solution_boss_id', 'boss_id'),
+                    ('idx_boss_task_solution_task_id', 'task_id'),
+                    ('idx_boss_task_solution_user_id', 'user_id'),
+                    ('idx_boss_task_solution_is_correct', 'is_correct'),
+                ]
+                for idx_name, col_name in indexes_to_create:
+                    if idx_name not in existing_indexes:
+                        with db.engine.begin() as conn:
+                            conn.execute(text(f'CREATE INDEX IF NOT EXISTS {idx_name} ON boss_task_solution({col_name})'))
+                            print(f"Создан индекс {idx_name}")
+            
+            # Проверяем и создаем индексы для boss_drop
+            if 'boss_drop' in tables:
+                existing_indexes = [idx['name'] for idx in inspector.get_indexes('boss_drop')]
+                if 'idx_boss_drop_boss_id' not in existing_indexes:
+                    with db.engine.begin() as conn:
+                        conn.execute(text('CREATE INDEX IF NOT EXISTS idx_boss_drop_boss_id ON boss_drop(boss_id)'))
+                        print("Создан индекс idx_boss_drop_boss_id")
+            
+            # Проверяем и создаем индексы для boss_drop_reward
+            if 'boss_drop_reward' in tables:
+                existing_indexes = [idx['name'] for idx in inspector.get_indexes('boss_drop_reward')]
+                indexes_to_create = [
+                    ('idx_boss_drop_reward_boss_id', 'boss_id'),
+                    ('idx_boss_drop_reward_user_id', 'user_id'),
+                    ('idx_boss_drop_reward_drop_id', 'drop_id'),
+                ]
+                for idx_name, col_name in indexes_to_create:
+                    if idx_name not in existing_indexes:
+                        with db.engine.begin() as conn:
+                            conn.execute(text(f'CREATE INDEX IF NOT EXISTS {idx_name} ON boss_drop_reward({col_name})'))
+                            print(f"Создан индекс {idx_name}")
+        except Exception as e:
+            print(f"Ошибка при создании индексов: {e}")
+            # Индексы не критичны, продолжаем работу
     except Exception as e:
         print(f"Ошибка при создании таблиц для рейд босса: {e}")
         db.create_all()
@@ -1457,78 +1799,217 @@ def get_random_boss_task():
         'boss_defeated': False
     })
 
+# API для сохранения имени пользователя
+@app.route('/api/raid-boss/save-user', methods=['POST'])
+def save_boss_user():
+    try:
+        data = request.json
+        if not data:
+            return jsonify({'success': False, 'error': 'Данные не получены'}), 400
+        
+        name = data.get('name', '').strip()
+        
+        # Валидация имени
+        is_valid, error_message = validate_user_name(name)
+        if not is_valid:
+            logger.warning(f"Попытка сохранить невалидное имя: {name}")
+            return jsonify({'success': False, 'error': error_message}), 400
+        
+        # Проверяем, существует ли уже пользователь с таким именем
+        existing_user = BossUser.query.filter_by(name=name).first()
+        
+        if existing_user:
+            logger.info(f"Пользователь найден: user_id={existing_user.id}, name={name}")
+            return jsonify({
+                'success': True,
+                'user_id': existing_user.id,
+                'user_name': existing_user.name
+            })
+        
+        # Создаем нового пользователя в транзакции
+        try:
+            new_user = BossUser(name=name)
+            db.session.add(new_user)
+            db.session.commit()
+            
+            logger.info(f"Создан новый пользователь: user_id={new_user.id}, name={name}")
+            return jsonify({
+                'success': True,
+                'user_id': new_user.id,
+                'user_name': new_user.name
+            })
+        except IntegrityError as e:
+            db.session.rollback()
+            logger.error(f"Ошибка целостности при создании пользователя: {e}")
+            # Возможно, пользователь был создан параллельно
+            existing_user = BossUser.query.filter_by(name=name).first()
+            if existing_user:
+                return jsonify({
+                    'success': True,
+                    'user_id': existing_user.id,
+                    'user_name': existing_user.name
+                })
+            return jsonify({'success': False, 'error': 'Ошибка при создании пользователя'}), 500
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Неожиданная ошибка при создании пользователя: {e}")
+            return jsonify({'success': False, 'error': 'Ошибка при создании пользователя'}), 500
+            
+    except Exception as e:
+        logger.error(f"Критическая ошибка в save_boss_user: {e}")
+        return jsonify({'success': False, 'error': 'Внутренняя ошибка сервера'}), 500
+
 # API для отправки ответа на задачу босса
 @app.route('/api/raid-boss/submit', methods=['POST'])
 def submit_boss_task_answer():
-    data = request.json
-    task_id = data.get('task_id')
-    class_id = data.get('class_id')
-    user_name = data.get('user_name', '').strip()
-    answer = data.get('answer', '').strip()
-    
-    if not task_id or not class_id or not user_name or not answer:
-        return jsonify({'success': False, 'error': 'Все поля обязательны'}), 400
-    
-    task = db.get_or_404(BossTask, task_id)
-    active_boss = Boss.query.filter_by(is_active=True, id=task.boss_id).first()
-    
-    if not active_boss:
-        return jsonify({'success': False, 'error': 'Босс не активен'}), 404
-    
-    # Проверяем, не решена ли задача уже
-    if task.is_solved():
-        return jsonify({'success': False, 'error': 'Задача уже решена'}), 400
-    
-    # Проверяем правильность ответа
-    is_correct = task.correct_answer.strip().lower() == answer.strip().lower()
-    
-    # Сохраняем решение
-    solution = BossTaskSolution(
-        boss_id=active_boss.id,
-        task_id=task.id,
-        class_id=class_id,
-        user_name=user_name,
-        answer=answer,
-        is_correct=is_correct
-    )
-    db.session.add(solution)
-    db.session.commit()
-    
-    # Если ответ правильный, проверяем race condition после коммита
-    if is_correct:
-        # Проверяем, сколько правильных решений существует для этой задачи
-        correct_solutions = BossTaskSolution.query.filter_by(
-            task_id=task.id,
-            is_correct=True
-        ).order_by(BossTaskSolution.solved_at.asc()).all()
+    try:
+        data = request.json
+        if not data:
+            return jsonify({'success': False, 'error': 'Данные не получены'}), 400
         
-        # Если правильных решений больше одного, значит был race condition
-        if len(correct_solutions) > 1:
-            # Оставляем только первое решение как правильное
-            first_solution = correct_solutions[0]
-            # Помечаем остальные как неправильные
-            for sol in correct_solutions[1:]:
-                sol.is_correct = False
+        task_id = data.get('task_id')
+        class_id = data.get('class_id')
+        user_name = data.get('user_name', '').strip()
+        user_id = data.get('user_id')  # ID пользователя из куки
+        answer = data.get('answer', '').strip()
+        
+        # Валидация обязательных полей
+        if not task_id or not class_id or not answer:
+            return jsonify({'success': False, 'error': 'Все поля обязательны'}), 400
+        
+        # Валидация и проверка user_id на сервере
+        validated_user = None
+        if user_id:
+            is_valid, validated_user, error = validate_user_id(user_id)
+            if not is_valid:
+                logger.warning(f"Невалидный user_id: {user_id}, ошибка: {error}")
+                # Не блокируем отправку ответа, но не обрабатываем дроп
+                user_id = None
+            else:
+                # Используем валидированное имя пользователя
+                if validated_user and not user_name:
+                    user_name = validated_user.name
+        
+        # Если имя пользователя не указано, используем название класса
+        if not user_name:
+            class_obj = Class.query.get(class_id)
+            if class_obj:
+                user_name = class_obj.name
+            else:
+                user_name = 'Аноним'
+        
+        # Получаем задачу и босса
+        try:
+            task = db.get_or_404(BossTask, task_id)
+        except Exception:
+            return jsonify({'success': False, 'error': 'Задача не найдена'}), 404
+        
+        active_boss = Boss.query.filter_by(is_active=True, id=task.boss_id).first()
+        
+        if not active_boss:
+            return jsonify({'success': False, 'error': 'Босс не активен'}), 404
+        
+        # Проверяем, не решена ли задача уже
+        if task.is_solved():
+            return jsonify({'success': False, 'error': 'Задача уже решена'}), 400
+        
+        # Проверяем правильность ответа
+        is_correct = task.correct_answer.strip().lower() == answer.strip().lower()
+        
+        # Сохраняем решение в транзакции
+        try:
+            solution = BossTaskSolution(
+                boss_id=active_boss.id,
+                task_id=task.id,
+                class_id=class_id,
+                user_name=user_name,
+                user_id=validated_user.id if validated_user else None,
+                answer=answer,
+                is_correct=is_correct
+            )
+            db.session.add(solution)
             db.session.commit()
             
-            # Если текущее решение не было первым, сообщаем, что задача уже решена
-            if solution.id != first_solution.id:
-                return jsonify({
-                    'success': False,
-                    'error': 'Задача уже решена другим пользователем'
-                }), 400
+            logger.info(f"Ответ сохранен: task_id={task_id}, user_id={validated_user.id if validated_user else None}, is_correct={is_correct}")
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Ошибка при сохранении ответа: {e}")
+            return jsonify({'success': False, 'error': 'Ошибка при сохранении ответа'}), 500
         
-        return jsonify({
-            'success': True,
-            'correct': True,
-            'message': f'Правильно! Вы нанесли {task.points} урона боссу!'
-        })
-    else:
-        return jsonify({
-            'success': True,
-            'correct': False,
-            'message': 'Неверный ответ. Попробуйте еще раз!'
-        })
+        # Если ответ правильный, проверяем race condition и обрабатываем дроп
+        if is_correct:
+            try:
+                # Проверяем, сколько правильных решений существует для этой задачи
+                correct_solutions = BossTaskSolution.query.filter_by(
+                    task_id=task.id,
+                    is_correct=True
+                ).order_by(BossTaskSolution.solved_at.asc()).all()
+                
+                # Если правильных решений больше одного, значит был race condition
+                if len(correct_solutions) > 1:
+                    # Оставляем только первое решение как правильное
+                    first_solution = correct_solutions[0]
+                    # Помечаем остальные как неправильные
+                    for sol in correct_solutions[1:]:
+                        sol.is_correct = False
+                    db.session.commit()
+                    
+                    # Если текущее решение не было первым, сообщаем, что задача уже решена
+                    if solution.id != first_solution.id:
+                        logger.info(f"Race condition: задача {task_id} уже решена другим пользователем")
+                        return jsonify({
+                            'success': False,
+                            'error': 'Задача уже решена другим пользователем'
+                        }), 400
+                
+                # Обрабатываем дроп только если user_id валиден
+                drop_reward = None
+                if validated_user:
+                    drop_reward, drop_error = process_drop_reward(active_boss.id, validated_user.id, task.id)
+                    if drop_error:
+                        logger.warning(f"Ошибка при обработке дропа: {drop_error}")
+                        # Не блокируем ответ из-за ошибки дропа
+                
+                response_data = {
+                    'success': True,
+                    'correct': True,
+                    'message': f'Правильно! Вы нанесли {task.points} урона боссу!',
+                    'update_progress': True,
+                    'is_correct': True
+                }
+                
+                # Добавляем информацию о дропе, если он выпал
+                if drop_reward:
+                    response_data['drop_reward'] = {
+                        'drop_name': drop_reward.drop.name if drop_reward.drop else '',
+                        'drop_id': drop_reward.drop_id
+                    }
+                
+                return jsonify(response_data)
+                
+            except Exception as e:
+                logger.error(f"Ошибка при обработке правильного ответа: {e}")
+                # Возвращаем успешный ответ даже при ошибке обработки дропа
+                return jsonify({
+                    'success': True,
+                    'correct': True,
+                    'message': f'Правильно! Вы нанесли {task.points} урона боссу!',
+                    'update_progress': True,
+                    'is_correct': True
+                })
+        else:
+            return jsonify({
+                'success': True,
+                'correct': False,
+                'message': 'Неверный ответ. Попробуйте еще раз!',
+                'update_progress': True,
+                'is_correct': False
+            })
+            
+    except Exception as e:
+        logger.error(f"Критическая ошибка в submit_boss_task_answer: {e}")
+        db.session.rollback()
+        return jsonify({'success': False, 'error': 'Внутренняя ошибка сервера'}), 500
 
 # API для получения статистики босса
 @app.route('/api/raid-boss/stats')
@@ -1578,6 +2059,96 @@ def get_boss_stats():
         },
         'class_damage': class_damage
     })
+
+# API для управления дропами босса
+@app.route('/api/bosses/<int:boss_id>/drops', methods=['GET'])
+@admin_required
+def get_boss_drops(boss_id):
+    boss = db.get_or_404(Boss, boss_id)
+    drops = BossDrop.query.filter_by(boss_id=boss_id).all()
+    return jsonify({'success': True, 'drops': [drop.to_dict() for drop in drops]})
+
+@app.route('/api/bosses/<int:boss_id>/drops', methods=['POST'])
+@admin_required
+def create_boss_drop(boss_id):
+    boss = db.get_or_404(Boss, boss_id)
+    data = request.json
+    name = data.get('name', '').strip()
+    probability = data.get('probability', 'medium')
+    
+    if not name:
+        return jsonify({'success': False, 'error': 'Название дропа обязательно'}), 400
+    
+    if probability not in ['high', 'medium', 'very_low']:
+        return jsonify({'success': False, 'error': 'Неверная вероятность'}), 400
+    
+    new_drop = BossDrop(
+        boss_id=boss_id,
+        name=name,
+        probability=probability
+    )
+    db.session.add(new_drop)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'drop': new_drop.to_dict()})
+
+@app.route('/api/bosses/<int:boss_id>/drops/<int:drop_id>', methods=['PUT'])
+@admin_required
+def update_boss_drop(boss_id, drop_id):
+    boss = db.get_or_404(Boss, boss_id)
+    drop = db.get_or_404(BossDrop, drop_id)
+    
+    if drop.boss_id != boss_id:
+        return jsonify({'success': False, 'error': 'Дроп не принадлежит этому боссу'}), 400
+    
+    data = request.json
+    if 'name' in data:
+        drop.name = data['name'].strip()
+    if 'probability' in data:
+        if data['probability'] not in ['high', 'medium', 'very_low']:
+            return jsonify({'success': False, 'error': 'Неверная вероятность'}), 400
+        drop.probability = data['probability']
+    
+    db.session.commit()
+    return jsonify({'success': True, 'drop': drop.to_dict()})
+
+@app.route('/api/bosses/<int:boss_id>/drops/<int:drop_id>', methods=['DELETE'])
+@admin_required
+def delete_boss_drop(boss_id, drop_id):
+    boss = db.get_or_404(Boss, boss_id)
+    drop = db.get_or_404(BossDrop, drop_id)
+    
+    if drop.boss_id != boss_id:
+        return jsonify({'success': False, 'error': 'Дроп не принадлежит этому боссу'}), 400
+    
+    db.session.delete(drop)
+    db.session.commit()
+    return jsonify({'success': True})
+
+# API для получения списка пользователей босса
+@app.route('/api/bosses/<int:boss_id>/users', methods=['GET'])
+@admin_required
+def get_boss_users(boss_id):
+    boss = db.get_or_404(Boss, boss_id)
+    # Получаем всех пользователей, которые решали задачи этого босса
+    users = db.session.query(BossUser).join(
+        BossTaskSolution, BossTaskSolution.user_id == BossUser.id
+    ).filter(
+        BossTaskSolution.boss_id == boss_id
+    ).distinct().all()
+    
+    return jsonify({'success': True, 'users': [user.to_dict() for user in users]})
+
+# API для получения списка выпавших дропов
+@app.route('/api/bosses/<int:boss_id>/drop-rewards', methods=['GET'])
+@admin_required
+def get_boss_drop_rewards(boss_id):
+    boss = db.get_or_404(Boss, boss_id)
+    rewards = BossDropReward.query.filter_by(boss_id=boss_id).order_by(
+        BossDropReward.received_at.desc()
+    ).all()
+    
+    return jsonify({'success': True, 'rewards': [reward.to_dict() for reward in rewards]})
 
 # Обработчик завершения приложения для остановки планировщика
 @app.teardown_appcontext

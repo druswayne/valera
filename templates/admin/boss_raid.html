@@ -45,6 +45,8 @@
                     {{ 'Отключить' if boss.is_active else 'Включить' }}
                 </button>
                 <button class="tasks-btn" onclick="manageBossTasks({{ boss.id }}, '{{ boss.name|replace("'", "\\'") }}')">Управление задачами</button>
+                <button class="drops-btn" onclick="manageBossDrops({{ boss.id }}, '{{ boss.name|replace("'", "\\'") }}')">Управление дропами</button>
+                <button class="users-btn" onclick="viewBossUsers({{ boss.id }}, '{{ boss.name|replace("'", "\\'") }}')">Пользователи</button>
                 <button class="delete-btn" onclick="deleteBoss({{ boss.id }})">Удалить</button>
             </div>
             
@@ -126,6 +128,62 @@
             </div>
             <button type="submit" class="save-btn">Сохранить</button>
         </form>
+    </div>
+</div>
+
+<!-- Модальное окно управления дропами -->
+<div class="modal-overlay" id="dropsModal">
+    <div class="modal-content large-modal">
+        <button class="modal-close" onclick="closeDropsModal()">&times;</button>
+        <h2 class="modal-title" id="dropsModalTitle">Управление дропами</h2>
+        <div class="drops-container">
+            <button class="add-btn" onclick="showAddDropModal()" style="margin-bottom: 20px;">+ Добавить дроп</button>
+            <div id="dropsList" class="drops-list"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно добавления/редактирования дропа -->
+<div class="modal-overlay" id="dropModal">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closeDropModal()">&times;</button>
+        <h2 class="modal-title" id="dropModalTitle">Добавить дроп</h2>
+        <form id="dropForm" onsubmit="saveDrop(event)">
+            <input type="hidden" id="dropId" value="">
+            <div class="form-group">
+                <label>Название дропа:</label>
+                <input type="text" id="dropName" required>
+            </div>
+            <div class="form-group">
+                <label>Вероятность выпадения:</label>
+                <select id="dropProbability" required>
+                    <option value="high">Высокая</option>
+                    <option value="medium" selected>Средняя</option>
+                    <option value="very_low">Очень маленькая</option>
+                </select>
+            </div>
+            <button type="submit" class="save-btn">Сохранить</button>
+        </form>
+    </div>
+</div>
+
+<!-- Модальное окно просмотра пользователей -->
+<div class="modal-overlay" id="usersModal">
+    <div class="modal-content large-modal">
+        <button class="modal-close" onclick="closeUsersModal()">&times;</button>
+        <h2 class="modal-title" id="usersModalTitle">Пользователи босса</h2>
+        <div class="users-container">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="showUsersTab()">Список пользователей</button>
+                <button class="tab-btn" onclick="showDropRewardsTab()">Выпавшие дропы</button>
+            </div>
+            <div id="usersTab" class="tab-content">
+                <div id="usersList" class="users-list"></div>
+            </div>
+            <div id="dropRewardsTab" class="tab-content" style="display: none;">
+                <div id="dropRewardsList" class="drop-rewards-list"></div>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -462,6 +520,276 @@ document.getElementById('taskModal')?.addEventListener('click', function(e) {
     }
 });
 
+// Управление дропами
+let currentDropsBossId = null;
+let editingDropId = null;
+
+function manageBossDrops(bossId, bossName) {
+    currentDropsBossId = bossId;
+    document.getElementById('dropsModalTitle').textContent = `Дропы босса: ${bossName}`;
+    document.getElementById('dropsModal').classList.add('show');
+    loadBossDrops(bossId);
+}
+
+function closeDropsModal() {
+    document.getElementById('dropsModal').classList.remove('show');
+    currentDropsBossId = null;
+    editingDropId = null;
+}
+
+function loadBossDrops(bossId) {
+    fetch(`/api/bosses/${bossId}/drops`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayBossDrops(data.drops);
+            } else {
+                alert('Ошибка при загрузке дропов');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Ошибка при загрузке дропов');
+        });
+}
+
+function displayBossDrops(drops) {
+    const list = document.getElementById('dropsList');
+    if (drops.length === 0) {
+        list.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">Нет дропов у этого босса</p>';
+        return;
+    }
+    
+    const probabilityNames = {
+        'high': 'Высокая',
+        'medium': 'Средняя',
+        'very_low': 'Очень маленькая'
+    };
+    
+    list.innerHTML = drops.map(drop => `
+        <div class="drop-item" data-id="${drop.id}">
+            <div class="drop-info">
+                <div class="drop-name">${drop.name}</div>
+                <div class="drop-details">
+                    <div><strong>Вероятность:</strong> ${probabilityNames[drop.probability] || drop.probability}</div>
+                </div>
+            </div>
+            <div class="drop-actions">
+                <button class="edit-btn" onclick="editDrop(${drop.id})">Редактировать</button>
+                <button class="delete-btn" onclick="deleteDrop(${drop.id})">Удалить</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function showAddDropModal() {
+    editingDropId = null;
+    document.getElementById('dropModalTitle').textContent = 'Добавить дроп';
+    document.getElementById('dropForm').reset();
+    document.getElementById('dropId').value = '';
+    document.getElementById('dropProbability').value = 'medium';
+    document.getElementById('dropModal').classList.add('show');
+}
+
+function editDrop(dropId) {
+    fetch(`/api/bosses/${currentDropsBossId}/drops`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const drop = data.drops.find(d => d.id === dropId);
+                if (!drop) {
+                    alert('Дроп не найден');
+                    return;
+                }
+                
+                editingDropId = dropId;
+                document.getElementById('dropModalTitle').textContent = 'Редактировать дроп';
+                document.getElementById('dropId').value = dropId;
+                document.getElementById('dropName').value = drop.name;
+                document.getElementById('dropProbability').value = drop.probability;
+                document.getElementById('dropModal').classList.add('show');
+            } else {
+                alert('Ошибка при загрузке дропа');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Ошибка при загрузке дропа');
+        });
+}
+
+function closeDropModal() {
+    document.getElementById('dropModal').classList.remove('show');
+    editingDropId = null;
+}
+
+function saveDrop(event) {
+    event.preventDefault();
+    if (!currentDropsBossId) {
+        alert('Выберите босса');
+        return;
+    }
+    
+    const dropId = document.getElementById('dropId').value;
+    const name = document.getElementById('dropName').value.trim();
+    const probability = document.getElementById('dropProbability').value;
+    
+    const url = dropId ? `/api/bosses/${currentDropsBossId}/drops/${dropId}` : `/api/bosses/${currentDropsBossId}/drops`;
+    const method = dropId ? 'PUT' : 'POST';
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            name: name,
+            probability: probability
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeDropModal();
+            loadBossDrops(currentDropsBossId);
+        } else {
+            alert(data.error || 'Ошибка при сохранении дропа');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Ошибка при сохранении дропа');
+    });
+}
+
+function deleteDrop(dropId) {
+    if (!confirm('Вы уверены, что хотите удалить этот дроп?')) {
+        return;
+    }
+    
+    fetch(`/api/bosses/${currentDropsBossId}/drops/${dropId}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadBossDrops(currentDropsBossId);
+        } else {
+            alert('Ошибка при удалении дропа');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Ошибка при удалении дропа');
+    });
+}
+
+// Управление пользователями
+let currentUsersBossId = null;
+
+function viewBossUsers(bossId, bossName) {
+    currentUsersBossId = bossId;
+    document.getElementById('usersModalTitle').textContent = `Пользователи босса: ${bossName}`;
+    document.getElementById('usersModal').classList.add('show');
+    loadBossUsers(bossId);
+    loadBossDropRewards(bossId);
+    showUsersTab();
+}
+
+function closeUsersModal() {
+    document.getElementById('usersModal').classList.remove('show');
+    currentUsersBossId = null;
+}
+
+function showUsersTab() {
+    document.getElementById('usersTab').style.display = 'block';
+    document.getElementById('dropRewardsTab').style.display = 'none';
+    document.querySelectorAll('.tab-btn').forEach((btn, index) => {
+        btn.classList.remove('active');
+        if (index === 0) btn.classList.add('active');
+    });
+}
+
+function showDropRewardsTab() {
+    document.getElementById('usersTab').style.display = 'none';
+    document.getElementById('dropRewardsTab').style.display = 'block';
+    document.querySelectorAll('.tab-btn').forEach((btn, index) => {
+        btn.classList.remove('active');
+        if (index === 1) btn.classList.add('active');
+    });
+}
+
+function loadBossUsers(bossId) {
+    fetch(`/api/bosses/${bossId}/users`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayBossUsers(data.users);
+            } else {
+                alert('Ошибка при загрузке пользователей');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Ошибка при загрузке пользователей');
+        });
+}
+
+function displayBossUsers(users) {
+    const list = document.getElementById('usersList');
+    if (users.length === 0) {
+        list.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">Нет пользователей</p>';
+        return;
+    }
+    
+    list.innerHTML = users.map(user => `
+        <div class="user-item">
+            <div class="user-info">
+                <div class="user-name"><strong>ID:</strong> ${user.id}</div>
+                <div class="user-details"><strong>Имя:</strong> ${user.name}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function loadBossDropRewards(bossId) {
+    fetch(`/api/bosses/${bossId}/drop-rewards`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayBossDropRewards(data.rewards);
+            } else {
+                alert('Ошибка при загрузке выпавших дропов');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Ошибка при загрузке выпавших дропов');
+        });
+}
+
+function displayBossDropRewards(rewards) {
+    const list = document.getElementById('dropRewardsList');
+    if (rewards.length === 0) {
+        list.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">Нет выпавших дропов</p>';
+        return;
+    }
+    
+    list.innerHTML = rewards.map(reward => {
+        const date = new Date(reward.received_at);
+        const formattedDate = date.toLocaleString('ru-RU');
+        return `
+            <div class="drop-reward-item">
+                <div class="reward-info">
+                    <div class="reward-user"><strong>ID:</strong> ${reward.user_id} | <strong>Имя:</strong> ${reward.user_name}</div>
+                    <div class="reward-drop"><strong>Дроп:</strong> ${reward.drop_name}</div>
+                    <div class="reward-time"><strong>Время:</strong> ${formattedDate}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
 // Загрузка количества задач для каждого босса
 document.addEventListener('DOMContentLoaded', function() {
     {% for boss in bosses %}
@@ -476,6 +804,25 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('boss-tasks-count-{{ boss.id }}').textContent = 'Ошибка';
         });
     {% endfor %}
+    
+    // Закрытие модальных окон при клике вне них
+    document.getElementById('dropsModal')?.addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeDropsModal();
+        }
+    });
+    
+    document.getElementById('dropModal')?.addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeDropModal();
+        }
+    });
+    
+    document.getElementById('usersModal')?.addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeUsersModal();
+        }
+    });
 });
 </script>
 
@@ -617,7 +964,7 @@ document.addEventListener('DOMContentLoaded', function() {
     font-size: 14px;
 }
 
-.edit-btn, .delete-btn, .tasks-btn, .toggle-btn {
+.edit-btn, .delete-btn, .tasks-btn, .toggle-btn, .drops-btn, .users-btn {
     padding: 10px 18px;
     border: none;
     border-radius: 12px;
@@ -638,6 +985,16 @@ document.addEventListener('DOMContentLoaded', function() {
     color: #fff;
 }
 
+.drops-btn {
+    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+    color: #fff;
+}
+
+.users-btn {
+    background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+    color: #fff;
+}
+
 .toggle-btn.activate {
     background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
     color: #fff;
@@ -653,7 +1010,7 @@ document.addEventListener('DOMContentLoaded', function() {
     color: #fff;
 }
 
-.edit-btn:hover, .delete-btn:hover, .tasks-btn:hover, .toggle-btn:hover {
+.edit-btn:hover, .delete-btn:hover, .tasks-btn:hover, .toggle-btn:hover, .drops-btn:hover, .users-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 5px 12px rgba(0, 0, 0, 0.3);
 }
@@ -865,12 +1222,95 @@ document.addEventListener('DOMContentLoaded', function() {
     margin-top: 10px;
 }
 
+.drops-container, .users-container {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.drops-list, .users-list, .drop-rewards-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.drop-item, .user-item, .drop-reward-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 15px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border-radius: 12px;
+    border: 2px solid #d4c5b0;
+    transition: all 0.3s ease;
+}
+
+.drop-item:hover, .user-item:hover, .drop-reward-item:hover {
+    border-color: #8b6fa8;
+    box-shadow: 0 3px 10px rgba(139, 111, 168, 0.2);
+}
+
+.drop-info, .user-info, .reward-info {
+    flex: 1;
+}
+
+.drop-name, .user-name {
+    font-size: 18px;
+    font-weight: bold;
+    color: #8b6fa8;
+    margin-bottom: 10px;
+}
+
+.drop-details, .user-details, .reward-user, .reward-drop, .reward-time {
+    color: #666;
+    font-size: 14px;
+    line-height: 1.6;
+    margin-bottom: 5px;
+}
+
+.drop-actions {
+    display: flex;
+    gap: 8px;
+    flex-direction: column;
+}
+
+.tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #d4c5b0;
+}
+
+.tab-btn {
+    padding: 12px 24px;
+    border: none;
+    background: transparent;
+    color: #666;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.tab-btn.active {
+    color: #8b6fa8;
+    border-bottom-color: #8b6fa8;
+}
+
+.tab-btn:hover {
+    color: #8b6fa8;
+}
+
+.tab-content {
+    padding: 20px 0;
+}
+
 @media (max-width: 768px) {
     .boss-actions {
         flex-direction: column;
     }
     
-    .edit-btn, .delete-btn, .tasks-btn, .toggle-btn {
+    .edit-btn, .delete-btn, .tasks-btn, .toggle-btn, .drops-btn, .users-btn {
         width: 100%;
     }
     
@@ -886,6 +1326,25 @@ document.addEventListener('DOMContentLoaded', function() {
         flex-direction: row;
         width: 100%;
         margin-top: 10px;
+    }
+    
+    .drop-item, .user-item, .drop-reward-item {
+        flex-direction: column;
+    }
+    
+    .drop-actions {
+        flex-direction: row;
+        width: 100%;
+        margin-top: 10px;
+    }
+    
+    .tabs {
+        flex-direction: column;
+    }
+    
+    .tab-btn {
+        width: 100%;
+        text-align: left;
     }
 }
 </style>
