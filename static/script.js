@@ -897,7 +897,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 selectPrizeBtn.disabled = true;
                 selectPrizeBtn.style.opacity = '0.5';
                 selectPrizeBtn.style.cursor = 'not-allowed';
-                selectPrizeBtn.title = 'Недостаточно монет (нужно 8, есть ' + valeraBalance + ')';
+                selectPrizeBtn.title = 'Недостаточно монет (нужно ' + PRIZE_COST + ', есть ' + valeraBalance + ')';
             } else {
                 selectPrizeBtn.disabled = false;
                 selectPrizeBtn.style.opacity = '1';
@@ -1006,7 +1006,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!selectPrizeBtn || selectPrizeBtn.disabled) return;
         
         // Проверяем баланс перед выбором приза
-        const PRIZE_COST = 8;
+        const PRIZE_COST = 5;
         let valeraBalance = 0;
         
         try {
@@ -1023,7 +1023,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Если баланс недостаточен, не позволяем выбрать приз
             if (valeraBalance < PRIZE_COST) {
-                showNotification('Недостаточно монет', `Нужно 5 монет, у вас ${valeraBalance}`, 'error');
+                showNotification('Недостаточно монет', `Нужно ${PRIZE_COST} монет, у вас ${valeraBalance}`, 'error');
                 return;
             }
         } catch (error) {
