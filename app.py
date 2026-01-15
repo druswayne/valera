@@ -102,6 +102,7 @@ class Student(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     class_id = db.Column(db.Integer, db.ForeignKey('class.id'), nullable=False)
+    rating = db.Column(db.Integer, default=0, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     selections = db.relationship('StudentSelection', backref='student', lazy=True, cascade='all, delete-orphan')
 
@@ -109,7 +110,8 @@ class Student(db.Model):
         return {
             'id': self.id,
             'name': self.name,
-            'class_id': self.class_id
+            'class_id': self.class_id,
+            'rating': self.rating or 0
         }
 
 class StudentSelection(db.Model):
@@ -661,6 +663,20 @@ with app.app_context():
         print(f"Ошибка при миграции таблицы prize: {e}")
         # Если таблица не существует, db.create_all() создаст её с нужными колонками
     
+    # Миграция: добавление колонки rating в таблицу student, если её нет
+    try:
+        from sqlalchemy import inspect, text
+        
+        inspector = inspect(db.engine)
+        if 'student' in inspector.get_table_names():
+            columns = [col['name'] for col in inspector.get_columns('student')]
+            if 'rating' not in columns:
+                with db.engine.begin() as conn:
+                    conn.execute(text('ALTER TABLE student ADD COLUMN rating INTEGER DEFAULT 0'))
+                    print("Добавлена колонка rating в таблицу student")
+    except Exception as e:
+        print(f"Ошибка при миграции таблицы student (rating): {e}")
+    
     # Миграция: добавление таблиц для задач недели
     try:
         from sqlalchemy import inspect, text
@@ -969,7 +985,17 @@ def delete_class(class_id):
 def get_students(class_id):
     class_obj = db.get_or_404(Class, class_id)
     students = Student.query.filter_by(class_id=class_id).all()
-    return jsonify({'success': True, 'students': [s.to_dict() for s in students]})
+    
+    students_payload = []
+    for s in students:
+        payload = s.to_dict()
+        payload['selection_count'] = StudentSelection.query.filter_by(
+            student_id=s.id,
+            class_id=class_id
+        ).count()
+        students_payload.append(payload)
+    
+    return jsonify({'success': True, 'students': students_payload})
 
 @app.route('/api/classes/<int:class_id>/students', methods=['POST'])
 @admin_required
@@ -1071,6 +1097,32 @@ def confirm_student_selection(class_id, student_id):
     db.session.commit()
     
     return jsonify({'success': True, 'selection': selection.to_dict()})
+
+@app.route('/api/class/<int:class_id>/students/<int:student_id>/rate', methods=['POST'])
+@admin_required
+def rate_student(class_id, student_id):
+    db.get_or_404(Class, class_id)
+    student = db.get_or_404(Student, student_id)
+    
+    # Проверяем, что учащийся принадлежит классу
+    if student.class_id != class_id:
+        return jsonify({'success': False, 'error': 'Учащийся не принадлежит этому классу'}), 400
+    
+    data = request.get_json(silent=True) or {}
+    delta = data.get('delta', None)
+    
+    try:
+        delta_int = int(delta)
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'error': 'Некорректная оценка'}), 400
+    
+    if delta_int not in (-1, 0, 1):
+        return jsonify({'success': False, 'error': 'Оценка должна быть -1, 0 или 1'}), 400
+    
+    student.rating = (student.rating or 0) + delta_int
+    db.session.commit()
+    
+    return jsonify({'success': True, 'student': student.to_dict()})
 
 # Панель администратора - призы
 @app.route('/admin/prizes')

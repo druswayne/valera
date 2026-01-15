@@ -616,14 +616,16 @@
     width: 100%;
     height: 100%;
     border-radius: 50%;
-    border: 8px solid #4CAF50;
+    border: 8px solid var(--student-glow-border, #4CAF50);
     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
     display: flex;
     align-items: center;
     justify-content: center;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.3),
+        0 0 28px var(--student-glow-shadow, rgba(76, 175, 80, 0.35));
     transition: transform 0.1s linear;
 }
 
@@ -680,8 +682,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
-    border: 4px solid #4CAF50;
+    box-shadow:
+        0 5px 20px rgba(0, 0, 0, 0.3),
+        0 0 22px var(--student-glow-shadow, rgba(76, 175, 80, 0.25));
+    border: 4px solid var(--student-glow-border, #4CAF50);
 }
 
 .student-name-large {
@@ -700,7 +704,7 @@
     }
     50% {
         transform: scale(1.1);
-        color: #4CAF50;
+        color: var(--student-glow-border, #4CAF50);
     }
 }
 
@@ -742,6 +746,59 @@
     box-shadow: 0 8px 20px rgba(33, 150, 243, 0.4);
 }
 
+.student-rating-modal {
+    max-width: 520px;
+}
+
+.student-rating-container {
+    text-align: center;
+    padding: 10px 0 0;
+}
+
+.rating-student-name {
+    font-size: 22px;
+    font-weight: bold;
+    margin: 10px 0 20px;
+    color: #333;
+}
+
+.rating-emoji-row {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    margin: 10px 0 5px;
+}
+
+.rating-emoji-btn {
+    width: 84px;
+    height: 84px;
+    border-radius: 18px;
+    border: 3px solid #000;
+    background: linear-gradient(135deg, #ffffff 0%, #f3f3f3 100%);
+    cursor: pointer;
+    font-size: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.rating-emoji-btn:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.25);
+}
+
+.rating-emoji-btn:active {
+    transform: translateY(-1px) scale(1.02);
+}
+
+.rating-hint {
+    margin-top: 14px;
+    font-size: 14px;
+    color: #777;
+}
+
 @media (max-width: 768px) {
     .random-student-modal {
         max-width: 95%;
@@ -771,6 +828,12 @@
         width: 100%;
         padding: 12px 20px;
         font-size: 16px;
+    }
+    
+    .rating-emoji-btn {
+        width: 72px;
+        height: 72px;
+        font-size: 40px;
     }
 }
 
@@ -1025,6 +1088,23 @@
                     <button class="confirm-student-btn" id="confirmStudentBtn">Подтвердить выбор</button>
                     <button class="reroll-student-btn" id="rerollStudentBtn">Выбрать снова</button>
                 </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Модальное окно оценки ответа учащегося -->
+    <div class="modal-overlay" id="studentRatingModal">
+        <div class="modal-content student-rating-modal">
+            <button class="modal-close" id="closeStudentRatingModal">&times;</button>
+            <h2 class="modal-title">Оценка ответа</h2>
+            <div class="student-rating-container">
+                <div class="rating-student-name" id="ratingStudentName">—</div>
+                <div class="rating-emoji-row">
+                    <button class="rating-emoji-btn" type="button" data-delta="-1" title="Неправильно (рейтинг -1)">😞</button>
+                    <button class="rating-emoji-btn" type="button" data-delta="0" title="Нейтрально (без изменений)">😐</button>
+                    <button class="rating-emoji-btn" type="button" data-delta="1" title="Отлично (рейтинг +1)">😊</button>
+                </div>
+                <div class="rating-hint">Выберите смайлик, чтобы изменить рейтинг учащегося.</div>
             </div>
         </div>
     </div>
@@ -1416,6 +1496,7 @@
         let studentsData = [];
         let currentSelectedStudent = null;
         let isSpinning = false;
+        let ratingTargetStudent = null;
         
         const randomStudentBtn = document.getElementById('randomStudentBtn');
         const randomStudentModal = document.getElementById('randomStudentModal');
@@ -1425,6 +1506,46 @@
         const studentActions = document.getElementById('studentActions');
         const confirmStudentBtn = document.getElementById('confirmStudentBtn');
         const rerollStudentBtn = document.getElementById('rerollStudentBtn');
+        
+        const studentRatingModal = document.getElementById('studentRatingModal');
+        const closeStudentRatingModal = document.getElementById('closeStudentRatingModal');
+        const ratingStudentName = document.getElementById('ratingStudentName');
+        const ratingEmojiButtons = document.querySelectorAll('.rating-emoji-btn');
+        
+        function clamp(value, min, max) {
+            return Math.min(max, Math.max(min, value));
+        }
+        
+        function ratingToGlow(rating) {
+            const MAX_ABS = 5;
+            const r = clamp(parseInt(rating ?? 0, 10) || 0, -MAX_ABS, MAX_ABS);
+            const t = (r + MAX_ABS) / (2 * MAX_ABS); // 0..1 (red -> green)
+            
+            // Мягкая интерполяция (красный -> зелёный), 0 даёт желтоватый
+            const red = { r: 255, g: 70, b: 70 };
+            const green = { r: 70, g: 255, b: 120 };
+            const rr = Math.round(red.r + (green.r - red.r) * t);
+            const gg = Math.round(red.g + (green.g - red.g) * t);
+            const bb = Math.round(red.b + (green.b - red.b) * t);
+            
+            // Чем дальше от 0, тем сильнее свечение
+            const intensity = 0.18 + (Math.abs(r) / MAX_ABS) * 0.35; // 0.18..0.53
+            return {
+                border: `rgb(${rr}, ${gg}, ${bb})`,
+                shadow: `rgba(${rr}, ${gg}, ${bb}, ${intensity})`,
+            };
+        }
+        
+        function setStudentGlowByRating(rating) {
+            const glow = ratingToGlow(rating);
+            randomStudentModal.style.setProperty('--student-glow-border', glow.border);
+            randomStudentModal.style.setProperty('--student-glow-shadow', glow.shadow);
+        }
+        
+        function resetStudentGlow() {
+            randomStudentModal.style.removeProperty('--student-glow-border');
+            randomStudentModal.style.removeProperty('--student-glow-shadow');
+        }
         
         // Открытие модального окна
         randomStudentBtn.addEventListener('click', () => {
@@ -1447,6 +1568,19 @@
             currentSelectedStudent = null;
             studentActions.style.display = 'none';
             selectedStudentName.textContent = '?';
+            resetStudentGlow();
+        }
+        
+        function openStudentRatingModal(student) {
+            ratingTargetStudent = student;
+            ratingStudentName.textContent = student?.name ? student.name : '—';
+            studentRatingModal.classList.add('show');
+        }
+        
+        function closeStudentRatingModalFunc() {
+            studentRatingModal.classList.remove('show');
+            ratingTargetStudent = null;
+            ratingStudentName.textContent = '—';
         }
         
         // Загрузка учащихся и выбор
@@ -1487,6 +1621,7 @@
             isSpinning = true;
             selectorWheel.classList.add('spinning');
             selectedStudentName.textContent = '...';
+            setStudentGlowByRating(0);
             
             // Вычисляем общую сумму весов
             const totalWeight = studentsData.reduce((sum, item) => sum + item.weight, 0);
@@ -1516,6 +1651,9 @@
                 selectedStudentName.textContent = selected.student.name;
                 studentActions.style.display = 'flex';
                 isSpinning = false;
+                
+                // Свечение по рейтингу: <0 краснее, >0 зеленее
+                setStudentGlowByRating(selected.student.rating ?? 0);
             }, 2000);
         }
         
@@ -1530,8 +1668,8 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    alert(`Выбран учащийся: ${currentSelectedStudent.student.name}`);
-                    closeRandomStudentModalFunc();
+                    // После подтверждения открываем модальное окно оценки ответа
+                    openStudentRatingModal(currentSelectedStudent.student);
                 } else {
                     alert(data.error || 'Ошибка при сохранении выбора');
                 }
@@ -1545,6 +1683,46 @@
         rerollStudentBtn.addEventListener('click', () => {
             if (isSpinning) return;
             selectRandomStudent();
+        });
+        
+        // Закрытие модального окна оценки
+        closeStudentRatingModal.addEventListener('click', () => {
+            closeStudentRatingModalFunc();
+        });
+        
+        studentRatingModal.addEventListener('click', (e) => {
+            if (e.target === studentRatingModal) {
+                closeStudentRatingModalFunc();
+            }
+        });
+        
+        // Выбор смайлика и изменение рейтинга
+        ratingEmojiButtons.forEach(btn => {
+            btn.addEventListener('click', async () => {
+                if (!ratingTargetStudent) return;
+                
+                const delta = parseInt(btn.dataset.delta, 10);
+                if (![ -1, 0, 1 ].includes(delta)) return;
+                
+                try {
+                    const response = await fetch(`/api/class/${CLASS_ID}/students/${ratingTargetStudent.id}/rate`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ delta })
+                    });
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        closeStudentRatingModalFunc();
+                        closeRandomStudentModalFunc();
+                    } else {
+                        alert(data.error || 'Ошибка при сохранении оценки');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Ошибка при сохранении оценки');
+                }
+            });
         });
     </script>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
