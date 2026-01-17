@@ -28,6 +28,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+def now_utc_plus_3():
+    """Текущее время UTC + 3 часа (для сохранения времени решения)."""
+    return datetime.utcnow() + timedelta(hours=3)
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-here'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///valera.db'
@@ -198,7 +202,7 @@ class TaskSolution(db.Model):
     user_name = db.Column(db.String(100), nullable=False)
     answer = db.Column(db.String(200), nullable=False)
     is_correct = db.Column(db.Boolean, default=False, nullable=False)
-    solved_at = db.Column(db.DateTime, default=datetime.utcnow)
+    solved_at = db.Column(db.DateTime, default=now_utc_plus_3)
     
     def to_dict(self):
         return {
@@ -290,7 +294,7 @@ class BossTaskSolution(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('boss_user.id'), nullable=True)  # Связь с пользователем
     answer = db.Column(db.String(200), nullable=False)
     is_correct = db.Column(db.Boolean, default=False, nullable=False)
-    solved_at = db.Column(db.DateTime, default=datetime.utcnow)
+    solved_at = db.Column(db.DateTime, default=now_utc_plus_3)
     
     # Индексы для оптимизации запросов
     __table_args__ = (
@@ -1377,7 +1381,8 @@ def submit_task_answer():
         task_id=active_task.id,
         user_name=user_name,
         answer=answer,
-        is_correct=is_correct
+        is_correct=is_correct,
+        solved_at=now_utc_plus_3()
     )
     db.session.add(solution)
     db.session.commit()
