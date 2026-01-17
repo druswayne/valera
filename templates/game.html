@@ -1117,34 +1117,34 @@
         const STUDENTS_PRIZES = {{ students_prizes|tojson }};
         const STATIC_URL = '{{ url_for("static", filename="") }}';
         
-        // Функция обновления баланса через API
+        // Функция обновления баланса через API (применяет ДЕЛЬТЫ на сервере)
         async function updateBalance(studentsChange = 0, valeraChange = 0) {
             try {
-                const response = await fetch(`/api/class/${CLASS_ID}/balance`);
-                const data = await response.json();
-                
-                const newStudentsBalance = data.students_balance + studentsChange;
-                const newValeraBalance = data.valera_balance + valeraChange;
-                
-                await fetch(`/api/class/${CLASS_ID}/balance`, {
+                const response = await fetch(`/api/class/${CLASS_ID}/balance/delta`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        students_balance: newStudentsBalance,
-                        valera_balance: newValeraBalance
+                        students_delta: studentsChange,
+                        valera_delta: valeraChange
                     })
                 });
+
+                const payload = await response.json();
+                if (!payload || payload.success !== true) {
+                    console.error('Error updating balance (delta):', payload?.error || payload);
+                    return;
+                }
                 
                 // Обновляем отображение
-                document.getElementById('studentsBalance').textContent = newStudentsBalance;
-                document.getElementById('valeraBalance').textContent = newValeraBalance;
+                document.getElementById('studentsBalance').textContent = payload.students_balance;
+                document.getElementById('valeraBalance').textContent = payload.valera_balance;
                 
                 // Обновляем баланс в магазине, если он открыт
                 const valeraBalanceInShop = document.getElementById('valeraBalanceInShop');
                 if (valeraBalanceInShop) {
-                    valeraBalanceInShop.textContent = newValeraBalance;
+                    valeraBalanceInShop.textContent = payload.valera_balance;
                 }
                 
                 // Обновляем состояние кнопки в магазине, если он открыт

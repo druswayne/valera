@@ -1104,10 +1104,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Списываем стоимость приза и применяем награды
                 if (typeof updateBalance === 'function') {
                     try {
-                        // Списываем стоимость приза
-                        await updateBalance(0, -PRIZE_COST);
-                        // Применяем награды приза
-                        await updateBalance(selectedPrizeObj.students_change || 0, selectedPrizeObj.valera_change || 0);
+                        // Атомарно: стоимость + награды одним вызовом
+                        const studentsDelta = selectedPrizeObj.students_change || 0;
+                        const valeraDelta = (selectedPrizeObj.valera_change || 0) - PRIZE_COST;
+                        await updateBalance(studentsDelta, valeraDelta);
                         // Обновляем отображение баланса в магазине
                         updateShopBalanceDisplay();
                         // Обновляем состояние кнопки
@@ -1434,10 +1434,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Списываем стоимость приза и применяем награды
                 if (typeof updateBalance === 'function') {
                     try {
-                        // Списываем стоимость приза
-                        await updateBalance(-STUDENTS_PRIZE_COST_FOR_CALLBACK, 0);
-                        // Применяем награды приза
-                        await updateBalance(selectedPrizeObj.students_change || 0, selectedPrizeObj.valera_change || 0);
+                        // Атомарно: стоимость + награды одним вызовом
+                        const studentsDelta = (selectedPrizeObj.students_change || 0) - STUDENTS_PRIZE_COST_FOR_CALLBACK;
+                        const valeraDelta = selectedPrizeObj.valera_change || 0;
+                        await updateBalance(studentsDelta, valeraDelta);
                         // Обновляем отображение баланса в магазине
                         updateStudentsShopBalanceDisplay();
                         // Обновляем состояние кнопки

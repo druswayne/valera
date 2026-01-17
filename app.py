@@ -615,22 +615,22 @@ def update_weekly_task():
             db.session.rollback()
             print(f"Ошибка при обновлении задачи недели: {e}")
 
-# Функция для получения следующего воскресенья в 12:00
-def get_next_sunday_12pm():
-    """Возвращает datetime следующего воскресенья в 12:00"""
+# Функция для получения следующего воскресенья в 09:00
+def get_next_sunday_9am():
+    """Возвращает datetime следующего воскресенья в 09:00"""
     now = datetime.now()
     # Воскресенье = 6 (0 = понедельник, 6 = воскресенье)
     days_until_sunday = (6 - now.weekday()) % 7
     
     # Если сегодня воскресенье
     if days_until_sunday == 0:
-        # Проверяем, прошло ли уже 12:00
-        target_time = now.replace(hour=12, minute=0, second=0, microsecond=0)
+        # Проверяем, прошло ли уже 09:00
+        target_time = now.replace(hour=9, minute=0, second=0, microsecond=0)
         if now >= target_time:
-            # Если уже прошло 12:00, берем следующее воскресенье
+            # Если уже прошло 09:00, берем следующее воскресенье
             days_until_sunday = 7
     
-    next_sunday = now.replace(hour=12, minute=0, second=0, microsecond=0) + timedelta(days=days_until_sunday)
+    next_sunday = now.replace(hour=9, minute=0, second=0, microsecond=0) + timedelta(days=days_until_sunday)
     return next_sunday
 
 # Создание таблиц
@@ -819,33 +819,33 @@ with app.app_context():
             if task_update_time.tzinfo:
                 task_update_time = task_update_time.replace(tzinfo=None)
             
-            # Вычисляем следующее воскресенье в 12:00 от времени обновления задачи
+            # Вычисляем следующее воскресенье в 09:00 от времени обновления задачи
             days_until_sunday = (6 - task_update_time.weekday()) % 7
             if days_until_sunday == 0:
-                target_time = task_update_time.replace(hour=12, minute=0, second=0, microsecond=0)
+                target_time = task_update_time.replace(hour=9, minute=0, second=0, microsecond=0)
                 if task_update_time >= target_time:
                     days_until_sunday = 7
             
-            next_sunday_from_update = task_update_time.replace(hour=12, minute=0, second=0, microsecond=0) + timedelta(days=days_until_sunday)
+            next_sunday_from_update = task_update_time.replace(hour=9, minute=0, second=0, microsecond=0) + timedelta(days=days_until_sunday)
             
             # Если следующее воскресенье уже прошло, обновляем задачу сейчас
             now = datetime.now()
             if next_sunday_from_update < now:
                 print(f"Обнаружена пропущенная дата обновления задачи ({next_sunday_from_update}). Обновляю задачу сейчас...")
                 update_weekly_task()
-                print("Задача обновлена. Планирую следующее обновление на воскресенье в 12:00")
+                print("Задача обновлена. Планирую следующее обновление на воскресенье в 09:00")
         
-        # Добавляем регулярную задачу на каждое воскресенье в 12:00
+        # Добавляем регулярную задачу на каждое воскресенье в 09:00
         scheduler.add_job(
             update_weekly_task,
             'cron',
             day_of_week='sun',
-            hour=12,
+            hour=9,
             minute=0,
             id='update_weekly_task',
             replace_existing=True
         )
-        print("Планировщик задач запущен. Задача недели будет обновляться каждое воскресенье в 12:00")
+        print("Планировщик задач запущен. Задача недели будет обновляться каждое воскресенье в 09:00")
 
 # Маршруты авторизации
 @app.route('/login', methods=['GET', 'POST'])
@@ -913,6 +913,33 @@ def class_game(class_id):
 def get_balance(class_id):
     class_obj = db.get_or_404(Class, class_id)
     return jsonify({
+        'students_balance': class_obj.students_balance,
+        'valera_balance': class_obj.valera_balance
+    })
+
+# API для применения изменения баланса (дельт)
+@app.route('/api/class/<int:class_id>/balance/delta', methods=['POST'])
+def apply_balance_delta(class_id):
+    """
+    Атомарно применяет изменения (дельты) к балансу учащихся и Валеры.
+    В отличие от /balance (POST), который принимает абсолютные значения,
+    этот эндпоинт добавляет изменения на стороне сервера.
+    """
+    class_obj = db.get_or_404(Class, class_id)
+    data = request.get_json(silent=True) or {}
+
+    try:
+        students_delta = int(data.get('students_delta', 0) or 0)
+        valera_delta = int(data.get('valera_delta', 0) or 0)
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'error': 'Некорректные значения дельт'}), 400
+
+    class_obj.students_balance = (class_obj.students_balance or 0) + students_delta
+    class_obj.valera_balance = (class_obj.valera_balance or 0) + valera_delta
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
         'students_balance': class_obj.students_balance,
         'valera_balance': class_obj.valera_balance
     })
@@ -1273,7 +1300,7 @@ def weekly_task():
     
     is_task_solved = first_solution is not None
     
-    # Вычисляем следующее воскресенье в 12:00 на основе времени последнего обновления задачи
+    # Вычисляем следующее воскресенье в 09:00 на основе времени последнего обновления задачи
     next_update_time = None
     next_update_timestamp = None
     
@@ -1288,24 +1315,24 @@ def weekly_task():
         if task_update_time.tzinfo:
             task_update_time = task_update_time.replace(tzinfo=None)
     
-    # Вычисляем следующее воскресенье в 12:00 от времени обновления задачи
+    # Вычисляем следующее воскресенье в 09:00 от времени обновления задачи
     # Воскресенье = 6 (0 = понедельник, 6 = воскресенье)
     days_until_sunday = (6 - task_update_time.weekday()) % 7
     
     if days_until_sunday == 0:
         # Если обновление было в воскресенье, проверяем время
-        target_time = task_update_time.replace(hour=12, minute=0, second=0, microsecond=0)
+        target_time = task_update_time.replace(hour=9, minute=0, second=0, microsecond=0)
         if task_update_time >= target_time:
-            # Если обновление было в 12:00 или после, берем следующее воскресенье
+            # Если обновление было в 09:00 или после, берем следующее воскресенье
             days_until_sunday = 7
     
-    next_sunday = task_update_time.replace(hour=12, minute=0, second=0, microsecond=0) + timedelta(days=days_until_sunday)
+    next_sunday = task_update_time.replace(hour=9, minute=0, second=0, microsecond=0) + timedelta(days=days_until_sunday)
     
     # Проверяем, не в прошлом ли это время. Если да, вычисляем следующее воскресенье от текущего времени
     now = datetime.now()
     if next_sunday < now:
         # Если следующее воскресенье уже прошло, вычисляем следующее от текущего времени
-        next_sunday = get_next_sunday_12pm()
+        next_sunday = get_next_sunday_9am()
     
     # Передаем и строку для отладки, и timestamp для JavaScript
     next_update_time = next_sunday.isoformat()
@@ -1561,7 +1588,7 @@ def uploaded_task_image(filename):
 @app.route('/api/weekly-task/next-update')
 def get_next_update_time():
     """Возвращает время до следующего обновления задачи недели"""
-    next_sunday = get_next_sunday_12pm()
+    next_sunday = get_next_sunday_9am()
     now = datetime.now()
     time_until = next_sunday - now
     
