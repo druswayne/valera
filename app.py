@@ -341,6 +341,9 @@ class BossDrop(db.Model):
     boss_id = db.Column(db.Integer, db.ForeignKey('boss.id'), nullable=False)
     name = db.Column(db.String(200), nullable=False)  # Название дропа
     probability = db.Column(db.String(20), nullable=False)  # 'high', 'medium', 'very_low'
+    # Максимальное количество этого дропа для одного пользователя (BossUser.id).
+    # None/NULL = без ограничений.
+    max_per_user = db.Column(db.Integer, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Связи
@@ -357,6 +360,7 @@ class BossDrop(db.Model):
             'boss_id': self.boss_id,
             'name': self.name,
             'probability': self.probability,
+            'max_per_user': self.max_per_user,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
     
@@ -479,6 +483,31 @@ def process_drop_reward(boss_id, user_id, task_id, allow_multiple_drops_per_task
         drops = BossDrop.query.filter_by(boss_id=boss_id).all()
         if not drops:
             return None, None  # Нет дропов - это нормально
+
+        # Учитываем лимит max_per_user для конкретного пользователя (по BossUser.id)
+        # Если лимит достигнут — исключаем этот дроп из выбора.
+        from sqlalchemy import func
+        existing_counts = dict(
+            db.session.query(BossDropReward.drop_id, func.count(BossDropReward.id))
+            .filter(
+                BossDropReward.boss_id == boss_id,
+                BossDropReward.user_id == user_id
+            )
+            .group_by(BossDropReward.drop_id)
+            .all()
+        )
+
+        eligible_drops = []
+        for drop in drops:
+            max_per_user = getattr(drop, 'max_per_user', None)
+            if max_per_user is not None and max_per_user > 0:
+                if existing_counts.get(drop.id, 0) >= max_per_user:
+                    continue
+            eligible_drops.append(drop)
+
+        if not eligible_drops:
+            logger.info(f"Нет доступных дропов для user_id={user_id} (все упёрлись в лимит max_per_user)")
+            return None, None
         
         # Проверяем, не получил ли уже пользователь дроп за эту задачу
         if not allow_multiple_drops_per_task:
@@ -508,7 +537,7 @@ def process_drop_reward(boss_id, user_id, task_id, allow_multiple_drops_per_task
         
         # Если шанс выпал, выбираем конкретный дроп с учетом их вероятностей
         # Всегда нормализуем вероятности для корректного расчета
-        total_probability = sum(drop.get_probability_value() for drop in drops)
+        total_probability = sum(drop.get_probability_value() for drop in eligible_drops)
         
         if total_probability <= 0:
             return None, None
@@ -518,7 +547,7 @@ def process_drop_reward(boss_id, user_id, task_id, allow_multiple_drops_per_task
         cumulative = 0
         selected_drop = None
         
-        for drop in drops:
+        for drop in eligible_drops:
             # Нормализуем вероятность каждого дропа
             prob = drop.get_probability_value() / total_probability
             cumulative += prob
@@ -529,6 +558,21 @@ def process_drop_reward(boss_id, user_id, task_id, allow_multiple_drops_per_task
         # Если дроп выпал, сохраняем его в транзакции
         if selected_drop:
             try:
+                # Доп. проверка лимита перед сохранением (защита от параллельных выдач)
+                max_per_user = getattr(selected_drop, 'max_per_user', None)
+                if max_per_user is not None and max_per_user > 0:
+                    current_count = BossDropReward.query.filter_by(
+                        boss_id=boss_id,
+                        user_id=user_id,
+                        drop_id=selected_drop.id
+                    ).count()
+                    if current_count >= max_per_user:
+                        logger.info(
+                            f"Лимит дропа достигнут: user_id={user_id}, drop_id={selected_drop.id}, "
+                            f"count={current_count}, max_per_user={max_per_user}"
+                        )
+                        return None, None
+
                 # Дополнительная проверка на дубликаты перед сохранением
                 # (защита от race condition)
                 duplicate_check = BossDropReward.query.filter_by(
@@ -733,6 +777,14 @@ with app.app_context():
                     # SQLite не поддерживает REFERENCES в ALTER TABLE, добавляем просто INTEGER
                     conn.execute(text('ALTER TABLE boss_task_solution ADD COLUMN user_id INTEGER'))
                     print("Добавлена колонка user_id в таблицу boss_task_solution")
+
+        # Миграция: добавление колонки max_per_user в boss_drop, если её нет
+        if 'boss_drop' in tables:
+            columns = [col['name'] for col in inspector.get_columns('boss_drop')]
+            if 'max_per_user' not in columns:
+                with db.engine.begin() as conn:
+                    conn.execute(text('ALTER TABLE boss_drop ADD COLUMN max_per_user INTEGER'))
+                    print("Добавлена колонка max_per_user в таблицу boss_drop")
         
         # Создание индексов для оптимизации (если их еще нет)
         try:
@@ -2159,17 +2211,28 @@ def create_boss_drop(boss_id):
     data = request.json
     name = data.get('name', '').strip()
     probability = data.get('probability', 'medium')
+    max_per_user_raw = data.get('max_per_user', None)
     
     if not name:
         return jsonify({'success': False, 'error': 'Название дропа обязательно'}), 400
     
     if probability not in ['high', 'medium', 'very_low']:
         return jsonify({'success': False, 'error': 'Неверная вероятность'}), 400
+
+    max_per_user = None
+    if max_per_user_raw is not None and str(max_per_user_raw).strip() != '':
+        try:
+            max_per_user = int(max_per_user_raw)
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'error': 'Неверный формат max_per_user'}), 400
+        if max_per_user <= 0:
+            max_per_user = None  # 0/отрицательное = без ограничений
     
     new_drop = BossDrop(
         boss_id=boss_id,
         name=name,
-        probability=probability
+        probability=probability,
+        max_per_user=max_per_user
     )
     db.session.add(new_drop)
     db.session.commit()
@@ -2192,6 +2255,16 @@ def update_boss_drop(boss_id, drop_id):
         if data['probability'] not in ['high', 'medium', 'very_low']:
             return jsonify({'success': False, 'error': 'Неверная вероятность'}), 400
         drop.probability = data['probability']
+    if 'max_per_user' in data:
+        raw = data.get('max_per_user', None)
+        if raw is None or str(raw).strip() == '':
+            drop.max_per_user = None
+        else:
+            try:
+                value = int(raw)
+            except (ValueError, TypeError):
+                return jsonify({'success': False, 'error': 'Неверный формат max_per_user'}), 400
+            drop.max_per_user = None if value <= 0 else value
     
     db.session.commit()
     return jsonify({'success': True, 'drop': drop.to_dict()})

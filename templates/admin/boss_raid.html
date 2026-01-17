@@ -162,6 +162,13 @@
                     <option value="very_low">Очень маленькая</option>
                 </select>
             </div>
+            <div class="form-group">
+                <label>Максимум на одного пользователя (необязательно):</label>
+                <input type="number" id="dropMaxPerUser" min="1" step="1" placeholder="Например: 1">
+                <small style="color: #aaa; display: block; margin-top: 5px;">
+                    Если оставить пустым — без ограничений. Ограничение считается по уникальному ID пользователя.
+                </small>
+            </div>
             <button type="submit" class="save-btn">Сохранить</button>
         </form>
     </div>
@@ -572,6 +579,7 @@ function displayBossDrops(drops) {
                 <div class="drop-name">${drop.name}</div>
                 <div class="drop-details">
                     <div><strong>Вероятность:</strong> ${probabilityNames[drop.probability] || drop.probability}</div>
+                    <div><strong>Лимит на пользователя:</strong> ${drop.max_per_user ? drop.max_per_user : 'Без ограничений'}</div>
                 </div>
             </div>
             <div class="drop-actions">
@@ -588,6 +596,7 @@ function showAddDropModal() {
     document.getElementById('dropForm').reset();
     document.getElementById('dropId').value = '';
     document.getElementById('dropProbability').value = 'medium';
+    document.getElementById('dropMaxPerUser').value = '';
     document.getElementById('dropModal').classList.add('show');
 }
 
@@ -607,6 +616,7 @@ function editDrop(dropId) {
                 document.getElementById('dropId').value = dropId;
                 document.getElementById('dropName').value = drop.name;
                 document.getElementById('dropProbability').value = drop.probability;
+                document.getElementById('dropMaxPerUser').value = drop.max_per_user ? drop.max_per_user : '';
                 document.getElementById('dropModal').classList.add('show');
             } else {
                 alert('Ошибка при загрузке дропа');
@@ -633,6 +643,8 @@ function saveDrop(event) {
     const dropId = document.getElementById('dropId').value;
     const name = document.getElementById('dropName').value.trim();
     const probability = document.getElementById('dropProbability').value;
+    const maxPerUserRaw = document.getElementById('dropMaxPerUser').value;
+    const maxPerUser = (maxPerUserRaw && maxPerUserRaw.toString().trim() !== '') ? parseInt(maxPerUserRaw, 10) : null;
     
     const url = dropId ? `/api/bosses/${currentDropsBossId}/drops/${dropId}` : `/api/bosses/${currentDropsBossId}/drops`;
     const method = dropId ? 'PUT' : 'POST';
@@ -644,7 +656,8 @@ function saveDrop(event) {
         },
         body: JSON.stringify({
             name: name,
-            probability: probability
+            probability: probability,
+            max_per_user: maxPerUser
         })
     })
     .then(response => response.json())
