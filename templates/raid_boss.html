@@ -1315,11 +1315,14 @@ body {
         <p>Администратор еще не включил рейд босса. Проверьте позже!</p>
     </div>
     {% else %}
+    {% set total_health = boss.tasks|sum(attribute='points') %}
+    {% set current_health = boss.get_current_health() %}
+    {% set health_percent = (current_health / total_health * 100) if total_health > 0 else 0 %}
     <div class="boss-header">
         <h1>{{ boss.name }}</h1>
         <div class="boss-health-bar">
-            <div class="boss-health-fill" id="healthFill" style="width: 100%;">
-                <span id="healthText">100%</span>
+            <div class="boss-health-fill" id="healthFill" style="width: {{ health_percent|round(2) }}%;">
+                <span id="healthText" data-current="{{ current_health }}" data-total="{{ total_health }}">{{ current_health }}/{{ total_health }}</span>
             </div>
         </div>
         <div class="boss-animation-container">
@@ -1439,6 +1442,20 @@ body {
 let currentTask = null;
 let bossId = {{ boss.id if boss else 'null' }};
 let bossIsActive = {% if boss and boss.is_active %}true{% else %}false{% endif %};
+
+function formatNumber(value) {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return String(value);
+    return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(num);
+}
+
+function setBossHealthText(currentHealth, totalHealth) {
+    const el = document.getElementById('healthText');
+    if (!el) return;
+    el.dataset.current = String(currentHealth);
+    el.dataset.total = String(totalHealth);
+    el.textContent = `${formatNumber(currentHealth)}/${formatNumber(totalHealth)}`;
+}
 
 // Функции для работы с куками
 function getCookie(name) {
@@ -1929,7 +1946,7 @@ function updateStats() {
                 const healthPercent = totalHealth > 0 ? (currentHealth / totalHealth) * 100 : 0;
                 
                 document.getElementById('healthFill').style.width = healthPercent + '%';
-                document.getElementById('healthText').textContent = Math.round(healthPercent) + '%';
+                setBossHealthText(currentHealth, totalHealth);
                 
                 // Обновляем урон по классам
                 const classDamageList = document.getElementById('classDamageList');
@@ -1986,6 +2003,16 @@ function startBossAnimation() {
 
 // Инициализация обработчиков при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
+    // Форматируем здоровье на первом рендере (сервер мог отдать без разделителей тысяч)
+    const initialHealthText = document.getElementById('healthText');
+    if (initialHealthText && initialHealthText.dataset) {
+        const current = initialHealthText.dataset.current;
+        const total = initialHealthText.dataset.total;
+        if (current !== undefined && total !== undefined) {
+            setBossHealthText(current, total);
+        }
+    }
+
     // Предзагружаем кадры анимации босса, затем запускаем анимацию
     preloadBossAnimationFrames(function() {
         startBossAnimation();
