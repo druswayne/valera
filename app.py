@@ -2351,7 +2351,7 @@ def shutdown_scheduler(exception):
 
 if __name__ == '__main__':
     try:
-        app.run(debug=True)
+        app.run(debug=False)
     finally:
         # Останавливаем планировщик при завершении приложения
         if scheduler.running:
