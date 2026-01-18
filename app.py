@@ -29,8 +29,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def now_utc_plus_3():
-    """Текущее время UTC + 3 часа (для сохранения времени решения)."""
-    return datetime.utcnow() + timedelta(hours=3)
+    """Текущее время сервера + 3 часа (для сохранения времени решения)."""
+    return datetime.now() + timedelta(hours=3)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-here'
@@ -380,7 +380,14 @@ class BossDropReward(db.Model):
     boss_id = db.Column(db.Integer, db.ForeignKey('boss.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('boss_user.id'), nullable=False)
     drop_id = db.Column(db.Integer, db.ForeignKey('boss_drop.id'), nullable=False)
+    # Эти поля нужны, чтобы в админке показать, каким классом пользователь отвечал
+    # в момент получения дропа (и при необходимости связать выдачу с задачей).
+    task_id = db.Column(db.Integer, db.ForeignKey('boss_task.id'), nullable=True)
+    class_id = db.Column(db.Integer, db.ForeignKey('class.id'), nullable=True)
     received_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    task = db.relationship('BossTask', foreign_keys=[task_id], lazy=True)
+    class_obj = db.relationship('Class', foreign_keys=[class_id], lazy=True)
     
     # Индексы для оптимизации запросов
     __table_args__ = (
@@ -397,6 +404,9 @@ class BossDropReward(db.Model):
             'boss_id': self.boss_id,
             'user_id': self.user_id,
             'drop_id': self.drop_id,
+            'task_id': self.task_id,
+            'class_id': self.class_id,
+            'class_name': self.class_obj.name if self.class_obj else None,
             'user_name': self.user.name if self.user else '',
             'drop_name': self.drop.name if self.drop else '',
             'received_at': self.received_at.isoformat() if self.received_at else None
@@ -461,7 +471,7 @@ def validate_user_id(user_id):
     
     return True, user, None
 
-def process_drop_reward(boss_id, user_id, task_id, allow_multiple_drops_per_task=False):
+def process_drop_reward(boss_id, user_id, task_id, class_id=None, allow_multiple_drops_per_task=False):
     """
     Обрабатывает выпадение дропа при правильном ответе
     Возвращает (drop_reward_object, error_message)
@@ -527,13 +537,13 @@ def process_drop_reward(boss_id, user_id, task_id, allow_multiple_drops_per_task
                 logger.info(f"Пользователь {user_id} уже получил дроп за задачу {task_id}")
                 return None, None  # Уже получил дроп за эту задачу
         
-        # Сначала проверяем, выпал ли вообще шанс на дроп (20% вероятность)
+        # Сначала проверяем, выпал ли вообще шанс на дроп (13% вероятность)
         drop_chance = random.random()
-        if drop_chance > 0.2:  # 20% вероятность получить дроп
-            logger.info(f"Дроп не выпал: drop_chance={drop_chance:.3f} > 0.2 (пользователь {user_id}, задача {task_id})")
+        if drop_chance > 0.13:  # 13% вероятность получить дроп
+            logger.info(f"Дроп не выпал: drop_chance={drop_chance:.3f} > 0.13 (пользователь {user_id}, задача {task_id})")
             return None, None  # Дроп не выпал
         
-        logger.info(f"Дроп выпал! drop_chance={drop_chance:.3f} <= 0.2 (пользователь {user_id}, задача {task_id})")
+        logger.info(f"Дроп выпал! drop_chance={drop_chance:.3f} <= 0.13 (пользователь {user_id}, задача {task_id})")
         
         # Если шанс выпал, выбираем конкретный дроп с учетом их вероятностей
         # Всегда нормализуем вероятности для корректного расчета
@@ -595,7 +605,9 @@ def process_drop_reward(boss_id, user_id, task_id, allow_multiple_drops_per_task
                 drop_reward = BossDropReward(
                     boss_id=boss_id,
                     user_id=user_id,
-                    drop_id=selected_drop.id
+                    drop_id=selected_drop.id,
+                    task_id=task_id,
+                    class_id=class_id
                 )
                 db.session.add(drop_reward)
                 db.session.commit()
@@ -785,6 +797,19 @@ with app.app_context():
                 with db.engine.begin() as conn:
                     conn.execute(text('ALTER TABLE boss_drop ADD COLUMN max_per_user INTEGER'))
                     print("Добавлена колонка max_per_user в таблицу boss_drop")
+
+        # Миграция: добавление колонок task_id и class_id в boss_drop_reward, если их нет
+        if 'boss_drop_reward' in tables:
+            columns = [col['name'] for col in inspector.get_columns('boss_drop_reward')]
+            if 'task_id' not in columns:
+                with db.engine.begin() as conn:
+                    # SQLite: без REFERENCES в ALTER TABLE
+                    conn.execute(text('ALTER TABLE boss_drop_reward ADD COLUMN task_id INTEGER'))
+                    print("Добавлена колонка task_id в таблицу boss_drop_reward")
+            if 'class_id' not in columns:
+                with db.engine.begin() as conn:
+                    conn.execute(text('ALTER TABLE boss_drop_reward ADD COLUMN class_id INTEGER'))
+                    print("Добавлена колонка class_id в таблицу boss_drop_reward")
         
         # Создание индексов для оптимизации (если их еще нет)
         try:
@@ -2101,7 +2126,12 @@ def submit_boss_task_answer():
                 # Обрабатываем дроп только если user_id валиден
                 drop_reward = None
                 if validated_user:
-                    drop_reward, drop_error = process_drop_reward(active_boss.id, validated_user.id, task.id)
+                    drop_reward, drop_error = process_drop_reward(
+                        active_boss.id,
+                        validated_user.id,
+                        task.id,
+                        class_id=class_id
+                    )
                     if drop_error:
                         logger.warning(f"Ошибка при обработке дропа: {drop_error}")
                         # Не блокируем ответ из-за ошибки дропа
@@ -2305,7 +2335,24 @@ def get_boss_drop_rewards(boss_id):
         BossDropReward.received_at.desc()
     ).all()
     
-    return jsonify({'success': True, 'rewards': [reward.to_dict() for reward in rewards]})
+    # Для старых записей (до добавления class_id/task_id) пробуем аккуратно восстановить класс
+    # по последнему правильному ответу пользователя по этому боссу.
+    response_rewards = []
+    for reward in rewards:
+        data = reward.to_dict()
+        if not data.get('class_id'):
+            inferred_solution = BossTaskSolution.query.filter_by(
+                boss_id=boss_id,
+                user_id=reward.user_id,
+                is_correct=True
+            ).order_by(BossTaskSolution.solved_at.desc()).first()
+            if inferred_solution:
+                data['class_id'] = inferred_solution.class_id
+                inferred_class = Class.query.get(inferred_solution.class_id)
+                data['class_name'] = inferred_class.name if inferred_class else None
+        response_rewards.append(data)
+
+    return jsonify({'success': True, 'rewards': response_rewards})
 
 # Обработчик завершения приложения для остановки планировщика
 @app.teardown_appcontext

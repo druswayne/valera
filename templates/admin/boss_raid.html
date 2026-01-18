@@ -40,7 +40,11 @@
             </div>
             
             <div class="boss-actions">
-                <button class="edit-btn" onclick="editBoss({{ boss.id }}, '{{ boss.name|replace("'", "\\'") }}', '{{ boss.rewards_list|replace("'", "\\'") if boss.rewards_list else "" }}')">Редактировать</button>
+                <button class="edit-btn"
+                        data-boss-id="{{ boss.id }}"
+                        data-boss-name='{{ boss.name|tojson }}'
+                        data-boss-rewards='{{ boss.rewards_list|tojson if boss.rewards_list else "null" }}'
+                        onclick="editBossFromButton(this)">Редактировать</button>
                 <button class="toggle-btn {{ 'deactivate' if boss.is_active else 'activate' }}" onclick="toggleBossActive({{ boss.id }}, {{ 'true' if boss.is_active else 'false' }})">
                     {{ 'Отключить' if boss.is_active else 'Включить' }}
                 </button>
@@ -214,6 +218,43 @@ function editBoss(id, name, rewards) {
     document.getElementById('bossName').value = name;
     document.getElementById('bossRewards').value = rewards || '';
     document.getElementById('bossModal').classList.add('show');
+}
+
+function editBossFromButton(button) {
+    try {
+        const idRaw = button.getAttribute('data-boss-id');
+        const id = parseInt(idRaw, 10);
+        if (isNaN(id)) {
+            throw new Error('Invalid boss ID');
+        }
+
+        function safeJsonParse(value, defaultValue = '') {
+            if (!value || value === '' || value === undefined || value === null) {
+                return defaultValue;
+            }
+            if (value === 'null' || value === '"null"') {
+                return null;
+            }
+            try {
+                const parsed = JSON.parse(value);
+                return parsed === null ? defaultValue : parsed;
+            } catch (e) {
+                console.error('JSON parse error:', e, 'Value:', value);
+                return value || defaultValue;
+            }
+        }
+
+        const nameAttr = button.getAttribute('data-boss-name');
+        const rewardsAttr = button.getAttribute('data-boss-rewards');
+
+        const name = safeJsonParse(nameAttr, '');
+        const rewards = rewardsAttr === 'null' || !rewardsAttr || rewardsAttr === '' ? null : safeJsonParse(rewardsAttr, '');
+
+        editBoss(id, name, rewards);
+    } catch (error) {
+        console.error('Error in editBossFromButton:', error);
+        alert('Ошибка при открытии формы редактирования. Попробуйте обновить страницу.');
+    }
 }
 
 function closeBossModal() {
@@ -791,11 +832,15 @@ function displayBossDropRewards(rewards) {
     list.innerHTML = rewards.map(reward => {
         const date = new Date(reward.received_at);
         const formattedDate = date.toLocaleString('ru-RU');
+        const classText = (reward.class_name && reward.class_name.trim() !== '')
+            ? reward.class_name
+            : (reward.class_id ? `ID ${reward.class_id}` : '—');
         return `
             <div class="drop-reward-item">
                 <div class="reward-info">
                     <div class="reward-user"><strong>ID:</strong> ${reward.user_id} | <strong>Имя:</strong> ${reward.user_name}</div>
                     <div class="reward-drop"><strong>Дроп:</strong> ${reward.drop_name}</div>
+                    <div class="reward-class"><strong>Класс:</strong> ${classText}</div>
                     <div class="reward-time"><strong>Время:</strong> ${formattedDate}</div>
                 </div>
             </div>
@@ -1273,7 +1318,7 @@ document.addEventListener('DOMContentLoaded', function() {
     margin-bottom: 10px;
 }
 
-.drop-details, .user-details, .reward-user, .reward-drop, .reward-time {
+.drop-details, .user-details, .reward-user, .reward-drop, .reward-class, .reward-time {
     color: #666;
     font-size: 14px;
     line-height: 1.6;
