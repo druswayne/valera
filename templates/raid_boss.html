@@ -1147,6 +1147,30 @@ body {
         border-radius: 10px;
         border: 2px solid rgba(255, 255, 255, 0.3);
     }
+
+    .change-name-btn {
+        background: rgba(255, 255, 255, 0.2);
+        color: #fff;
+        border: 2px solid rgba(255, 255, 255, 0.35);
+        padding: 6px 12px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 14px;
+        transition: all 0.2s ease;
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+        white-space: nowrap;
+    }
+
+    .change-name-btn:hover {
+        background: rgba(255, 255, 255, 0.28);
+        border-color: rgba(255, 255, 255, 0.5);
+        transform: translateY(-1px);
+    }
+
+    .change-name-btn:active {
+        transform: translateY(0);
+    }
     
     .modal-overlay {
         position: fixed;
@@ -1287,6 +1311,15 @@ body {
         font-size: 16px;
         padding: 3px 10px;
     }
+
+    .change-name-btn {
+        width: 100%;
+        max-width: 320px;
+        padding: 10px 14px;
+        font-size: 15px;
+        border-radius: 12px;
+        white-space: normal;
+    }
 }
 
 @media (max-width: 360px) {
@@ -1348,7 +1381,8 @@ body {
         <div class="user-progress-content">
             <span class="progress-label">Ваш прогресс:</span>
             <span class="progress-value" id="progressValue">0/0</span>
-            <span class="progress-label" id="userIdLabel" style="display: none;">ID: <span id="userIdValue"></span></span>
+            <span class="progress-label" id="userNameLabel" style="display: none;">Имя: <span id="userNameValue"></span></span>
+            <button type="button" class="change-name-btn" id="changeNameBtn" onclick="showChangeNameModal()" style="display: none;">Изменить имя</button>
         </div>
     </div>
     {% endif %}
@@ -1375,7 +1409,7 @@ body {
             <p style="font-size: 14px; margin-top: 5px; opacity: 0.9;">Сражения недоступны до активации рейда администратором</p>
         </div>
         {% endif %}
-        <button class="battle-btn" id="battleBtn" onclick="startBattle()" {% if not boss.is_active %}disabled{% endif %}>
+        <button class="battle-btn" id="battleBtn" {% if not boss.is_active %}disabled{% endif %}>
             {% if boss.is_active %}⚔️ СРАЖАТЬСЯ ⚔️{% else %}РЕЙД НЕАКТИВЕН{% endif %}
         </button>
     </div>
@@ -1442,6 +1476,7 @@ body {
 let currentTask = null;
 let bossId = {{ boss.id if boss else 'null' }};
 let bossIsActive = {% if boss and boss.is_active %}true{% else %}false{% endif %};
+let resumeBattleAfterNameSave = false;
 
 function formatNumber(value) {
     const num = Number(value);
@@ -1510,19 +1545,27 @@ function displayProgress() {
     const progress = getBossProgress();
     const progressDiv = document.getElementById('userProgress');
     const progressValue = document.getElementById('progressValue');
-    const userIdLabel = document.getElementById('userIdLabel');
-    const userIdValue = document.getElementById('userIdValue');
+    const userNameLabel = document.getElementById('userNameLabel');
+    const userNameValue = document.getElementById('userNameValue');
+    const changeNameBtn = document.getElementById('changeNameBtn');
     
     if (progressDiv && progressValue) {
-        if (progress.totalAnswers > 0) {
+        const savedUserName = getCookie('boss_user_name');
+
+        // Показываем блок, если есть прогресс ИЛИ сохраненное имя (даже при 0/0)
+        if (progress.totalAnswers > 0 || (savedUserName && savedUserName.trim() !== '')) {
             progressValue.textContent = `${progress.correctAnswers}/${progress.totalAnswers}`;
             progressDiv.style.display = 'block';
-            
-            // Показываем ID пользователя, если он сохранен
-            const savedUserId = getCookie('boss_user_id');
-            if (savedUserId && userIdLabel && userIdValue) {
-                userIdValue.textContent = savedUserId;
-                userIdLabel.style.display = 'inline';
+
+            if (savedUserName && userNameLabel && userNameValue) {
+                userNameValue.textContent = savedUserName;
+                userNameLabel.style.display = 'inline';
+            } else if (userNameLabel) {
+                userNameLabel.style.display = 'none';
+            }
+
+            if (changeNameBtn) {
+                changeNameBtn.style.display = (savedUserName && savedUserName.trim() !== '') ? 'inline-block' : 'none';
             }
         } else {
             progressDiv.style.display = 'none';
@@ -1547,6 +1590,7 @@ function startBattle() {
     
     if (!savedUserId || !savedUserName) {
         // Показываем модальное окно для ввода имени
+        resumeBattleAfterNameSave = true;
         showNameModal();
         return;
     }
@@ -1561,6 +1605,11 @@ function showNameModal() {
         alert('Ошибка: модальное окно не найдено');
         return;
     }
+
+    const modalTitle = nameModal.querySelector('.modal-title');
+    if (modalTitle) {
+        modalTitle.textContent = 'Введите ваше имя';
+    }
     
     // Используем класс для показа модального окна
     nameModal.classList.add('show');
@@ -1570,7 +1619,35 @@ function showNameModal() {
     setTimeout(() => {
         const userNameInput = document.getElementById('userNameInput');
         if (userNameInput) {
+            userNameInput.value = '';
             userNameInput.focus();
+        }
+    }, 100);
+}
+
+function showChangeNameModal() {
+    const nameModal = document.getElementById('nameModal');
+    if (!nameModal) {
+        alert('Ошибка: модальное окно не найдено');
+        return;
+    }
+
+    resumeBattleAfterNameSave = false;
+
+    const modalTitle = nameModal.querySelector('.modal-title');
+    if (modalTitle) {
+        modalTitle.textContent = 'Изменить имя';
+    }
+
+    nameModal.classList.add('show');
+    nameModal.style.display = 'flex';
+
+    setTimeout(() => {
+        const userNameInput = document.getElementById('userNameInput');
+        if (userNameInput) {
+            userNameInput.value = (getCookie('boss_user_name') || '').trim();
+            userNameInput.focus();
+            userNameInput.select();
         }
     }, 100);
 }
@@ -1635,12 +1712,16 @@ function saveUserName(event) {
     }
     
     // Сохраняем имя на сервере
+    const currentUserId = getCookie('boss_user_id');
     fetch('/api/raid-boss/save-user', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ name: name })
+        body: JSON.stringify({
+            name: name,
+            user_id: currentUserId ? parseInt(currentUserId) : null
+        })
     })
     .then(response => response.json())
     .then(data => {
@@ -1651,9 +1732,22 @@ function saveUserName(event) {
             
             // Закрываем модальное окно
             closeNameModal();
-            
-            // Продолжаем сражение
-            proceedWithBattle();
+
+            // Сразу обновляем отображение имени/прогресса
+            displayProgress();
+
+            // Продолжаем сражение только если оно было инициировано кнопкой "Сражаться"
+            if (resumeBattleAfterNameSave) {
+                resumeBattleAfterNameSave = false;
+                proceedWithBattle();
+            } else {
+                // Возвращаем кнопку "Сражаться" в нормальное состояние
+                const battleBtn = document.getElementById('battleBtn');
+                if (battleBtn) {
+                    battleBtn.disabled = !bossIsActive;
+                    battleBtn.textContent = bossIsActive ? '⚔️ СРАЖАТЬСЯ ⚔️' : 'РЕЙД НЕАКТИВЕН';
+                }
+            }
         } else {
             alert(data.error || 'Ошибка при сохранении имени');
             if (submitBtn) {
