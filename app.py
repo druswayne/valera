@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, send_from_directory
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, send_from_directory, send_file, after_this_request
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -14,6 +14,8 @@ import random
 import os
 import logging
 import re
+import shutil
+import tempfile
 current_path = os.path.dirname(__file__)
 os.chdir(current_path)
 
@@ -1709,6 +1711,71 @@ def admin_boss_raid():
     bosses = Boss.query.all()
     return render_template('admin/boss_raid.html', bosses=bosses)
 
+
+def _resolve_primary_db_path() -> str | None:
+    """
+    Возвращает путь к основному SQLite-файлу приложения (valera.db).
+    Пытаемся аккуратно поддержать разные варианты размещения (instance/ и cwd).
+    """
+    # На практике для Flask-SQLAlchemy sqlite:///valera.db обычно кладёт файл в instance/.
+    try:
+        engine_db = getattr(db.engine.url, "database", None)
+    except Exception:
+        engine_db = None
+
+    candidates: list[str] = []
+    if engine_db:
+        candidates.append(engine_db)
+        if not os.path.isabs(engine_db):
+            candidates.append(os.path.join(app.instance_path, engine_db))
+            candidates.append(os.path.join(current_path, engine_db))
+
+    # Явный хинт: стандартный файл в instance/valera.db
+    candidates.append(os.path.join(app.instance_path, "valera.db"))
+    candidates.append(os.path.join(current_path, "valera.db"))
+
+    for path in candidates:
+        try:
+            if path and os.path.exists(path) and os.path.isfile(path):
+                return os.path.abspath(path)
+        except Exception:
+            continue
+    return None
+
+
+@app.route('/admin/download-db', methods=['GET'])
+@admin_required
+def admin_download_db():
+    """
+    Скачивание файла БД (только для админа).
+    Отдаём копию файла, чтобы не упираться в блокировки/частичную запись.
+    """
+    db_path = _resolve_primary_db_path()
+    if not db_path:
+        return jsonify({'success': False, 'error': 'Файл базы данных не найден'}), 404
+
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    download_name = f"valera_{timestamp}.db"
+
+    tmp_dir = tempfile.gettempdir()
+    tmp_path = os.path.join(tmp_dir, download_name)
+    try:
+        shutil.copy2(db_path, tmp_path)
+    except Exception as e:
+        logger.error(f"Не удалось создать копию БД для скачивания: {e}")
+        return jsonify({'success': False, 'error': 'Не удалось подготовить файл для скачивания'}), 500
+
+    @after_this_request
+    def _cleanup(response):
+        try:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+        except Exception:
+            pass
+        return response
+
+    return send_file(tmp_path, as_attachment=True, download_name=download_name)
+
 # API для создания босса
 @app.route('/api/bosses', methods=['POST'])
 @admin_required
@@ -2351,7 +2418,7 @@ def shutdown_scheduler(exception):
 
 if __name__ == '__main__':
     try:
-        app.run(debug=False)
+        app.run(debug=True)
     finally:
         # Останавливаем планировщик при завершении приложения
         if scheduler.running:

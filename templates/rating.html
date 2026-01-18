@@ -51,6 +51,7 @@
         <a href="{{ url_for('admin_prizes') }}" class="admin-link">Управление призами</a>
         <a href="{{ url_for('admin_tasks') }}" class="admin-link">Управление задачами</a>
         <a href="{{ url_for('admin_boss_raid') }}" class="admin-link">Управление рейд боссом</a>
+        <a href="{{ url_for('admin_download_db') }}" class="admin-link">Скачать БД</a>
         <a href="{{ url_for('logout') }}" class="admin-link logout-link">Выйти</a>
         {% elif not current_user.is_authenticated %}
         <a href="{{ url_for('login') }}" class="admin-link">Вход в админ панель</a>
