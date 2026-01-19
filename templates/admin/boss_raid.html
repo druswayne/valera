@@ -52,6 +52,7 @@
                 <button class="tasks-btn" onclick="manageBossTasks({{ boss.id }}, '{{ boss.name|replace("'", "\\'") }}')">Управление задачами</button>
                 <button class="drops-btn" onclick="manageBossDrops({{ boss.id }}, '{{ boss.name|replace("'", "\\'") }}')">Управление дропами</button>
                 <button class="users-btn" onclick="viewBossUsers({{ boss.id }}, '{{ boss.name|replace("'", "\\'") }}')">Пользователи</button>
+                <button class="users-btn" onclick="window.location.href='{{ url_for('admin_boss_top_users_by_class', boss_id=boss.id) }}'">Топ-10 по классам</button>
                 <button class="delete-btn" onclick="deleteBoss({{ boss.id }})">Удалить</button>
             </div>
             

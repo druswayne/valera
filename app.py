@@ -2382,6 +2382,155 @@ def get_boss_users(boss_id):
     
     return jsonify({'success': True, 'users': [user.to_dict() for user in users]})
 
+
+def _get_boss_top_users_by_class_data(boss_id: int, limit: int = 10):
+    """
+    Возвращает (boss, top_by_class) для boss_id.
+
+    top_by_class: список объектов:
+      {class_id, class_name, users: [{user_id, user_name, solved_correct, last_correct_at, position}]}
+
+    Правила:
+    - "Основной" класс пользователя выбирается по большинству его правильных решений.
+      Тай-брейк: более поздний solved_at, затем меньший class_id.
+    - Число решенных задач для рейтинга = количество правильных решений пользователя В ЕГО ОСНОВНОМ КЛАССЕ.
+      (Это устраняет ситуацию, когда пользователь попадает в топ класса за счёт решений другим классом.)
+    - Ранжирование внутри класса: solved_correct desc, last_correct_at desc, user_id asc.
+    """
+    from sqlalchemy import func
+
+    boss = db.get_or_404(Boss, boss_id)
+
+    # Считаем, сколько правильных решений каждый пользователь отправил за каждый класс
+    class_counts = db.session.query(
+        BossTaskSolution.user_id.label('user_id'),
+        BossTaskSolution.class_id.label('class_id'),
+        func.count(BossTaskSolution.id).label('cnt'),
+        func.max(BossTaskSolution.solved_at).label('last_at')
+    ).filter(
+        BossTaskSolution.boss_id == boss_id,
+        BossTaskSolution.is_correct == True,
+        BossTaskSolution.user_id.isnot(None)
+    ).group_by(
+        BossTaskSolution.user_id,
+        BossTaskSolution.class_id
+    ).subquery()
+
+    # Ранжируем классы внутри каждого пользователя, чтобы выбрать "основной"
+    main_class_ranked = db.session.query(
+        class_counts.c.user_id.label('user_id'),
+        class_counts.c.class_id.label('main_class_id'),
+        func.row_number().over(
+            partition_by=class_counts.c.user_id,
+            order_by=(
+                class_counts.c.cnt.desc(),
+                class_counts.c.last_at.desc(),
+                class_counts.c.class_id.asc()
+            )
+        ).label('rn')
+    ).subquery()
+
+    main_class = db.session.query(
+        main_class_ranked.c.user_id,
+        main_class_ranked.c.main_class_id
+    ).filter(
+        main_class_ranked.c.rn == 1
+    ).subquery()
+
+    # Для рейтинга берём счётчик/последнюю дату ИМЕННО по основному классу
+    main_class_stats = db.session.query(
+        class_counts.c.user_id.label('user_id'),
+        class_counts.c.class_id.label('class_id'),
+        class_counts.c.cnt.label('solved_correct'),
+        class_counts.c.last_at.label('last_correct_at')
+    ).subquery()
+
+    ranked = db.session.query(
+        main_class.c.main_class_id.label('class_id'),
+        Class.name.label('class_name'),
+        BossUser.id.label('user_id'),
+        BossUser.name.label('user_name'),
+        main_class_stats.c.solved_correct.label('solved_correct'),
+        main_class_stats.c.last_correct_at.label('last_correct_at'),
+        func.row_number().over(
+            partition_by=main_class.c.main_class_id,
+            order_by=(
+                main_class_stats.c.solved_correct.desc(),
+                main_class_stats.c.last_correct_at.desc(),
+                BossUser.id.asc()
+            )
+        ).label('pos')
+    ).join(
+        BossUser, BossUser.id == main_class.c.user_id
+    ).join(
+        Class, Class.id == main_class.c.main_class_id
+    ).join(
+        main_class_stats,
+        db.and_(
+            main_class_stats.c.user_id == main_class.c.user_id,
+            main_class_stats.c.class_id == main_class.c.main_class_id
+        )
+    ).subquery()
+
+    rows = db.session.query(
+        ranked.c.class_id,
+        ranked.c.class_name,
+        ranked.c.user_id,
+        ranked.c.user_name,
+        ranked.c.solved_correct,
+        ranked.c.last_correct_at,
+        ranked.c.pos
+    ).filter(
+        ranked.c.pos <= int(limit)
+    ).order_by(
+        ranked.c.class_name.asc(),
+        ranked.c.pos.asc()
+    ).all()
+
+    by_class: dict[int, dict] = {}
+    for r in rows:
+        class_id = int(r.class_id)
+        if class_id not in by_class:
+            by_class[class_id] = {
+                'class_id': class_id,
+                'class_name': r.class_name,
+                'users': []
+            }
+        by_class[class_id]['users'].append({
+            'user_id': int(r.user_id),
+            'user_name': r.user_name,
+            'solved_correct': int(r.solved_correct or 0),
+            'last_correct_at': r.last_correct_at.isoformat() if r.last_correct_at else None,
+            'position': int(r.pos)
+        })
+
+    return boss, list(by_class.values())
+
+
+# API: топ-10 пользователей по каждому классу (класс определяется по большинству отправленных решений)
+@app.route('/api/bosses/<int:boss_id>/top-users-by-class', methods=['GET'])
+@admin_required
+def get_boss_top_users_by_class(boss_id):
+    boss, top_by_class = _get_boss_top_users_by_class_data(boss_id=boss_id, limit=10)
+    return jsonify({
+        'success': True,
+        'boss': boss.to_dict(),
+        'top_by_class': top_by_class
+    })
+
+
+# Админ-страница: топ-10 по классам (таблица)
+@app.route('/admin/bosses/<int:boss_id>/top-users-by-class', methods=['GET'])
+@admin_required
+def admin_boss_top_users_by_class(boss_id):
+    boss, top_by_class = _get_boss_top_users_by_class_data(boss_id=boss_id, limit=10)
+    return render_template(
+        'admin/boss_top_users_by_class.html',
+        boss=boss,
+        boss_dict=boss.to_dict(),
+        top_by_class=top_by_class
+    )
+
 # API для получения списка выпавших дропов
 @app.route('/api/bosses/<int:boss_id>/drop-rewards', methods=['GET'])
 @admin_required
@@ -2418,7 +2567,7 @@ def shutdown_scheduler(exception):
 
 if __name__ == '__main__':
     try:
-        app.run(debug=False)
+        app.run(debug=True)
     finally:
         # Останавливаем планировщик при завершении приложения
         if scheduler.running:

@@ -129,6 +129,38 @@
     transform: scale(0.95);
 }
 
+.students-rating-list-btn {
+    position: fixed;
+    bottom: 380px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 3px solid #fff;
+    cursor: pointer;
+    z-index: 100;
+    font-size: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    background-color: #4CAF50;
+    color: white;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.students-rating-list-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+    background-color: #45a049;
+}
+
+.students-rating-list-btn:active {
+    transform: scale(0.95);
+}
+
 .microphone-btn {
     position: fixed;
     bottom: 30px;
@@ -483,6 +515,15 @@
         border-width: 2px;
     }
     
+    .students-rating-list-btn {
+        width: 50px;
+        height: 50px;
+        font-size: 24px;
+        bottom: 85px;
+        right: 20px;
+        border-width: 2px;
+    }
+    
     .results-btn {
         width: 50px;
         height: 50px;
@@ -564,6 +605,15 @@
         font-size: 20px;
         bottom: 15px;
         right: 15px;
+    }
+    
+    .students-rating-list-btn {
+        width: 45px;
+        height: 45px;
+        font-size: 20px;
+        bottom: 75px;
+        right: 15px;
+        border-width: 2px;
     }
     
     .random-student-btn {
@@ -747,12 +797,104 @@
 }
 
 .student-rating-modal {
-    max-width: 520px;
+    max-width: 760px;
+    position: relative;
 }
 
 .student-rating-container {
     text-align: center;
     padding: 10px 0 0;
+}
+
+.modal-minimize {
+    position: absolute;
+    top: 10px;
+    right: 52px;
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 28px;
+    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    line-height: 40px;
+    text-align: center;
+    opacity: 0.9;
+}
+
+.modal-minimize:hover {
+    opacity: 1;
+    transform: scale(1.08);
+}
+
+.student-rating-dock {
+    position: fixed;
+    left: 20px;
+    bottom: 20px;
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 2px solid #fff;
+    background: rgba(42, 42, 42, 0.95);
+    color: #fff;
+    font-size: 16px;
+    cursor: pointer;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+}
+
+.student-rating-dock:hover {
+    transform: translateY(-2px);
+}
+
+.student-rating-dock-name {
+    font-weight: bold;
+    color: #4CAF50;
+}
+
+.students-rating-list-modal {
+    max-width: 620px;
+}
+
+.students-rating-list {
+    max-height: 60vh;
+    overflow: auto;
+    padding: 10px 0;
+}
+
+.students-rating-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.08);
+    margin-bottom: 10px;
+}
+
+.students-rating-name {
+    font-size: 20px;
+    font-weight: bold;
+    letter-spacing: 0.3px;
+}
+
+.students-rating-score {
+    min-width: 64px;
+    text-align: center;
+    font-size: 18px;
+    font-weight: bold;
+    padding: 6px 10px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.12);
+    border: 2px solid rgba(255, 255, 255, 0.25);
+}
+
+.students-rating-meta {
+    font-size: 14px;
+    color: #777;
 }
 
 .rating-student-name {
@@ -765,23 +907,33 @@
 .rating-emoji-row {
     display: flex;
     justify-content: center;
-    gap: 18px;
+    gap: 28px;
     margin: 10px 0 5px;
 }
 
 .rating-emoji-btn {
-    width: 84px;
-    height: 84px;
-    border-radius: 18px;
+    width: 168px;
+    height: 168px;
+    border-radius: 24px;
     border: 3px solid #000;
     background: linear-gradient(135deg, #ffffff 0%, #f3f3f3 100%);
     cursor: pointer;
     font-size: 44px;
+    padding: 0;
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
     transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.rating-emoji-img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    border-radius: inherit;
 }
 
 .rating-emoji-btn:hover {
@@ -900,6 +1052,9 @@
     
     <!-- Кнопка случайного выбора учащегося -->
     <button class="random-student-btn" id="randomStudentBtn" title="Выбрать учащегося">🎯</button>
+
+    <!-- Кнопка рейтинга класса -->
+    <button class="students-rating-list-btn" id="studentsRatingListBtn" title="Рейтинг класса">👥</button>
     
     <!-- Кнопка и индикатор уровня шума -->
     <button class="microphone-btn" id="microphoneBtn" title="Включить/выключить прослушивание микрофона">🎤</button>
@@ -1095,17 +1250,41 @@
     <!-- Модальное окно оценки ответа учащегося -->
     <div class="modal-overlay" id="studentRatingModal">
         <div class="modal-content student-rating-modal">
+            <button class="modal-minimize" id="minimizeStudentRatingModal" title="Свернуть">—</button>
             <button class="modal-close" id="closeStudentRatingModal">&times;</button>
             <h2 class="modal-title">Оценка ответа</h2>
             <div class="student-rating-container">
                 <div class="rating-student-name" id="ratingStudentName">—</div>
                 <div class="rating-emoji-row">
-                    <button class="rating-emoji-btn" type="button" data-delta="-1" title="Неправильно (рейтинг -1)">😞</button>
-                    <button class="rating-emoji-btn" type="button" data-delta="0" title="Нейтрально (без изменений)">😐</button>
-                    <button class="rating-emoji-btn" type="button" data-delta="1" title="Отлично (рейтинг +1)">😊</button>
+                    <button class="rating-emoji-btn" type="button" data-delta="-1" title="Неправильно (рейтинг -1)">
+                        <img class="rating-emoji-img" src="{{ url_for('static', filename='bad.webp') }}" alt="Плохо">
+                    </button>
+                    <button class="rating-emoji-btn" type="button" data-delta="0" title="Нейтрально (без изменений)">
+                        <img class="rating-emoji-img" src="{{ url_for('static', filename='norm.webp') }}" alt="Нормально">
+                    </button>
+                    <button class="rating-emoji-btn" type="button" data-delta="1" title="Отлично (рейтинг +1)">
+                        <img class="rating-emoji-img" src="{{ url_for('static', filename='good.webp') }}" alt="Хорошо">
+                    </button>
                 </div>
                 <div class="rating-hint">Выберите смайлик, чтобы изменить рейтинг учащегося.</div>
             </div>
+        </div>
+    </div>
+
+    <!-- Плашка для возврата к оценке (после сворачивания) -->
+    <button class="student-rating-dock" id="studentRatingDock" type="button" title="Вернуться к оценке">
+        Вернуться к оценке: <span class="student-rating-dock-name" id="studentRatingDockName">—</span>
+    </button>
+
+    <!-- Модальное окно рейтинга класса -->
+    <div class="modal-overlay" id="studentsRatingListModal">
+        <div class="modal-content students-rating-list-modal">
+            <button class="modal-close" id="closeStudentsRatingListModal">&times;</button>
+            <h2 class="modal-title">Рейтинг класса</h2>
+            <div class="students-rating-meta" style="text-align: center; margin-bottom: 10px;">
+                Имена подсвечены цветом в зависимости от рейтинга.
+            </div>
+            <div class="students-rating-list" id="studentsRatingList"></div>
         </div>
     </div>
 {% endblock %}
@@ -1509,8 +1688,16 @@
         
         const studentRatingModal = document.getElementById('studentRatingModal');
         const closeStudentRatingModal = document.getElementById('closeStudentRatingModal');
+        const minimizeStudentRatingModal = document.getElementById('minimizeStudentRatingModal');
         const ratingStudentName = document.getElementById('ratingStudentName');
         const ratingEmojiButtons = document.querySelectorAll('.rating-emoji-btn');
+        const studentRatingDock = document.getElementById('studentRatingDock');
+        const studentRatingDockName = document.getElementById('studentRatingDockName');
+        
+        const studentsRatingListBtn = document.getElementById('studentsRatingListBtn');
+        const studentsRatingListModal = document.getElementById('studentsRatingListModal');
+        const closeStudentsRatingListModal = document.getElementById('closeStudentsRatingListModal');
+        const studentsRatingList = document.getElementById('studentsRatingList');
         
         function clamp(value, min, max) {
             return Math.min(max, Math.max(min, value));
@@ -1574,6 +1761,7 @@
         function openStudentRatingModal(student) {
             ratingTargetStudent = student;
             ratingStudentName.textContent = student?.name ? student.name : '—';
+            hideStudentRatingDock();
             studentRatingModal.classList.add('show');
         }
         
@@ -1581,6 +1769,100 @@
             studentRatingModal.classList.remove('show');
             ratingTargetStudent = null;
             ratingStudentName.textContent = '—';
+            hideStudentRatingDock();
+        }
+
+        function showStudentRatingDock() {
+            if (!studentRatingDock) return;
+            if (!ratingTargetStudent) return;
+            studentRatingDockName.textContent = ratingTargetStudent?.name ? ratingTargetStudent.name : '—';
+            studentRatingDock.style.display = 'flex';
+        }
+
+        function hideStudentRatingDock() {
+            if (!studentRatingDock) return;
+            studentRatingDock.style.display = 'none';
+            if (studentRatingDockName) studentRatingDockName.textContent = '—';
+        }
+
+        function minimizeStudentRatingModalFunc() {
+            studentRatingModal.classList.remove('show');
+            showStudentRatingDock();
+        }
+
+        function ratingTextStyle(rating) {
+            const glow = ratingToGlow(rating);
+            return { color: glow.border, shadow: glow.shadow };
+        }
+
+        function escapeHtml(text) {
+            return String(text ?? '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
+
+        function renderStudentsRatingList(students) {
+            if (!studentsRatingList) return;
+            
+            const normalized = (students || []).map(s => ({
+                id: s.id,
+                name: s.name,
+                rating: (s.rating ?? 0),
+            }));
+            
+            normalized.sort((a, b) => {
+                const ar = (a.rating ?? 0);
+                const br = (b.rating ?? 0);
+                if (br !== ar) return br - ar;
+                return String(a.name || '').localeCompare(String(b.name || ''), 'ru');
+            });
+            
+            studentsRatingList.innerHTML = normalized.map(s => {
+                const st = ratingTextStyle(s.rating);
+                const safeName = escapeHtml(s.name || '—');
+                const score = (s.rating ?? 0);
+                return `
+                    <div class="students-rating-row">
+                        <div class="students-rating-name" style="color: ${st.color}; text-shadow: 0 0 12px ${st.shadow};">
+                            ${safeName}
+                        </div>
+                        <div class="students-rating-score" style="border-color: ${st.color}; color: ${st.color}; box-shadow: 0 0 14px ${st.shadow};">
+                            ${score}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function loadAndShowStudentsRatingList() {
+            if (!studentsRatingListModal) return;
+            if (studentsRatingList) {
+                studentsRatingList.innerHTML = '<div class="students-rating-meta" style="text-align:center;">Загрузка...</div>';
+            }
+            
+            studentsRatingListModal.classList.add('show');
+            
+            try {
+                const response = await fetch(`/api/classes/${CLASS_ID}/students`);
+                const data = await response.json();
+                
+                if (!data?.success) {
+                    if (studentsRatingList) {
+                        studentsRatingList.innerHTML = `<div class="students-rating-meta" style="text-align:center;">${escapeHtml(data?.error || 'Ошибка при загрузке списка')}</div>`;
+                    }
+                    return;
+                }
+                
+                renderStudentsRatingList(data.students || []);
+            } catch (e) {
+                console.error('Error loading students rating list:', e);
+                if (studentsRatingList) {
+                    studentsRatingList.innerHTML = '<div class="students-rating-meta" style="text-align:center;">Ошибка при загрузке списка</div>';
+                }
+            }
         }
         
         // Загрузка учащихся и выбор
@@ -1668,8 +1950,11 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    // После подтверждения открываем модальное окно оценки ответа
-                    openStudentRatingModal(currentSelectedStudent.student);
+                    // После подтверждения закрываем окно выбора (чтобы освободить страницу)
+                    // и открываем окно оценки ответа.
+                    const studentToRate = currentSelectedStudent.student;
+                    closeRandomStudentModalFunc();
+                    openStudentRatingModal(studentToRate);
                 } else {
                     alert(data.error || 'Ошибка при сохранении выбора');
                 }
@@ -1689,6 +1974,43 @@
         closeStudentRatingModal.addEventListener('click', () => {
             closeStudentRatingModalFunc();
         });
+
+        // Сворачивание модального окна оценки
+        if (minimizeStudentRatingModal) {
+            minimizeStudentRatingModal.addEventListener('click', () => {
+                minimizeStudentRatingModalFunc();
+            });
+        }
+
+        // Возврат к оценке из плашки
+        if (studentRatingDock) {
+            studentRatingDock.addEventListener('click', () => {
+                if (!ratingTargetStudent) return;
+                hideStudentRatingDock();
+                studentRatingModal.classList.add('show');
+            });
+        }
+
+        // Открытие/закрытие рейтинга класса
+        if (studentsRatingListBtn) {
+            studentsRatingListBtn.addEventListener('click', () => {
+                loadAndShowStudentsRatingList();
+            });
+        }
+
+        if (closeStudentsRatingListModal) {
+            closeStudentsRatingListModal.addEventListener('click', () => {
+                studentsRatingListModal?.classList.remove('show');
+            });
+        }
+
+        if (studentsRatingListModal) {
+            studentsRatingListModal.addEventListener('click', (e) => {
+                if (e.target === studentsRatingListModal) {
+                    studentsRatingListModal.classList.remove('show');
+                }
+            });
+        }
         
         studentRatingModal.addEventListener('click', (e) => {
             if (e.target === studentRatingModal) {
