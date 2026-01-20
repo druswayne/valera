@@ -52,11 +52,36 @@
         <a href="{{ url_for('admin_tasks') }}" class="admin-link">Управление задачами</a>
         <a href="{{ url_for('admin_boss_raid') }}" class="admin-link">Управление рейд боссом</a>
         <a href="{{ url_for('admin_download_db') }}" class="admin-link">Скачать БД</a>
+        <button type="button" class="admin-link admin-link-btn" onclick="openChangePasswordModal()">Сменить пароль</button>
         <a href="{{ url_for('logout') }}" class="admin-link logout-link">Выйти</a>
         {% elif not current_user.is_authenticated %}
         <a href="{{ url_for('login') }}" class="admin-link">Вход в админ панель</a>
         {% endif %}
     </div>
+
+    {% if current_user.is_authenticated and current_user.is_admin %}
+    <div class="pw-modal-overlay" id="changePasswordModal" aria-hidden="true">
+        <div class="pw-modal-content" role="dialog" aria-modal="true" aria-labelledby="changePasswordTitle">
+            <button class="pw-modal-close" type="button" onclick="closeChangePasswordModal()">&times;</button>
+            <h2 class="pw-modal-title" id="changePasswordTitle">Сменить пароль администратора</h2>
+            <form method="POST" action="{{ url_for('admin_change_password') }}" class="pw-form">
+                <div class="pw-field">
+                    <label for="pwCurrent">Текущий пароль</label>
+                    <input id="pwCurrent" name="current_password" type="password" required autocomplete="current-password">
+                </div>
+                <div class="pw-field">
+                    <label for="pwNew">Новый пароль</label>
+                    <input id="pwNew" name="new_password" type="password" required minlength="6" autocomplete="new-password">
+                </div>
+                <div class="pw-field">
+                    <label for="pwNewConfirm">Повтор нового пароля</label>
+                    <input id="pwNewConfirm" name="new_password_confirm" type="password" required minlength="6" autocomplete="new-password">
+                </div>
+                <button type="submit" class="pw-save-btn">Сохранить</button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
 
@@ -365,6 +390,126 @@ body {
     box-shadow: 0 8px 20px rgba(168, 168, 184, 0.4);
 }
 
+.admin-link.admin-link-btn {
+    cursor: pointer;
+    font-family: inherit;
+    line-height: 1.2;
+}
+
+.pw-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+    padding: 20px;
+}
+
+.pw-modal-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.pw-modal-content {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border-radius: 25px;
+    padding: 25px;
+    max-width: 520px;
+    width: 100%;
+    position: relative;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    border: 3px solid #c8a2c8;
+}
+
+.pw-modal-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, #d4a5a5 0%, #c89595 100%);
+    color: #fff;
+    font-size: 28px;
+    cursor: pointer;
+    line-height: 1;
+    box-shadow: 0 3px 8px rgba(212, 165, 165, 0.3);
+    transition: all 0.3s ease;
+}
+
+.pw-modal-close:hover {
+    transform: rotate(90deg) scale(1.05);
+    box-shadow: 0 5px 12px rgba(212, 165, 165, 0.4);
+}
+
+.pw-modal-title {
+    margin: 0 0 15px 0;
+    color: #8b6fa8;
+    font-size: 26px;
+    font-weight: bold;
+    text-shadow: 1px 1px 0px #e8d5c4;
+    text-align: center;
+}
+
+.pw-form {
+    display: grid;
+    gap: 12px;
+}
+
+.pw-field label {
+    display: block;
+    color: #333;
+    margin-bottom: 8px;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.pw-field input {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 3px solid #a8b8d0;
+    background-color: #fff;
+    color: #333;
+    font-size: 16px;
+    font-family: 'Comic Sans MS', Arial, sans-serif;
+    transition: all 0.3s ease;
+}
+
+.pw-field input:focus {
+    outline: none;
+    border-color: #8b6fa8;
+    box-shadow: 0 0 15px rgba(139, 111, 168, 0.3);
+}
+
+.pw-save-btn {
+    background: linear-gradient(135deg, #8b9dc8 0%, #9b8fb8 100%);
+    color: #fff;
+    border: none;
+    padding: 14px 18px;
+    border-radius: 15px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    width: 100%;
+    box-shadow: 0 5px 15px rgba(139, 157, 200, 0.3);
+    transition: all 0.3s ease;
+}
+
+.pw-save-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(139, 157, 200, 0.4);
+}
+
 @media (max-width: 768px) {
     body {
         padding: 5px;
@@ -619,5 +764,39 @@ body {
     }
 }
 </style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openChangePasswordModal() {
+    const modal = document.getElementById('changePasswordModal');
+    if (!modal) return;
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+    const input = document.getElementById('pwCurrent');
+    if (input) input.focus();
+}
+
+function closeChangePasswordModal() {
+    const modal = document.getElementById('changePasswordModal');
+    if (!modal) return;
+    modal.classList.remove('show');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeChangePasswordModal();
+    }
+});
+
+document.addEventListener('click', function(e) {
+    const modal = document.getElementById('changePasswordModal');
+    if (!modal) return;
+    if (e.target === modal) {
+        closeChangePasswordModal();
+    }
+});
+</script>
 {% endblock %}
 

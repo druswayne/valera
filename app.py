@@ -1519,6 +1519,45 @@ def admin_tasks():
     
     return render_template('admin/tasks.html', tasks=tasks, tasks_solved=tasks_solved)
 
+
+@app.route('/admin/change-password', methods=['POST'])
+@admin_required
+def admin_change_password():
+    current_password = (request.form.get('current_password') or '').strip()
+    new_password = request.form.get('new_password') or ''
+    new_password_confirm = request.form.get('new_password_confirm') or ''
+
+    def _safe_back_redirect():
+        ref = request.referrer or ''
+        try:
+            if ref and request.host_url and ref.startswith(request.host_url):
+                return redirect(ref)
+        except Exception:
+            pass
+        return redirect(url_for('admin_tasks'))
+
+    # Базовая валидация
+    if not current_password or not new_password or not new_password_confirm:
+        flash('Заполните все поля для смены пароля.', 'error')
+        return _safe_back_redirect()
+
+    if not current_user.check_password(current_password):
+        flash('Текущий пароль указан неверно.', 'error')
+        return _safe_back_redirect()
+
+    if new_password != new_password_confirm:
+        flash('Новый пароль и повтор не совпадают.', 'error')
+        return _safe_back_redirect()
+
+    if len(new_password) < 6:
+        flash('Новый пароль должен быть не короче 6 символов.', 'error')
+        return _safe_back_redirect()
+
+    current_user.set_password(new_password)
+    db.session.commit()
+    flash('Пароль администратора успешно изменён.', 'info')
+    return _safe_back_redirect()
+
 # API для получения списка задач (с пагинацией)
 @app.route('/api/tasks')
 @admin_required
