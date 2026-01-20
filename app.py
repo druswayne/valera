@@ -1252,6 +1252,42 @@ def rate_student(class_id, student_id):
     
     return jsonify({'success': True, 'student': student.to_dict()})
 
+
+@app.route('/api/class/<int:class_id>/students/<int:student_id>/redeem-rating', methods=['POST'])
+@admin_required
+def redeem_student_rating(class_id, student_id):
+    db.get_or_404(Class, class_id)
+    student = db.get_or_404(Student, student_id)
+    
+    # Проверяем, что учащийся принадлежит классу
+    if student.class_id != class_id:
+        return jsonify({'success': False, 'error': 'Учащийся не принадлежит этому классу'}), 400
+    
+    data = request.get_json(silent=True) or {}
+    action = data.get('action', None)
+    rating = student.rating or 0
+    
+    # reward_9: >=5, списать 5
+    # reward_10: >=10, списать 10
+    # (оставляем совместимость со старым reward_8 -> reward_9, reward_9 -> reward_10)
+    if action in ('reward_9', 'reward_8'):
+        if rating < 5:
+            return jsonify({'success': False, 'error': 'Недостаточно рейтинга для получения 9 баллов'}), 400
+        student.rating = rating - 5
+    elif action in ('reward_10', 'reward_9_old'):
+        if rating < 10:
+            return jsonify({'success': False, 'error': 'Недостаточно рейтинга для получения 10 баллов'}), 400
+        student.rating = rating - 10
+    elif action == 'redeem_2':
+        if rating > -3:
+            return jsonify({'success': False, 'error': 'Это действие доступно только при рейтинге -3 или ниже'}), 400
+        student.rating = rating + 3
+    else:
+        return jsonify({'success': False, 'error': 'Некорректное действие'}), 400
+    
+    db.session.commit()
+    return jsonify({'success': True, 'student': student.to_dict()})
+
 # Панель администратора - призы
 @app.route('/admin/prizes')
 @admin_required
