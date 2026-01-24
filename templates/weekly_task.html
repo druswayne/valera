@@ -8,6 +8,15 @@
     box-sizing: border-box;
 }
 
+/* Запрет копирования/выделения текста задачи недели */
+.no-copy {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none; /* iOS Safari */
+}
+
 body {
     font-family: 'Comic Sans MS', 'Arial Rounded MT Bold', Arial, sans-serif;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -629,7 +638,7 @@ body {
     </div>
     {% else %}
     
-    <div class="task-content">
+    <div class="task-content no-copy" id="weeklyTaskContent">
         <h2 class="task-title">{{ task.title }}</h2>
         
         {% if task.description %}
@@ -729,6 +738,22 @@ body {
 
 {% block scripts %}
 <script>
+// Запрещаем копирование текста задачи (в пределах блока задачи)
+(function() {
+    const weeklyTaskContent = document.getElementById('weeklyTaskContent');
+    if (!weeklyTaskContent) return;
+
+    const block = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+    };
+
+    ['copy', 'cut', 'contextmenu', 'selectstart', 'dragstart'].forEach((evt) => {
+        weeklyTaskContent.addEventListener(evt, block);
+    });
+})();
+
 function submitAnswer(event) {
     event.preventDefault();
     
