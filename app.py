@@ -34,6 +34,31 @@ def now_utc_plus_3():
     """Текущее время сервера + 3 часа (для сохранения времени решения)."""
     return datetime.now() + timedelta(hours=3)
 
+def list_animation_frame_urls(animation_name: str):
+    """
+    Возвращает отсортированный список URL кадров анимации из static/animation/<animation_name>/.
+    Поддерживает изменение количества кадров и замену файлов без правок в шаблонах.
+    """
+    folder = os.path.join(app.root_path, 'static', 'animation', animation_name)
+    try:
+        filenames = [
+            f for f in os.listdir(folder)
+            if os.path.isfile(os.path.join(folder, f)) and f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp'))
+        ]
+    except FileNotFoundError:
+        return []
+
+    def sort_key(name: str):
+        stem = os.path.splitext(name)[0]
+        # Если имя файла — число (1.png, 10.png), сортируем по числу
+        if stem.isdigit():
+            return (0, int(stem))
+        # Иначе — лексикографически
+        return (1, stem.lower())
+
+    filenames.sort(key=sort_key)
+    return [url_for('static', filename=f'animation/{animation_name}/{fn}') for fn in filenames]
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-here'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///valera.db'
@@ -2071,8 +2096,10 @@ def raid_boss_page():
         # Если нет активного, берем последнего созданного босса
         active_boss = Boss.query.order_by(Boss.created_at.desc()).first()
     
+    boss_animation_frames = list_animation_frame_urls('boss')
+
     if not active_boss:
-        return render_template('raid_boss.html', boss=None, classes=[])
+        return render_template('raid_boss.html', boss=None, classes=[], boss_animation_frames=boss_animation_frames)
     
     # Получаем все классы для выбора
     classes = Class.query.all()
@@ -2089,10 +2116,13 @@ def raid_boss_page():
         ).scalar() or 0
         class_damage[class_obj.id] = damage
     
-    return render_template('raid_boss.html', 
-                         boss=active_boss, 
-                         classes=classes,
-                         class_damage=class_damage)
+    return render_template(
+        'raid_boss.html',
+        boss=active_boss,
+        classes=classes,
+        class_damage=class_damage,
+        boss_animation_frames=boss_animation_frames
+    )
 
 # API для получения случайной доступной задачи босса
 @app.route('/api/raid-boss/task', methods=['GET'])

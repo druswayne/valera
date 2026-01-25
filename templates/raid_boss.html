@@ -1359,14 +1359,8 @@ body {
             </div>
         </div>
         <div class="boss-animation-container">
-            <img id="bossAnimation" class="boss-animation" src="/static/animation/boss/1.png" alt="Босс">
-            <!-- Предзагрузка всех кадров анимации -->
-            <img src="/static/animation/boss/1.png" alt="" style="display: none;" loading="eager">
-            <img src="/static/animation/boss/2.png" alt="" style="display: none;" loading="eager">
-            <img src="/static/animation/boss/3.png" alt="" style="display: none;" loading="eager">
-            <img src="/static/animation/boss/4.png" alt="" style="display: none;" loading="eager">
-            <img src="/static/animation/boss/5.png" alt="" style="display: none;" loading="eager">
-            <img src="/static/animation/boss/6.png" alt="" style="display: none;" loading="eager">
+            {% set initial_boss_frame = (boss_animation_frames[0] if boss_animation_frames and boss_animation_frames|length > 0 else url_for('static', filename='animation/boss/1.png')) %}
+            <img id="bossAnimation" class="boss-animation" src="{{ initial_boss_frame }}" alt="Босс">
         </div>
         {% if boss.rewards_list %}
         <div class="boss-rewards">
@@ -1473,6 +1467,9 @@ body {
 
 {% block scripts %}
 <script>
+// Список кадров анимации босса берём с сервера (по реальным файлам в static/animation/boss/)
+const BOSS_ANIMATION_FRAMES = {{ (boss_animation_frames or [])|tojson }};
+
 let currentTask = null;
 let bossId = {{ boss.id if boss else 'null' }};
 let bossIsActive = {% if boss and boss.is_active %}true{% else %}false{% endif %};
@@ -2069,29 +2066,55 @@ if (bossId) {
     updateStats();
 }
 
-// Предзагрузка кадров анимации босса (теперь кадры загружаются сразу в HTML)
-function preloadBossAnimationFrames(callback) {
-    // Кадры уже загружаются через скрытые img теги в HTML,
-    // поэтому просто запускаем callback сразу или после небольшой задержки
-    // для гарантии, что браузер начал загрузку
-    if (callback) {
-        // Небольшая задержка для гарантии начала загрузки изображений
-        setTimeout(callback, 100);
+// Предзагрузка кадров анимации босса по списку URL
+function preloadBossAnimationFrames(frameUrls, callback) {
+    if (!Array.isArray(frameUrls) || frameUrls.length === 0) {
+        if (callback) callback();
+        return;
     }
+
+    let done = 0;
+    const total = frameUrls.length;
+    const onDone = () => {
+        done += 1;
+        if (done >= total && callback) callback();
+    };
+
+    frameUrls.forEach((src) => {
+        const img = new Image();
+        img.onload = onDone;
+        img.onerror = onDone;
+        img.src = src;
+    });
 }
 
 // Анимация босса
-function startBossAnimation() {
+let bossAnimationIntervalId = null;
+function startBossAnimation(frameUrls) {
     const bossAnimation = document.getElementById('bossAnimation');
     if (!bossAnimation) return;
-    
-    let currentFrame = 1;
-    const totalFrames = 6;
-    const frameInterval = 100; // Интервал между кадрами в миллисекундах (100мс = 10 FPS)
-    
-    setInterval(function() {
-        currentFrame = (currentFrame % totalFrames) + 1;
-        bossAnimation.src = `/static/animation/boss/${currentFrame}.png`;
+
+    if (!Array.isArray(frameUrls) || frameUrls.length === 0) return;
+
+    // Не создаём несколько таймеров, если функция вызвана повторно
+    if (bossAnimationIntervalId) {
+        clearInterval(bossAnimationIntervalId);
+        bossAnimationIntervalId = null;
+    }
+
+    let idx = 0;
+    bossAnimation.src = frameUrls[0];
+
+    // Скорость зависит от количества кадров:
+    // держим примерно постоянную длительность полного цикла, как раньше (6 * 100ms = 600ms).
+    const TARGET_LOOP_MS = 600;
+    const MIN_FRAME_INTERVAL_MS = 30;  // чтобы не было слишком быстро/нагруженно
+    const MAX_FRAME_INTERVAL_MS = 350; // чтобы не было слишком медленно при малом числе кадров
+    const rawInterval = Math.round(TARGET_LOOP_MS / frameUrls.length);
+    const frameInterval = Math.max(MIN_FRAME_INTERVAL_MS, Math.min(MAX_FRAME_INTERVAL_MS, rawInterval));
+    bossAnimationIntervalId = setInterval(function() {
+        idx = (idx + 1) % frameUrls.length;
+        bossAnimation.src = frameUrls[idx];
     }, frameInterval);
 }
 
@@ -2108,8 +2131,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Предзагружаем кадры анимации босса, затем запускаем анимацию
-    preloadBossAnimationFrames(function() {
-        startBossAnimation();
+    preloadBossAnimationFrames(BOSS_ANIMATION_FRAMES, function() {
+        startBossAnimation(BOSS_ANIMATION_FRAMES);
     });
     
     // Отображаем прогресс пользователя при загрузке страницы
