@@ -2124,6 +2124,12 @@ def raid_boss_page():
         boss_animation_frames=boss_animation_frames
     )
 
+
+# Тестовая страница для просмотра анимации сундука (без логики рейда/дропа)
+@app.route('/chest-test')
+def chest_test_page():
+    return render_template('chest_test.html')
+
 # API для получения случайной доступной задачи босса
 @app.route('/api/raid-boss/task', methods=['GET'])
 def get_random_boss_task():
@@ -2319,7 +2325,9 @@ def submit_boss_task_answer():
             if drop_reward:
                 response_data['drop_reward'] = {
                     'drop_name': drop_reward.drop.name if drop_reward.drop else '',
-                    'drop_id': drop_reward.drop_id
+                    'drop_id': drop_reward.drop_id,
+                    # вероятность/редкость дропа для UI (high/medium/very_low)
+                    'probability': drop_reward.drop.probability if drop_reward.drop else None
                 }
 
             return jsonify(response_data)
