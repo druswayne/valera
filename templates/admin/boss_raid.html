@@ -18,6 +18,7 @@
     
     <div class="bosses-list">
         {% for boss in bosses %}
+        {% set boss_data = boss.to_dict() %}
         <div class="boss-card" data-id="{{ boss.id }}">
             <div class="boss-header">
                 <h2 class="boss-name">{{ boss.name }}</h2>
@@ -31,7 +32,7 @@
             <div class="boss-info">
                 <div class="boss-health">
                     <strong>Здоровье:</strong> 
-                    <span id="boss-health-{{ boss.id }}">{{ boss.to_dict().current_health }} / {{ boss.to_dict().total_health }}</span>
+                    <span id="boss-health-{{ boss.id }}">{{ boss_data.current_health }} / {{ boss_data.total_health }}</span>
                 </div>
                 {% if boss.rewards_list %}
                 <div class="boss-rewards">
@@ -97,6 +98,7 @@
         <h2 class="modal-title" id="tasksModalTitle">Управление задачами</h2>
         <div class="tasks-container">
             <button class="add-btn" onclick="showAddTaskModal()" style="margin-bottom: 20px;">+ Добавить задачу</button>
+            <div id="tasksPagination" class="tasks-pagination"></div>
             <div id="tasksList" class="tasks-list"></div>
         </div>
     </div>
@@ -205,6 +207,8 @@
 <script>
 let currentBossId = null;
 let editingTaskId = null;
+let tasksPage = 1;
+let tasksPerPage = 20;
 
 // Управление боссами
 function showAddBossModal() {
@@ -342,21 +346,25 @@ function manageBossTasks(bossId, bossName) {
     currentBossId = bossId;
     document.getElementById('tasksModalTitle').textContent = `Задачи босса: ${bossName}`;
     document.getElementById('tasksModal').classList.add('show');
-    loadBossTasks(bossId);
+    tasksPage = 1;
+    loadBossTasks(bossId, tasksPage);
 }
 
 function closeTasksModal() {
     document.getElementById('tasksModal').classList.remove('show');
     currentBossId = null;
     editingTaskId = null;
+    tasksPage = 1;
 }
 
-function loadBossTasks(bossId) {
-    fetch(`/api/bosses/${bossId}/tasks`)
+function loadBossTasks(bossId, page = 1) {
+    tasksPage = page;
+    const url = `/api/bosses/${bossId}/tasks?page=${encodeURIComponent(page)}&per_page=${encodeURIComponent(tasksPerPage)}`;
+    fetch(url)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                displayBossTasks(data.tasks);
+                displayBossTasks(data.tasks, data);
             } else {
                 alert('Ошибка при загрузке задач');
             }
@@ -367,8 +375,35 @@ function loadBossTasks(bossId) {
         });
 }
 
-function displayBossTasks(tasks) {
+function displayBossTasks(tasks, meta) {
     const list = document.getElementById('tasksList');
+    const pager = document.getElementById('tasksPagination');
+
+    const page = meta?.page || tasksPage || 1;
+    const pages = meta?.pages || 1;
+    const total = meta?.total ?? null;
+
+    // Пагинация
+    const prevDisabled = page <= 1 ? 'disabled' : '';
+    const nextDisabled = page >= pages ? 'disabled' : '';
+    const totalText = (total === null || total === undefined) ? '' : ` | Всего: ${total}`;
+    pager.innerHTML = `
+        <div class="pager-row">
+            <button class="pager-btn" ${prevDisabled} onclick="loadBossTasks(${currentBossId}, ${page - 1})">← Назад</button>
+            <div class="pager-info">Страница ${page} из ${pages}${totalText}</div>
+            <button class="pager-btn" ${nextDisabled} onclick="loadBossTasks(${currentBossId}, ${page + 1})">Вперёд →</button>
+        </div>
+        <div class="pager-row" style="justify-content: flex-end;">
+            <label class="pager-label">На странице:</label>
+            <select class="pager-select" onchange="tasksPerPage = parseInt(this.value, 10) || 20; loadBossTasks(currentBossId, 1);">
+                <option value="10" ${tasksPerPage === 10 ? 'selected' : ''}>10</option>
+                <option value="20" ${tasksPerPage === 20 ? 'selected' : ''}>20</option>
+                <option value="50" ${tasksPerPage === 50 ? 'selected' : ''}>50</option>
+                <option value="100" ${tasksPerPage === 100 ? 'selected' : ''}>100</option>
+            </select>
+        </div>
+    `;
+
     if (tasks.length === 0) {
         list.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">Нет задач у этого босса</p>';
         return;
@@ -405,23 +440,18 @@ function showAddTaskModal() {
 }
 
 function editTask(taskId, bossId) {
-    // Получаем задачу из уже загруженного списка
     const taskElement = document.querySelector(`.task-item[data-id="${taskId}"]`);
     if (!taskElement) {
         alert('Задача не найдена');
         return;
     }
     
-    // Загружаем задачи снова, чтобы получить актуальные данные
-    fetch(`/api/bosses/${bossId}/tasks`)
+    // Загружаем одну задачу (без полной выгрузки списка)
+    fetch(`/api/bosses/${bossId}/tasks/${taskId}`)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                const task = data.tasks.find(t => t.id === taskId);
-                if (!task) {
-                    alert('Задача не найдена');
-                    return;
-                }
+                const task = data.task;
                 
                 editingTaskId = taskId;
                 document.getElementById('taskModalTitle').textContent = 'Редактировать задачу';
@@ -445,7 +475,7 @@ function editTask(taskId, bossId) {
                 document.getElementById('taskForm').removeAttribute('data-delete-image');
                 document.getElementById('taskModal').classList.add('show');
             } else {
-                alert('Ошибка при загрузке задачи');
+                alert(data.error || 'Ошибка при загрузке задачи');
             }
         })
         .catch(error => {
@@ -504,7 +534,12 @@ function saveTask(event) {
     .then(data => {
         if (data.success) {
             closeTaskModal();
-            loadBossTasks(currentBossId);
+            // После создания новая задача окажется в начале списка
+            if (!taskId) {
+                loadBossTasks(currentBossId, 1);
+            } else {
+                loadBossTasks(currentBossId, tasksPage);
+            }
         } else {
             alert(data.error || 'Ошибка при сохранении задачи');
         }
@@ -526,7 +561,11 @@ function deleteTask(taskId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            loadBossTasks(currentBossId);
+            // Перезагружаем текущую страницу; если она стала пустой — откатимся на предыдущую
+            const list = document.getElementById('tasksList');
+            const itemsLeft = list ? list.querySelectorAll('.task-item').length : 0;
+            const nextPage = (itemsLeft <= 1 && tasksPage > 1) ? (tasksPage - 1) : tasksPage;
+            loadBossTasks(currentBossId, nextPage);
         } else {
             alert('Ошибка при удалении задачи');
         }
@@ -853,11 +892,11 @@ function displayBossDropRewards(rewards) {
 // Загрузка количества задач для каждого босса
 document.addEventListener('DOMContentLoaded', function() {
     {% for boss in bosses %}
-    fetch(`/api/bosses/{{ boss.id }}/tasks`)
+    fetch(`/api/bosses/{{ boss.id }}/tasks/count`)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                document.getElementById('boss-tasks-count-{{ boss.id }}').textContent = data.tasks.length;
+                document.getElementById('boss-tasks-count-{{ boss.id }}').textContent = data.count;
             }
         })
         .catch(error => {
@@ -1215,6 +1254,61 @@ document.addEventListener('DOMContentLoaded', function() {
     display: flex;
     flex-direction: column;
     gap: 15px;
+}
+
+.tasks-pagination {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.pager-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.pager-btn {
+    padding: 10px 14px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    background: linear-gradient(135deg, #9b8fb8 0%, #8b6fa8 100%);
+    color: #fff;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+}
+
+.pager-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.pager-info {
+    color: #666;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.pager-label {
+    color: #666;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.pager-select {
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 2px solid #a8b8d0;
+    background: #fff;
+    color: #333;
+    font-weight: bold;
 }
 
 .task-item {

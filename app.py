@@ -255,7 +255,14 @@ class Boss(db.Model):
     drops = db.relationship('BossDrop', backref='boss', lazy=True, cascade='all, delete-orphan')
     drop_rewards = db.relationship('BossDropReward', backref='boss', lazy=True, cascade='all, delete-orphan')
     
+    def get_total_health(self) -> int:
+        """Суммарное здоровье босса (сумма points всех задач) без загрузки всех задач в память."""
+        from sqlalchemy import func
+        total = db.session.query(func.sum(BossTask.points)).filter(BossTask.boss_id == self.id).scalar()
+        return int(total or 0)
+
     def to_dict(self):
+        total_health = self.get_total_health()
         return {
             'id': self.id,
             'name': self.name,
@@ -263,14 +270,15 @@ class Boss(db.Model):
             'is_active': self.is_active,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-            'total_health': sum(task.points for task in self.tasks) if self.tasks else 0,
-            'current_health': self.get_current_health()
+            'total_health': total_health,
+            'current_health': self.get_current_health(total_health=total_health)
         }
     
-    def get_current_health(self):
+    def get_current_health(self, total_health: int | None = None) -> int:
         """Возвращает текущее здоровье босса (сумма очков всех задач минус нанесенный урон)"""
         from sqlalchemy import func
-        total_health = sum(task.points for task in self.tasks) if self.tasks else 0
+        if total_health is None:
+            total_health = self.get_total_health()
         # Вычисляем суммарный урон из правильно решенных задач
         damage_dealt = db.session.query(func.sum(BossTask.points)).join(
             BossTaskSolution, BossTaskSolution.task_id == BossTask.id
@@ -278,7 +286,7 @@ class Boss(db.Model):
             BossTaskSolution.boss_id == self.id,
             BossTaskSolution.is_correct == True
         ).scalar() or 0
-        return max(0, total_health - damage_dealt)
+        return int(max(0, int(total_health) - int(damage_dealt or 0)))
 
 class BossTask(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -1950,9 +1958,65 @@ def toggle_boss_active(boss_id):
 @app.route('/api/bosses/<int:boss_id>/tasks')
 @admin_required
 def get_boss_tasks(boss_id):
-    boss = db.get_or_404(Boss, boss_id)
-    tasks = BossTask.query.filter_by(boss_id=boss_id).all()
-    return jsonify({'success': True, 'tasks': [task.to_dict() for task in tasks]})
+    """
+    Возвращает задачи босса постранично, чтобы не выгружать всё сразу.
+    Query params:
+      - page (1..)
+      - per_page (1..100)
+    """
+    db.get_or_404(Boss, boss_id)
+
+    try:
+        page = int(request.args.get('page', 1))
+    except Exception:
+        page = 1
+    try:
+        per_page = int(request.args.get('per_page', 20))
+    except Exception:
+        per_page = 20
+
+    if page < 1:
+        page = 1
+    if per_page < 1:
+        per_page = 1
+    if per_page > 100:
+        per_page = 100
+
+    pagination = (
+        BossTask.query
+        .filter_by(boss_id=boss_id)
+        .order_by(BossTask.created_at.desc(), BossTask.id.desc())
+        .paginate(page=page, per_page=per_page, error_out=False)
+    )
+
+    return jsonify({
+        'success': True,
+        'tasks': [task.to_dict() for task in pagination.items],
+        'page': page,
+        'per_page': per_page,
+        'total': pagination.total,
+        'pages': pagination.pages
+    })
+
+
+# API для получения одной задачи босса (для редактирования без загрузки всех задач)
+@app.route('/api/bosses/<int:boss_id>/tasks/<int:task_id>', methods=['GET'])
+@admin_required
+def get_boss_task(boss_id, task_id):
+    db.get_or_404(Boss, boss_id)
+    task = db.get_or_404(BossTask, task_id)
+    if task.boss_id != boss_id:
+        return jsonify({'success': False, 'error': 'Задача не принадлежит этому боссу'}), 400
+    return jsonify({'success': True, 'task': task.to_dict()})
+
+# API для получения количества задач босса (без загрузки самих задач)
+@app.route('/api/bosses/<int:boss_id>/tasks/count')
+@admin_required
+def get_boss_tasks_count(boss_id):
+    from sqlalchemy import func
+    _ = db.get_or_404(Boss, boss_id)  # 404 если босса нет
+    count = db.session.query(func.count(BossTask.id)).filter(BossTask.boss_id == boss_id).scalar() or 0
+    return jsonify({'success': True, 'count': int(count)})
 
 # API для создания задачи босса
 @app.route('/api/bosses/<int:boss_id>/tasks', methods=['POST'])
