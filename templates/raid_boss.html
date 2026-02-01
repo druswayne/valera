@@ -1488,8 +1488,8 @@ body {
         <p>Администратор еще не включил рейд босса. Проверьте позже!</p>
     </div>
     {% else %}
-    {% set total_health = boss.tasks|sum(attribute='points') %}
-    {% set current_health = boss.get_current_health() %}
+    {% set total_health = boss.get_total_health() %}
+    {% set current_health = boss.get_current_health(total_health=total_health) %}
     {% set health_percent = (current_health / total_health * 100) if total_health > 0 else 0 %}
     <div class="boss-header">
         <h1>{{ boss.name }}</h1>

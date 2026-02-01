@@ -305,7 +305,11 @@ class BossTask(db.Model):
     
     solutions = db.relationship('BossTaskSolution', backref='task', lazy=True, cascade='all, delete-orphan')
     
-    def to_dict(self):
+    def to_dict(self, is_solved_override: bool | None = None):
+        """
+        Возвращает dict для фронта/админки.
+        is_solved_override: если передан, не делаем дополнительный запрос к BossTaskSolution.
+        """
         return {
             'id': self.id,
             'boss_id': self.boss_id,
@@ -315,7 +319,7 @@ class BossTask(db.Model):
             'correct_answer': self.correct_answer,
             'points': self.points,
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'is_solved': self.is_solved()
+            'is_solved': bool(is_solved_override) if is_solved_override is not None else self.is_solved()
         }
     
     def is_solved(self):
@@ -2197,26 +2201,46 @@ def chest_test_page():
 # API для получения случайной доступной задачи босса
 @app.route('/api/raid-boss/task', methods=['GET'])
 def get_random_boss_task():
+    from sqlalchemy import func
     active_boss = Boss.query.filter_by(is_active=True).first()
     if not active_boss:
         return jsonify({'success': False, 'error': 'Нет активного босса'}), 404
     
-    # Получаем все задачи, которые еще не решены
-    all_tasks = BossTask.query.filter_by(boss_id=active_boss.id).all()
-    available_tasks = [task for task in all_tasks if not task.is_solved()]
+    # Получаем задачи, которые ещё не решены, ОДНИМ запросом (без N+1)
+    solved_exists = db.session.query(BossTaskSolution.id).filter(
+        BossTaskSolution.task_id == BossTask.id,
+        BossTaskSolution.is_correct == True
+    ).exists()
+    available_query = (
+        BossTask.query
+        .filter(BossTask.boss_id == active_boss.id)
+        .filter(~solved_exists)
+        .order_by(BossTask.id.asc())
+    )
     
-    if not available_tasks:
+    total_available = available_query.count()
+    if total_available <= 0:
         return jsonify({
             'success': True, 
             'boss_defeated': True,
             'message': 'Босс побежден! Все задачи решены.'
         })
     
-    # Выбираем случайную задачу
-    random_task = random.choice(available_tasks)
+    # Выбираем случайную задачу (без загрузки всех задач в память)
+    offset = random.randrange(total_available)
+    random_task = available_query.offset(offset).limit(1).first()
+    if not random_task:
+        # Редкий случай гонки/изменений: считаем, что задач больше нет
+        return jsonify({
+            'success': True,
+            'boss_defeated': True,
+            'message': 'Босс побежден! Все задачи решены.'
+        })
+
     return jsonify({
         'success': True,
-        'task': random_task.to_dict(),
+        # Мы гарантировали, что задача не решена, поэтому не делаем лишний запрос в to_dict()
+        'task': random_task.to_dict(is_solved_override=False),
         'boss_defeated': False
     })
 
@@ -2444,8 +2468,8 @@ def get_boss_stats():
             'damage': damage
         }
     
-    total_health = sum(task.points for task in boss.tasks)
-    current_health = boss.get_current_health()
+    total_health = boss.get_total_health()
+    current_health = boss.get_current_health(total_health=total_health)
     
     return jsonify({
         'success': True,
