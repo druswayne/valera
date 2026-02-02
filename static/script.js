@@ -1081,12 +1081,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     selectedPrizeObj.probability = 'medium';
                 }
                 
-                // Если приз - Варишка, генерируем случайное число монет от 3 до 10
-                let prizeName = selectedPrizeObj.name;
-                if (prizeName.includes('Варишка')) {
-                    const randomCoins = Math.floor(Math.random() * (10 - 3 + 1)) + 3;
-                    prizeName = prizeName.replace(/\d+/, randomCoins);
-                }
+                // Показываем название приза строго как в базе (без рандомизации чисел)
+                const prizeName = selectedPrizeObj.name;
                 
                 // Выбираем случайную ячейку для визуального эффекта
                 const randomIndex = Math.floor(Math.random() * cells.length);
@@ -1416,12 +1412,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 const randomIndex = Math.floor(Math.random() * cells.length);
                 const selectedCell = cells[randomIndex];
                 
-                // Если приз - Воришка, генерируем случайное число монет от 1 до 5
-                let prizeName = selectedPrizeObj.name;
-                if (prizeName.includes('Воришка')) {
-                    const randomCoins = Math.floor(Math.random() * (5 - 1 + 1)) + 1;
-                    prizeName = prizeName.replace(/\d+/, randomCoins);
-                }
+                // Показываем название приза строго как в базе (без рандомизации чисел)
+                const prizeName = selectedPrizeObj.name;
                 
                 selectedCell.classList.add('selected');
                 

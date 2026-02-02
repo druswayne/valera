@@ -8,6 +8,15 @@
     box-sizing: border-box;
 }
 
+/* Запрет копирования/выделения текста задачи (только в блоке задачи босса) */
+.no-copy {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none; /* iOS Safari */
+}
+
 body {
     font-family: 'Comic Sans MS', 'Arial Rounded MT Bold', Arial, sans-serif;
     background: linear-gradient(135deg, #8b0000 0%, #ff4500 100%);
@@ -1549,7 +1558,7 @@ body {
     </div>
     
     <div id="taskCard" style="display: none;">
-        <div class="task-card">
+        <div class="task-card no-copy" id="bossTaskContent">
             <h2 class="task-title" id="taskTitle"></h2>
             <div class="task-description" id="taskDescription"></div>
             <img id="taskImage" class="task-image" style="display: none;" alt="Изображение задачи">
@@ -1637,6 +1646,22 @@ body {
 {% block scripts %}
 <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
 <script>
+// Запрещаем копирование текста задачи босса (в пределах блока задачи)
+(function() {
+    const bossTaskContent = document.getElementById('bossTaskContent');
+    if (!bossTaskContent) return;
+
+    const block = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+    };
+
+    ['copy', 'cut', 'contextmenu', 'selectstart', 'dragstart'].forEach((evt) => {
+        bossTaskContent.addEventListener(evt, block);
+    });
+})();
+
 // Защитный механизм (включается только после получения задачи):
 // если вкладка/страница была вне фокуса > 5 секунд — показываем предупреждение и перезагружаем.
 window.bossFocusProtection = (function () {
