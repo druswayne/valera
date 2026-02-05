@@ -2483,6 +2483,66 @@ def get_boss_stats():
         'class_damage': class_damage
     })
 
+
+# Публичное API: топ игроков по классу для страницы рейд-босса
+# Важно: отдаём данные ТОЛЬКО после победы босса (HP=0), чтобы не подсвечивать результаты во время рейда.
+@app.route('/api/raid-boss/top-users-by-class', methods=['GET'])
+def raid_boss_top_users_by_class():
+    # boss_id можно передать явно; иначе используем активного, либо последнего созданного
+    boss_id = request.args.get('boss_id', type=int)
+    limit = request.args.get('limit', default=10, type=int)
+    class_id = request.args.get('class_id', type=int)
+
+    if limit is None or limit <= 0:
+        limit = 10
+    # страхуем от слишком больших значений
+    limit = min(int(limit), 50)
+
+    if boss_id:
+        boss = Boss.query.get(boss_id)
+    else:
+        boss = Boss.query.filter_by(is_active=True).first()
+        if not boss:
+            boss = Boss.query.order_by(Boss.created_at.desc()).first()
+
+    if not boss:
+        return jsonify({'success': False, 'error': 'Нет босса'}), 404
+
+    total_health = boss.get_total_health()
+    current_health = boss.get_current_health(total_health=total_health)
+    if current_health > 0:
+        return jsonify({'success': False, 'error': 'Босс ещё не побеждён'}), 403
+
+    # Для публичной страницы рейда склеиваем одинаковые имена (без учёта регистра)
+    _, top_by_class = _get_boss_top_players_by_class_merged_names_data(boss_id=boss.id, limit=limit)
+
+    if class_id is not None:
+        class_id_int = int(class_id)
+        cls_block = next((x for x in top_by_class if int(x.get('class_id')) == class_id_int), None)
+        if not cls_block:
+            # если данных нет — возвращаем пустой список (класс мог существовать, но без участников)
+            class_obj = Class.query.get(class_id_int)
+            return jsonify({
+                'success': True,
+                'boss': boss.to_dict(),
+                'class_id': class_id_int,
+                'class_name': class_obj.name if class_obj else None,
+                'users': []
+            })
+        return jsonify({
+            'success': True,
+            'boss': boss.to_dict(),
+            'class_id': int(cls_block.get('class_id')),
+            'class_name': cls_block.get('class_name'),
+            'users': cls_block.get('users', [])
+        })
+
+    return jsonify({
+        'success': True,
+        'boss': boss.to_dict(),
+        'top_by_class': top_by_class
+    })
+
 # API для управления дропами босса
 @app.route('/api/bosses/<int:boss_id>/drops', methods=['GET'])
 @admin_required
@@ -2706,6 +2766,160 @@ def _get_boss_top_users_by_class_data(boss_id: int, limit: int = 10):
         })
 
     return boss, list(by_class.values())
+
+
+def _get_boss_top_players_by_class_merged_names_data(boss_id: int, limit: int = 10):
+    """
+    Версия топа по классам, которая объединяет пользователей с одинаковыми именами
+    (без учёта регистра) и суммирует число правильных решений.
+
+    Возвращает (boss, top_by_class), где top_by_class:
+      {class_id, class_name, users: [{user_id, user_name, solved_correct, last_correct_at, position}]}
+
+    Примечание:
+    - В этом режиме один "пользователь" может соответствовать нескольким BossUser.id.
+      Для стабильности отдаём user_id = минимальный BossUser.id среди объединённых.
+    """
+    import re
+    from sqlalchemy import func
+
+    boss = db.get_or_404(Boss, boss_id)
+
+    def canonical_name_key(raw: str) -> str:
+        """
+        Делает ключ, одинаковый для:
+          - разного регистра
+          - лишних пробелов/пунктуации
+          - перестановки слов (например, "иванов иван" == "иван иванов")
+        """
+        s = (raw or '').strip().lower()
+        if not s:
+            return ''
+        s = s.replace('ё', 'е')
+        # всё, что не буква/цифра — в пробел
+        s = re.sub(r'[^0-9a-zа-я]+', ' ', s, flags=re.IGNORECASE)
+        parts = [p for p in s.split() if p]
+        if not parts:
+            return ''
+        parts.sort()
+        return ' '.join(parts)
+
+    # База: считаем по "сырому" ключу (lower(trim(name))) и классу, затем уже склеиваем в Python
+    raw_key_expr = func.lower(func.trim(BossUser.name))
+    base_rows = db.session.query(
+        raw_key_expr.label('raw_key'),
+        BossTaskSolution.class_id.label('class_id'),
+        func.count(BossTaskSolution.id).label('cnt'),
+        func.max(BossTaskSolution.solved_at).label('last_at'),
+        func.min(BossUser.id).label('min_user_id'),
+        func.min(BossUser.name).label('any_name')
+    ).join(
+        BossUser, BossUser.id == BossTaskSolution.user_id
+    ).filter(
+        BossTaskSolution.boss_id == boss_id,
+        BossTaskSolution.is_correct == True,
+        BossTaskSolution.user_id.isnot(None),
+        BossUser.name.isnot(None),
+        func.length(func.trim(BossUser.name)) > 0
+    ).group_by(
+        raw_key_expr,
+        BossTaskSolution.class_id
+    ).all()
+
+    # 1) Склеиваем варианты имён в один ключ + суммируем по классу
+    per_name_class: dict[tuple[str, int], dict] = {}
+    # для отображения имени: выберем вариант с наибольшим суммарным cnt (тай-брейк: last_at)
+    display_choice: dict[str, dict] = {}
+
+    for r in base_rows:
+        raw_key = str(r.raw_key or '').strip()
+        canon = canonical_name_key(raw_key)
+        if not canon:
+            continue
+        class_id = int(r.class_id)
+        cnt = int(r.cnt or 0)
+        last_at = r.last_at
+        min_user_id = int(r.min_user_id) if r.min_user_id is not None else None
+        any_name = r.any_name
+
+        k = (canon, class_id)
+        agg = per_name_class.get(k)
+        if not agg:
+            per_name_class[k] = {
+                'canon': canon,
+                'class_id': class_id,
+                'cnt': cnt,
+                'last_at': last_at,
+                'min_user_id': min_user_id,
+            }
+        else:
+            agg['cnt'] += cnt
+            if last_at and (agg['last_at'] is None or last_at > agg['last_at']):
+                agg['last_at'] = last_at
+            if min_user_id is not None:
+                if agg['min_user_id'] is None or min_user_id < agg['min_user_id']:
+                    agg['min_user_id'] = min_user_id
+
+        dc = display_choice.get(canon)
+        score = (cnt, last_at or 0)
+        if not dc or score > dc['score']:
+            display_choice[canon] = {
+                'score': score,
+                'name': any_name or raw_key
+            }
+
+    # 2) Для каждого канонического имени выбираем "основной" класс
+    per_name: dict[str, dict] = {}
+    for (canon, class_id), st in per_name_class.items():
+        cur = per_name.get(canon)
+        cand = (st['cnt'], st['last_at'] or 0, -class_id)  # -class_id чтобы меньший class_id был "больше" при сравнении
+        if not cur or cand > cur['best']:
+            per_name[canon] = {
+                'best': cand,
+                'main_class_id': class_id,
+                'solved_correct': st['cnt'],
+                'last_correct_at': st['last_at'],
+                'min_user_id': st['min_user_id'],
+            }
+
+    # 3) Группируем по основному классу и ранжируем
+    class_names = {c.id: c.name for c in Class.query.all()}
+    by_class_users: dict[int, list] = {}
+    for canon, info in per_name.items():
+        class_id = int(info['main_class_id'])
+        by_class_users.setdefault(class_id, []).append({
+            'canon': canon,
+            'user_id': info['min_user_id'],
+            'user_name': (display_choice.get(canon) or {}).get('name') or canon,
+            'solved_correct': int(info['solved_correct'] or 0),
+            'last_correct_at': info['last_correct_at'],
+        })
+
+    top_by_class: list[dict] = []
+    for class_id, users in by_class_users.items():
+        users.sort(key=lambda u: (
+            -int(u['solved_correct'] or 0),
+            -(u['last_correct_at'].timestamp() if u['last_correct_at'] else 0),
+            u['canon']
+        ))
+        users = users[: int(limit)]
+        out_users = []
+        for idx, u in enumerate(users, start=1):
+            out_users.append({
+                'user_id': u['user_id'],
+                'user_name': u['user_name'],
+                'solved_correct': int(u['solved_correct'] or 0),
+                'last_correct_at': u['last_correct_at'].isoformat() if u['last_correct_at'] else None,
+                'position': idx
+            })
+        top_by_class.append({
+            'class_id': int(class_id),
+            'class_name': class_names.get(class_id),
+            'users': out_users
+        })
+
+    top_by_class.sort(key=lambda x: (x.get('class_name') or ''))
+    return boss, top_by_class
 
 
 # API: топ-10 пользователей по каждому классу (класс определяется по большинству отправленных решений)

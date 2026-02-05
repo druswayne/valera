@@ -81,6 +81,7 @@ body {
     overflow: hidden;
     box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.3);
     border: 3px solid #000;
+    position: relative; /* нужно для абсолютного центрирования текста */
 }
 
 .boss-health-fill {
@@ -94,6 +95,16 @@ body {
     font-size: 18px;
     color: white;
     text-shadow: 2px 2px 0px #000;
+}
+
+/* Текст здоровья всегда по центру всей полосы (не зависит от ширины заполнения) */
+#healthText {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
 }
 
 .boss-rewards {
@@ -159,6 +170,110 @@ body {
 .class-damage-item:hover {
     border-color: #8b6fa8;
     box-shadow: 0 3px 10px rgba(139, 111, 168, 0.2);
+}
+
+.class-damage-item.defeated-clickable {
+    cursor: pointer;
+}
+
+.class-damage-item.defeated-clickable:focus-visible {
+    outline: 3px solid rgba(139, 111, 168, 0.55);
+    outline-offset: 2px;
+}
+
+.class-top-panel {
+    margin-top: -8px;
+    margin-bottom: 10px;
+    background: #fff;
+    border: 2px solid #d4c5b0;
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    padding: 12px 14px 14px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.07);
+}
+
+.class-top-title {
+    font-weight: bold;
+    color: #8b6fa8;
+    margin-bottom: 10px;
+    text-shadow: 1px 1px 0px #e8d5c4;
+}
+
+.class-top-loading,
+.class-top-empty,
+.class-top-error {
+    color: #666;
+    font-size: 14px;
+    padding: 8px 0 2px;
+}
+
+.class-top-error {
+    color: #b00020;
+    font-weight: bold;
+}
+
+.class-top-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.class-top-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(155, 143, 184, 0.06);
+    border: 1px solid rgba(139, 111, 168, 0.18);
+}
+
+.class-top-left {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    min-width: 0;
+}
+
+.class-top-rank {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+    border: 2px solid #ff8c00;
+    color: #8b0000;
+    font-weight: bold;
+    flex: 0 0 auto;
+}
+
+.class-top-name {
+    font-weight: bold;
+    color: #333;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.class-top-right {
+    flex: 0 0 auto;
+    text-align: right;
+    color: #444;
+    font-weight: bold;
+}
+
+.class-top-meta {
+    display: block;
+    margin-top: 3px;
+    font-size: 12px;
+    color: #777;
+    font-weight: normal;
 }
 
 .class-name {
@@ -1534,7 +1649,7 @@ body {
         <h2>Урон</h2>
         <div class="class-damage-list" id="classDamageList">
             {% for class_obj in classes %}
-            <div class="class-damage-item">
+            <div class="class-damage-item" data-class-id="{{ class_obj.id }}" data-class-name="{{ class_obj.name }}" role="button" tabindex="0" aria-expanded="false">
                 <span class="class-name">{{ class_obj.name }}</span>
                 <span class="damage-value" data-class-id="{{ class_obj.id }}">{{ class_damage.get(class_obj.id, 0) }} урона</span>
             </div>
@@ -2657,6 +2772,173 @@ function setBossHealthText(currentHealth, totalHealth) {
     el.textContent = `${formatNumber(currentHealth)}/${formatNumber(totalHealth)}`;
 }
 
+// ==================== ТОП-5 ПО КЛАССАМ (после победы) ====================
+let bossDefeated = false;
+const topUsersCacheByClassId = new Map(); // classId -> users[]
+
+function isBossDefeatedFromDom() {
+    const el = document.getElementById('healthText');
+    if (!el || !el.dataset) return false;
+    const current = Number(el.dataset.current);
+    return Number.isFinite(current) && current <= 0;
+}
+
+function setBossDefeatedState(defeated) {
+    const next = Boolean(defeated);
+    if (bossDefeated === next) return;
+    bossDefeated = next;
+    if (bossDefeated) {
+        enableClassTopAccordions();
+    }
+}
+
+function enableClassTopAccordions() {
+    const items = document.querySelectorAll('.class-damage-item[data-class-id]');
+    items.forEach((row) => {
+        row.classList.add('defeated-clickable');
+
+        // не вешаем повторно обработчики
+        if (row.dataset.topBound === '1') return;
+        row.dataset.topBound = '1';
+
+        row.addEventListener('click', () => {
+            if (!bossDefeated) return;
+            toggleClassTopRow(row);
+        });
+
+        row.addEventListener('keydown', (e) => {
+            if (!bossDefeated) return;
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleClassTopRow(row);
+            }
+        });
+    });
+}
+
+function ensureTopPanelAfterRow(row) {
+    const classId = row.dataset.classId;
+    const existing = row.nextElementSibling;
+    if (existing && existing.classList && existing.classList.contains('class-top-panel') && existing.dataset.classId === classId) {
+        return existing;
+    }
+
+    const panel = document.createElement('div');
+    panel.className = 'class-top-panel';
+    panel.dataset.classId = String(classId);
+    panel.style.display = 'none';
+    panel.innerHTML = `
+        <div class="class-top-title">🏆 Топ 10 лучших игроков</div>
+        <div class="class-top-loading">Загрузка...</div>
+    `;
+
+    row.insertAdjacentElement('afterend', panel);
+    return panel;
+}
+
+function renderTopUsers(panel, className, users) {
+    const title = className ? `🏆 Топ 10 лучших игроков — ${escapeHtml(className)}` : '🏆 Топ 10 лучших игроков';
+    if (!users || users.length === 0) {
+        panel.innerHTML = `
+            <div class="class-top-title">${title}</div>
+            <div class="class-top-empty">Пока нет данных.</div>
+        `;
+        return;
+    }
+
+    const itemsHtml = users.map((u) => {
+        const lastAt = u.last_correct_at ? formatDateTime(u.last_correct_at) : '—';
+        const name = u.user_name ? String(u.user_name) : '—';
+        const solved = Number.isFinite(Number(u.solved_correct)) ? formatNumber(u.solved_correct) : String(u.solved_correct ?? '0');
+        const pos = Number.isFinite(Number(u.position)) ? Number(u.position) : '';
+        return `
+            <li class="class-top-item">
+                <div class="class-top-left">
+                    <span class="class-top-rank">${escapeHtml(String(pos || ''))}</span>
+                    <div style="min-width:0;">
+                        <div class="class-top-name" title="${escapeHtml(name)}">${escapeHtml(name)}</div>
+                        <span class="class-top-meta">Последнее: ${escapeHtml(lastAt)}</span>
+                    </div>
+                </div>
+                <div class="class-top-right">
+                    ${escapeHtml(String(solved))}
+                    <span class="class-top-meta">правильных</span>
+                </div>
+            </li>
+        `;
+    }).join('');
+
+    panel.innerHTML = `
+        <div class="class-top-title">${title}</div>
+        <ul class="class-top-list">${itemsHtml}</ul>
+    `;
+}
+
+function renderTopError(panel, message) {
+    panel.innerHTML = `
+        <div class="class-top-title">🏆 Топ 10 лучших игроков</div>
+        <div class="class-top-error">${escapeHtml(message || 'Ошибка загрузки')}</div>
+    `;
+}
+
+function toggleClassTopRow(row) {
+    const classId = row.dataset.classId;
+    const className = row.dataset.className || '';
+    const panel = ensureTopPanelAfterRow(row);
+
+    const expanded = row.getAttribute('aria-expanded') === 'true';
+    const nextExpanded = !expanded;
+    row.setAttribute('aria-expanded', nextExpanded ? 'true' : 'false');
+    panel.style.display = nextExpanded ? 'block' : 'none';
+    if (!nextExpanded) return;
+
+    // если уже есть кеш — просто отрисуем
+    if (topUsersCacheByClassId.has(classId)) {
+        renderTopUsers(panel, className, topUsersCacheByClassId.get(classId));
+        return;
+    }
+
+    panel.innerHTML = `
+        <div class="class-top-title">🏆 Топ 10 лучших игроков${className ? ' — ' + escapeHtml(className) : ''}</div>
+        <div class="class-top-loading">Загрузка...</div>
+    `;
+
+    const url = `/api/raid-boss/top-users-by-class?boss_id=${encodeURIComponent(String(bossId))}&class_id=${encodeURIComponent(String(classId))}&limit=10`;
+    fetch(url)
+        .then((r) => r.json().then((j) => ({ ok: r.ok, status: r.status, json: j })))
+        .then(({ ok, json }) => {
+            if (!ok || !json || !json.success) {
+                renderTopError(panel, (json && json.error) ? json.error : 'Не удалось загрузить топ игроков');
+                return;
+            }
+            const users = Array.isArray(json.users) ? json.users : [];
+            topUsersCacheByClassId.set(String(classId), users);
+            renderTopUsers(panel, className || json.class_name || '', users);
+        })
+        .catch(() => {
+            renderTopError(panel, 'Ошибка сети при загрузке топ игроков');
+        });
+}
+
+function formatDateTime(iso) {
+    try {
+        const d = new Date(iso);
+        if (Number.isNaN(d.getTime())) return String(iso);
+        return d.toLocaleString('ru-RU');
+    } catch (e) {
+        return String(iso);
+    }
+}
+
+function escapeHtml(s) {
+    return String(s)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+}
+
 // Функции для работы с куками
 function getCookie(name) {
     const value = `; ${document.cookie}`;
@@ -3191,6 +3473,9 @@ function resetBattle() {
 
 function showDefeatedMessage() {
     document.getElementById('defeatedBox').style.display = 'block';
+
+    // Включаем кликабельность строк классов и топ-5
+    setBossDefeatedState(true);
     
     // Скрываем контейнер с кнопкой "Сражаться"
     const battleButtonContainer = document.getElementById('battleButtonContainer');
@@ -3226,7 +3511,9 @@ function updateStats() {
                 // Обновляем урон по классам
                 const classDamageList = document.getElementById('classDamageList');
                 Object.keys(data.class_damage).forEach(classId => {
-                    const damageElement = document.querySelector(`[data-class-id="${classId}"]`);
+                    // Важно: обновляем только правую часть (урон), а не всю строку,
+                    // иначе затирается название класса и разметка.
+                    const damageElement = document.querySelector(`.damage-value[data-class-id="${classId}"]`);
                     if (damageElement) {
                         damageElement.textContent = data.class_damage[classId].damage + ' урона';
                     }
@@ -3312,6 +3599,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (current !== undefined && total !== undefined) {
             setBossHealthText(current, total);
         }
+    }
+
+    // Если босс уже побеждён на момент загрузки — сразу включаем UI топ-5
+    if (isBossDefeatedFromDom()) {
+        showDefeatedMessage();
     }
 
     // Предзагружаем кадры анимации босса, затем запускаем анимацию
