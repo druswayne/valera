@@ -57,6 +57,23 @@
             max-width: 100%;
         }
     }
+    /* Общие мобильные стили для навигации админ-страниц */
+    @media (max-width: 600px) {
+        .admin-nav-row {
+            flex-direction: column !important;
+            gap: 10px !important;
+        }
+        .admin-nav-row .back-link,
+        .admin-nav-row button {
+            width: 100% !important;
+            text-align: center !important;
+            min-height: 44px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            margin-right: 0 !important;
+        }
+    }
     </style>
     {% block extra_head %}{% endblock %}
 </head>
@@ -71,6 +88,7 @@
         {% endif %}
     {% endwith %}
     {% block content %}{% endblock %}
+    {% block modals %}{% endblock %}
     {% block scripts %}{% endblock %}
 </body>
 </html>

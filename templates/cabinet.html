@@ -1,0 +1,533 @@
+{% extends "base.html" %}
+
+{% block title %}Личный кабинет - Валера в пещере{% endblock %}
+
+{% block extra_head %}
+<style>
+.cabinet-page { max-width: 800px; margin: 0 auto; padding: 20px; font-family: 'Comic Sans MS', Arial, sans-serif; }
+.cabinet-page h1 { color: #8b6fa8; margin-bottom: 24px; }
+.cabinet-section {
+    background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 24px;
+    border: 2px solid #d4c5b0;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+.cabinet-section h2 { color: #6b5b7a; margin: 0 0 16px; font-size: 1.25rem; }
+.profile-row { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.avatar-wrap { width: 80px; height: 80px; border-radius: 50%; overflow: hidden; background: #ddd; flex-shrink: 0; }
+.avatar-wrap img { width: 100%; height: 100%; object-fit: cover; }
+.profile-info { flex: 1; min-width: 200px; }
+.profile-info p { margin: 4px 0; }
+.profile-edit-form { margin-top: 16px; }
+.profile-edit-form input, .profile-edit-form button { margin-right: 8px; margin-bottom: 8px; padding: 8px 12px; border-radius: 8px; border: 1px solid #ccc; }
+.profile-edit-form button { background: #8b6fa8; color: white; border: none; cursor: pointer; }
+.profile-edit-form button:hover { background: #7a5f97; }
+.stats-row { display: flex; gap: 24px; flex-wrap: wrap; }
+.stat-item { background: #e8e0f0; padding: 12px 20px; border-radius: 10px; }
+.stat-item strong { display: block; color: #6b5b7a; font-size: 0.9rem; }
+.stat-item span { font-size: 1.5rem; font-weight: bold; color: #4a3d5a; }
+.level-block { margin-top: 12px; padding-top: 12px; border-top: 1px solid #e0d8e8; }
+.level-block p { margin: 6px 0; }
+.level-progress-wrap { background: #e0d8e8; border-radius: 8px; height: 20px; overflow: hidden; margin: 8px 0; }
+.level-progress-fill { height: 100%; background: linear-gradient(90deg, #8b6fa8, #a88bc4); border-radius: 8px; transition: width 0.3s; }
+.clan-info { margin-bottom: 12px; }
+.clan-name { font-weight: bold; color: #6b5b7a; font-size: 1.1rem; }
+.clan-block { padding: 16px; margin-bottom: 16px; background: #fcfaf8; border-radius: 12px; border: 1px solid #e8e0f0; }
+.clan-block:last-child { margin-bottom: 0; }
+.clan-block h3 { margin: 0 0 12px; font-size: 1rem; color: #6b5b7a; }
+.clan-view { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.clan-view-emblem { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 2px solid #d4c5b0; flex-shrink: 0; }
+.clan-view-emblem-placeholder { width: 56px; height: 56px; border-radius: 50%; background: #e0d8e8; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; flex-shrink: 0; }
+.clan-edit-form .form-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; margin-bottom: 12px; }
+.clan-edit-form label { display: block; margin-bottom: 4px; font-size: 0.9rem; color: #555; }
+.clan-edit-form input[type="text"] { width: 100%; max-width: 240px; padding: 8px 12px; border: 2px solid #d4c5b0; border-radius: 8px; }
+.clan-edit-form input[type="file"] { font-size: 0.9rem; }
+.clan-members-toggle, .clan-btn { padding: 10px 18px; margin: 4px 8px 4px 0; border-radius: 10px; border: 2px solid #8b6fa8; background: #f5f0fa; color: #6b5b7a; cursor: pointer; font-weight: bold; }
+.clan-btn:hover, .clan-members-toggle:hover { background: #e8e0f0; }
+.clan-btn.danger { border-color: #c55; background: #fef0f0; color: #a33; }
+.clan-btn.danger:hover { background: #fee; }
+.members-list, .territories-list, .pending-list { margin-top: 12px; display: none; }
+.members-list.open, .territories-list.open, .pending-list.open { display: block; }
+.member-item, .territory-item, .pending-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px; margin: 6px 0; background: #f8f5fc; border-radius: 8px;
+}
+.member-item { gap: 12px; }
+.member-item .member-avatar {
+    width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: #e0d8e8; flex-shrink: 0;
+}
+.member-item .member-avatar-placeholder {
+    width: 40px; height: 40px; border-radius: 50%; background: #e0d8e8;
+    display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0;
+}
+.member-item .member-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.member-item .member-level { font-size: 0.8rem; color: #8b6fa8; font-weight: bold; }
+.member-item .kick-btn, .pending-item .accept-btn, .pending-item .reject-btn {
+    padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.9rem;
+}
+.member-item .kick-btn { background: #fcc; color: #a33; }
+.pending-item .accept-btn { background: #cfc; color: #363; margin-right: 6px; }
+.pending-item .reject-btn { background: #fcc; color: #a33; }
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    opacity: 1;
+    visibility: visible;
+}
+.modal-overlay.open {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+.modal-box { background: white; padding: 28px; border-radius: 16px; max-width: 420px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
+.modal-box h3 { margin: 0 0 16px; color: #4a3d5a; }
+.modal-box .modal-buttons { margin-top: 20px; display: flex; gap: 12px; justify-content: flex-end; }
+.modal-box button { padding: 10px 20px; border-radius: 10px; cursor: pointer; font-weight: bold; }
+.modal-box .btn-cancel { background: #ddd; border: 1px solid #ccc; }
+.modal-box .btn-confirm { background: #8b6fa8; color: white; border: none; }
+.modal-box .btn-confirm.danger { background: #c55; }
+.modal-box select { width: 100%; padding: 12px; margin: 12px 0; border-radius: 8px; border: 2px solid #ccc; }
+.create-clan-form input, .create-clan-form label { display: block; margin: 8px 0; width: 100%; }
+.create-clan-form input[type="color"] { height: 40px; padding: 4px; cursor: pointer; }
+.create-clan-form input[type="file"] { padding: 8px; }
+.no-clan-msg { color: #666; margin-bottom: 12px; }
+.nav-links { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+.back-link { display: inline-block; margin-top: 0; color: #8b6fa8; text-decoration: none; padding: 12px 20px; background: #f5f0fa; border-radius: 10px; font-weight: bold; border: 2px solid #d4c5b0; transition: all 0.2s; }
+.back-link:hover { text-decoration: none; background: #e8e0f0; }
+@media (max-width: 600px) {
+    .cabinet-page { padding: 12px; }
+    .cabinet-section { padding: 16px; margin-bottom: 16px; }
+    .cabinet-section h2 { font-size: 1.1rem; }
+    .profile-row { flex-direction: column; align-items: flex-start; }
+    .profile-edit-form { display: flex; flex-direction: column; gap: 8px; }
+    .profile-edit-form input, .profile-edit-form button { margin: 0; width: 100%; max-width: 100%; }
+    .stats-row { flex-direction: column; gap: 12px; }
+    .stat-item { width: 100%; }
+    .level-block { margin-top: 8px; padding-top: 8px; }
+    .nav-links { flex-direction: column; gap: 10px; margin-top: 16px; }
+    .back-link { width: 100%; text-align: center; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+    .clan-block { padding: 12px; margin-bottom: 12px; }
+    .clan-view { flex-direction: column; align-items: flex-start; }
+    .clan-edit-form .form-row { flex-direction: column; }
+    .clan-edit-form input[type="text"] { max-width: 100%; }
+    .clan-members-toggle, .clan-btn { width: 100%; text-align: center; margin: 4px 0; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+    .member-item { flex-wrap: wrap; gap: 8px; }
+    .member-item .kick-btn { width: 100%; }
+    .pending-item { flex-wrap: wrap; }
+    .pending-item .accept-btn, .pending-item .reject-btn { min-height: 40px; }
+    .modal-box { margin: 16px; max-height: calc(100vh - 32px); overflow-y: auto; padding: 20px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="cabinet-page">
+    <h1>Личный кабинет</h1>
+
+    <div class="cabinet-section">
+        <h2>Личная информация</h2>
+        <div class="profile-row">
+            <div class="avatar-wrap">
+                {% if avatar_url %}
+                <img src="{{ avatar_url }}" alt="Аватар" id="avatarImg">
+                {% else %}
+                <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2rem;">👤</div>
+                {% endif %}
+            </div>
+            <div class="profile-info">
+                <p><strong>Логин:</strong> {{ user.username }}</p>
+                <p><strong>Имя персонажа:</strong> {{ user.character_name or user.username }}</p>
+                <div class="level-block">
+                    <p><strong>Уровень:</strong> {{ user.level }}</p>
+                    <p><strong>Урон:</strong> {{ user.damage }}</p>
+                    <p class="level-xp-text">Опыт до следующего уровня: {{ user.xp_in_current_level }} / {{ user.xp_needed_for_next_level }}</p>
+                    <div class="level-progress-wrap">
+                        <div class="level-progress-fill" style="width: {{ (user.xp_in_current_level / user.xp_needed_for_next_level * 100) if user.xp_needed_for_next_level else 100 }}%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="profile-edit-form">
+            <form id="profileForm" enctype="multipart/form-data">
+                <input type="text" name="character_name" placeholder="Имя персонажа" value="{{ user.character_name or '' }}">
+                <input type="file" name="avatar" accept="image/*">
+                <button type="submit">Сохранить</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="cabinet-section">
+        <h2>Статистика битвы за территорию</h2>
+        <div class="stats-row">
+            <div class="stat-item">
+                <strong>Урон нанесённый другим кланам</strong>
+                <span id="statDamage">{{ user.total_damage_dealt }}</span>
+            </div>
+            <div class="stat-item">
+                <strong>Очки влияния клану (защита)</strong>
+                <span id="statInfluence">{{ user.total_influence_points }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="cabinet-section">
+        <h2>Клан</h2>
+        {% if clan_data %}
+        <!-- Информация о клане -->
+        <div class="clan-block">
+            <h3>Информация о клане</h3>
+            <div class="clan-view">
+                {% if clan_data.clan.flag_url %}
+                <img id="clanFlagDisplay" src="{{ clan_data.clan.flag_url }}" alt="Эмблема" class="clan-view-emblem">
+                {% else %}
+                <div class="clan-view-emblem-placeholder">🏴</div>
+                {% endif %}
+                <div>
+                    <span class="clan-name" id="clanNameDisplay">{{ clan_data.clan.name }}</span>
+                    {% if user.id == clan_data.clan.owner_id %}
+                    <span style="font-size:0.85rem;color:#888;"> (владелец)</span>
+                    {% endif %}
+                    <p style="margin:4px 0 0; font-size:0.9rem; color:#666;">Участников: {{ clan_data.members|length }}</p>
+                </div>
+            </div>
+        </div>
+
+        {% if user.id == clan_data.clan.owner_id %}
+        <!-- Редактор клана (только для владельца) -->
+        <div class="clan-block">
+            <h3>Редактирование клана</h3>
+            <form id="clanEditForm" class="clan-edit-form" enctype="multipart/form-data">
+                <div class="form-row">
+                    <div>
+                        <label>Эмблема</label>
+                        {% if clan_data.clan.flag_url %}
+                        <img id="clanFlagPreview" src="{{ clan_data.clan.flag_url }}" alt="Эмблема" class="clan-view-emblem" style="display:block;margin-bottom:6px;">
+                        {% else %}
+                        <div id="clanFlagPreview" class="clan-view-emblem-placeholder" style="margin-bottom:6px;">🏴</div>
+                        {% endif %}
+                        <input type="file" name="flag" accept="image/*" id="clanFlagInput">
+                    </div>
+                    <div style="flex:1; min-width:180px;">
+                        <label>Название клана</label>
+                        <input type="text" name="name" value="{{ clan_data.clan.name }}" minlength="2" required>
+                    </div>
+                </div>
+                <button type="submit" class="clan-btn">Сохранить</button>
+            </form>
+        </div>
+        {% endif %}
+
+        <!-- Участники -->
+        <div class="clan-block">
+            <h3>Участники клана</h3>
+            <button type="button" class="clan-members-toggle" onclick="document.getElementById('membersList').classList.toggle('open')">
+                Показать участников ({{ clan_data.members|length }})
+            </button>
+            <div id="membersList" class="members-list">
+                {% for m in clan_data.members %}
+                <div class="member-item">
+                    {% if m.avatar_url %}
+                    <img src="{{ m.avatar_url }}" alt="" class="member-avatar">
+                    {% else %}
+                    <div class="member-avatar-placeholder">👤</div>
+                    {% endif %}
+                    <div class="member-info">
+                        <span>{{ m.character_name }} ({{ m.username }}){% if m.is_owner %} ★{% endif %}</span>
+                        <span class="member-level">Ур. {{ m.level }}</span>
+                    </div>
+                    {% if user.id == clan_data.clan.owner_id and not m.is_owner %}
+                    <button class="kick-btn" data-user-id="{{ m.id }}">Исключить</button>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Контролируемые области -->
+        <div class="clan-block">
+            <h3>Контролируемые области</h3>
+            <button type="button" class="clan-members-toggle" onclick="document.getElementById('territoriesList').classList.toggle('open')">
+                Показать области
+            </button>
+            <div id="territoriesList" class="territories-list">
+                {% for t in clan_data.territories %}
+                <div class="territory-item">{{ t.display_name }} — сила {{ t.strength }}</div>
+                {% endfor %}
+                {% if not clan_data.territories %}
+                <p style="color:#888; margin:8px 0 0;">Нет контролируемых областей</p>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if user.id == clan_data.clan.owner_id and clan_data.pending_requests %}
+        <!-- Заявки на вступление -->
+        <div class="clan-block">
+            <h3>Заявки на вступление</h3>
+            <div id="pendingList" class="pending-list open">
+                {% for r in clan_data.pending_requests %}
+                <div class="pending-item" data-request-id="{{ r.id }}">
+                    <span>{{ r.character_name }} ({{ r.username }})</span>
+                    <span>
+                        <button class="accept-btn" onclick="handleAccept({{ r.id }})">Принять</button>
+                        <button class="reject-btn" onclick="handleReject({{ r.id }})">Отклонить</button>
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Выход из клана -->
+        <div class="clan-block">
+            <button type="button" class="clan-btn danger" onclick="openLeaveModal()">Выйти из клана</button>
+        </div>
+        {% elif pending_request %}
+        <div class="clan-block">
+            <p class="no-clan-msg">Заявка на вступление в клан подана. Ожидайте решения.</p>
+            <button type="button" class="clan-btn" onclick="cancelRequest()">Отменить заявку</button>
+        </div>
+        {% else %}
+        <div class="clan-block">
+            <p class="no-clan-msg">Вы не состоите в клане.</p>
+            <button type="button" class="clan-btn" onclick="openJoinModal()">Вступить в клан</button>
+            <button type="button" class="clan-btn" onclick="openCreateModal()">Создать клан</button>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="nav-links">
+        <a href="{{ url_for('index') }}" class="back-link">← На главную</a>
+        <a href="{{ url_for('territory_battle_page') }}" class="back-link">Битва за территорию</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- Модальное окно выхода из клана -->
+<div class="modal-overlay" id="leaveModal">
+    <div class="modal-box">
+        <h3>Выйти из клана?</h3>
+        <p>Вы уверены, что хотите покинуть клан?</p>
+        <div class="modal-buttons">
+            <button class="btn-cancel" onclick="closeLeaveModal()">Отмена</button>
+            <button class="btn-confirm danger" onclick="confirmLeave()">Выйти</button>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно вступления в клан -->
+<div class="modal-overlay" id="joinModal">
+    <div class="modal-box">
+        <h3>Вступить в клан</h3>
+        <select id="joinClanSelect"></select>
+        <div class="modal-buttons">
+            <button type="button" class="btn-cancel" onclick="closeJoinModal()">Отмена</button>
+            <button type="button" class="btn-confirm" onclick="confirmJoin()">Подать заявку</button>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно создания клана -->
+<div class="modal-overlay" id="createModal">
+    <div class="modal-box">
+        <h3>Создать клан</h3>
+        <form id="createClanForm" class="create-clan-form">
+            <label>Название клана</label>
+            <input type="text" name="name" required minlength="2" placeholder="Название">
+            <label>Цвет</label>
+            <input type="color" name="color" value="#6b7280">
+            <label>Флаг (изображение)</label>
+            <input type="file" name="flag" accept="image/*">
+        </form>
+        <div class="modal-buttons">
+            <button type="button" class="btn-cancel" onclick="closeCreateModal()">Отмена</button>
+            <button type="button" class="btn-confirm" onclick="confirmCreate()">Создать</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('profileForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const fd = new FormData(this);
+    fd.append('character_name', this.querySelector('[name=character_name]').value);
+    fetch('{{ url_for("api_cabinet_profile") }}', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('Профиль сохранён');
+                if (data.avatar_url) {
+                    const img = document.getElementById('avatarImg');
+                    if (img) img.src = data.avatar_url;
+                    else location.reload();
+                }
+            } else alert(data.error || 'Ошибка');
+        });
+});
+
+document.getElementById('clanEditForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    var form = this;
+    var clanId = {{ clan_data.clan.id if clan_data and clan_data.clan else 'null' }};
+    if (!clanId) return;
+    var fd = new FormData();
+    fd.append('name', form.querySelector('[name=name]').value);
+    var flagInput = form.querySelector('[name=flag]');
+    if (flagInput && flagInput.files[0]) fd.append('flag', flagInput.files[0]);
+    fetch('/api/clan/' + clanId + '/update', { method: 'POST', body: fd })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                alert('Клан обновлён');
+                document.getElementById('clanNameDisplay').textContent = data.clan.name;
+                var flagUrl = data.clan.flag_url;
+                if (flagUrl) {
+                    var preview = document.getElementById('clanFlagPreview');
+                    if (preview && preview.tagName === 'IMG') preview.src = flagUrl;
+                    else if (preview) { var img = document.createElement('img'); img.id = 'clanFlagPreview'; img.src = flagUrl; img.className = 'clan-view-emblem'; img.style.cssText = 'display:block;margin-bottom:6px;'; preview.parentNode.replaceChild(img, preview); }
+                    var infoEmblem = document.querySelector('.clan-block .clan-view .clan-view-emblem, .clan-block .clan-view .clan-view-emblem-placeholder');
+                    if (infoEmblem) { var disp = document.createElement('img'); disp.className = 'clan-view-emblem'; disp.src = flagUrl; disp.alt = 'Эмблема'; infoEmblem.parentNode.replaceChild(disp, infoEmblem); }
+                }
+                if (flagInput) flagInput.value = '';
+            } else { alert(data.error || 'Ошибка'); }
+        })
+        .catch(function() { alert('Ошибка соединения'); });
+});
+
+{% if clan_data %}
+document.querySelectorAll('.kick-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        if (!confirm('Исключить этого участника?')) return;
+        const uid = this.dataset.userId;
+        fetch(`/api/clan/{{ clan_data.clan.id }}/kick/${uid}`, { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) location.reload();
+                else alert(data.error || 'Ошибка');
+            });
+    });
+});
+{% endif %}
+
+function openLeaveModal() {
+    var m = document.getElementById('leaveModal');
+    if (m) { m.style.display = 'flex'; m.style.visibility = 'visible'; m.classList.add('open'); document.body.appendChild(m); }
+}
+function closeLeaveModal() {
+    var m = document.getElementById('leaveModal');
+    if (m) { m.classList.remove('open'); m.style.display = ''; m.style.visibility = ''; }
+}
+function confirmLeave() {
+    fetch('{{ url_for("api_clan_leave") }}', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) location.reload();
+            else { alert(data.error || 'Ошибка'); closeLeaveModal(); }
+        });
+}
+
+function openJoinModal() {
+    var modal = document.getElementById('joinModal');
+    var sel = document.getElementById('joinClanSelect');
+    if (!modal) modal = document.querySelector('.modal-overlay#joinModal');
+    if (!modal) return;
+    sel = modal.querySelector('select') || document.getElementById('joinClanSelect');
+    if (sel) sel.innerHTML = '<option value="">— Загрузка... —</option>';
+    modal.style.display = 'flex';
+    modal.style.visibility = 'visible';
+    modal.classList.add('open');
+    document.body.appendChild(modal);
+    fetch('{{ url_for("api_clans_list") }}')
+        .then(function(r) {
+            if (!r.ok) throw new Error('Ошибка загрузки списка кланов');
+            return r.json();
+        })
+        .then(function(clans) {
+            var s = document.getElementById('joinClanSelect');
+            if (!s) return;
+            var list = Array.isArray(clans) ? clans : [];
+            s.innerHTML = '<option value="">— Выберите клан —</option>' +
+                list.map(function(c) { return '<option value="' + c.id + '">' + (c.name || '') + '</option>'; }).join('');
+        })
+        .catch(function(err) {
+            var s = document.getElementById('joinClanSelect');
+            if (s) s.innerHTML = '<option value="">— Ошибка загрузки —</option>';
+            alert(err.message || 'Не удалось загрузить список кланов');
+        });
+}
+function closeJoinModal() {
+    var m = document.getElementById('joinModal');
+    if (m) { m.classList.remove('open'); m.style.display = ''; m.style.visibility = ''; }
+}
+function confirmJoin() {
+    const cid = document.getElementById('joinClanSelect').value;
+    if (!cid) { alert('Выберите клан'); return; }
+    fetch('{{ url_for("api_clan_join_request") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clan_id: parseInt(cid) })
+    }).then(r => r.json())
+      .then(data => {
+          if (data.success) location.reload();
+          else alert(data.error || 'Ошибка');
+      });
+}
+
+function cancelRequest() {
+    fetch('{{ url_for("api_clan_cancel_request") }}', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) location.reload();
+            else alert(data.error || 'Ошибка');
+        });
+}
+
+{% if clan_data %}
+function handleAccept(rid) {
+    fetch(`/api/clan/{{ clan_data.clan.id }}/accept/${rid}`, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => { if (data.success) location.reload(); else alert(data.error); });
+}
+function handleReject(rid) {
+    fetch(`/api/clan/{{ clan_data.clan.id }}/reject/${rid}`, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => { if (data.success) location.reload(); else alert(data.error); });
+}
+{% endif %}
+
+function openCreateModal() {
+    var m = document.getElementById('createModal');
+    if (m) { m.style.display = 'flex'; m.style.visibility = 'visible'; m.classList.add('open'); document.body.appendChild(m); }
+}
+function closeCreateModal() {
+    var m = document.getElementById('createModal');
+    if (m) { m.classList.remove('open'); m.style.display = ''; m.style.visibility = ''; }
+}
+function confirmCreate() {
+    const form = document.getElementById('createClanForm');
+    if (!form) return;
+    const fd = new FormData();
+    fd.append('name', form.querySelector('[name=name]').value || '');
+    fd.append('color', form.querySelector('[name=color]').value || '#6b7280');
+    const file = form.querySelector('[name=flag]');
+    if (file && file.files[0]) fd.append('flag', file.files[0]);
+    fetch('{{ url_for("api_clan_create") }}', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) location.reload();
+            else alert(data.error || 'Ошибка');
+        })
+        .catch(() => alert('Ошибка соединения'));
+}
+
+</script>
+{% endblock %}

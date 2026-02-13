@@ -1,0 +1,805 @@
+{% extends "base.html" %}
+
+{% block title %}Битва за территорию - Админ панель{% endblock %}
+
+{% block extra_head %}
+<style>
+* { box-sizing: border-box; }
+body {
+    font-family: 'Comic Sans MS', 'Arial Rounded MT Bold', Arial, sans-serif;
+    background: linear-gradient(135deg, #a8c0d0 0%, #b8a8c8 100%);
+    min-height: 100vh;
+    padding: 10px;
+}
+.admin-container {
+    max-width: 1400px;
+    margin: 20px auto;
+    padding: 25px;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border-radius: 25px;
+    border: 3px solid #c8a2c8;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+}
+.admin-title {
+    color: #8b6fa8;
+    font-size: 42px;
+    margin-bottom: 25px;
+    text-shadow: 2px 2px 0px #e8d5c4;
+    font-weight: bold;
+    text-align: center;
+}
+.back-link {
+    color: #fff;
+    text-decoration: none;
+    margin-bottom: 15px;
+    display: inline-block;
+    background: linear-gradient(135deg, #9b8fb8 0%, #8b6fa8 100%);
+    padding: 12px 25px;
+    border-radius: 15px;
+    font-weight: bold;
+    box-shadow: 0 5px 15px rgba(139, 111, 168, 0.3);
+    transition: all 0.3s ease;
+    font-size: 16px;
+    margin-right: 10px;
+}
+.back-link:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(139, 111, 168, 0.4);
+}
+.back-link.logout-link {
+    background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+    box-shadow: 0 5px 15px rgba(149, 165, 166, 0.4);
+}
+.back-link.logout-link:hover {
+    box-shadow: 0 8px 20px rgba(149, 165, 166, 0.6);
+}
+.admin-nav-row {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+@media (max-width: 600px) {
+    .admin-container { padding: 15px; }
+    .admin-title { font-size: 28px; }
+}
+.admin-section {
+    margin-bottom: 32px;
+}
+.admin-section h2 {
+    color: #8b6fa8;
+    font-size: 26px;
+    margin-bottom: 10px;
+    text-shadow: 1px 1px 0px #e8d5c4;
+}
+.admin-section p {
+    color: #555;
+    margin-bottom: 15px;
+    font-size: 15px;
+}
+.admin-table-wrap {
+    background: #fff;
+    border-radius: 20px;
+    overflow-x: auto;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    border: 3px solid #d4c5b0;
+}
+.admin-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+.admin-table th, .admin-table td {
+    padding: 15px;
+    text-align: left;
+    border-bottom: 2px solid #d4c5b0;
+    color: #333;
+    font-size: 16px;
+}
+.admin-table th {
+    background: linear-gradient(135deg, #8b9dc8 0%, #9b8fb8 100%);
+    color: #fff;
+    font-weight: bold;
+}
+.admin-table tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+.admin-table tr:hover {
+    background-color: #f0e8d8;
+}
+.admin-table input[type="text"] {
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 2px solid #a8b8d0;
+    font-size: 14px;
+    font-family: inherit;
+}
+.admin-table input[type="text"]:focus {
+    outline: none;
+    border-color: #8b6fa8;
+    box-shadow: 0 0 10px rgba(139, 111, 168, 0.25);
+}
+.edit-btn {
+    background: linear-gradient(135deg, #8b9dc8 0%, #9b8fb8 100%);
+    color: #fff;
+    padding: 10px 18px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+}
+.edit-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 12px rgba(139, 157, 200, 0.3);
+}
+.territory-classes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 20px;
+}
+.territory-class-card {
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border: 3px solid #d4c5b0;
+    border-radius: 20px;
+    padding: 25px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    overflow: hidden;
+    min-width: 0;
+}
+.territory-class-card:hover {
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+.territory-class-card h3 {
+    color: #8b6fa8;
+    font-size: 22px;
+    margin: 0 0 18px;
+    text-shadow: 1px 1px 0px #e8d5c4;
+}
+.territory-class-card .form-group {
+    margin-bottom: 18px;
+    min-width: 0;
+}
+.territory-class-card .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #333;
+    font-size: 15px;
+}
+.territory-class-card input[type="color"],
+.territory-class-card input[type="text"],
+.territory-class-card input[type="file"] {
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 2px solid #a8b8d0;
+    font-family: inherit;
+}
+.territory-class-card input[type="file"] {
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
+}
+.territory-class-card input:focus {
+    outline: none;
+    border-color: #8b6fa8;
+    box-shadow: 0 0 10px rgba(139, 111, 168, 0.25);
+}
+.heraldry-preview { margin-bottom: 10px; }
+.heraldry-preview img {
+    max-width: 64px;
+    max-height: 64px;
+    object-fit: contain;
+    border-radius: 8px;
+    border: 2px solid #d4c5b0;
+}
+.territory-reset-btn {
+    background: linear-gradient(135deg, #d4a5a5 0%, #c89595 100%);
+    color: #fff;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 15px;
+    font-weight: bold;
+    font-size: 16px;
+    cursor: pointer;
+    box-shadow: 0 5px 15px rgba(212, 165, 165, 0.3);
+    transition: all 0.3s ease;
+    font-family: inherit;
+    margin-bottom: 15px;
+    margin-right: 10px;
+    display: inline-block;
+    line-height: 1.25;
+    vertical-align: middle;
+}
+.territory-reset-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(212, 165, 165, 0.4);
+}
+.territory-reset-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s, visibility 0.25s;
+}
+.territory-reset-modal-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+.territory-reset-modal {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border-radius: 25px;
+    padding: 28px;
+    max-width: 400px;
+    width: 90%;
+    border: 3px solid #c8a2c8;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+}
+.territory-reset-modal h3 {
+    color: #8b6fa8;
+    margin: 0 0 10px;
+    font-size: 20px;
+}
+.territory-reset-modal p {
+    color: #555;
+    margin: 0 0 16px;
+    font-size: 14px;
+}
+.territory-reset-modal .form-group {
+    margin-bottom: 18px;
+}
+.territory-reset-modal .form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: bold;
+    color: #333;
+}
+.territory-reset-modal .form-group input {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 2px solid #a8b8d0;
+    font-size: 16px;
+    box-sizing: border-box;
+}
+.territory-reset-modal .form-group input:focus {
+    outline: none;
+    border-color: #8b6fa8;
+}
+.territory-reset-modal-buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+}
+.territory-reset-modal-buttons button {
+    flex: 1;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+.territory-reset-confirm {
+    background: linear-gradient(135deg, #d4a5a5 0%, #c89595 100%);
+    color: #fff;
+}
+.territory-reset-confirm:hover {
+    transform: translateY(-1px);
+}
+.territory-reset-cancel {
+    background: linear-gradient(135deg, #9b8fb8 0%, #8b6fa8 100%);
+    color: #fff;
+}
+.territory-reset-cancel:hover {
+    transform: translateY(-1px);
+}
+.territory-reset-error {
+    color: #c0392b;
+    font-size: 13px;
+    margin-top: 8px;
+    display: none;
+}
+.territory-reset-error.show {
+    display: block;
+}
+.registration-toggle-wrap {
+    margin: 15px 0;
+}
+.registration-toggle-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    font-weight: bold;
+    color: #333;
+}
+.registration-toggle-label input {
+    display: none;
+}
+.registration-toggle-switch {
+    position: relative;
+    width: 54px;
+    height: 28px;
+    background: #9b8fb8;
+    border-radius: 14px;
+    transition: background 0.3s;
+}
+.registration-toggle-switch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 24px;
+    height: 24px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    transition: transform 0.3s;
+}
+.registration-toggle-label input:checked + .registration-toggle-switch {
+    background: linear-gradient(135deg, #5cb85c 0%, #4cae4c 100%);
+}
+.registration-toggle-label input:checked + .registration-toggle-switch::after {
+    transform: translateX(26px);
+}
+.registration-toggle-text {
+    font-size: 16px;
+}
+.clan-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
+}
+.clan-delete-btn {
+    margin: 0;
+    font-size: 14px;
+    padding: 8px 16px;
+}
+.clan-members-modal-overlay,
+.clan-delete-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s, visibility 0.25s;
+}
+.clan-members-modal-overlay.show,
+.clan-delete-modal-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+.clan-members-modal,
+.clan-delete-modal {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border-radius: 20px;
+    padding: 24px;
+    max-width: 450px;
+    width: 90%;
+    border: 3px solid #c8a2c8;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+}
+.clan-members-modal h3,
+.clan-delete-modal h3 {
+    color: #8b6fa8;
+    margin: 0 0 12px;
+    font-size: 20px;
+}
+.clan-members-list {
+    max-height: 280px;
+    overflow-y: auto;
+    margin: 12px 0;
+}
+.clan-member-row {
+    padding: 10px 12px;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.clan-member-row:last-child {
+    border-bottom: none;
+}
+.clan-member-row .owner-badge {
+    background: linear-gradient(135deg, #8b6fa8 0%, #9b8fb8 100%);
+    color: #fff;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 8px;
+}
+.clan-delete-modal p {
+    color: #555;
+    margin: 0 0 16px;
+    font-size: 14px;
+}
+.clan-delete-modal-buttons {
+    display: flex;
+    gap: 12px;
+}
+.clan-delete-modal-buttons button {
+    flex: 1;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    font-family: inherit;
+}
+.clan-delete-confirm {
+    background: linear-gradient(135deg, #d4a5a5 0%, #c89595 100%);
+    color: #fff;
+}
+.clan-delete-cancel {
+    background: linear-gradient(135deg, #9b8fb8 0%, #8b6fa8 100%);
+    color: #fff;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <h1 class="admin-title">Настройки битвы за территорию</h1>
+    <div class="admin-nav-row">
+        <a href="{{ url_for('index') }}" class="back-link">← Назад к рейтингу</a>
+        <a href="{{ url_for('territory_battle_page') }}" class="back-link">Открыть карту</a>
+        <a href="{{ url_for('admin_classes') }}" class="back-link">Классы</a>
+        <a href="{{ url_for('admin_boss_raid') }}" class="back-link">Рейд босс</a>
+        <a href="{{ url_for('admin_download_db') }}" class="back-link">Скачать БД</a>
+        <a href="{{ url_for('logout') }}" class="back-link logout-link">Выйти</a>
+        <button type="button" class="territory-reset-btn" id="territoryResetBtn">Сбросить битву за территорию</button>
+    </div>
+
+    <section class="admin-section">
+        <h2>Регистрация участников</h2>
+        <p>Когда регистрация отключена, пользователи могут просматривать карту, но не могут участвовать в битве (атаковать области, решать задачи).</p>
+        <div class="registration-toggle-wrap">
+            <label class="registration-toggle-label">
+                <input type="checkbox" id="registrationEnabledToggle" {% if registration_enabled %}checked{% endif %}>
+                <span class="registration-toggle-switch"></span>
+                <span class="registration-toggle-text" id="registrationToggleText">{% if registration_enabled %}Включена{% else %}Отключена{% endif %}</span>
+            </label>
+        </div>
+    </section>
+
+    <section class="admin-section">
+        <h2>Области карты</h2>
+        <p>Название отображается на карте. Заблокированная область не может быть захвачена; на карте показывается замок и штриховка.</p>
+        <div class="admin-table-wrap">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>№</th>
+                    <th>Название области</th>
+                    <th>Заблокирована</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in regions %}
+                <tr data-region-index="{{ r.region_index }}" data-save-url="{{ url_for('admin_territory_region_save', region_index=r.region_index) }}">
+                    <td>{{ r.region_index }}</td>
+                    <td><input type="text" class="region-name-input" value="{{ r.display_name }}" data-region-index="{{ r.region_index }}" style="width:100%; max-width:220px;"></td>
+                    <td><input type="checkbox" class="region-locked-input" {% if r.is_locked %}checked{% endif %} data-region-index="{{ r.region_index }}"></td>
+                    <td><button type="button" class="edit-btn save-region-btn" data-region-index="{{ r.region_index }}">Сохранить</button></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </section>
+
+    <section class="admin-section">
+        <h2>Кланы</h2>
+        <p>Название, цвет заливки захваченной области и флаг клана. Кланы создаются участниками в личном кабинете. Здесь можно просматривать участников, изменить название, цвет и флаг, а также удалить клан.</p>
+        <div class="territory-classes-grid">
+            {% for c in clans %}
+            <div class="territory-class-card" data-clan-id="{{ c.id }}">
+                <div class="form-group">
+                    <label>Название клана:</label>
+                    <input type="text" class="clan-name-input" value="{{ c.name }}" data-clan-id="{{ c.id }}" style="width:100%;">
+                </div>
+                <div class="form-group">
+                    <label>Цвет:</label>
+                    <input type="color" class="clan-color-input" value="{{ c.color or '#6b7280' }}" data-clan-id="{{ c.id }}" style="width:60px; height:36px; padding:2px;">
+                    <input type="text" class="clan-color-text" value="{{ c.color or '#6b7280' }}" data-clan-id="{{ c.id }}" style="width:80px; margin-left:8px;">
+                </div>
+                <div class="form-group">
+                    <label>Флаг (изображение):</label>
+                    {% if c.flag_filename %}
+                    <div class="heraldry-preview"><img src="{{ url_for('static', filename=c.flag_filename) }}" alt=""></div>
+                    {% endif %}
+                    <input type="file" class="clan-heraldry-input" accept=".png,.jpg,.jpeg,.gif,.webp" data-clan-id="{{ c.id }}">
+                </div>
+                <div class="clan-card-actions">
+                    <button type="button" class="edit-btn save-clan-btn" data-clan-id="{{ c.id }}">Сохранить</button>
+                    <button type="button" class="edit-btn clan-members-btn" data-clan-id="{{ c.id }}" data-clan-name="{{ c.name }}">Участники</button>
+                    <button type="button" class="territory-reset-btn clan-delete-btn" data-clan-id="{{ c.id }}" data-clan-name="{{ c.name }}">Удалить клан</button>
+                </div>
+            </div>
+            {% endfor %}
+            {% if not clans %}
+            <p style="color:#888;">Кланы пока не созданы. Участники создают их в личном кабинете.</p>
+            {% endif %}
+        </div>
+    </section>
+</div>
+
+<div class="clan-members-modal-overlay" id="clanMembersModal">
+    <div class="clan-members-modal">
+        <h3 id="clanMembersModalTitle">Участники клана</h3>
+        <div class="clan-members-list" id="clanMembersList"></div>
+        <button type="button" class="edit-btn" id="clanMembersClose">Закрыть</button>
+    </div>
+</div>
+
+<div class="clan-delete-modal-overlay" id="clanDeleteModal">
+    <div class="clan-delete-modal">
+        <h3>Удалить клан</h3>
+        <p id="clanDeleteMessage">Вы уверены, что хотите удалить клан «<span id="clanDeleteName"></span>»? Все участники будут исключены, области, контролируемые кланом, будут освобождены.</p>
+        <div class="clan-delete-modal-buttons">
+            <button type="button" class="clan-delete-cancel" id="clanDeleteCancel">Отмена</button>
+            <button type="button" class="clan-delete-confirm" id="clanDeleteConfirm">Удалить</button>
+        </div>
+    </div>
+</div>
+
+<div class="territory-reset-modal-overlay" id="territoryResetModal">
+    <div class="territory-reset-modal">
+        <h3>Сброс битвы за территорию</h3>
+        <p>Все области будут сброшены: без владельца, сила 0. Названия и блокировки областей вернутся к значениям по умолчанию (Prague — заблокирована). Для подтверждения введите пароль администратора.</p>
+        <div class="form-group">
+            <label for="territoryResetPassword">Пароль администратора:</label>
+            <input type="password" id="territoryResetPassword" placeholder="Пароль" autocomplete="current-password">
+            <div class="territory-reset-error" id="territoryResetError"></div>
+        </div>
+        <div class="territory-reset-modal-buttons">
+            <button type="button" class="territory-reset-cancel" id="territoryResetCancel">Отмена</button>
+            <button type="button" class="territory-reset-confirm" id="territoryResetConfirm">Сбросить</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    var toggle = document.getElementById('registrationEnabledToggle');
+    var textEl = document.getElementById('registrationToggleText');
+    if (toggle) {
+        toggle.addEventListener('change', function() {
+            var enabled = this.checked;
+            fetch('{{ url_for("admin_territory_settings") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify({ registration_enabled: enabled })
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.success) {
+                    textEl.textContent = data.registration_enabled ? 'Включена' : 'Отключена';
+                } else {
+                    alert('Ошибка сохранения.');
+                    toggle.checked = !enabled;
+                    textEl.textContent = toggle.checked ? 'Включена' : 'Отключена';
+                }
+            }).catch(function() {
+                alert('Ошибка соединения.');
+                toggle.checked = !enabled;
+                textEl.textContent = toggle.checked ? 'Включена' : 'Отключена';
+            });
+        });
+    }
+})();
+
+document.querySelectorAll('.save-region-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        var idx = parseInt(this.getAttribute('data-region-index'), 10);
+        var nameEl = document.querySelector('.region-name-input[data-region-index="' + idx + '"]');
+        var lockedEl = document.querySelector('.region-locked-input[data-region-index="' + idx + '"]');
+        var row = btn.closest('tr');
+        var saveUrl = row ? row.getAttribute('data-save-url') : ('/admin/territory-battle/region/' + idx);
+        fetch(saveUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify({ display_name: nameEl.value.trim(), is_locked: lockedEl.checked })
+        }).then(function(r) { return r.json(); }).then(function(data) {
+            if (data.success) alert('Область сохранена.');
+        }).catch(function() { alert('Ошибка сохранения.'); });
+    });
+});
+
+document.querySelectorAll('.clan-color-input').forEach(function(inp) {
+    inp.addEventListener('input', function() {
+        var tid = document.querySelector('.clan-color-text[data-clan-id="' + this.getAttribute('data-clan-id') + '"]');
+        if (tid) tid.value = this.value;
+    });
+});
+document.querySelectorAll('.clan-color-text').forEach(function(inp) {
+    inp.addEventListener('input', function() {
+        var cid = document.querySelector('.clan-color-input[data-clan-id="' + this.getAttribute('data-clan-id') + '"]');
+        if (cid && /^#[0-9A-Fa-f]{6}$/.test(this.value)) cid.value = this.value;
+    });
+});
+
+document.querySelectorAll('.save-clan-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        var id = parseInt(this.getAttribute('data-clan-id'), 10);
+        var nameEl = document.querySelector('.clan-name-input[data-clan-id="' + id + '"]');
+        var colorEl = document.querySelector('.clan-color-input[data-clan-id="' + id + '"]');
+        var fileEl = document.querySelector('.clan-heraldry-input[data-clan-id="' + id + '"]');
+        var formData = new FormData();
+        if (nameEl && nameEl.value.trim()) formData.append('clan_name', nameEl.value.trim());
+        formData.append('territory_fill_color', colorEl ? colorEl.value : '');
+        if (fileEl && fileEl.files.length) formData.append('territory_heraldry', fileEl.files[0]);
+        fetch('/admin/territory-battle/clan/' + id, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(function(r) { return r.json(); }).then(function(data) {
+            if (data.success) {
+                alert('Клан сохранён.');
+                if (fileEl) fileEl.value = '';
+                if (nameEl && data.clan_name) nameEl.value = data.clan_name;
+            } else {
+                alert(data.error || 'Ошибка сохранения.');
+            }
+        }).catch(function() { alert('Ошибка сохранения.'); });
+    });
+});
+
+document.querySelectorAll('.clan-members-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        var id = parseInt(this.getAttribute('data-clan-id'), 10);
+        var modal = document.getElementById('clanMembersModal');
+        var titleEl = document.getElementById('clanMembersModalTitle');
+        var listEl = document.getElementById('clanMembersList');
+        titleEl.textContent = 'Загрузка…';
+        listEl.innerHTML = '';
+        modal.classList.add('show');
+        fetch('/admin/territory-battle/clan/' + id + '/members')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                titleEl.textContent = 'Участники клана «' + (data.clan_name || '') + '»';
+                if (data.members && data.members.length) {
+                    data.members.forEach(function(m) {
+                        var row = document.createElement('div');
+                        row.className = 'clan-member-row';
+                        row.innerHTML = '<span>' + (m.character_name || m.username || 'ID ' + m.id) + '</span>' +
+                            (m.is_owner ? '<span class="owner-badge">Владелец</span>' : '');
+                        listEl.appendChild(row);
+                    });
+                } else {
+                    listEl.innerHTML = '<p style="color:#888;">Нет участников</p>';
+                }
+            })
+            .catch(function() {
+                titleEl.textContent = 'Ошибка загрузки';
+                listEl.innerHTML = '<p style="color:#c0392b;">Не удалось загрузить список участников.</p>';
+            });
+    });
+});
+document.getElementById('clanMembersClose').addEventListener('click', function() {
+    document.getElementById('clanMembersModal').classList.remove('show');
+});
+
+var clanDeleteTargetId = null;
+document.querySelectorAll('.clan-delete-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        clanDeleteTargetId = parseInt(this.getAttribute('data-clan-id'), 10);
+        document.getElementById('clanDeleteName').textContent = this.getAttribute('data-clan-name') || '';
+        document.getElementById('clanDeleteModal').classList.add('show');
+    });
+});
+document.getElementById('clanDeleteCancel').addEventListener('click', function() {
+    document.getElementById('clanDeleteModal').classList.remove('show');
+    clanDeleteTargetId = null;
+});
+document.getElementById('clanDeleteModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        this.classList.remove('show');
+        clanDeleteTargetId = null;
+    }
+});
+document.getElementById('clanDeleteConfirm').addEventListener('click', function() {
+    if (!clanDeleteTargetId) return;
+    var btn = this;
+    btn.disabled = true;
+    fetch('/admin/territory-battle/clan/' + clanDeleteTargetId + '/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+    }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.success) {
+            document.getElementById('clanDeleteModal').classList.remove('show');
+            clanDeleteTargetId = null;
+            window.location.reload();
+        } else {
+            alert(data.error || 'Ошибка удаления.');
+        }
+    }).catch(function() {
+        alert('Ошибка соединения.');
+    }).finally(function() { btn.disabled = false; });
+});
+
+(function() {
+    var modal = document.getElementById('territoryResetModal');
+    var btn = document.getElementById('territoryResetBtn');
+    var input = document.getElementById('territoryResetPassword');
+    var errEl = document.getElementById('territoryResetError');
+    var cancelBtn = document.getElementById('territoryResetCancel');
+    var confirmBtn = document.getElementById('territoryResetConfirm');
+
+    function showError(msg) {
+        errEl.textContent = msg || '';
+        errEl.classList.toggle('show', !!msg);
+    }
+
+    function closeModal() {
+        modal.classList.remove('show');
+        input.value = '';
+        showError('');
+    }
+
+    if (btn) btn.addEventListener('click', function() {
+        modal.classList.add('show');
+        input.value = '';
+        showError('');
+        input.focus();
+    });
+    if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+    if (modal) modal.addEventListener('click', function(e) {
+        if (e.target === modal) closeModal();
+    });
+
+    if (confirmBtn && input) confirmBtn.addEventListener('click', function() {
+        var pwd = input.value.trim();
+        if (!pwd) {
+            showError('Введите пароль.');
+            return;
+        }
+        showError('');
+        confirmBtn.disabled = true;
+        fetch('{{ url_for("admin_territory_reset") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify({ password: pwd })
+        }).then(function(r) { return r.json(); }).then(function(data) {
+            if (data.success) {
+                closeModal();
+                window.location.reload();
+            } else {
+                showError(data.error || 'Ошибка сброса.');
+            }
+        }).catch(function() {
+            showError('Ошибка соединения.');
+        }).finally(function() {
+            confirmBtn.disabled = false;
+        });
+    });
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') confirmBtn.click();
+    });
+})();
+</script>
+{% endblock %}

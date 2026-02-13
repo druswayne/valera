@@ -64,8 +64,20 @@ app.config['SECRET_KEY'] = 'your-secret-key-here'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///valera.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads/tasks'
+app.config['AVATAR_FOLDER'] = 'static/uploads/avatars'
+app.config['CLAN_FLAG_FOLDER'] = 'static/uploads/clan_flags'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
+
+def _avatar_static_filename(avatar_filename):
+    """Путь для url_for('static', filename=...): убирает лишний 'static/' если есть."""
+    if not avatar_filename:
+        return None
+    s = avatar_filename.strip()
+    if s.startswith('static/'):
+        s = s[len('static/'):]
+    return s
 
 # Константы валидации
 MAX_USER_NAME_LENGTH = 200
@@ -94,18 +106,157 @@ login_manager.login_message = 'Пожалуйста, войдите в сист�
 login_manager.login_message_category = 'info'
 
 # Модели
+class Clan(db.Model):
+    """Клан — участник битвы за территорию"""
+    __tablename__ = 'clan'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    color = db.Column(db.String(20), default='#6b7280', nullable=False)
+    flag_filename = db.Column(db.String(255), nullable=True)
+    owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    owner = db.relationship('User', foreign_keys=[owner_id], backref=db.backref('owned_clan', uselist=False), lazy=True)
+    members_rel = db.relationship('User', back_populates='clan_obj', foreign_keys='User.clan_id', lazy=True)  # участники клана
+    join_requests = db.relationship('ClanJoinRequest', backref='clan', lazy=True, cascade='all, delete-orphan')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'color': self.color,
+            'flag_url': url_for('static', filename=_avatar_static_filename(self.flag_filename)) if self.flag_filename else None,
+            'owner_id': self.owner_id,
+            'member_count': User.query.filter_by(clan_id=self.id).count()
+        }
+
+
+class ClanJoinRequest(db.Model):
+    """Заявка на вступление в клан"""
+    __tablename__ = 'clan_join_request'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    clan_id = db.Column(db.Integer, db.ForeignKey('clan.id'), nullable=False)
+    status = db.Column(db.String(20), default='pending', nullable=False)  # pending, accepted, rejected
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref='clan_join_requests', lazy=True)
+
+
+# Константы уровней и урона
+USER_BASE_DAMAGE = 10
+USER_DAMAGE_PER_LEVEL = 5
+def xp_required_for_level(level):
+    """Суммарный опыт для достижения уровня level (для уровня 1 = 0, уровень 2 = 100, 3 = 300, 4 = 600, ...)."""
+    if level <= 1:
+        return 0
+    return 100 * level * (level - 1) // 2
+
+def xp_to_next_level(current_level):
+    """Опыт, нужный для перехода с current_level на current_level+1."""
+    return 100 * current_level
+
+def user_damage_by_level(level):
+    """Урон персонажа по уровню."""
+    return USER_BASE_DAMAGE + (level - 1) * USER_DAMAGE_PER_LEVEL
+
+
+class TerritoryTask(db.Model):
+    """Задача для битвы за территорию (с опытом за решение)"""
+    __tablename__ = 'territory_task'
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    text = db.Column(db.Text, nullable=False)
+    correct_answer = db.Column(db.String(200), nullable=False)
+    image_filename = db.Column(db.String(255), nullable=True)
+    xp_reward = db.Column(db.Integer, default=10, nullable=False)
+
+    def to_dict_public(self):
+        """Без правильного ответа — для выдачи клиенту"""
+        return {
+            'id': self.id,
+            'title': self.title,
+            'text': self.text,
+            'image_url': url_for('static', filename=self.image_filename) if self.image_filename else None,
+            'xp_reward': self.xp_reward
+        }
+
+
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
+    character_name = db.Column(db.String(200), nullable=True)
+    avatar_filename = db.Column(db.String(255), nullable=True)
+    clan_id = db.Column(db.Integer, db.ForeignKey('clan.id'), nullable=True)
+    level = db.Column(db.Integer, default=1, nullable=False)
+    experience = db.Column(db.Integer, default=0, nullable=False)
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
+    clan_obj = db.relationship('Clan', back_populates='members_rel', foreign_keys=[clan_id], lazy=True)
+    territory_stats_rel = db.relationship('UserTerritoryStats', backref='user', uselist=False, lazy=True, cascade='all, delete-orphan')
+
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
-    
+
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+    def get_territory_stats(self):
+        """Получить статистику по территории (создаёт запись при необходимости)"""
+        stats = UserTerritoryStats.query.filter_by(user_id=self.id).first()
+        if not stats:
+            stats = UserTerritoryStats(user_id=self.id)
+            db.session.add(stats)
+            db.session.flush()
+        return stats
+
+    def add_experience(self, xp):
+        """Добавить опыт; возвращает (new_level, leveled_up)."""
+        self.experience = (self.experience or 0) + xp
+        new_level = self.level or 1
+        while new_level < 100 and self.experience >= xp_required_for_level(new_level + 1):
+            new_level += 1
+        old_level = self.level or 1
+        self.level = new_level
+        return new_level, new_level > old_level
+
+    @property
+    def damage(self):
+        """Текущий урон персонажа по уровню."""
+        return user_damage_by_level(self.level or 1)
+
+    @property
+    def xp_in_current_level(self):
+        """Опыт в рамках текущего уровня (от начала уровня до следующего)."""
+        total = self.experience or 0
+        base = xp_required_for_level(self.level or 1)
+        return total - base
+
+    @property
+    def xp_needed_for_next_level(self):
+        """Опыт, нужный для следующего уровня (в рамках текущего)."""
+        return xp_to_next_level(self.level or 1)
+
+    @property
+    def total_damage_dealt(self):
+        stats = UserTerritoryStats.query.filter_by(user_id=self.id).first()
+        return (stats.total_damage_dealt or 0) if stats else 0
+
+    @property
+    def total_influence_points(self):
+        stats = UserTerritoryStats.query.filter_by(user_id=self.id).first()
+        return (stats.total_influence_points or 0) if stats else 0
+
+
+class UserTerritoryStats(db.Model):
+    """Статистика пользователя в битве за территорию"""
+    __tablename__ = 'user_territory_stats'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), unique=True, nullable=False)
+    total_damage_dealt = db.Column(db.Integer, default=0, nullable=False)  # урон при атаке чужих областей
+    total_influence_points = db.Column(db.Integer, default=0, nullable=False)  # очки при защите своей области
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -117,6 +268,8 @@ class Class(db.Model):
     students_balance = db.Column(db.Integer, default=0)
     valera_balance = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    territory_fill_color = db.Column(db.String(20), nullable=True)
+    territory_heraldry_filename = db.Column(db.String(255), nullable=True)
     students = db.relationship('Student', backref='class_obj', lazy=True, cascade='all, delete-orphan')
     student_selections = db.relationship('StudentSelection', backref='class_obj', lazy=True, cascade='all, delete-orphan')
 
@@ -433,7 +586,6 @@ class BossDropReward(db.Model):
     task = db.relationship('BossTask', foreign_keys=[task_id], lazy=True)
     class_obj = db.relationship('Class', foreign_keys=[class_id], lazy=True)
     
-    # Индексы для оптимизации запросов
     __table_args__ = (
         Index('idx_boss_drop_reward_boss_id', 'boss_id'),
         Index('idx_boss_drop_reward_user_id', 'user_id'),
@@ -455,6 +607,50 @@ class BossDropReward(db.Model):
             'drop_name': self.drop.name if self.drop else '',
             'received_at': self.received_at.isoformat() if self.received_at else None
         }
+
+
+# Битва за территорию: настройки областей (название, заблокирована ли)
+class TerritoryRegionConfig(db.Model):
+    __tablename__ = 'territory_region_config'
+    id = db.Column(db.Integer, primary_key=True)
+    region_index = db.Column(db.Integer, unique=True, nullable=False)
+    display_name = db.Column(db.String(120), nullable=False)
+    is_locked = db.Column(db.Boolean, default=False, nullable=False)
+
+
+# Битва за территорию: состояние области (владелец, сила)
+class TerritoryRegionState(db.Model):
+    __tablename__ = 'territory_region_state'
+    id = db.Column(db.Integer, primary_key=True)
+    region_index = db.Column(db.Integer, unique=True, nullable=False)
+    owner_class_id = db.Column(db.Integer, db.ForeignKey('class.id'), nullable=True)
+    owner_clan_id = db.Column(db.Integer, db.ForeignKey('clan.id'), nullable=True)
+    strength = db.Column(db.Integer, default=0, nullable=False)
+    owner_class = db.relationship('Class', foreign_keys=[owner_class_id], lazy=True)
+    owner_clan = db.relationship('Clan', foreign_keys=[owner_clan_id], lazy=True)
+    __table_args__ = (
+        Index('idx_territory_region_state_region', 'region_index'),
+        Index('idx_territory_region_state_owner', 'owner_class_id'),
+        Index('idx_territory_region_state_owner_clan', 'owner_clan_id'),
+    )
+
+
+# Битва за территорию: общие настройки (регистрация участников)
+class TerritoryBattleSetting(db.Model):
+    __tablename__ = 'territory_battle_setting'
+    id = db.Column(db.Integer, primary_key=True)
+    registration_enabled = db.Column(db.Boolean, default=True, nullable=False)
+
+
+def get_territory_registration_enabled():
+    """Проверить, включена ли регистрация участников в битве за территорию."""
+    s = TerritoryBattleSetting.query.first()
+    if not s:
+        s = TerritoryBattleSetting(registration_enabled=True)
+        db.session.add(s)
+        db.session.commit()
+    return s.registration_enabled
+
 
 # Декоратор для проверки прав администратора
 def admin_required(f):
@@ -913,8 +1109,119 @@ with app.app_context():
         print(f"Ошибка при создании таблиц для рейд босса: {e}")
         db.create_all()
     
-    # Создание директории для загрузки изображений
+    # Миграция: таблицы и настройки для битвы за территорию
+    try:
+        from sqlalchemy import inspect, text
+        inspector = inspect(db.engine)
+        tables = inspector.get_table_names()
+        
+        if 'territory_region_config' not in tables or 'territory_region_state' not in tables:
+            db.create_all()
+            print("Созданы таблицы для битвы за территорию")
+        
+        if 'class' in tables:
+            columns = [col['name'] for col in inspector.get_columns('class')]
+            with db.engine.begin() as conn:
+                if 'territory_fill_color' not in columns:
+                    conn.execute(text('ALTER TABLE class ADD COLUMN territory_fill_color VARCHAR(20)'))
+                    print("Добавлена колонка territory_fill_color в class")
+                if 'territory_heraldry_filename' not in columns:
+                    conn.execute(text('ALTER TABLE class ADD COLUMN territory_heraldry_filename VARCHAR(255)'))
+                    print("Добавлена колонка territory_heraldry_filename в class")
+        
+        if 'territory_region_config' in tables and TerritoryRegionConfig.query.count() == 0:
+            default_names = [
+                'Jihočeský', 'Jihomoravský', 'Karlovarský', 'Královéhradecký', 'Liberecký',
+                'Moravskoslezský', 'Olomoucký', 'Pardubický', 'Zlínský', 'Plzeňský',
+                'Prague', 'Středočeský', 'Ústecký', 'Vysočina'
+            ]
+            for i, name in enumerate(default_names):
+                cfg = TerritoryRegionConfig(region_index=i, display_name=name, is_locked=(i == 10))
+                db.session.add(cfg)
+            db.session.commit()
+            print("Заполнены настройки областей по умолчанию")
+        
+        if 'territory_region_state' in tables and TerritoryRegionState.query.count() == 0:
+            for i in range(14):
+                state = TerritoryRegionState(region_index=i, owner_class_id=None, owner_clan_id=None, strength=0)
+                db.session.add(state)
+            db.session.commit()
+            print("Заполнены начальные состояния областей")
+        
+        if 'territory_battle_setting' not in tables:
+            db.create_all()
+            print("Создана таблица territory_battle_setting")
+        tables = inspector.get_table_names()
+        if 'territory_battle_setting' in tables and TerritoryBattleSetting.query.count() == 0:
+            s = TerritoryBattleSetting(registration_enabled=True)
+            db.session.add(s)
+            db.session.commit()
+            print("Создана запись настроек битвы за территорию")
+    except Exception as e:
+        print(f"Ошибка при миграции битвы за территорию: {e}")
+        db.create_all()
+    
+    # Миграция: кланы и пользователи (character_name, clan_id, avatar, territory stats)
+    try:
+        from sqlalchemy import inspect, text
+        inspector = inspect(db.engine)
+        tables = inspector.get_table_names()
+        if 'clan' not in tables or 'clan_join_request' not in tables or 'user_territory_stats' not in tables:
+            db.create_all()
+            print("Созданы таблицы clan, clan_join_request, user_territory_stats")
+        if 'user' in tables:
+            columns = [col['name'] for col in inspector.get_columns('user')]
+            with db.engine.begin() as conn:
+                if 'character_name' not in columns:
+                    conn.execute(text('ALTER TABLE user ADD COLUMN character_name VARCHAR(200)'))
+                    print("Добавлена колонка character_name в user")
+                if 'avatar_filename' not in columns:
+                    conn.execute(text('ALTER TABLE user ADD COLUMN avatar_filename VARCHAR(255)'))
+                    print("Добавлена колонка avatar_filename в user")
+                if 'clan_id' not in columns:
+                    conn.execute(text('ALTER TABLE user ADD COLUMN clan_id INTEGER'))
+                    print("Добавлена колонка clan_id в user")
+                if 'level' not in columns:
+                    conn.execute(text('ALTER TABLE user ADD COLUMN level INTEGER DEFAULT 1'))
+                    print("Добавлена колонка level в user")
+                if 'experience' not in columns:
+                    conn.execute(text('ALTER TABLE user ADD COLUMN experience INTEGER DEFAULT 0'))
+                    print("Добавлена колонка experience в user")
+        if 'territory_task' not in tables:
+            db.create_all()
+            print("Создана таблица territory_task")
+        if 'territory_task' in tables and TerritoryTask.query.count() == 0:
+            default_tasks = [
+                ('Сумма', 'Чему равна сумма 15 + 27?', '42', 10),
+                ('Произведение', 'Чему равно 6 × 8?', '48', 10),
+                ('Квадрат', 'Чему равен квадрат числа 7?', '49', 10),
+                ('Уравнение', 'Найдите x: 2x + 10 = 24', '7', 15),
+                ('Периметр', 'Периметр квадрата 20 см. Чему равна сторона?', '5', 10),
+                ('Дробь', 'Сократите дробь 12/18 до несократимой. Напишите только числитель.', '2', 15),
+                ('Степень', 'Чему равно 2^5?', '32', 10),
+                ('Проценты', '20% от 150 — это сколько?', '30', 10),
+                ('Площадь', 'Площадь прямоугольника 24 см², одна сторона 4 см. Чему равна вторая?', '6', 15),
+                ('Среднее', 'Среднее арифметическое чисел 10, 20 и 30?', '20', 10),
+            ]
+            for title, text, answer, xp in default_tasks:
+                db.session.add(TerritoryTask(title=title, text=text, correct_answer=answer, xp_reward=xp))
+            db.session.commit()
+            print("Заполнены задачи для битвы за территорию")
+        if 'territory_region_state' in tables:
+            columns = [col['name'] for col in inspector.get_columns('territory_region_state')]
+            if 'owner_clan_id' not in columns:
+                with db.engine.begin() as conn:
+                    conn.execute(text('ALTER TABLE territory_region_state ADD COLUMN owner_clan_id INTEGER'))
+                    print("Добавлена колонка owner_clan_id в territory_region_state")
+    except Exception as e:
+        print(f"Ошибка при миграции кланов: {e}")
+        db.create_all()
+
+    # Создание директорий для загрузки изображений
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    os.makedirs(os.path.join(app.root_path, 'static', 'uploads', 'territory_heraldry'), exist_ok=True)
+    os.makedirs(os.path.join(app.root_path, app.config['AVATAR_FOLDER']), exist_ok=True)
+    os.makedirs(os.path.join(app.root_path, app.config['CLAN_FLAG_FOLDER']), exist_ok=True)
     
     # Создание администратора по умолчанию (если его нет)
     admin = User.query.filter_by(username='admin').first()
@@ -1002,11 +1309,13 @@ def login():
             next_page = request.args.get('next')
             if next_page:
                 return redirect(next_page)
-            return redirect(url_for('index'))
+            if user.is_admin:
+                return redirect(url_for('index'))
+            return redirect(url_for('cabinet'))
         else:
             flash('Неверное имя пользователя или пароль', 'error')
     
-    return render_template('login.html')
+    return render_template('login.html', registration_enabled=get_territory_registration_enabled())
 
 @app.route('/logout')
 @login_required
@@ -1014,6 +1323,277 @@ def logout():
     logout_user()
     flash('Вы успешно вышли из системы', 'info')
     return redirect(url_for('index'))
+
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if not get_territory_registration_enabled():
+        flash('Регистрация временно отключена администратором.', 'info')
+        return redirect(url_for('index'))
+    if current_user.is_authenticated:
+        return redirect(url_for('cabinet'))
+    clans = Clan.query.order_by(Clan.name).all()
+    if request.method == 'POST':
+        username = (request.form.get('username') or '').strip()
+        password = request.form.get('password')
+        password_confirm = request.form.get('password_confirm')
+        character_name = (request.form.get('character_name') or '').strip()
+        clan_id = request.form.get('clan_id', type=int)
+        if not username or len(username) < 3:
+            flash('Логин должен быть не менее 3 символов', 'error')
+            return render_template('register.html', clans=clans)
+        if User.query.filter_by(username=username).first():
+            flash('Такой логин уже занят', 'error')
+            return render_template('register.html', clans=clans)
+        if not password or len(password) < 6:
+            flash('Пароль должен быть не менее 6 символов', 'error')
+            return render_template('register.html', clans=clans)
+        if password != password_confirm:
+            flash('Пароли не совпадают', 'error')
+            return render_template('register.html', clans=clans)
+        is_valid, err = validate_user_name(character_name if character_name else 'A')
+        if character_name and not is_valid:
+            flash(err or 'Некорректное имя персонажа', 'error')
+            return render_template('register.html', clans=clans)
+        user = User(username=username, character_name=character_name or username)
+        user.set_password(password)
+        db.session.add(user)
+        db.session.flush()
+        if clan_id:
+            clan = Clan.query.get(clan_id)
+            if clan:
+                req = ClanJoinRequest(user_id=user.id, clan_id=clan.id, status='pending')
+                db.session.add(req)
+        db.session.commit()
+        login_user(user)
+        flash('Регистрация успешна! Добро пожаловать.', 'info')
+        return redirect(url_for('cabinet'))
+    return render_template('register.html', clans=clans)
+
+
+@app.route('/cabinet')
+@login_required
+def cabinet():
+    # Администратор не имеет доступа к личному кабинету
+    if current_user.is_admin:
+        flash('Администратор не имеет доступа к личному кабинету.', 'info')
+        return redirect(url_for('index'))
+    """Личный кабинет пользователя"""
+    user = current_user
+    clan = user.clan_obj
+    pending_request = ClanJoinRequest.query.filter_by(
+        user_id=user.id, status='pending'
+    ).first()
+    clan_data = None
+    if clan:
+        territories = TerritoryRegionState.query.filter_by(owner_clan_id=clan.id).order_by(
+            TerritoryRegionState.region_index
+        ).all()
+        regions_cfg = {r.region_index: r.display_name for r in TerritoryRegionConfig.query.all()}
+        clan_data = {
+            'clan': clan.to_dict(),
+            'members': [{'id': u.id, 'username': u.username, 'character_name': u.character_name or u.username,
+                        'avatar_url': url_for('static', filename=_avatar_static_filename(u.avatar_filename)) if u.avatar_filename else None,
+                        'level': u.level or 1, 'is_owner': u.id == clan.owner_id} for u in clan.members_rel],
+            'territories': [{'region_index': t.region_index, 'display_name': regions_cfg.get(t.region_index, f'Зона {t.region_index+1}'), 'strength': t.strength} for t in territories],
+            'pending_requests': [{'id': r.id, 'user_id': r.user_id, 'username': r.user.username, 'character_name': r.user.character_name or r.user.username} for r in clan.join_requests if r.status == 'pending'] if user.id == clan.owner_id else []
+        }
+    return render_template(
+        'cabinet.html',
+        user=user,
+        clan_data=clan_data,
+        pending_request=pending_request,
+        avatar_url=url_for('static', filename=_avatar_static_filename(user.avatar_filename)) if user.avatar_filename else None
+    )
+
+
+@app.route('/api/cabinet/profile', methods=['POST'])
+@login_required
+def api_cabinet_profile():
+    """Обновить профиль: character_name, avatar"""
+    user = current_user
+    data = request.form
+    character_name = (data.get('character_name') or '').strip()
+    if character_name:
+        is_valid, err = validate_user_name(character_name)
+        if not is_valid:
+            return jsonify({'success': False, 'error': err}), 400
+        user.character_name = character_name
+    if 'avatar' in request.files:
+        f = request.files['avatar']
+        if f and f.filename and f.filename.rsplit('.', 1)[-1].lower() in ALLOWED_EXTENSIONS:
+            folder = os.path.join(app.root_path, app.config['AVATAR_FOLDER'])
+            os.makedirs(folder, exist_ok=True)
+            filename = f'user_{user.id}_{secure_filename(f.filename)}'
+            f.save(os.path.join(folder, filename))
+            # Путь относительно static (без "static/"), иначе url_for даёт /static/static/...
+            user.avatar_filename = f'uploads/avatars/{filename}'
+    db.session.commit()
+    return jsonify({'success': True, 'avatar_url': url_for('static', filename=_avatar_static_filename(user.avatar_filename)) if user.avatar_filename else None})
+
+
+@app.route('/api/clans')
+def api_clans_list():
+    """Список кланов для выбора при вступлении"""
+    clans = Clan.query.order_by(Clan.name).all()
+    return jsonify([c.to_dict() for c in clans])
+
+
+@app.route('/api/clan/create', methods=['POST'])
+@login_required
+def api_clan_create():
+    """Создать клан (только если пользователь не в клане)"""
+    if current_user.clan_id:
+        return jsonify({'success': False, 'error': 'Вы уже в клане'}), 400
+    data = request.form
+    name = (data.get('name') or '').strip()
+    color = (data.get('color') or '#6b7280').strip()
+    if not name or len(name) < 2:
+        return jsonify({'success': False, 'error': 'Название клана должно быть не менее 2 символов'}), 400
+    if Clan.query.filter_by(name=name).first():
+        return jsonify({'success': False, 'error': 'Клан с таким названием уже существует'}), 400
+    clan = Clan(name=name, color=color, owner_id=current_user.id)
+    db.session.add(clan)
+    db.session.flush()
+    if 'flag' in request.files:
+        f = request.files['flag']
+        if f and f.filename and f.filename.rsplit('.', 1)[-1].lower() in ALLOWED_EXTENSIONS:
+            folder = os.path.join(app.root_path, app.config['CLAN_FLAG_FOLDER'])
+            filename = f'clan_{clan.id}_{secure_filename(f.filename)}'
+            f.save(os.path.join(folder, filename))
+            clan.flag_filename = f'uploads/clan_flags/{filename}'
+    current_user.clan_id = clan.id
+    db.session.commit()
+    return jsonify({'success': True, 'clan': clan.to_dict()})
+
+
+@app.route('/api/clan/<int:clan_id>/update', methods=['POST'])
+@login_required
+def api_clan_update(clan_id):
+    """Владелец клана может изменить название и эмблему."""
+    clan = Clan.query.get_or_404(clan_id)
+    if clan.owner_id != current_user.id:
+        return jsonify({'success': False, 'error': 'Только владелец может редактировать клан'}), 403
+    data = request.form
+    name = (data.get('name') or '').strip()
+    if name and len(name) >= 2:
+        existing = Clan.query.filter(Clan.name == name, Clan.id != clan_id).first()
+        if existing:
+            return jsonify({'success': False, 'error': 'Клан с таким названием уже существует'}), 400
+        clan.name = name
+    if 'flag' in request.files:
+        f = request.files['flag']
+        if f and f.filename and f.filename.rsplit('.', 1)[-1].lower() in ALLOWED_EXTENSIONS:
+            folder = os.path.join(app.root_path, app.config['CLAN_FLAG_FOLDER'])
+            os.makedirs(folder, exist_ok=True)
+            filename = f'clan_{clan.id}_{secure_filename(f.filename)}'
+            f.save(os.path.join(folder, filename))
+            clan.flag_filename = f'uploads/clan_flags/{filename}'
+    db.session.commit()
+    return jsonify({'success': True, 'clan': clan.to_dict()})
+
+
+@app.route('/api/clan/leave', methods=['POST'])
+@login_required
+def api_clan_leave():
+    """Выйти из клана"""
+    if not current_user.clan_id:
+        return jsonify({'success': False, 'error': 'Вы не в клане'}), 400
+    clan = current_user.clan_obj
+    if clan.owner_id == current_user.id:
+        if len(clan.members_rel) > 1:
+            return jsonify({'success': False, 'error': 'Владелец не может выйти, пока в клане есть другие участники. Передайте владение или исключите их.'}), 400
+        db.session.delete(clan)
+    current_user.clan_id = None
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@app.route('/api/clan/join-request', methods=['POST'])
+@login_required
+def api_clan_join_request():
+    """Подать заявку на вступление в клан (только одну активную)"""
+    if current_user.clan_id:
+        return jsonify({'success': False, 'error': 'Вы уже в клане'}), 400
+    data = request.get_json() or {}
+    clan_id_raw = data.get('clan_id')
+    try:
+        clan_id = int(clan_id_raw) if clan_id_raw is not None else None
+    except (TypeError, ValueError):
+        clan_id = None
+    if not clan_id:
+        return jsonify({'success': False, 'error': 'Укажите clan_id'}), 400
+    clan = Clan.query.get(clan_id)
+    if not clan:
+        return jsonify({'success': False, 'error': 'Клан не найден'}), 404
+    existing = ClanJoinRequest.query.filter_by(user_id=current_user.id, status='pending').first()
+    if existing:
+        return jsonify({'success': False, 'error': 'У вас уже есть активная заявка. Отмените её перед подачей новой.'}), 400
+    req = ClanJoinRequest(user_id=current_user.id, clan_id=clan_id, status='pending')
+    db.session.add(req)
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@app.route('/api/clan/cancel-request', methods=['POST'])
+@login_required
+def api_clan_cancel_request():
+    """Отменить заявку на вступление"""
+    req = ClanJoinRequest.query.filter_by(user_id=current_user.id, status='pending').first()
+    if not req:
+        return jsonify({'success': False, 'error': 'Нет активной заявки'}), 400
+    db.session.delete(req)
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@app.route('/api/clan/<int:clan_id>/accept/<int:request_id>', methods=['POST'])
+@login_required
+def api_clan_accept_request(clan_id, request_id):
+    """Принять заявку (только владелец клана)"""
+    clan = Clan.query.get_or_404(clan_id)
+    if clan.owner_id != current_user.id:
+        return jsonify({'success': False, 'error': 'Только владелец может принять заявку'}), 403
+    req = ClanJoinRequest.query.filter_by(id=request_id, clan_id=clan_id, status='pending').first()
+    if not req:
+        return jsonify({'success': False, 'error': 'Заявка не найдена'}), 404
+    req.user.clan_id = clan_id
+    req.status = 'accepted'
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@app.route('/api/clan/<int:clan_id>/reject/<int:request_id>', methods=['POST'])
+@login_required
+def api_clan_reject_request(clan_id, request_id):
+    """Отклонить заявку (только владелец клана)"""
+    clan = Clan.query.get_or_404(clan_id)
+    if clan.owner_id != current_user.id:
+        return jsonify({'success': False, 'error': 'Только владелец может отклонить заявку'}), 403
+    req = ClanJoinRequest.query.filter_by(id=request_id, clan_id=clan_id, status='pending').first()
+    if not req:
+        return jsonify({'success': False, 'error': 'Заявка не найдена'}), 404
+    req.status = 'rejected'
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@app.route('/api/clan/<int:clan_id>/kick/<int:user_id>', methods=['POST'])
+@login_required
+def api_clan_kick(clan_id, user_id):
+    """Исключить участника из клана (только владелец)"""
+    clan = Clan.query.get_or_404(clan_id)
+    if clan.owner_id != current_user.id:
+        return jsonify({'success': False, 'error': 'Только владелец может исключить участника'}), 403
+    target = User.query.get_or_404(user_id)
+    if target.clan_id != clan_id:
+        return jsonify({'success': False, 'error': 'Пользователь не в вашем клане'}), 400
+    if target.id == clan.owner_id:
+        return jsonify({'success': False, 'error': 'Нельзя исключить владельца'}), 400
+    target.clan_id = None
+    db.session.commit()
+    return jsonify({'success': True})
+
 
 # Главная страница - рейтинг классов
 @app.route('/')
@@ -1030,7 +1610,7 @@ def index():
         else_=cast(Class.students_balance, Float) / cast(Class.valera_balance, Float)
     )
     classes = Class.query.order_by(ratio.desc()).all()
-    return render_template('rating.html', classes=classes)
+    return render_template('rating.html', classes=classes, registration_enabled=get_territory_registration_enabled())
 
 # Страница игры для класса
 @app.route('/class/<int:class_id>')
@@ -1824,6 +2404,179 @@ def admin_boss_raid():
     return render_template('admin/boss_raid.html', bosses=bosses)
 
 
+# Панель администратора - настройки битвы за территорию
+@app.route('/admin/territory-battle')
+@admin_required
+def admin_territory_battle():
+    regions = TerritoryRegionConfig.query.order_by(TerritoryRegionConfig.region_index).all()
+    clans = Clan.query.order_by(Clan.name).all()
+    registration_enabled = get_territory_registration_enabled()
+    return render_template('admin/territory_battle.html', regions=regions, clans=clans, registration_enabled=registration_enabled)
+
+
+@app.route('/admin/territory-battle/settings', methods=['POST'])
+@admin_required
+def admin_territory_settings():
+    """Включить/отключить регистрацию участников."""
+    data = request.get_json() or {}
+    enabled = data.get('registration_enabled')
+    if enabled is None:
+        return jsonify({'success': False, 'error': 'registration_enabled required'}), 400
+    s = TerritoryBattleSetting.query.first()
+    if not s:
+        s = TerritoryBattleSetting(registration_enabled=bool(enabled))
+        db.session.add(s)
+    else:
+        s.registration_enabled = bool(enabled)
+    db.session.commit()
+    return jsonify({'success': True, 'registration_enabled': s.registration_enabled})
+
+
+@app.route('/admin/territory-battle/region/<int:region_index>', methods=['POST'])
+@admin_required
+def admin_territory_region_save(region_index):
+    data = request.get_json() or {}
+    cfg = TerritoryRegionConfig.query.filter_by(region_index=region_index).first()
+    if not cfg:
+        cfg = TerritoryRegionConfig(region_index=region_index, display_name=data.get('display_name', ''), is_locked=False)
+        db.session.add(cfg)
+    cfg.display_name = data.get('display_name', cfg.display_name)
+    cfg.is_locked = bool(data.get('is_locked', cfg.is_locked))
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@app.route('/admin/territory-battle/class/<int:class_id>', methods=['POST'])
+@admin_required
+def admin_territory_class_save(class_id):
+    class_obj = db.get_or_404(Class, class_id)
+    if request.content_type and 'multipart/form-data' in request.content_type:
+        class_obj.territory_fill_color = request.form.get('territory_fill_color') or class_obj.territory_fill_color
+        f = request.files.get('territory_heraldry')
+        if f and f.filename and secure_filename(f.filename):
+            ext = os.path.splitext(f.filename)[1].lower()
+            if ext in {'.png', '.jpg', '.jpeg', '.gif', '.webp'}:
+                filename = f'class_{class_id}_{secure_filename(f.filename)}'
+                folder = os.path.join(app.root_path, 'static', 'uploads', 'territory_heraldry')
+                os.makedirs(folder, exist_ok=True)
+                path = os.path.join(folder, filename)
+                f.save(path)
+                class_obj.territory_heraldry_filename = f'uploads/territory_heraldry/{filename}'
+    else:
+        data = request.get_json() or {}
+        class_obj.territory_fill_color = data.get('territory_fill_color') if data.get('territory_fill_color') is not None else class_obj.territory_fill_color
+    db.session.commit()
+    return jsonify({'success': True, 'territory_fill_color': class_obj.territory_fill_color, 'territory_heraldry_filename': class_obj.territory_heraldry_filename})
+
+
+@app.route('/admin/territory-battle/clan/<int:clan_id>/members', methods=['GET'])
+@admin_required
+def admin_territory_clan_members(clan_id):
+    """Возвращает список участников клана."""
+    clan = db.get_or_404(Clan, clan_id)
+    members = User.query.filter_by(clan_id=clan_id).order_by(User.character_name, User.username).all()
+    data = [{
+        'id': u.id,
+        'username': u.username,
+        'character_name': u.character_name or u.username,
+        'is_owner': u.id == clan.owner_id
+    } for u in members]
+    return jsonify({'success': True, 'clan_name': clan.name, 'members': data})
+
+
+@app.route('/admin/territory-battle/clan/<int:clan_id>/delete', methods=['POST'])
+@admin_required
+def admin_territory_clan_delete(clan_id):
+    """Удаляет клан: исключает участников, сбрасывает владение областями, удаляет клан."""
+    clan = db.get_or_404(Clan, clan_id)
+    # Исключить всех участников
+    User.query.filter_by(clan_id=clan_id).update({'clan_id': None})
+    # Сбросить владение областями
+    TerritoryRegionState.query.filter_by(owner_clan_id=clan_id).update({'owner_clan_id': None, 'strength': 0})
+    # Удалить заявки на вступление (cascade сработает при удалении клана)
+    ClanJoinRequest.query.filter_by(clan_id=clan_id).delete()
+    db.session.delete(clan)
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@app.route('/admin/territory-battle/clan/<int:clan_id>', methods=['POST'])
+@admin_required
+def admin_territory_clan_save(clan_id):
+    clan = db.get_or_404(Clan, clan_id)
+    if request.content_type and 'multipart/form-data' in request.content_type:
+        name = (request.form.get('clan_name') or '').strip()
+        if name:
+            existing = Clan.query.filter(Clan.name == name, Clan.id != clan_id).first()
+            if existing:
+                return jsonify({'success': False, 'error': 'Клан с таким названием уже существует'}), 400
+            clan.name = name
+        clan.color = request.form.get('territory_fill_color') or clan.color
+        f = request.files.get('territory_heraldry')
+        if f and f.filename and secure_filename(f.filename):
+            ext = os.path.splitext(f.filename)[1].lower()
+            if ext in {'.png', '.jpg', '.jpeg', '.gif', '.webp'}:
+                folder = os.path.join(app.root_path, app.config['CLAN_FLAG_FOLDER'])
+                filename = f'clan_{clan_id}_{secure_filename(f.filename)}'
+                path = os.path.join(folder, filename)
+                f.save(path)
+                clan.flag_filename = f'uploads/clan_flags/{filename}'
+    else:
+        data = request.get_json() or {}
+        if data.get('territory_fill_color') is not None:
+            clan.color = data.get('territory_fill_color')
+        name = (data.get('clan_name') or '').strip()
+        if name:
+            existing = Clan.query.filter(Clan.name == name, Clan.id != clan_id).first()
+            if existing:
+                return jsonify({'success': False, 'error': 'Клан с таким названием уже существует'}), 400
+            clan.name = name
+    db.session.commit()
+    return jsonify({'success': True, 'territory_fill_color': clan.color, 'territory_heraldry_filename': clan.flag_filename, 'clan_name': clan.name})
+
+
+TERRITORY_DEFAULT_NAMES = [
+    'Jihočeský', 'Jihomoravský', 'Karlovarský', 'Královéhradecký', 'Liberecký',
+    'Moravskoslezský', 'Olomoucký', 'Pardubický', 'Zlínský', 'Plzeňský',
+    'Prague', 'Středočeský', 'Ústecký', 'Vysočina'
+]
+
+
+@app.route('/admin/territory-battle/reset', methods=['POST'])
+@admin_required
+def admin_territory_reset():
+    """Сброс битвы за территорию: все области без владельца, конфиг областей — по умолчанию. Требуется пароль администратора."""
+    data = request.get_json() or {}
+    password = (data.get('password') or '').strip()
+    if not password:
+        return jsonify({'success': False, 'error': 'Введите пароль администратора'}), 400
+    if not current_user.check_password(password):
+        return jsonify({'success': False, 'error': 'Неверный пароль'}), 403
+    for state in TerritoryRegionState.query.all():
+        state.owner_class_id = None
+        state.owner_clan_id = None
+        state.strength = 0
+    configs = TerritoryRegionConfig.query.order_by(TerritoryRegionConfig.region_index).all()
+    config_by_index = {c.region_index: c for c in configs}
+    for i in range(14):
+        name = TERRITORY_DEFAULT_NAMES[i] if i < len(TERRITORY_DEFAULT_NAMES) else f'Область {i}'
+        locked = (i == 10)
+        if i in config_by_index:
+            config_by_index[i].display_name = name
+            config_by_index[i].is_locked = locked
+        else:
+            db.session.add(TerritoryRegionConfig(region_index=i, display_name=name, is_locked=locked))
+        st = TerritoryRegionState.query.filter_by(region_index=i).first()
+        if st:
+            st.owner_class_id = None
+            st.owner_clan_id = None
+            st.strength = 0
+        else:
+            db.session.add(TerritoryRegionState(region_index=i, owner_class_id=None, owner_clan_id=None, strength=0))
+    db.session.commit()
+    return jsonify({'success': True})
+
+
 def _resolve_primary_db_path() -> str | None:
     """
     Возвращает путь к основному SQLite-файлу приложения (valera.db).
@@ -2191,6 +2944,124 @@ def raid_boss_page():
         class_damage=class_damage,
         boss_animation_frames=boss_animation_frames
     )
+
+
+# Битва за территорию
+TERRITORY_MAX_STRENGTH = 100
+TERRITORY_STRENGTH_STEP_SAME = 25
+TERRITORY_STRENGTH_STEP_OTHER = 25
+
+@app.route('/territory-battle')
+def territory_battle_page():
+    # Администратор видит страницу как незарегистрированный пользователь (только просмотр, без участия)
+    registration_enabled = get_territory_registration_enabled()
+    is_admin = current_user.is_authenticated and getattr(current_user, 'is_admin', False)
+    if is_admin:
+        clan_id = None
+        can_participate = False
+        user_logged_in = False
+    else:
+        clan_id = current_user.clan_id if current_user.is_authenticated else None
+        user_logged_in = current_user.is_authenticated
+        can_participate = user_logged_in and registration_enabled
+    clans = Clan.query.order_by(Clan.name).all()
+    clans_json = []
+    for c in clans:
+        clans_json.append({
+            'id': c.id,
+            'name': c.name,
+            'territory_fill_color': c.color or '#6b7280',
+            'territory_heraldry_url': url_for('static', filename=_avatar_static_filename(c.flag_filename)) if c.flag_filename else None
+        })
+    regions_config = TerritoryRegionConfig.query.order_by(TerritoryRegionConfig.region_index).all()
+    regions_json = [{'region_index': r.region_index, 'display_name': r.display_name, 'is_locked': r.is_locked} for r in regions_config]
+    states = TerritoryRegionState.query.order_by(TerritoryRegionState.region_index).all()
+    state_by_index = {s.region_index: {'owner_clan_id': s.owner_clan_id, 'strength': s.strength} for s in states}
+    return render_template(
+        'territory_battle.html',
+        clans=clans,
+        clans_json=clans_json,
+        regions_json=regions_json,
+        territory_state_json=state_by_index,
+        current_user_clan_id=clan_id,
+        is_authenticated=can_participate,
+        user_logged_in=user_logged_in,
+        registration_enabled=registration_enabled
+    )
+
+
+def _normalize_answer(s):
+    return str(s).strip().lower().replace('\s+', ' ') if s else ''
+
+
+@app.route('/api/territory-battle/task')
+def api_territory_task():
+    """Выдать случайную задачу для битвы за территорию (без правильного ответа)."""
+    task = TerritoryTask.query.order_by(db.func.random()).first()
+    if not task:
+        return jsonify({'success': False, 'error': 'Нет доступных задач'}), 404
+    return jsonify({'success': True, 'task': task.to_dict_public()})
+
+
+@app.route('/api/territory-battle/apply-action', methods=['POST'])
+@login_required
+def api_territory_apply_action():
+    """Проверить ответ, начислить опыт, применить урон/влияние по области."""
+    if current_user.is_admin:
+        return jsonify({'success': False, 'error': 'Администратор не участвует в битве'}), 403
+    if not get_territory_registration_enabled():
+        return jsonify({'success': False, 'error': 'Регистрация участников отключена'}), 403
+    data = request.get_json() or {}
+    region_index = data.get('region_index')
+    task_id = data.get('task_id')
+    answer = data.get('answer')
+    if region_index is None or task_id is None:
+        return jsonify({'success': False, 'error': 'region_index, task_id required'}), 400
+    region_index = int(region_index)
+    if not current_user.clan_id:
+        return jsonify({'success': False, 'error': 'Для участия в битве нужен клан'}), 400
+    task = TerritoryTask.query.get(task_id)
+    if not task:
+        return jsonify({'success': False, 'error': 'Задача не найдена'}), 404
+    correct = _normalize_answer(answer) == _normalize_answer(task.correct_answer)
+    clan_id = current_user.clan_id
+    cfg = TerritoryRegionConfig.query.filter_by(region_index=region_index).first()
+    if cfg and cfg.is_locked:
+        return jsonify({'success': False, 'error': 'Region is locked'}), 400
+    state = TerritoryRegionState.query.filter_by(region_index=region_index).first()
+    if not state:
+        state = TerritoryRegionState(region_index=region_index, owner_class_id=None, owner_clan_id=None, strength=0)
+        db.session.add(state)
+    damage = current_user.damage
+    if not correct:
+        db.session.commit()
+        return jsonify({
+            'success': True, 'correct': False,
+            'owner_clan_id': state.owner_clan_id, 'strength': state.strength
+        })
+    # Начисляем опыт
+    new_level, leveled_up = current_user.add_experience(task.xp_reward)
+    stats = current_user.get_territory_stats()
+    if state.owner_clan_id is None:
+        state.owner_clan_id = clan_id
+        state.strength = min(TERRITORY_MAX_STRENGTH, state.strength + damage)
+        stats.total_influence_points += damage
+    elif state.owner_clan_id == clan_id:
+        state.strength = min(TERRITORY_MAX_STRENGTH, state.strength + damage)
+        stats.total_influence_points += damage
+    else:
+        state.strength = max(0, state.strength - damage)
+        stats.total_damage_dealt += damage
+        if state.strength == 0:
+            state.owner_clan_id = clan_id
+            state.strength = damage
+            stats.total_influence_points += damage
+    db.session.commit()
+    return jsonify({
+        'success': True, 'correct': True,
+        'owner_clan_id': state.owner_clan_id, 'strength': state.strength,
+        'xp_gained': task.xp_reward, 'level': new_level, 'leveled_up': leveled_up
+    })
 
 
 # Тестовая страница для просмотра анимации сундука (без логики рейда/дропа)

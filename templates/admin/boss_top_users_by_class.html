@@ -7,7 +7,7 @@
     <h1 class="admin-title">Топ-10 по классам</h1>
     <div class="subtitle">Босс: <strong>{{ boss.name }}</strong></div>
 
-    <div style="display: flex; gap: 15px; margin: 20px 0; flex-wrap: wrap;">
+    <div class="admin-nav-row" style="display: flex; gap: 15px; margin: 20px 0; flex-wrap: wrap;">
         <a href="{{ url_for('admin_boss_raid') }}" class="back-link">← Назад к рейд боссам</a>
         <a href="{{ url_for('admin_download_db') }}" class="back-link">Скачать БД</a>
         <a href="{{ url_for('logout') }}" class="back-link logout-link">Выйти</a>

@@ -17,6 +17,9 @@
             </div>
             <button type="submit" class="login-btn">Войти</button>
         </form>
+        {% if registration_enabled %}
+        <a href="{{ url_for('register') }}" class="back-link">Нет аккаунта? Регистрация</a>
+        {% endif %}
         <a href="{{ url_for('index') }}" class="back-link">← Назад к рейтингу</a>
     </div>
 </div>
@@ -187,9 +190,18 @@ body {
         padding: 5px;
     }
     
+    .login-container { padding: 10px; }
     .login-box {
         padding: 30px 20px;
         border-radius: 20px;
+    }
+    .back-link {
+        display: block;
+        width: 100%;
+        text-align: center;
+        padding: 14px 20px;
+        min-height: 44px;
+        margin-top: 12px;
     }
     
     .login-title {
