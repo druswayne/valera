@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+lhj{% extends "base.html" %}
 
 {% block title %}Битва за территорию - Валера в пещере{% endblock %}
 
@@ -111,18 +111,17 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     text-align: center;
 }
 
-/* Выбор класса и ссылка назад */
-.territory-toolbar {
-    max-width: 700px;
-    margin: 0 auto 20px;
+/* Верхняя панель навигации — только кнопки назад и кабинет */
+.territory-top-nav {
+    max-width: 920px;
+    margin: 0 auto 16px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
-    gap: 12px;
+    gap: 10px;
 }
-
-.territory-toolbar a {
+.territory-top-nav a {
     color: #d4a84b;
     text-decoration: none;
     font-weight: bold;
@@ -136,13 +135,11 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     transition: color 0.2s, border-color 0.2s, box-shadow 0.2s;
     box-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
-
-.territory-toolbar a:hover {
+.territory-top-nav a:hover {
     color: #e8c86a;
     border-color: #8b6914;
     box-shadow: 0 0 12px rgba(212,168,75,0.25);
 }
-.territory-cabinet-link { margin-right: 12px; }
 .territory-login-btn {
     padding: 10px 20px;
     background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
@@ -157,6 +154,132 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     color: #e8c86a;
     border-color: #8b6914;
 }
+
+/* Карточка информации об игроке */
+.territory-player-card {
+    max-width: 920px;
+    margin: 0 auto 20px;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    border: 2px solid #5c4033;
+    border-radius: 8px;
+    padding: 14px 18px;
+    box-shadow: inset 0 1px 0 rgba(212,168,75,0.12), 0 4px 12px rgba(0,0,0,0.35);
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+.territory-player-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #5c4033;
+    box-shadow: 0 0 0 1px rgba(212,168,75,0.25);
+    flex-shrink: 0;
+    background: #2c1810;
+}
+.territory-player-avatar-placeholder {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: #2c1810;
+    border: 2px solid #5c4033;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    flex-shrink: 0;
+}
+.territory-player-main {
+    flex: 1;
+    min-width: 140px;
+}
+.territory-player-name {
+    font-family: 'Cinzel', Georgia, serif;
+    font-weight: bold;
+    font-size: 1.05rem;
+    color: #e8dcc4;
+    margin: 0 0 4px;
+}
+.territory-player-level-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+.territory-player-level {
+    font-size: 0.85rem;
+    color: #d4a84b;
+    font-weight: bold;
+}
+.territory-player-xp-wrap {
+    flex: 1;
+    min-width: 80px;
+    max-width: 180px;
+    height: 10px;
+    background: #2c1810;
+    border-radius: 5px;
+    overflow: hidden;
+    border: 1px solid #5c4033;
+}
+.territory-player-xp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #8b6914, #d4a84b);
+    border-radius: 4px;
+    transition: width 0.25s ease;
+}
+.territory-player-stats {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    font-size: 0.8rem;
+    color: #c4b098;
+}
+.territory-player-stats span {
+    white-space: nowrap;
+}
+.territory-player-stats strong { color: #d4a84b; margin-right: 2px; }
+.territory-player-clan {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+.territory-player-clan-flag {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #5c4033;
+    flex-shrink: 0;
+    background: #2c1810;
+}
+.territory-player-clan-flag-placeholder {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #2c1810;
+    border: 2px solid #5c4033;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+.territory-player-clan-name {
+    font-weight: bold;
+    color: #d4a84b;
+    font-size: 0.9rem;
+}
+.territory-player-clan-name a { color: #e8c86a; text-decoration: none; }
+.territory-player-clan-name a:hover { text-decoration: underline; }
+.territory-player-energy {
+    font-weight: bold;
+    color: #d4a84b;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
 #playerClanName { font-weight: bold; color: #d4a84b; }
 #playerClanName a { color: #e8c86a; }
 .territory-registration-disabled {
@@ -164,12 +287,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     font-style: italic;
     padding: 10px 16px;
 }
-
-.territory-class-select {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
+.territory-player-card .territory-registration-disabled { margin: 0; padding: 0; }
 
 .territory-class-select label {
     font-size: 14px;
@@ -430,6 +548,133 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     box-shadow: 0 0 0 2px rgba(139,105,20,0.2);
 }
 
+.task-fraction-fields {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+.task-fraction-field {
+    flex: 1;
+    min-width: 80px;
+}
+
+.task-fraction-field label {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 0.9em;
+    color: #5c4033;
+}
+
+.task-fraction-field input {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Вертикальное отображение дробей в условии (как на изображении) */
+.task-text .mixed-frac,
+.task-text .frac,
+.task-text .frac-int-only {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+}
+.task-text .frac-int {
+    font-size: 1.1em;
+    margin-right: 2px;
+}
+.task-text .frac {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 1em;
+}
+.task-text .frac-num,
+.task-text .frac-den {
+    padding: 0 4px;
+    line-height: 1.2;
+}
+.task-text .frac-line {
+    display: block;
+    width: 100%;
+    min-width: 1.2em;
+    height: 0;
+    border-top: 1.5px solid #3d2914;
+    margin: 1px 0;
+}
+
+/* Ответ-дробь в том же формате: целая часть + вертикальная дробь */
+.task-answer-fraction-visual {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+.task-answer-fraction-visual .answer-frac-wrap {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+}
+.task-answer-fraction-visual .answer-frac-wrap input {
+    width: 3em;
+    text-align: center;
+    padding: 4px 6px;
+}
+.task-answer-fraction-visual .answer-frac-line {
+    width: 100%;
+    height: 0;
+    border-top: 2px solid #3d2914;
+    margin: 2px 0;
+}
+
+/* Убираем кнопки +/- у полей числа */
+.task-modal input[type="number"]::-webkit-inner-spin-button,
+.task-modal input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.task-modal input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+/* Две дроби: дробь из условия = поля ввода новой дроби */
+.task-common-denom-visual { margin-top: 12px; }
+.task-common-denom-row-eq {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+.task-common-denom-row-eq:last-child { margin-bottom: 0; }
+.task-common-denom-original {
+    min-height: 2em;
+    display: inline-flex;
+    align-items: center;
+}
+.task-common-denom-eq {
+    font-size: 1.4em;
+    font-weight: bold;
+    color: #3d2914;
+}
+.task-common-denom-visual .answer-frac-wrap {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+}
+.task-common-denom-visual .answer-frac-wrap input {
+    width: 3em;
+    text-align: center;
+    padding: 4px 6px;
+}
+.task-common-denom-visual .answer-frac-line {
+    width: 100%;
+    height: 0;
+    border-top: 2px solid #3d2914;
+    margin: 2px 0;
+}
+
 .task-modal-footer {
     padding: 16px 24px 24px;
     border-top: 1px solid rgba(92,64,51,0.4);
@@ -562,34 +807,35 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 @media (max-width: 600px) {
     .territory-page { padding: 12px; }
     .territory-page h1 { font-size: 1.4rem; letter-spacing: 0.04em; }
-    .territory-toolbar {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 10px;
-        margin-bottom: 16px;
+    .territory-top-nav {
+        margin-bottom: 12px;
+        gap: 8px;
     }
-    .territory-toolbar a {
-        width: 100%;
-        text-align: center;
+    .territory-top-nav a {
         padding: 12px 16px;
         min-height: 44px;
         display: flex;
         align-items: center;
         justify-content: center;
+        font-size: 0.85rem;
     }
-    .territory-cabinet-link { margin-right: 0; }
-    .territory-class-select {
+    .territory-player-card {
         flex-direction: column;
-        align-items: stretch;
-        gap: 6px;
-        padding: 10px 12px;
-        background: rgba(61,41,20,0.4);
-        border-radius: 4px;
+        align-items: flex-start;
+        padding: 12px 14px;
+        gap: 12px;
+        margin-bottom: 16px;
     }
-    .territory-class-select label { text-align: center; }
-    .territory-login-btn {
+    .territory-player-main { min-width: 100%; }
+    .territory-player-level-row { flex-wrap: wrap; }
+    .territory-player-xp-wrap { max-width: 100%; min-width: 100px; }
+    .territory-player-stats { gap: 10px; }
+    .territory-player-clan {
         width: 100%;
-        text-align: center;
+        flex-wrap: wrap;
+    }
+    .territory-player-name { font-size: 1rem; }
+    .territory-login-btn {
         min-height: 44px;
         display: flex;
         align-items: center;
@@ -605,6 +851,15 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 
 {% block content %}
 <div class="territory-page">
+    <nav class="territory-top-nav">
+        <a href="{{ url_for('index') }}">← Назад к рейтингу</a>
+        {% if user_logged_in %}
+        <a href="{{ url_for('cabinet') }}">Личный кабинет</a>
+        {% else %}
+        <a href="{{ url_for('login') }}?next={{ url_for('territory_battle_page') | urlencode }}" class="territory-login-btn">Войти</a>
+        {% endif %}
+    </nav>
+
     <h1>Битва за территорию</h1>
 
     <div class="global-progress">
@@ -612,20 +867,46 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         <div id="globalProgressBars"></div>
     </div>
 
-    <div class="territory-toolbar">
-        <a href="{{ url_for('index') }}">← Назад к рейтингу</a>
-        {% if user_logged_in %}
-        <a href="{{ url_for('cabinet') }}" class="territory-cabinet-link">Личный кабинет</a>
-        {% if is_authenticated %}
-        <div class="territory-class-select" id="playerClanWrap">
-            <label>Ваш клан:</label>
-            <span id="playerClanName">{% if current_user.clan_obj %}{{ current_user.clan_obj.name }}{% else %}— Нет клана. <a href="{{ url_for('cabinet') }}">Создайте или вступите</a> —{% endif %}</span>
-        </div>
-        {% elif not registration_enabled %}
-        <span class="territory-registration-disabled">Регистрация участников отключена</span>
-        {% endif %}
+    <div class="territory-player-card">
+        {% if user_logged_in and is_authenticated %}
+        {% if avatar_url %}
+        <img src="{{ avatar_url }}" alt="" class="territory-player-avatar">
         {% else %}
-        <a href="{{ url_for('login') }}?next={{ url_for('territory_battle_page') | urlencode }}" class="territory-login-btn">Войти для участия</a>
+        <div class="territory-player-avatar-placeholder">👤</div>
+        {% endif %}
+        <div class="territory-player-main">
+            <p class="territory-player-name">{{ current_user.character_name or current_user.username }}</p>
+            <div class="territory-player-level-row">
+                <span class="territory-player-level">Ур. {{ current_user.level or 1 }}</span>
+                <div class="territory-player-xp-wrap" title="Опыт: {{ current_user.xp_in_current_level }} / {{ current_user.xp_needed_for_next_level }}">
+                    <div class="territory-player-xp-fill" style="width: {{ ((current_user.xp_in_current_level / current_user.xp_needed_for_next_level * 100) if current_user.xp_needed_for_next_level else 100) | round(1) }}%;"></div>
+                </div>
+            </div>
+            <div class="territory-player-stats">
+                <span><strong>Урон:</strong> {{ current_user.damage }}</span>
+                <span><strong>Защита:</strong> {{ current_user.defense }}</span>
+            </div>
+        </div>
+        <div class="territory-player-clan">
+            {% if current_user.clan_obj %}
+            {% if clan_flag_url %}
+            <img src="{{ clan_flag_url }}" alt="" class="territory-player-clan-flag">
+            {% else %}
+            <div class="territory-player-clan-flag-placeholder">⚔</div>
+            {% endif %}
+            <span id="playerClanName" class="territory-player-clan-name">{{ current_user.clan_obj.name }}</span>
+            {% else %}
+            <div class="territory-player-clan-flag-placeholder">—</div>
+            <span id="playerClanName" class="territory-player-clan-name">Нет клана. <a href="{{ url_for('cabinet') }}">Создать или вступить</a></span>
+            {% endif %}
+        </div>
+        {% if current_energy is not none and energy_max is not none %}
+        <div class="territory-player-energy" title="Энергия: 1 за задачу. Восстанавливается каждые 30 мин (+20% от макс.).">⚡ <span id="energyDisplay">{{ current_energy }}</span>/{{ energy_max }}</div>
+        {% endif %}
+        {% elif user_logged_in and not registration_enabled %}
+        <span class="territory-registration-disabled">Регистрация участников отключена</span>
+        {% else %}
+        <p class="territory-player-name" style="margin:0; flex:1;">Войдите, чтобы видеть профиль и участвовать</p>
         {% endif %}
     </div>
 
@@ -718,9 +999,42 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         <div class="task-modal-body">
             <div class="task-text" id="taskModalText"></div>
             <img class="task-image" id="taskModalImage" alt="" style="display: none;">
-            <div class="task-answer-wrap">
+            <div class="task-answer-wrap" id="taskAnswerWrapDefault">
                 <label for="taskAnswerInput">Ваш ответ:</label>
-                <input type="text" id="taskAnswerInput" placeholder="Введите ответ">
+                <input type="text" id="taskAnswerInput">
+            </div>
+            <div class="task-answer-wrap task-fraction-wrap" id="taskAnswerWrapFraction" style="display: none;">
+                <label>Ваш ответ:</label>
+                <div class="task-answer-fraction-visual">
+                    <div class="answer-frac-wrap">
+                        <input type="number" id="taskAnswerNum" min="0" title="Числитель">
+                        <span class="answer-frac-line"></span>
+                        <input type="number" id="taskAnswerDen" min="1" title="Знаменатель">
+                    </div>
+                </div>
+            </div>
+            <div class="task-answer-wrap task-common-denom-wrap" id="taskAnswerWrapCommonDenom" style="display: none;">
+                <label>Ваш ответ:</label>
+                <div class="task-common-denom-visual">
+                    <div class="task-common-denom-row-eq">
+                        <div class="task-common-denom-original task-text" id="taskCommonDenomFrac1"></div>
+                        <span class="task-common-denom-eq">=</span>
+                        <div class="answer-frac-wrap">
+                            <input type="number" id="taskAnswerNum1" min="0" title="Числитель 1">
+                            <span class="answer-frac-line"></span>
+                            <input type="number" id="taskAnswerDenCommon" min="1" title="Знаменатель 1">
+                        </div>
+                    </div>
+                    <div class="task-common-denom-row-eq">
+                        <div class="task-common-denom-original task-text" id="taskCommonDenomFrac2"></div>
+                        <span class="task-common-denom-eq">=</span>
+                        <div class="answer-frac-wrap">
+                            <input type="number" id="taskAnswerNum2" min="0" title="Числитель 2">
+                            <span class="answer-frac-line"></span>
+                            <input type="number" id="taskAnswerDenCommon2" min="1" title="Знаменатель 2">
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="task-modal-footer">
@@ -1199,16 +1513,24 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         document.getElementById('taskModalText').textContent = '';
         document.getElementById('taskModalImage').style.display = 'none';
         document.getElementById('taskAnswerInput').value = '';
+        document.getElementById('taskAnswerWrapDefault').style.display = 'block';
+        document.getElementById('taskAnswerWrapFraction').style.display = 'none';
+        document.getElementById('taskAnswerWrapCommonDenom').style.display = 'none';
         window._currentTask = null;
         document.getElementById('taskModal').classList.add('open');
-        fetch('{{ url_for("api_territory_task") }}')
+        fetch('{{ url_for("api_territory_task") }}?region_index=' + encodeURIComponent(String(regionId)))
             .then(function(res) { return res.json(); })
             .then(function(data) {
                 if (data.success && data.task) {
                     var t = data.task;
                     window._currentTask = t;
                     document.getElementById('taskModalTitle').textContent = t.title;
-                    document.getElementById('taskModalText').textContent = t.text;
+                    var textEl = document.getElementById('taskModalText');
+                    if ((t.answer_type === 'fraction' || t.answer_type === 'common_denominator') && t.text && t.text.indexOf('<span') !== -1) {
+                        textEl.innerHTML = t.text;
+                    } else {
+                        textEl.textContent = t.text;
+                    }
                     var img = document.getElementById('taskModalImage');
                     if (t.image_url) {
                         img.src = t.image_url;
@@ -1216,10 +1538,39 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                     } else {
                         img.style.display = 'none';
                     }
-                    document.getElementById('taskAnswerInput').focus();
+                    var isFraction = t.answer_type === 'fraction';
+                    var isCommonDenom = t.answer_type === 'common_denominator';
+                    document.getElementById('taskAnswerWrapDefault').style.display = (isFraction || isCommonDenom) ? 'none' : 'block';
+                    document.getElementById('taskAnswerWrapFraction').style.display = isFraction ? 'block' : 'none';
+                    document.getElementById('taskAnswerWrapCommonDenom').style.display = isCommonDenom ? 'block' : 'none';
+                    document.getElementById('taskAnswerInput').value = '';
+                    document.getElementById('taskAnswerNum').value = '';
+                    document.getElementById('taskAnswerDen').value = '';
+                    document.getElementById('taskAnswerNum1').value = '';
+                    document.getElementById('taskAnswerDenCommon').value = '';
+                    document.getElementById('taskAnswerNum2').value = '';
+                    document.getElementById('taskAnswerDenCommon2').value = '';
+                    if (isCommonDenom) {
+                        document.getElementById('taskCommonDenomFrac1').innerHTML = t.display_frac1 || '';
+                        document.getElementById('taskCommonDenomFrac2').innerHTML = t.display_frac2 || '';
+                    }
+                    if (isFraction) {
+                        document.getElementById('taskAnswerNum').focus();
+                    } else if (isCommonDenom) {
+                        document.getElementById('taskAnswerNum1').focus();
+                    } else {
+                        document.getElementById('taskAnswerInput').focus();
+                    }
+                    if (data.current_energy !== undefined) {
+                        var ed = document.getElementById('energyDisplay');
+                        if (ed) ed.textContent = data.current_energy;
+                    }
                 } else {
                     document.getElementById('taskModalTitle').textContent = 'Ошибка';
-                    document.getElementById('taskModalText').textContent = 'Не удалось загрузить задачу.';
+                    document.getElementById('taskModalText').textContent = (data.error || 'Не удалось загрузить задачу.');
+                    if (data.error && data.current_energy === undefined && data.error.indexOf('энерг') !== -1) {
+                        closeTaskModal();
+                    }
                 }
             })
             .catch(function() {
@@ -1249,7 +1600,16 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ region_index: regionId, task_id: taskId, answer: answer })
-        }).then(function(res) { return res.json(); }).then(function(data) {
+        }).then(function(res) { return res.json().then(function(d) { return { data: d, ok: res.ok }; }); }).then(function(result) {
+            var data = result.data;
+            if (!result.ok && !data.success && data.error) {
+                showToast(data.error || 'Ошибка', false);
+                return;
+            }
+            if (data.success && data.current_energy !== undefined) {
+                var ed = document.getElementById('energyDisplay');
+                if (ed) ed.textContent = data.current_energy;
+            }
             if (data.success && data.owner_clan_id !== undefined) {
                 r.ownerId = data.owner_clan_id;
                 r.strength = data.strength != null ? data.strength : r.strength;
@@ -1307,7 +1667,23 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
             closeTaskModal();
             return;
         }
-        const answer = document.getElementById('taskAnswerInput').value;
+        var answer;
+        if (task.answer_type === 'fraction') {
+            var n = document.getElementById('taskAnswerNum').value.trim();
+            var d = document.getElementById('taskAnswerDen').value.trim();
+            if (d === '' || d === '0') d = '1';
+            answer = n + '|' + d;
+        } else if (task.answer_type === 'common_denominator') {
+            var n1 = document.getElementById('taskAnswerNum1').value.trim();
+            var d1 = document.getElementById('taskAnswerDenCommon').value.trim();
+            var n2 = document.getElementById('taskAnswerNum2').value.trim();
+            var d2 = document.getElementById('taskAnswerDenCommon2').value.trim();
+            if (d1 === '' || d1 === '0') d1 = '1';
+            if (d2 === '' || d2 === '0') d2 = '1';
+            answer = n1 + '|' + d1 + '|' + n2 + '|' + d2;
+        } else {
+            answer = document.getElementById('taskAnswerInput').value;
+        }
         closeTaskModal();
         submitTaskAnswer(regionId, task.id, answer);
     });
@@ -1316,9 +1692,16 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         if (e.target === this) closeTaskModal();
     });
 
-    document.getElementById('taskAnswerInput').addEventListener('keydown', function(e) {
+    function onTaskAnswerKeydown(e) {
         if (e.key === 'Enter') document.getElementById('submitTaskBtn').click();
-    });
+    }
+    document.getElementById('taskAnswerInput').addEventListener('keydown', onTaskAnswerKeydown);
+    document.getElementById('taskAnswerNum').addEventListener('keydown', onTaskAnswerKeydown);
+    document.getElementById('taskAnswerDen').addEventListener('keydown', onTaskAnswerKeydown);
+    document.getElementById('taskAnswerNum1').addEventListener('keydown', onTaskAnswerKeydown);
+    document.getElementById('taskAnswerDenCommon').addEventListener('keydown', onTaskAnswerKeydown);
+    document.getElementById('taskAnswerNum2').addEventListener('keydown', onTaskAnswerKeydown);
+    document.getElementById('taskAnswerDenCommon2').addEventListener('keydown', onTaskAnswerKeydown);
 
     renderGlobalProgress();
 

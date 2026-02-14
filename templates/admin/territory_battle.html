@@ -360,6 +360,54 @@ body {
 .registration-toggle-text {
     font-size: 16px;
 }
+.generators-list-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 14px;
+}
+.generator-badge {
+    background: linear-gradient(135deg, #9b8fb8 0%, #8b6fa8 100%);
+    color: #fff;
+    padding: 8px 14px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: bold;
+}
+.generator-empty-hint {
+    color: #888;
+    font-style: italic;
+}
+.generator-add-form {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.generator-name-input {
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 2px solid #a8b8d0;
+    font-size: 14px;
+    min-width: 200px;
+}
+.generator-name-input:focus {
+    outline: none;
+    border-color: #8b6fa8;
+    box-shadow: 0 0 10px rgba(139, 111, 168, 0.25);
+}
+.admin-table select {
+    padding: 8px 12px;
+    border-radius: 12px;
+    border: 2px solid #a8b8d0;
+    font-size: 14px;
+    font-family: inherit;
+}
+.admin-table select:focus {
+    outline: none;
+    border-color: #8b6fa8;
+}
 .clan-card-actions {
     display: flex;
     flex-wrap: wrap;
@@ -486,14 +534,32 @@ body {
     </section>
 
     <section class="admin-section">
+        <h2>Генераторы заданий</h2>
+        <p>Создайте генераторы по названию. Затем для каждой области укажите, какой генератор заданий использовать (или оставьте «Без генератора»).</p>
+        <div class="generators-list-wrap">
+            {% for g in generators %}
+            <span class="generator-badge" title="ID: {{ g.id }}">{{ g.name }}</span>
+            {% endfor %}
+            {% if not generators %}
+            <span class="generator-empty-hint">Нет генераторов. Добавьте ниже.</span>
+            {% endif %}
+        </div>
+        <div class="generator-add-form">
+            <input type="text" id="newGeneratorName" placeholder="Название генератора" maxlength="120" class="generator-name-input">
+            <button type="button" class="edit-btn" id="addGeneratorBtn">Добавить генератор</button>
+        </div>
+    </section>
+
+    <section class="admin-section">
         <h2>Области карты</h2>
-        <p>Название отображается на карте. Заблокированная область не может быть захвачена; на карте показывается замок и штриховка.</p>
+        <p>Название отображается на карте. Заблокированная область не может быть захвачена; на карте показывается замок и штриховка. Для каждой области выберите генератор заданий (или «Без генератора»).</p>
         <div class="admin-table-wrap">
         <table class="admin-table">
             <thead>
                 <tr>
                     <th>№</th>
                     <th>Название области</th>
+                    <th>Генератор заданий</th>
                     <th>Заблокирована</th>
                     <th></th>
                 </tr>
@@ -503,6 +569,14 @@ body {
                 <tr data-region-index="{{ r.region_index }}" data-save-url="{{ url_for('admin_territory_region_save', region_index=r.region_index) }}">
                     <td>{{ r.region_index }}</td>
                     <td><input type="text" class="region-name-input" value="{{ r.display_name }}" data-region-index="{{ r.region_index }}" style="width:100%; max-width:220px;"></td>
+                    <td>
+                        <select class="region-generator-select" data-region-index="{{ r.region_index }}" style="min-width:160px;">
+                            <option value="">Без генератора</option>
+                            {% for g in generators %}
+                            <option value="{{ g.id }}" {% if r.task_generator_id == g.id %}selected{% endif %}>{{ g.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
                     <td><input type="checkbox" class="region-locked-input" {% if r.is_locked %}checked{% endif %} data-region-index="{{ r.region_index }}"></td>
                     <td><button type="button" class="edit-btn save-region-btn" data-region-index="{{ r.region_index }}">Сохранить</button></td>
                 </tr>
@@ -618,15 +692,44 @@ document.querySelectorAll('.save-region-btn').forEach(function(btn) {
         var idx = parseInt(this.getAttribute('data-region-index'), 10);
         var nameEl = document.querySelector('.region-name-input[data-region-index="' + idx + '"]');
         var lockedEl = document.querySelector('.region-locked-input[data-region-index="' + idx + '"]');
+        var genEl = document.querySelector('.region-generator-select[data-region-index="' + idx + '"]');
         var row = btn.closest('tr');
         var saveUrl = row ? row.getAttribute('data-save-url') : ('/admin/territory-battle/region/' + idx);
+        var payload = { display_name: nameEl.value.trim(), is_locked: lockedEl.checked };
+        if (genEl) payload.task_generator_id = genEl.value ? parseInt(genEl.value, 10) : null;
         fetch(saveUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-            body: JSON.stringify({ display_name: nameEl.value.trim(), is_locked: lockedEl.checked })
+            body: JSON.stringify(payload)
         }).then(function(r) { return r.json(); }).then(function(data) {
             if (data.success) alert('Область сохранена.');
         }).catch(function() { alert('Ошибка сохранения.'); });
+    });
+});
+
+document.getElementById('addGeneratorBtn').addEventListener('click', function() {
+    var input = document.getElementById('newGeneratorName');
+    var name = (input && input.value) ? input.value.trim() : '';
+    if (!name) {
+        alert('Введите название генератора.');
+        return;
+    }
+    this.disabled = true;
+    fetch('{{ url_for("admin_territory_generator_create") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body: JSON.stringify({ name: name })
+    }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.success) {
+            input.value = '';
+            window.location.reload();
+        } else {
+            alert(data.error || 'Ошибка создания.');
+        }
+    }).catch(function() {
+        alert('Ошибка соединения.');
+    }).finally(function() {
+        document.getElementById('addGeneratorBtn').disabled = false;
     });
 });
 

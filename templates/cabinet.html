@@ -16,22 +16,44 @@
 }
 .cabinet-section h2 { color: #6b5b7a; margin: 0 0 16px; font-size: 1.25rem; }
 .profile-row { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
-.avatar-wrap { width: 80px; height: 80px; border-radius: 50%; overflow: hidden; background: #ddd; flex-shrink: 0; }
-.avatar-wrap img { width: 100%; height: 100%; object-fit: cover; }
+.avatar-wrap { width: 80px; height: 80px; border-radius: 50%; overflow: hidden; background: #ddd; flex-shrink: 0; cursor: pointer; position: relative; }
+.avatar-wrap:hover { opacity: 0.9; }
+.avatar-wrap img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+.avatar-wrap .avatar-placeholder-inner { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 2rem; pointer-events: none; }
+.name-edit-btn { background: none; border: none; cursor: pointer; padding: 2px 6px; margin-left: 4px; font-size: 1rem; opacity: 0.7; vertical-align: middle; }
+.name-edit-btn:hover { opacity: 1; }
+.name-edit-inline { display: none; align-items: center; gap: 6px; margin: 4px 0 0; }
+.name-edit-inline.open { display: flex; flex-wrap: wrap; }
+.name-edit-inline input { padding: 6px 10px; border: 2px solid #8b6fa8; border-radius: 8px; min-width: 160px; }
+.name-edit-inline button { padding: 6px 12px; border-radius: 8px; border: none; background: #8b6fa8; color: white; cursor: pointer; font-weight: bold; }
+.name-edit-inline button:hover { background: #7a5f97; }
+.name-edit-inline .name-edit-cancel { background: #999; }
+.name-edit-inline .name-edit-cancel:hover { background: #777; }
 .profile-info { flex: 1; min-width: 200px; }
 .profile-info p { margin: 4px 0; }
-.profile-edit-form { margin-top: 16px; }
-.profile-edit-form input, .profile-edit-form button { margin-right: 8px; margin-bottom: 8px; padding: 8px 12px; border-radius: 8px; border: 1px solid #ccc; }
-.profile-edit-form button { background: #8b6fa8; color: white; border: none; cursor: pointer; }
-.profile-edit-form button:hover { background: #7a5f97; }
 .stats-row { display: flex; gap: 24px; flex-wrap: wrap; }
 .stat-item { background: #e8e0f0; padding: 12px 20px; border-radius: 10px; }
 .stat-item strong { display: block; color: #6b5b7a; font-size: 0.9rem; }
 .stat-item span { font-size: 1.5rem; font-weight: bold; color: #4a3d5a; }
+.skills-block { margin-top: 16px; padding-top: 16px; border-top: 1px solid #e0d8e8; }
+.skills-block h4 { margin: 0 0 12px; font-size: 1rem; color: #6b5b7a; }
+.skill-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.skill-row label { min-width: 90px; font-weight: bold; color: #4a3d5a; }
+.skill-row .val { min-width: 2.5em; text-align: center; font-weight: bold; }
+.skill-btn { width: 32px; height: 32px; border-radius: 8px; border: 2px solid #8b6fa8; background: #f5f0fa; color: #6b5b7a; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.skill-btn:hover { background: #e8e0f0; }
+.skill-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.skill-save-btn { padding: 8px 16px; margin-top: 10px; border-radius: 8px; border: none; background: #4a9f6b; color: white; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.skill-save-btn:hover { background: #3d8a5c; }
+.skill-save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.skill-points-block { margin-top: 8px; }
+.skill-points-hint { font-size: 0.9rem; color: #888; margin-top: 6px; }
 .level-block { margin-top: 12px; padding-top: 12px; border-top: 1px solid #e0d8e8; }
 .level-block p { margin: 6px 0; }
 .level-progress-wrap { background: #e0d8e8; border-radius: 8px; height: 20px; overflow: hidden; margin: 8px 0; }
 .level-progress-fill { height: 100%; background: linear-gradient(90deg, #8b6fa8, #a88bc4); border-radius: 8px; transition: width 0.3s; }
+.energy-display { margin: 8px 0 0; }
+.energy-hint { font-size: 0.85rem; color: #888; }
 .clan-info { margin-bottom: 12px; }
 .clan-name { font-weight: bold; color: #6b5b7a; font-size: 1.1rem; }
 .clan-block { padding: 16px; margin-bottom: 16px; background: #fcfaf8; border-radius: 12px; border: 1px solid #e8e0f0; }
@@ -98,21 +120,30 @@
 .create-clan-form input[type="color"] { height: 40px; padding: 4px; cursor: pointer; }
 .create-clan-form input[type="file"] { padding: 8px; }
 .no-clan-msg { color: #666; margin-bottom: 12px; }
-.nav-links { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
-.back-link { display: inline-block; margin-top: 0; color: #8b6fa8; text-decoration: none; padding: 12px 20px; background: #f5f0fa; border-radius: 10px; font-weight: bold; border: 2px solid #d4c5b0; transition: all 0.2s; }
-.back-link:hover { text-decoration: none; background: #e8e0f0; }
+.cabinet-top-nav { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; align-items: center; }
+.cabinet-top-nav .back-link { display: inline-flex; align-items: center; justify-content: center; color: #8b6fa8; text-decoration: none; padding: 10px 16px; background: #f5f0fa; border-radius: 10px; font-weight: bold; border: 2px solid #d4c5b0; transition: all 0.2s; min-height: 44px; }
+.cabinet-top-nav .back-link:hover { text-decoration: none; background: #e8e0f0; }
 @media (max-width: 600px) {
     .cabinet-page { padding: 12px; }
+    .cabinet-page h1 { font-size: 1.35rem; margin-bottom: 16px; }
+    .cabinet-top-nav { flex-direction: column; gap: 8px; margin-bottom: 12px; }
+    .cabinet-top-nav .back-link { width: 100%; }
     .cabinet-section { padding: 16px; margin-bottom: 16px; }
     .cabinet-section h2 { font-size: 1.1rem; }
-    .profile-row { flex-direction: column; align-items: flex-start; }
-    .profile-edit-form { display: flex; flex-direction: column; gap: 8px; }
-    .profile-edit-form input, .profile-edit-form button { margin: 0; width: 100%; max-width: 100%; }
+    .profile-row { flex-direction: column; align-items: flex-start; gap: 16px; }
+    .profile-info { min-width: 0; width: 100%; }
+    .profile-info p { word-break: break-word; }
+    .name-edit-inline { flex-direction: column; align-items: stretch; }
+    .name-edit-inline input { min-width: 0; width: 100%; box-sizing: border-box; }
     .stats-row { flex-direction: column; gap: 12px; }
     .stat-item { width: 100%; }
     .level-block { margin-top: 8px; padding-top: 8px; }
-    .nav-links { flex-direction: column; gap: 10px; margin-top: 16px; }
-    .back-link { width: 100%; text-align: center; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+    .level-xp-text { font-size: 0.9rem; }
+    .skills-block { margin-top: 12px; padding-top: 12px; }
+    .skill-row { gap: 6px; margin-bottom: 8px; }
+    .skill-row label { min-width: 80px; font-size: 0.9rem; }
+    .skill-save-btn { width: 100%; justify-content: center; min-height: 44px; }
+    .energy-display { font-size: 0.9rem; }
     .clan-block { padding: 12px; margin-bottom: 12px; }
     .clan-view { flex-direction: column; align-items: flex-start; }
     .clan-edit-form .form-row { flex-direction: column; }
@@ -129,37 +160,65 @@
 
 {% block content %}
 <div class="cabinet-page">
+    <nav class="cabinet-top-nav">
+        <a href="{{ url_for('index') }}" class="back-link">← На главную</a>
+        <a href="{{ url_for('territory_battle_page') }}" class="back-link">Битва за территорию</a>
+    </nav>
     <h1>Личный кабинет</h1>
 
     <div class="cabinet-section">
         <h2>Личная информация</h2>
         <div class="profile-row">
-            <div class="avatar-wrap">
+            <div class="avatar-wrap" id="avatarWrap" title="Нажмите, чтобы изменить аватар">
+                <input type="file" id="avatarFileInput" accept="image/*" style="display: none;">
                 {% if avatar_url %}
                 <img src="{{ avatar_url }}" alt="Аватар" id="avatarImg">
                 {% else %}
-                <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2rem;">👤</div>
+                <div class="avatar-placeholder-inner" id="avatarPlaceholder">👤</div>
                 {% endif %}
             </div>
             <div class="profile-info">
                 <p><strong>Логин:</strong> {{ user.username }}</p>
-                <p><strong>Имя персонажа:</strong> {{ user.character_name or user.username }}</p>
+                <p><strong>Имя персонажа:</strong> <span id="characterNameDisplay">{{ user.character_name or user.username }}</span> <button type="button" class="name-edit-btn" id="nameEditBtn" aria-label="Изменить имя">✏️</button></p>
+                <div class="name-edit-inline" id="nameEditInline">
+                    <input type="text" id="characterNameInput" placeholder="Имя персонажа" maxlength="200">
+                    <button type="button" id="nameEditSave">Сохранить</button>
+                    <button type="button" class="name-edit-cancel" id="nameEditCancel">Отмена</button>
+                </div>
                 <div class="level-block">
                     <p><strong>Уровень:</strong> {{ user.level }}</p>
-                    <p><strong>Урон:</strong> {{ user.damage }}</p>
                     <p class="level-xp-text">Опыт до следующего уровня: {{ user.xp_in_current_level }} / {{ user.xp_needed_for_next_level }}</p>
                     <div class="level-progress-wrap">
                         <div class="level-progress-fill" style="width: {{ (user.xp_in_current_level / user.xp_needed_for_next_level * 100) if user.xp_needed_for_next_level else 100 }}%;"></div>
                     </div>
                 </div>
+                <p class="energy-display"><strong>Энергия:</strong> <span id="energyCurrent">{{ user.current_energy_value }}</span> / <span id="energyMax">{{ user.energy }}</span> <span class="energy-hint">(восст. каждые 30 мин)</span></p>
+                <div class="skills-block">
+                    <h4>Характеристики</h4>
+                    <div class="skill-row">
+                        <label>Урон</label>
+                        <button type="button" class="skill-btn" id="skillDamageMinus" aria-label="Уменьшить урон">−</button>
+                        <span class="val" id="skillDamageVal">{{ user.damage }}</span>
+                        <button type="button" class="skill-btn" id="skillDamagePlus" aria-label="Увеличить урон">+</button>
+                    </div>
+                    <div class="skill-row">
+                        <label>Защита</label>
+                        <button type="button" class="skill-btn" id="skillDefenseMinus" aria-label="Уменьшить защиту">−</button>
+                        <span class="val" id="skillDefenseVal">{{ user.defense }}</span>
+                        <button type="button" class="skill-btn" id="skillDefensePlus" aria-label="Увеличить защиту">+</button>
+                    </div>
+                    <div class="skill-row">
+                        <label>Макс. энергия</label>
+                        <button type="button" class="skill-btn" id="skillEnergyMinus" aria-label="Уменьшить макс. энергию">−</button>
+                        <span class="val" id="skillEnergyVal">{{ user.energy }}</span>
+                        <button type="button" class="skill-btn" id="skillEnergyPlus" aria-label="Увеличить макс. энергию">+</button>
+                    </div>
+                    <div id="skillPointsBlock" class="skill-points-block" style="display: {{ 'none' if user.skill_points_available == 0 else 'block' }};">
+                        <p id="skillPointsHint" class="skill-points-hint">Очков навыков: <span id="skillPointsAvail">{{ user.skill_points_available }}</span></p>
+                        <button type="button" class="skill-save-btn" id="skillSaveBtn" title="Сохранить">✓ Сохранить</button>
+                    </div>
+                </div>
             </div>
-        </div>
-        <div class="profile-edit-form">
-            <form id="profileForm" enctype="multipart/form-data">
-                <input type="text" name="character_name" placeholder="Имя персонажа" value="{{ user.character_name or '' }}">
-                <input type="file" name="avatar" accept="image/*">
-                <button type="submit">Сохранить</button>
-            </form>
         </div>
     </div>
 
@@ -301,11 +360,6 @@
         </div>
         {% endif %}
     </div>
-
-    <div class="nav-links">
-        <a href="{{ url_for('index') }}" class="back-link">← На главную</a>
-        <a href="{{ url_for('territory_battle_page') }}" class="back-link">Битва за территорию</a>
-    </div>
 </div>
 {% endblock %}
 
@@ -334,6 +388,17 @@
     </div>
 </div>
 
+<!-- Модальное окно уведомления (характеристики сохранены) -->
+<div class="modal-overlay" id="skillSavedModal">
+    <div class="modal-box">
+        <h3>Характеристики сохранены</h3>
+        <p>Распределение очков навыков успешно обновлено.</p>
+        <div class="modal-buttons">
+            <button type="button" class="btn-confirm" id="skillSavedOkBtn">Хорошо</button>
+        </div>
+    </div>
+</div>
+
 <!-- Модальное окно создания клана -->
 <div class="modal-overlay" id="createModal">
     <div class="modal-box">
@@ -356,23 +421,204 @@
 
 {% block scripts %}
 <script>
-document.getElementById('profileForm')?.addEventListener('submit', function(e) {
-    e.preventDefault();
-    const fd = new FormData(this);
-    fd.append('character_name', this.querySelector('[name=character_name]').value);
-    fetch('{{ url_for("api_cabinet_profile") }}', { method: 'POST', body: fd })
-        .then(r => r.json())
-        .then(data => {
+(function() {
+    var totalSkillPoints = {{ user.skill_points_total }};
+    var skillState = {
+        damage: {{ user.damage_skill or 0 }},
+        defense: {{ user.defense_skill or 0 }},
+        energy: {{ user.energy_skill or 0 }}
+    };
+    var savedState = {
+        damage: {{ user.damage_skill or 0 }},
+        defense: {{ user.defense_skill or 0 }},
+        energy: {{ user.energy_skill or 0 }}
+    };
+    function spent() { return skillState.damage + skillState.defense + skillState.energy; }
+    function available() { return Math.max(0, totalSkillPoints - spent()); }
+    function hasUnsavedChanges() {
+        return skillState.damage !== savedState.damage || skillState.defense !== savedState.defense || skillState.energy !== savedState.energy;
+    }
+    function updateSkillUI() {
+        var base = 5;
+        document.getElementById('skillDamageVal').textContent = base + skillState.damage;
+        document.getElementById('skillDefenseVal').textContent = base + skillState.defense;
+        document.getElementById('skillEnergyVal').textContent = base + skillState.energy;
+        var dispDamage = document.getElementById('displayDamage');
+        if (dispDamage) dispDamage.textContent = base + skillState.damage;
+        var av = available();
+        var pointsBlock = document.getElementById('skillPointsBlock');
+        var pointsHint = document.getElementById('skillPointsHint');
+        if (pointsBlock) pointsBlock.style.display = (av > 0 || hasUnsavedChanges()) ? 'block' : 'none';
+        if (pointsHint) pointsHint.style.display = av > 0 ? 'block' : 'none';
+        document.getElementById('skillPointsAvail').textContent = av;
+        document.getElementById('skillDamagePlus').disabled = av <= 0;
+        document.getElementById('skillDefensePlus').disabled = av <= 0;
+        document.getElementById('skillEnergyPlus').disabled = av <= 0;
+        document.getElementById('skillDamageMinus').disabled = skillState.damage <= savedState.damage;
+        document.getElementById('skillDefenseMinus').disabled = skillState.defense <= savedState.defense;
+        document.getElementById('skillEnergyMinus').disabled = skillState.energy <= savedState.energy;
+    }
+    function skillPlus(stat) {
+        if (available() <= 0) return;
+        skillState[stat]++;
+        updateSkillUI();
+    }
+    function skillMinus(stat) {
+        if (skillState[stat] <= savedState[stat]) return;
+        skillState[stat]--;
+        updateSkillUI();
+    }
+    document.getElementById('skillDamagePlus')?.addEventListener('click', function() { skillPlus('damage'); });
+    document.getElementById('skillDamageMinus')?.addEventListener('click', function() { skillMinus('damage'); });
+    document.getElementById('skillDefensePlus')?.addEventListener('click', function() { skillPlus('defense'); });
+    document.getElementById('skillDefenseMinus')?.addEventListener('click', function() { skillMinus('defense'); });
+    document.getElementById('skillEnergyPlus')?.addEventListener('click', function() { skillPlus('energy'); });
+    document.getElementById('skillEnergyMinus')?.addEventListener('click', function() { skillMinus('energy'); });
+    document.getElementById('skillSaveBtn')?.addEventListener('click', function() {
+        var btn = this;
+        btn.disabled = true;
+        fetch('{{ url_for("api_cabinet_skills") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                damage_skill: skillState.damage,
+                defense_skill: skillState.defense,
+                energy_skill: skillState.energy
+            })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
             if (data.success) {
-                alert('Профиль сохранён');
-                if (data.avatar_url) {
-                    const img = document.getElementById('avatarImg');
-                    if (img) img.src = data.avatar_url;
-                    else location.reload();
+                savedState.damage = skillState.damage;
+                savedState.defense = skillState.defense;
+                savedState.energy = skillState.energy;
+                var dispD = document.getElementById('displayDamage');
+                if (dispD) dispD.textContent = data.damage;
+                document.getElementById('skillDamageVal').textContent = data.damage;
+                document.getElementById('skillDefenseVal').textContent = data.defense;
+                document.getElementById('skillEnergyVal').textContent = data.energy;
+                document.getElementById('skillPointsAvail').textContent = data.skill_points_available;
+                if (data.current_energy !== undefined) {
+                    var ec = document.getElementById('energyCurrent');
+                    if (ec) ec.textContent = data.current_energy;
                 }
-            } else alert(data.error || 'Ошибка');
+                if (data.energy !== undefined) {
+                    var em = document.getElementById('energyMax');
+                    if (em) em.textContent = data.energy;
+                }
+                updateSkillUI();
+                openSkillSavedModal();
+            } else {
+                alert(data.error || 'Ошибка');
+            }
+        })
+        .catch(function() { alert('Ошибка соединения'); })
+        .finally(function() { btn.disabled = false; });
+    });
+    updateSkillUI();
+
+    var skillSavedTimer = null;
+    function openSkillSavedModal() {
+        var m = document.getElementById('skillSavedModal');
+        if (!m) return;
+        if (skillSavedTimer) clearTimeout(skillSavedTimer);
+        m.style.display = 'flex';
+        m.style.visibility = 'visible';
+        m.classList.add('open');
+        document.body.appendChild(m);
+        skillSavedTimer = setTimeout(function() {
+            skillSavedTimer = null;
+            closeSkillSavedModal();
+        }, 5000);
+    }
+    function closeSkillSavedModal() {
+        var m = document.getElementById('skillSavedModal');
+        if (m) {
+            m.classList.remove('open');
+            m.style.display = '';
+            m.style.visibility = '';
+        }
+    }
+    document.getElementById('skillSavedOkBtn')?.addEventListener('click', function() {
+        if (skillSavedTimer) clearTimeout(skillSavedTimer);
+        skillSavedTimer = null;
+        closeSkillSavedModal();
+    });
+})();
+
+(function() {
+    var avatarWrap = document.getElementById('avatarWrap');
+    var avatarFileInput = document.getElementById('avatarFileInput');
+    if (avatarWrap && avatarFileInput) {
+        avatarWrap.addEventListener('click', function() { avatarFileInput.click(); });
+        avatarFileInput.addEventListener('change', function() {
+            if (!this.files || !this.files[0]) return;
+            var fd = new FormData();
+            fd.append('avatar', this.files[0]);
+            fd.append('character_name', (document.getElementById('characterNameDisplay') || {}).textContent || '');
+            fetch('{{ url_for("api_cabinet_profile") }}', { method: 'POST', body: fd })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        if (data.avatar_url) {
+                            var img = document.getElementById('avatarImg');
+                            var placeholder = document.getElementById('avatarPlaceholder');
+                            if (img) {
+                                img.src = data.avatar_url;
+                            } else if (placeholder) {
+                                var newImg = document.createElement('img');
+                                newImg.id = 'avatarImg';
+                                newImg.alt = 'Аватар';
+                                newImg.src = data.avatar_url;
+                                placeholder.parentNode.replaceChild(newImg, placeholder);
+                            }
+                        }
+                    } else { alert(data.error || 'Ошибка'); }
+                })
+                .catch(function() { alert('Ошибка загрузки'); });
+            this.value = '';
         });
-});
+    }
+})();
+
+(function() {
+    var nameDisplay = document.getElementById('characterNameDisplay');
+    var nameEditBtn = document.getElementById('nameEditBtn');
+    var nameEditInline = document.getElementById('nameEditInline');
+    var nameInput = document.getElementById('characterNameInput');
+    var nameEditSave = document.getElementById('nameEditSave');
+    var nameEditCancel = document.getElementById('nameEditCancel');
+    if (!nameEditBtn || !nameEditInline || !nameInput) return;
+    function showNameEdit() {
+        nameInput.value = (nameDisplay && nameDisplay.textContent) ? nameDisplay.textContent.trim() : '';
+        nameEditInline.classList.add('open');
+        nameInput.focus();
+    }
+    function hideNameEdit() {
+        nameEditInline.classList.remove('open');
+    }
+    function saveName() {
+        var val = nameInput.value.trim();
+        var fd = new FormData();
+        fd.append('character_name', val);
+        fetch('{{ url_for("api_cabinet_profile") }}', { method: 'POST', body: fd })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    if (nameDisplay) nameDisplay.textContent = val || nameDisplay.textContent;
+                    hideNameEdit();
+                } else { alert(data.error || 'Ошибка'); }
+            })
+            .catch(function() { alert('Ошибка'); });
+    }
+    nameEditBtn.addEventListener('click', showNameEdit);
+    nameEditSave.addEventListener('click', saveName);
+    nameEditCancel.addEventListener('click', hideNameEdit);
+    nameInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); saveName(); }
+        if (e.key === 'Escape') { e.preventDefault(); hideNameEdit(); }
+    });
+})();
 
 document.getElementById('clanEditForm')?.addEventListener('submit', function(e) {
     e.preventDefault();

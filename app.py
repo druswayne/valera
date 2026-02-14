@@ -13,6 +13,21 @@ from sqlalchemy.exc import IntegrityError
 import random
 import os
 import logging
+
+try:
+    from generate_boss_tasks import (
+        generate_expression_task,
+        generate_territory_computations,
+        generate_equation_task,
+        generate_fraction_property_task,
+        generate_common_denominator_task,
+    )
+except ImportError:
+    generate_expression_task = None
+    generate_territory_computations = None
+    generate_equation_task = None
+    generate_fraction_property_task = None
+    generate_common_denominator_task = None
 import re
 import shutil
 import tempfile
@@ -144,8 +159,13 @@ class ClanJoinRequest(db.Model):
 
 
 # Константы уровней и урона
-USER_BASE_DAMAGE = 10
-USER_DAMAGE_PER_LEVEL = 5
+# Базовые характеристики (без вложенных очков навыков)
+USER_BASE_DAMAGE = 5
+USER_BASE_DEFENSE = 5
+USER_BASE_ENERGY = 5
+INITIAL_SKILL_POINTS = 10
+SKILL_POINTS_PER_LEVEL = 1
+
 def xp_required_for_level(level):
     """Суммарный опыт для достижения уровня level (для уровня 1 = 0, уровень 2 = 100, 3 = 300, 4 = 600, ...)."""
     if level <= 1:
@@ -157,8 +177,12 @@ def xp_to_next_level(current_level):
     return 100 * current_level
 
 def user_damage_by_level(level):
-    """Урон персонажа по уровню."""
-    return USER_BASE_DAMAGE + (level - 1) * USER_DAMAGE_PER_LEVEL
+    """Урон персонажа (legacy). Используйте user.damage."""
+    return USER_BASE_DAMAGE
+
+def skill_points_total_for_level(level):
+    """Всего очков навыков на уровне level."""
+    return INITIAL_SKILL_POINTS + max(0, level - 1) * SKILL_POINTS_PER_LEVEL
 
 
 class TerritoryTask(db.Model):
@@ -173,13 +197,18 @@ class TerritoryTask(db.Model):
 
     def to_dict_public(self):
         """Без правильного ответа — для выдачи клиенту"""
-        return {
+        d = {
             'id': self.id,
             'title': self.title,
             'text': self.text,
             'image_url': url_for('static', filename=self.image_filename) if self.image_filename else None,
             'xp_reward': self.xp_reward
         }
+        if self.title == 'Основное свойство дроби' and '|' in (self.correct_answer or ''):
+            d['answer_type'] = 'fraction'
+        if self.title == 'Общий знаменатель' and self.correct_answer and self.correct_answer.count('|') >= 3:
+            d['answer_type'] = 'common_denominator'
+        return d
 
 
 class User(UserMixin, db.Model):
@@ -191,6 +220,11 @@ class User(UserMixin, db.Model):
     clan_id = db.Column(db.Integer, db.ForeignKey('clan.id'), nullable=True)
     level = db.Column(db.Integer, default=1, nullable=False)
     experience = db.Column(db.Integer, default=0, nullable=False)
+    damage_skill = db.Column(db.Integer, default=0, nullable=False)
+    defense_skill = db.Column(db.Integer, default=0, nullable=False)
+    energy_skill = db.Column(db.Integer, default=0, nullable=False)
+    current_energy = db.Column(db.Integer, nullable=True)  # None = полный запас
+    energy_last_refill_at = db.Column(db.DateTime, nullable=True)  # время последнего восстановления
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -224,8 +258,56 @@ class User(UserMixin, db.Model):
 
     @property
     def damage(self):
-        """Текущий урон персонажа по уровню."""
-        return user_damage_by_level(self.level or 1)
+        """Текущий урон персонажа: база 5 + очки навыков."""
+        return USER_BASE_DAMAGE + (self.damage_skill or 0)
+
+    @property
+    def defense(self):
+        """Защита: база 5 + очки навыков."""
+        return USER_BASE_DEFENSE + (self.defense_skill or 0)
+
+    @property
+    def energy(self):
+        """Макс. энергия: база 5 + очки навыков."""
+        return USER_BASE_ENERGY + (self.energy_skill or 0)
+
+    def ensure_energy_refill(self):
+        """Восстанавливать энергию каждые 30 мин на 20% от макс."""
+        now = datetime.utcnow()
+        max_e = self.energy
+        last = self.energy_last_refill_at
+        if last is None:
+            if self.current_energy is None:
+                self.current_energy = max_e
+            self.energy_last_refill_at = now
+            return
+        elapsed_min = (now - last).total_seconds() / 60.0
+        intervals = int(elapsed_min // 30)
+        if intervals <= 0:
+            return
+        per_interval = max(1, round(max_e * 0.2))
+        cur = self.current_energy if self.current_energy is not None else max_e
+        self.current_energy = min(max_e, cur + intervals * per_interval)
+        self.energy_last_refill_at = last + timedelta(minutes=intervals * 30)
+
+    @property
+    def current_energy_value(self):
+        """Текущая энергия (после ensure_energy_refill)."""
+        self.ensure_energy_refill()
+        if self.current_energy is None:
+            return self.energy
+        return max(0, self.current_energy)
+
+    @property
+    def skill_points_total(self):
+        """Всего очков навыков (старт 10 + за уровни)."""
+        return skill_points_total_for_level(self.level or 1)
+
+    @property
+    def skill_points_available(self):
+        """Свободные очки навыков."""
+        spent = (self.damage_skill or 0) + (self.defense_skill or 0) + (self.energy_skill or 0)
+        return max(0, self.skill_points_total - spent)
 
     @property
     def xp_in_current_level(self):
@@ -609,13 +691,22 @@ class BossDropReward(db.Model):
         }
 
 
-# Битва за территорию: настройки областей (название, заблокирована ли)
+# Генератор заданий для битвы за территорию (название; логика генерации — позже)
+class TaskGenerator(db.Model):
+    __tablename__ = 'task_generator'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False)
+
+
+# Битва за территорию: настройки областей (название, заблокирована ли, генератор заданий)
 class TerritoryRegionConfig(db.Model):
     __tablename__ = 'territory_region_config'
     id = db.Column(db.Integer, primary_key=True)
     region_index = db.Column(db.Integer, unique=True, nullable=False)
     display_name = db.Column(db.String(120), nullable=False)
     is_locked = db.Column(db.Boolean, default=False, nullable=False)
+    task_generator_id = db.Column(db.Integer, db.ForeignKey('task_generator.id'), nullable=True)
+    task_generator = db.relationship('TaskGenerator', foreign_keys=[task_generator_id], lazy=True)
 
 
 # Битва за территорию: состояние области (владелец, сила)
@@ -1119,6 +1210,17 @@ with app.app_context():
             db.create_all()
             print("Созданы таблицы для битвы за территорию")
         
+        # Таблица и колонка генератора заданий — до любого запроса к TerritoryRegionConfig
+        if 'task_generator' not in tables:
+            db.create_all()
+            print("Создана таблица task_generator")
+        if 'territory_region_config' in tables:
+            columns = [col['name'] for col in inspector.get_columns('territory_region_config')]
+            if 'task_generator_id' not in columns:
+                with db.engine.begin() as conn:
+                    conn.execute(text('ALTER TABLE territory_region_config ADD COLUMN task_generator_id INTEGER'))
+                    print("Добавлена колонка task_generator_id в territory_region_config")
+        
         if 'class' in tables:
             columns = [col['name'] for col in inspector.get_columns('class')]
             with db.engine.begin() as conn:
@@ -1187,6 +1289,21 @@ with app.app_context():
                 if 'experience' not in columns:
                     conn.execute(text('ALTER TABLE user ADD COLUMN experience INTEGER DEFAULT 0'))
                     print("Добавлена колонка experience в user")
+                if 'damage_skill' not in columns:
+                    conn.execute(text('ALTER TABLE user ADD COLUMN damage_skill INTEGER DEFAULT 0'))
+                    print("Добавлена колонка damage_skill в user")
+                if 'defense_skill' not in columns:
+                    conn.execute(text('ALTER TABLE user ADD COLUMN defense_skill INTEGER DEFAULT 0'))
+                    print("Добавлена колонка defense_skill в user")
+                if 'energy_skill' not in columns:
+                    conn.execute(text('ALTER TABLE user ADD COLUMN energy_skill INTEGER DEFAULT 0'))
+                    print("Добавлена колонка energy_skill в user")
+                if 'current_energy' not in columns:
+                    conn.execute(text('ALTER TABLE user ADD COLUMN current_energy INTEGER'))
+                    print("Добавлена колонка current_energy в user")
+                if 'energy_last_refill_at' not in columns:
+                    conn.execute(text('ALTER TABLE user ADD COLUMN energy_last_refill_at TIMESTAMP'))
+                    print("Добавлена колонка energy_last_refill_at в user")
         if 'territory_task' not in tables:
             db.create_all()
             print("Создана таблица territory_task")
@@ -1430,6 +1547,42 @@ def api_cabinet_profile():
             user.avatar_filename = f'uploads/avatars/{filename}'
     db.session.commit()
     return jsonify({'success': True, 'avatar_url': url_for('static', filename=_avatar_static_filename(user.avatar_filename)) if user.avatar_filename else None})
+
+
+@app.route('/api/cabinet/skills', methods=['POST'])
+@login_required
+def api_cabinet_skills():
+    """Сохранить распределение очков навыков (damage_skill, defense_skill, energy_skill)."""
+    user = current_user
+    if user.is_admin:
+        return jsonify({'success': False, 'error': 'Администратор не участвует'}), 403
+    data = request.get_json() or request.form
+    try:
+        d = int(data.get('damage_skill', 0))
+        df = int(data.get('defense_skill', 0))
+        e = int(data.get('energy_skill', 0))
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'error': 'Некорректные значения'}), 400
+    if d < 0 or df < 0 or e < 0:
+        return jsonify({'success': False, 'error': 'Значения не могут быть отрицательными'}), 400
+    if d < (user.damage_skill or 0) or df < (user.defense_skill or 0) or e < (user.energy_skill or 0):
+        return jsonify({'success': False, 'error': 'Нельзя уменьшить уже сохранённые характеристики. Можно только тратить новые очки.'}), 400
+    total_allowed = skill_points_total_for_level(user.level or 1)
+    if d + df + e > total_allowed:
+        return jsonify({'success': False, 'error': f'Нельзя потратить больше {total_allowed} очков'}), 400
+    user.damage_skill = d
+    user.defense_skill = df
+    user.energy_skill = e
+    db.session.commit()
+    user.ensure_energy_refill()
+    return jsonify({
+        'success': True,
+        'damage': user.damage,
+        'defense': user.defense,
+        'energy': user.energy,
+        'current_energy': user.current_energy_value,
+        'skill_points_available': user.skill_points_available,
+    })
 
 
 @app.route('/api/clans')
@@ -2410,8 +2563,23 @@ def admin_boss_raid():
 def admin_territory_battle():
     regions = TerritoryRegionConfig.query.order_by(TerritoryRegionConfig.region_index).all()
     clans = Clan.query.order_by(Clan.name).all()
+    generators = TaskGenerator.query.order_by(TaskGenerator.name).all()
     registration_enabled = get_territory_registration_enabled()
-    return render_template('admin/territory_battle.html', regions=regions, clans=clans, registration_enabled=registration_enabled)
+    return render_template('admin/territory_battle.html', regions=regions, clans=clans, generators=generators, registration_enabled=registration_enabled)
+
+
+@app.route('/admin/territory-battle/generators', methods=['POST'])
+@admin_required
+def admin_territory_generator_create():
+    """Создать генератор заданий (только название)."""
+    data = request.get_json() or {}
+    name = (data.get('name') or '').strip()
+    if not name:
+        return jsonify({'success': False, 'error': 'Укажите название генератора'}), 400
+    g = TaskGenerator(name=name)
+    db.session.add(g)
+    db.session.commit()
+    return jsonify({'success': True, 'id': g.id, 'name': g.name})
 
 
 @app.route('/admin/territory-battle/settings', methods=['POST'])
@@ -2442,6 +2610,9 @@ def admin_territory_region_save(region_index):
         db.session.add(cfg)
     cfg.display_name = data.get('display_name', cfg.display_name)
     cfg.is_locked = bool(data.get('is_locked', cfg.is_locked))
+    if 'task_generator_id' in data:
+        gen_id = data.get('task_generator_id')
+        cfg.task_generator_id = int(gen_id) if gen_id else None
     db.session.commit()
     return jsonify({'success': True})
 
@@ -2977,6 +3148,18 @@ def territory_battle_page():
     regions_json = [{'region_index': r.region_index, 'display_name': r.display_name, 'is_locked': r.is_locked} for r in regions_config]
     states = TerritoryRegionState.query.order_by(TerritoryRegionState.region_index).all()
     state_by_index = {s.region_index: {'owner_clan_id': s.owner_clan_id, 'strength': s.strength} for s in states}
+    current_energy = None
+    energy_max = None
+    avatar_url = None
+    clan_flag_url = None
+    if user_logged_in and not is_admin and current_user.is_authenticated:
+        current_user.ensure_energy_refill()
+        current_energy = current_user.current_energy_value
+        energy_max = current_user.energy
+        avatar_url = url_for('static', filename=_avatar_static_filename(current_user.avatar_filename)) if getattr(current_user, 'avatar_filename', None) else None
+        if getattr(current_user, 'clan_obj', None) and getattr(current_user.clan_obj, 'flag_filename', None):
+            clan_flag_url = url_for('static', filename=_avatar_static_filename(current_user.clan_obj.flag_filename))
+
     return render_template(
         'territory_battle.html',
         clans=clans,
@@ -2986,7 +3169,11 @@ def territory_battle_page():
         current_user_clan_id=clan_id,
         is_authenticated=can_participate,
         user_logged_in=user_logged_in,
-        registration_enabled=registration_enabled
+        registration_enabled=registration_enabled,
+        current_energy=current_energy,
+        energy_max=energy_max,
+        avatar_url=avatar_url,
+        clan_flag_url=clan_flag_url
     )
 
 
@@ -2994,13 +3181,86 @@ def _normalize_answer(s):
     return str(s).strip().lower().replace('\s+', ' ') if s else ''
 
 
+def _territory_difficulty_from_level(level: int) -> int:
+    """Определить уровень сложности (1–3) по уровню игрока."""
+    if level < 10:
+        return 1
+    if level <= 20:
+        return 2
+    return 3
+
+
+# Имя генератора (из БД) -> функция(difficulty) -> задача или None
+TERRITORY_GENERATOR_BY_NAME = {
+    'Вычисления': lambda d: generate_territory_computations(difficulty=d) if generate_territory_computations else None,
+    'Уравнения': lambda d: generate_equation_task(difficulty=d) if generate_equation_task else None,
+    'Основное свойство дроби': lambda d: generate_fraction_property_task(difficulty=d) if generate_fraction_property_task else None,
+    'Общий знаменатель': lambda d: generate_common_denominator_task(difficulty=d) if generate_common_denominator_task else None,
+}
+
+
 @app.route('/api/territory-battle/task')
+@login_required
 def api_territory_task():
-    """Выдать случайную задачу для битвы за территорию (без правильного ответа)."""
+    """Выдать задачу для битвы за территорию. Списывает 1 энергию при выдаче (при открытии модалки)."""
+    if current_user.is_admin:
+        return jsonify({'success': False, 'error': 'Администратор не участвует в битве'}), 403
+    if not get_territory_registration_enabled():
+        return jsonify({'success': False, 'error': 'Регистрация участников отключена'}), 403
+    if not current_user.clan_id:
+        return jsonify({'success': False, 'error': 'Для участия нужен клан'}), 400
+    current_user.ensure_energy_refill()
+    if current_user.current_energy_value < 1:
+        return jsonify({'success': False, 'error': 'Недостаточно энергии. Восстанавливается каждые 30 мин (+20% от макс.).'}), 400
+    current_user.current_energy = (current_user.current_energy_value or current_user.energy) - 1
+    db.session.commit()
+
+    region_index = request.args.get('region_index', type=int)
+    difficulty = _territory_difficulty_from_level(current_user.level or 1)
+
+    # Область с привязанным генератором — генерируем задачу по имени генератора из БД
+    if region_index is not None:
+        cfg = TerritoryRegionConfig.query.filter_by(region_index=region_index).first()
+        if cfg and cfg.task_generator_id:
+            gen = TaskGenerator.query.get(cfg.task_generator_id)
+            if gen and gen.name and gen.name.strip() in TERRITORY_GENERATOR_BY_NAME:
+                gen_fn = TERRITORY_GENERATOR_BY_NAME[gen.name.strip()]
+                if gen_fn:
+                    try:
+                        gen_task = gen_fn(difficulty)
+                        if gen_task:
+                            task = TerritoryTask(
+                                title=gen_task.get('title', 'Задача'),
+                                text=gen_task.get('description', ''),
+                                correct_answer=gen_task.get('correct_answer', ''),
+                                xp_reward=gen_task.get('points', 20)
+                            )
+                            db.session.add(task)
+                            db.session.commit()
+                            current_user.ensure_energy_refill()
+                            task_dict = task.to_dict_public()
+                            if gen_task.get('display_frac1'):
+                                task_dict['display_frac1'] = gen_task['display_frac1']
+                            if gen_task.get('display_frac2'):
+                                task_dict['display_frac2'] = gen_task['display_frac2']
+                            return jsonify({
+                                'success': True,
+                                'task': task_dict,
+                                'current_energy': current_user.current_energy_value
+                            })
+                    except Exception as e:
+                        logger.exception('Ошибка генерации задачи для области %s (генератор %s): %s',
+                                         region_index, gen.name, e)
+    # Иначе — случайная задача из БД
     task = TerritoryTask.query.order_by(db.func.random()).first()
     if not task:
         return jsonify({'success': False, 'error': 'Нет доступных задач'}), 404
-    return jsonify({'success': True, 'task': task.to_dict_public()})
+    current_user.ensure_energy_refill()
+    return jsonify({
+        'success': True,
+        'task': task.to_dict_public(),
+        'current_energy': current_user.current_energy_value
+    })
 
 
 @app.route('/api/territory-battle/apply-action', methods=['POST'])
@@ -3023,7 +3283,57 @@ def api_territory_apply_action():
     task = TerritoryTask.query.get(task_id)
     if not task:
         return jsonify({'success': False, 'error': 'Задача не найдена'}), 404
-    correct = _normalize_answer(answer) == _normalize_answer(task.correct_answer)
+    # Ответ-дробь: только числитель и знаменатель (num|den); в БД может быть старый формат int|num|den
+    if task.title == 'Основное свойство дроби' and task.correct_answer and '|' in task.correct_answer:
+        try:
+            correct_parts = [p.strip() for p in task.correct_answer.split('|')]
+            user_parts = [p.strip() for p in (answer or '').split('|')]
+            # Из эталона: старый формат "0|6|7" -> числитель и знаменатель (индексы 1 и 2)
+            if len(correct_parts) >= 3:
+                correct_num, correct_den = correct_parts[1], correct_parts[2]
+            elif len(correct_parts) == 2:
+                correct_num, correct_den = correct_parts[0], correct_parts[1]
+            else:
+                correct_num, correct_den = '', ''
+            # Ответ пользователя: только числитель и знаменатель (два поля)
+            if len(user_parts) >= 3:
+                user_num, user_den = user_parts[1], user_parts[2]
+            elif len(user_parts) == 2:
+                user_num, user_den = user_parts[0], user_parts[1]
+            else:
+                user_num, user_den = '', ''
+            # Сравниваем как числа (чтобы "6" и "06" засчитывались)
+            try:
+                u_n, u_d = int(user_num or 0), int(user_den or 0)
+                c_n, c_d = int(correct_num or 0), int(correct_den or 0)
+                correct = (u_d > 0 and c_d > 0 and u_n == c_n and u_d == c_d)
+            except (ValueError, TypeError):
+                correct = (user_num == correct_num and user_den == correct_den)
+        except Exception:
+            correct = False
+    elif task.title == 'Общий знаменатель' and task.correct_answer and task.correct_answer.count('|') >= 3:
+        try:
+            correct_parts = [p.strip() for p in task.correct_answer.split('|')]
+            user_parts = [p.strip() for p in (answer or '').split('|')]
+            if len(correct_parts) >= 4 and len(user_parts) >= 4:
+                try:
+                    correct = (
+                        int(user_parts[0] or 0) == int(correct_parts[0] or 0)
+                        and int(user_parts[1] or 0) == int(correct_parts[1] or 0)
+                        and int(user_parts[2] or 0) == int(correct_parts[2] or 0)
+                        and int(user_parts[3] or 0) == int(correct_parts[3] or 0)
+                    )
+                except (ValueError, TypeError):
+                    correct = (
+                        user_parts[0] == correct_parts[0] and user_parts[1] == correct_parts[1]
+                        and user_parts[2] == correct_parts[2] and user_parts[3] == correct_parts[3]
+                    )
+            else:
+                correct = False
+        except Exception:
+            correct = False
+    else:
+        correct = _normalize_answer(answer) == _normalize_answer(task.correct_answer)
     clan_id = current_user.clan_id
     cfg = TerritoryRegionConfig.query.filter_by(region_index=region_index).first()
     if cfg and cfg.is_locked:
@@ -3032,7 +3342,10 @@ def api_territory_apply_action():
     if not state:
         state = TerritoryRegionState(region_index=region_index, owner_class_id=None, owner_clan_id=None, strength=0)
         db.session.add(state)
-    damage = current_user.damage
+    # Энергия уже списана при открытии модалки с заданием (api_territory_task)
+    # Урон при атаке (чужая/нейтральная область), защита при усилении своей
+    is_own_region = (state.owner_clan_id == clan_id)
+    power = current_user.defense if is_own_region else current_user.damage
     if not correct:
         db.session.commit()
         return jsonify({
@@ -3044,23 +3357,25 @@ def api_territory_apply_action():
     stats = current_user.get_territory_stats()
     if state.owner_clan_id is None:
         state.owner_clan_id = clan_id
-        state.strength = min(TERRITORY_MAX_STRENGTH, state.strength + damage)
-        stats.total_influence_points += damage
+        state.strength = min(TERRITORY_MAX_STRENGTH, state.strength + power)
+        stats.total_influence_points += power
     elif state.owner_clan_id == clan_id:
-        state.strength = min(TERRITORY_MAX_STRENGTH, state.strength + damage)
-        stats.total_influence_points += damage
+        state.strength = min(TERRITORY_MAX_STRENGTH, state.strength + power)
+        stats.total_influence_points += power
     else:
-        state.strength = max(0, state.strength - damage)
-        stats.total_damage_dealt += damage
+        state.strength = max(0, state.strength - power)
+        stats.total_damage_dealt += power
         if state.strength == 0:
             state.owner_clan_id = clan_id
-            state.strength = damage
-            stats.total_influence_points += damage
+            state.strength = power
+            stats.total_influence_points += power
     db.session.commit()
+    current_user.ensure_energy_refill()
     return jsonify({
         'success': True, 'correct': True,
         'owner_clan_id': state.owner_clan_id, 'strength': state.strength,
-        'xp_gained': task.xp_reward, 'level': new_level, 'leveled_up': leveled_up
+        'xp_gained': task.xp_reward, 'level': new_level, 'leveled_up': leveled_up,
+        'current_energy': current_user.current_energy_value
     })
 
 
