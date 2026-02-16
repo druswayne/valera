@@ -552,13 +552,14 @@ body {
 
     <section class="admin-section">
         <h2>Области карты</h2>
-        <p>Название отображается на карте. Заблокированная область не может быть захвачена; на карте показывается замок и штриховка. Для каждой области выберите генератор заданий (или «Без генератора»).</p>
+        <p>Название отображается на карте. Описание показывается при наведении курсора на название области. Заблокированная область не может быть захвачена; на карте показывается замок и штриховка. Для каждой области выберите генератор заданий (или «Без генератора»).</p>
         <div class="admin-table-wrap">
         <table class="admin-table">
             <thead>
                 <tr>
                     <th>№</th>
                     <th>Название области</th>
+                    <th>Описание</th>
                     <th>Генератор заданий</th>
                     <th>Заблокирована</th>
                     <th></th>
@@ -569,6 +570,7 @@ body {
                 <tr data-region-index="{{ r.region_index }}" data-save-url="{{ url_for('admin_territory_region_save', region_index=r.region_index) }}">
                     <td>{{ r.region_index }}</td>
                     <td><input type="text" class="region-name-input" value="{{ r.display_name }}" data-region-index="{{ r.region_index }}" style="width:100%; max-width:220px;"></td>
+                    <td><input type="text" class="region-description-input" value="{{ r.description or '' }}" data-region-index="{{ r.region_index }}" placeholder="Подсказка при наведении на название" style="width:100%; max-width:280px;"></td>
                     <td>
                         <select class="region-generator-select" data-region-index="{{ r.region_index }}" style="min-width:160px;">
                             <option value="">Без генератора</option>
@@ -691,11 +693,13 @@ document.querySelectorAll('.save-region-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
         var idx = parseInt(this.getAttribute('data-region-index'), 10);
         var nameEl = document.querySelector('.region-name-input[data-region-index="' + idx + '"]');
+        var descEl = document.querySelector('.region-description-input[data-region-index="' + idx + '"]');
         var lockedEl = document.querySelector('.region-locked-input[data-region-index="' + idx + '"]');
         var genEl = document.querySelector('.region-generator-select[data-region-index="' + idx + '"]');
         var row = btn.closest('tr');
         var saveUrl = row ? row.getAttribute('data-save-url') : ('/admin/territory-battle/region/' + idx);
         var payload = { display_name: nameEl.value.trim(), is_locked: lockedEl.checked };
+        if (descEl) payload.description = descEl.value.trim();
         if (genEl) payload.task_generator_id = genEl.value ? parseInt(genEl.value, 10) : null;
         fetch(saveUrl, {
             method: 'POST',

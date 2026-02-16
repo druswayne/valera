@@ -3,126 +3,439 @@
 {% block title %}Личный кабинет - Валера в пещере{% endblock %}
 
 {% block extra_head %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Cinzel+Decorative:wght@700&display=swap" rel="stylesheet">
 <style>
-.cabinet-page { max-width: 800px; margin: 0 auto; padding: 20px; font-family: 'Comic Sans MS', Arial, sans-serif; }
-.cabinet-page h1 { color: #8b6fa8; margin-bottom: 24px; }
+* { box-sizing: border-box; }
+body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Roman', serif; }
+
+.cabinet-page {
+    min-height: 100vh;
+    width: 100%;
+    padding: 20px;
+    color: #e8dcc4;
+    background: #3d2914 linear-gradient(180deg, rgba(61,41,20,0.97) 0%, #2c1810 50%, #1a0f08 100%);
+    position: relative;
+}
+.cabinet-page .cabinet-inner { max-width: 800px; margin: 0 auto; }
+.cabinet-page::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+}
+.cabinet-page > * { position: relative; z-index: 1; }
+
+.cabinet-page h1 {
+    font-family: 'Cinzel Decorative', 'Cinzel', Georgia, serif;
+    text-align: center;
+    margin: 0 0 24px;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #d4a84b;
+    text-shadow: 0 0 20px rgba(212,168,75,0.3), 0 2px 4px rgba(0,0,0,0.5);
+    letter-spacing: 0.08em;
+}
+
+.cabinet-top-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+    align-items: center;
+}
+.cabinet-top-nav .back-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #d4a84b;
+    text-decoration: none;
+    padding: 10px 18px;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.9rem;
+    font-weight: bold;
+    letter-spacing: 0.04em;
+    transition: color 0.2s, border-color 0.2s, box-shadow 0.2s;
+    min-height: 44px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.cabinet-top-nav .back-link:hover {
+    color: #e8c86a;
+    border-color: #8b6914;
+    box-shadow: 0 0 12px rgba(212,168,75,0.25);
+}
+.cabinet-top-nav .logout-link {
+    margin-left: auto;
+    color: #c4a574;
+    border-color: #6b5344;
+}
+.cabinet-top-nav .logout-link:hover {
+    color: #e8a050;
+    border-color: #8b5a3c;
+}
+
 .cabinet-section {
-    background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
-    border-radius: 16px;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    border-radius: 8px;
     padding: 24px;
     margin-bottom: 24px;
-    border: 2px solid #d4c5b0;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    border: 2px solid #5c4033;
+    box-shadow: inset 0 1px 0 rgba(212,168,75,0.12), 0 4px 12px rgba(0,0,0,0.35);
 }
-.cabinet-section h2 { color: #6b5b7a; margin: 0 0 16px; font-size: 1.25rem; }
+.cabinet-section h2 {
+    font-family: 'Cinzel', Georgia, serif;
+    color: #d4a84b;
+    margin: 0 0 16px;
+    font-size: 1.25rem;
+    letter-spacing: 0.04em;
+}
+
 .profile-row { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
-.avatar-wrap { width: 80px; height: 80px; border-radius: 50%; overflow: hidden; background: #ddd; flex-shrink: 0; cursor: pointer; position: relative; }
-.avatar-wrap:hover { opacity: 0.9; }
+.avatar-wrap {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #2c1810;
+    border: 2px solid #5c4033;
+    flex-shrink: 0;
+    cursor: pointer;
+    position: relative;
+    box-shadow: 0 0 0 1px rgba(212,168,75,0.25);
+}
+.avatar-wrap:hover { opacity: 0.9; filter: brightness(1.1); }
 .avatar-wrap img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
-.avatar-wrap .avatar-placeholder-inner { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 2rem; pointer-events: none; }
-.name-edit-btn { background: none; border: none; cursor: pointer; padding: 2px 6px; margin-left: 4px; font-size: 1rem; opacity: 0.7; vertical-align: middle; }
-.name-edit-btn:hover { opacity: 1; }
-.name-edit-inline { display: none; align-items: center; gap: 6px; margin: 4px 0 0; }
-.name-edit-inline.open { display: flex; flex-wrap: wrap; }
-.name-edit-inline input { padding: 6px 10px; border: 2px solid #8b6fa8; border-radius: 8px; min-width: 160px; }
-.name-edit-inline button { padding: 6px 12px; border-radius: 8px; border: none; background: #8b6fa8; color: white; cursor: pointer; font-weight: bold; }
-.name-edit-inline button:hover { background: #7a5f97; }
-.name-edit-inline .name-edit-cancel { background: #999; }
-.name-edit-inline .name-edit-cancel:hover { background: #777; }
-.profile-info { flex: 1; min-width: 200px; }
-.profile-info p { margin: 4px 0; }
-.stats-row { display: flex; gap: 24px; flex-wrap: wrap; }
-.stat-item { background: #e8e0f0; padding: 12px 20px; border-radius: 10px; }
-.stat-item strong { display: block; color: #6b5b7a; font-size: 0.9rem; }
-.stat-item span { font-size: 1.5rem; font-weight: bold; color: #4a3d5a; }
-.skills-block { margin-top: 16px; padding-top: 16px; border-top: 1px solid #e0d8e8; }
-.skills-block h4 { margin: 0 0 12px; font-size: 1rem; color: #6b5b7a; }
-.skill-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
-.skill-row label { min-width: 90px; font-weight: bold; color: #4a3d5a; }
-.skill-row .val { min-width: 2.5em; text-align: center; font-weight: bold; }
-.skill-btn { width: 32px; height: 32px; border-radius: 8px; border: 2px solid #8b6fa8; background: #f5f0fa; color: #6b5b7a; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-.skill-btn:hover { background: #e8e0f0; }
-.skill-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.skill-save-btn { padding: 8px 16px; margin-top: 10px; border-radius: 8px; border: none; background: #4a9f6b; color: white; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
-.skill-save-btn:hover { background: #3d8a5c; }
+.avatar-wrap .avatar-placeholder-inner {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2rem; pointer-events: none; color: #c4b098;
+}
+
+.name-edit-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px 6px;
+    margin-left: 4px;
+    font-size: 1rem;
+    opacity: 0.7;
+    vertical-align: middle;
+    color: #d4a84b;
+}
+.name-edit-btn:hover { opacity: 1; color: #e8c86a; }
+.name-edit-inline { display: none; align-items: center; gap: 8px; margin: 8px 0 0; flex-wrap: wrap; }
+.name-edit-inline.open { display: flex; }
+.name-edit-inline input {
+    padding: 8px 12px;
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    min-width: 160px;
+    background: #2c1810;
+    color: #e8dcc4;
+    font-family: inherit;
+}
+.name-edit-inline input:focus { outline: none; border-color: #8b6914; }
+.name-edit-inline button {
+    padding: 8px 16px;
+    border-radius: 4px;
+    border: 2px solid #5c4033;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    color: #d4a84b;
+    cursor: pointer;
+    font-weight: bold;
+    font-family: 'Cinzel', Georgia, serif;
+}
+.name-edit-inline button:hover { color: #e8c86a; border-color: #8b6914; }
+.name-edit-inline .name-edit-cancel {
+    background: linear-gradient(145deg, #5c4033 0%, #4a3520 100%);
+    color: #b8a088;
+}
+.name-edit-inline .name-edit-cancel:hover { color: #e8dcc4; }
+
+.profile-info { flex: 1; min-width: 200px; color: #e8dcc4; }
+.profile-info p { margin: 6px 0; }
+.profile-info strong { color: #d4a84b; }
+
+.stats-row { display: flex; gap: 20px; flex-wrap: wrap; }
+.stat-item {
+    background: linear-gradient(145deg, #3d2914 0%, #2c1810 100%);
+    padding: 14px 20px;
+    border-radius: 6px;
+    border: 2px solid #5c4033;
+    flex: 1;
+    min-width: 140px;
+}
+.stat-item strong { display: block; color: #d4a84b; font-size: 0.9rem; margin-bottom: 4px; font-family: 'Cinzel', Georgia, serif; }
+.stat-item span { font-size: 1.5rem; font-weight: bold; color: #e8dcc4; }
+
+.skills-block { margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(92,64,51,0.6); }
+.skills-block h4 { margin: 0 0 12px; font-size: 1rem; color: #d4a84b; font-family: 'Cinzel', Georgia, serif; }
+.skill-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.skill-row label { min-width: 100px; font-weight: bold; color: #c4b098; }
+.skill-row .val { min-width: 2.5em; text-align: center; font-weight: bold; color: #d4a84b; }
+.skill-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 4px;
+    border: 2px solid #5c4033;
+    background: linear-gradient(145deg, #3d2914 0%, #2c1810 100%);
+    color: #d4a84b;
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s, border-color 0.2s;
+}
+.skill-btn:hover:not(:disabled) { color: #e8c86a; border-color: #8b6914; }
+.skill-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.skill-save-btn {
+    padding: 10px 20px;
+    margin-top: 12px;
+    border-radius: 4px;
+    border: 2px solid #5c4033;
+    background: linear-gradient(145deg, #5c4033 0%, #4a3520 100%);
+    color: #d4a84b;
+    font-weight: bold;
+    cursor: pointer;
+    font-family: 'Cinzel', Georgia, serif;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.skill-save-btn:hover:not(:disabled) { color: #e8c86a; border-color: #8b6914; }
 .skill-save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .skill-points-block { margin-top: 8px; }
-.skill-points-hint { font-size: 0.9rem; color: #888; margin-top: 6px; }
-.level-block { margin-top: 12px; padding-top: 12px; border-top: 1px solid #e0d8e8; }
+.skill-points-hint { font-size: 0.9rem; color: #b8a088; margin-top: 6px; }
+.level-block { margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(92,64,51,0.6); }
 .level-block p { margin: 6px 0; }
-.level-progress-wrap { background: #e0d8e8; border-radius: 8px; height: 20px; overflow: hidden; margin: 8px 0; }
-.level-progress-fill { height: 100%; background: linear-gradient(90deg, #8b6fa8, #a88bc4); border-radius: 8px; transition: width 0.3s; }
-.energy-display { margin: 8px 0 0; }
-.energy-hint { font-size: 0.85rem; color: #888; }
+.level-progress-wrap {
+    background: #2c1810;
+    border-radius: 4px;
+    height: 12px;
+    overflow: hidden;
+    margin: 8px 0;
+    border: 1px solid #5c4033;
+}
+.level-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #8b6914, #d4a84b);
+    border-radius: 3px;
+    transition: width 0.3s;
+}
+.energy-display { margin: 10px 0 0; }
+.energy-hint { font-size: 0.85rem; color: #b8a088; }
+
 .clan-info { margin-bottom: 12px; }
-.clan-name { font-weight: bold; color: #6b5b7a; font-size: 1.1rem; }
-.clan-block { padding: 16px; margin-bottom: 16px; background: #fcfaf8; border-radius: 12px; border: 1px solid #e8e0f0; }
+.clan-name { font-weight: bold; color: #d4a84b; font-size: 1.1rem; font-family: 'Cinzel', Georgia, serif; }
+.clan-block {
+    padding: 18px;
+    margin-bottom: 16px;
+    background: linear-gradient(145deg, #3d2914 0%, #2c1810 100%);
+    border-radius: 6px;
+    border: 2px solid #5c4033;
+}
 .clan-block:last-child { margin-bottom: 0; }
-.clan-block h3 { margin: 0 0 12px; font-size: 1rem; color: #6b5b7a; }
+.clan-block h3 { margin: 0 0 12px; font-size: 1rem; color: #d4a84b; font-family: 'Cinzel', Georgia, serif; }
 .clan-view { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-.clan-view-emblem { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 2px solid #d4c5b0; flex-shrink: 0; }
-.clan-view-emblem-placeholder { width: 56px; height: 56px; border-radius: 50%; background: #e0d8e8; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; flex-shrink: 0; }
-.clan-edit-form .form-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; margin-bottom: 12px; }
-.clan-edit-form label { display: block; margin-bottom: 4px; font-size: 0.9rem; color: #555; }
-.clan-edit-form input[type="text"] { width: 100%; max-width: 240px; padding: 8px 12px; border: 2px solid #d4c5b0; border-radius: 8px; }
-.clan-edit-form input[type="file"] { font-size: 0.9rem; }
-.clan-members-toggle, .clan-btn { padding: 10px 18px; margin: 4px 8px 4px 0; border-radius: 10px; border: 2px solid #8b6fa8; background: #f5f0fa; color: #6b5b7a; cursor: pointer; font-weight: bold; }
-.clan-btn:hover, .clan-members-toggle:hover { background: #e8e0f0; }
-.clan-btn.danger { border-color: #c55; background: #fef0f0; color: #a33; }
-.clan-btn.danger:hover { background: #fee; }
+.clan-view-emblem {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #5c4033;
+    flex-shrink: 0;
+    background: #2c1810;
+}
+.clan-view-emblem-placeholder {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #2c1810;
+    border: 2px solid #5c4033;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    flex-shrink: 0;
+}
+.clan-edit-form .form-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; margin-bottom: 14px; }
+.clan-edit-form label { display: block; margin-bottom: 6px; font-size: 0.9rem; color: #c4b098; }
+.clan-edit-form input[type="text"] {
+    width: 100%;
+    max-width: 240px;
+    padding: 10px 14px;
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    background: #2c1810;
+    color: #e8dcc4;
+    font-family: inherit;
+}
+.clan-edit-form input[type="text"]:focus { outline: none; border-color: #8b6914; }
+.clan-edit-form input[type="file"] { font-size: 0.9rem; color: #c4b098; }
+
+.clan-members-toggle, .clan-btn {
+    padding: 10px 18px;
+    margin: 4px 8px 4px 0;
+    border-radius: 4px;
+    border: 2px solid #5c4033;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    color: #d4a84b;
+    cursor: pointer;
+    font-weight: bold;
+    font-family: 'Cinzel', Georgia, serif;
+    transition: color 0.2s, border-color 0.2s;
+}
+.clan-btn:hover, .clan-members-toggle:hover { color: #e8c86a; border-color: #8b6914; }
+.clan-btn.danger {
+    border-color: #8b4545;
+    background: linear-gradient(145deg, #5c3434 0%, #4a2828 100%);
+    color: #e8c0c0;
+}
+.clan-btn.danger:hover { color: #ffe0e0; border-color: #a05555; }
+
 .members-list, .territories-list, .pending-list { margin-top: 12px; display: none; }
 .members-list.open, .territories-list.open, .pending-list.open { display: block; }
 .member-item, .territory-item, .pending-item {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 12px; margin: 6px 0; background: #f8f5fc; border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    margin: 8px 0;
+    background: rgba(44,24,16,0.6);
+    border-radius: 6px;
+    border: 1px solid #5c4033;
+    color: #e8dcc4;
 }
 .member-item { gap: 12px; }
 .member-item .member-avatar {
-    width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: #e0d8e8; flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #2c1810;
+    border: 2px solid #5c4033;
+    flex-shrink: 0;
 }
 .member-item .member-avatar-placeholder {
-    width: 40px; height: 40px; border-radius: 50%; background: #e0d8e8;
-    display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #2c1810;
+    border: 2px solid #5c4033;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
 }
 .member-item .member-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.member-item .member-level { font-size: 0.8rem; color: #8b6fa8; font-weight: bold; }
+.member-item .member-level { font-size: 0.8rem; color: #d4a84b; font-weight: bold; }
 .member-item .kick-btn, .pending-item .accept-btn, .pending-item .reject-btn {
-    padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.9rem;
+    padding: 8px 14px;
+    border-radius: 4px;
+    border: 2px solid;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: bold;
+    font-family: 'Cinzel', Georgia, serif;
 }
-.member-item .kick-btn { background: #fcc; color: #a33; }
-.pending-item .accept-btn { background: #cfc; color: #363; margin-right: 6px; }
-.pending-item .reject-btn { background: #fcc; color: #a33; }
+.member-item .kick-btn {
+    background: linear-gradient(145deg, #5c3434 0%, #4a2828 100%);
+    border-color: #8b4545;
+    color: #e8c0c0;
+}
+.pending-item .accept-btn {
+    background: linear-gradient(145deg, #3d5c34 0%, #2d4a24 100%);
+    border-color: #5c8b45;
+    color: #c8e0b8;
+    margin-right: 8px;
+}
+.pending-item .reject-btn {
+    background: linear-gradient(145deg, #5c3434 0%, #4a2828 100%);
+    border-color: #8b4545;
+    color: #e8c0c0;
+}
+
 .modal-overlay {
     position: fixed;
     top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.5);
+    background: rgba(0,0,0,0.75);
     display: none;
     align-items: center;
     justify-content: center;
     z-index: 99999;
-    opacity: 1;
-    visibility: visible;
+    padding: 20px;
 }
 .modal-overlay.open {
     display: flex !important;
     visibility: visible !important;
     opacity: 1 !important;
 }
-.modal-box { background: white; padding: 28px; border-radius: 16px; max-width: 420px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
-.modal-box h3 { margin: 0 0 16px; color: #4a3d5a; }
+.modal-box {
+    background: linear-gradient(180deg, #f4e4bc 0%, #e8d5a3 50%, #dcc898 100%);
+    padding: 28px;
+    border-radius: 4px;
+    max-width: 420px;
+    width: 90%;
+    box-shadow: 0 0 0 3px #5c4033, 0 12px 40px rgba(0,0,0,0.5);
+    border: 2px solid #3d2914;
+    color: #2c1810;
+}
+.modal-box h3 { margin: 0 0 16px; font-family: 'Cinzel Decorative', 'Cinzel', Georgia, serif; color: #3d2914; }
+.modal-box p { color: #2c1810; }
 .modal-box .modal-buttons { margin-top: 20px; display: flex; gap: 12px; justify-content: flex-end; }
-.modal-box button { padding: 10px 20px; border-radius: 10px; cursor: pointer; font-weight: bold; }
-.modal-box .btn-cancel { background: #ddd; border: 1px solid #ccc; }
-.modal-box .btn-confirm { background: #8b6fa8; color: white; border: none; }
-.modal-box .btn-confirm.danger { background: #c55; }
-.modal-box select { width: 100%; padding: 12px; margin: 12px 0; border-radius: 8px; border: 2px solid #ccc; }
+.modal-box button {
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    font-family: 'Cinzel', Georgia, serif;
+}
+.modal-box .btn-cancel {
+    background: linear-gradient(180deg, #c4b098 0%, #a89070 100%);
+    border: 2px solid #5c4033;
+    color: #2c1810;
+}
+.modal-box .btn-confirm {
+    background: linear-gradient(145deg, #5c4033 0%, #4a3520 100%);
+    border: 2px solid #3d2914;
+    color: #d4a84b;
+}
+.modal-box .btn-confirm:hover { color: #e8c86a; }
+.modal-box .btn-confirm.danger {
+    background: linear-gradient(145deg, #5c3434 0%, #4a2828 100%);
+    color: #e8c0c0;
+}
+.modal-box select {
+    width: 100%;
+    padding: 12px;
+    margin: 12px 0;
+    border-radius: 4px;
+    border: 2px solid #5c4033;
+    background: rgba(255,255,255,0.6);
+    color: #2c1810;
+    font-family: inherit;
+}
 .create-clan-form input, .create-clan-form label { display: block; margin: 8px 0; width: 100%; }
+.create-clan-form input[type="text"] {
+    padding: 10px 14px;
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.6);
+    color: #2c1810;
+}
 .create-clan-form input[type="color"] { height: 40px; padding: 4px; cursor: pointer; }
 .create-clan-form input[type="file"] { padding: 8px; }
-.no-clan-msg { color: #666; margin-bottom: 12px; }
-.cabinet-top-nav { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; align-items: center; }
-.cabinet-top-nav .back-link { display: inline-flex; align-items: center; justify-content: center; color: #8b6fa8; text-decoration: none; padding: 10px 16px; background: #f5f0fa; border-radius: 10px; font-weight: bold; border: 2px solid #d4c5b0; transition: all 0.2s; min-height: 44px; }
-.cabinet-top-nav .back-link:hover { text-decoration: none; background: #e8e0f0; }
+.no-clan-msg { color: #b8a088; margin-bottom: 12px; }
+
 @media (max-width: 600px) {
     .cabinet-page { padding: 12px; }
     .cabinet-page h1 { font-size: 1.35rem; margin-bottom: 16px; }
@@ -160,9 +473,11 @@
 
 {% block content %}
 <div class="cabinet-page">
+<div class="cabinet-inner">
     <nav class="cabinet-top-nav">
         <a href="{{ url_for('index') }}" class="back-link">← На главную</a>
         <a href="{{ url_for('territory_battle_page') }}" class="back-link">Битва за территорию</a>
+        <a href="{{ url_for('logout') }}" class="back-link logout-link">Выйти из аккаунта</a>
     </nav>
     <h1>Личный кабинет</h1>
 
@@ -251,9 +566,9 @@
                 <div>
                     <span class="clan-name" id="clanNameDisplay">{{ clan_data.clan.name }}</span>
                     {% if user.id == clan_data.clan.owner_id %}
-                    <span style="font-size:0.85rem;color:#888;"> (владелец)</span>
+                    <span style="font-size:0.85rem;color:#b8a088;"> (владелец)</span>
                     {% endif %}
-                    <p style="margin:4px 0 0; font-size:0.9rem; color:#666;">Участников: {{ clan_data.members|length }}</p>
+                    <p style="margin:4px 0 0; font-size:0.9rem; color:#b8a088;">Участников: {{ clan_data.members|length }}</p>
                 </div>
             </div>
         </div>
@@ -320,7 +635,7 @@
                 <div class="territory-item">{{ t.display_name }} — сила {{ t.strength }}</div>
                 {% endfor %}
                 {% if not clan_data.territories %}
-                <p style="color:#888; margin:8px 0 0;">Нет контролируемых областей</p>
+                <p style="color:#b8a088; margin:8px 0 0;">Нет контролируемых областей</p>
                 {% endif %}
             </div>
         </div>
@@ -360,6 +675,7 @@
         </div>
         {% endif %}
     </div>
+</div>
 </div>
 {% endblock %}
 

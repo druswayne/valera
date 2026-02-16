@@ -1,4 +1,4 @@
-lhj{% extends "base.html" %}
+{% extends "base.html" %}
 
 {% block title %}Битва за территорию - Валера в пещере{% endblock %}
 
@@ -454,6 +454,80 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     pointer-events: none;
 }
 
+/* Кнопка «Описание» над названием области */
+.territory-map .region-info-btn {
+    cursor: pointer;
+    pointer-events: auto;
+}
+.territory-map .region-info-btn rect {
+    fill: rgba(244,228,188,0.95);
+    stroke: #5c4033;
+    stroke-width: 1.5;
+    transition: fill 0.2s;
+}
+.territory-map .region-info-btn:hover rect {
+    fill: #d4a84b;
+}
+.territory-map .region-info-btn .region-info-book {
+    font-size: 12px;
+    text-anchor: middle;
+    dominant-baseline: central;
+    pointer-events: none;
+}
+
+/* Попап с описанием области */
+.territory-description-popover-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+.territory-description-popover-overlay.show {
+    display: flex;
+}
+.territory-description-popover {
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    border: 2px solid #5c4033;
+    border-radius: 12px;
+    padding: 20px 24px;
+    max-width: 380px;
+    width: 90%;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(212,168,75,0.15);
+}
+.territory-description-popover h4 {
+    margin: 0 0 12px;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 1rem;
+    color: #d4a84b;
+    letter-spacing: 0.04em;
+}
+.territory-description-popover p {
+    margin: 0 0 16px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #e8dcc4;
+}
+.territory-description-popover-close {
+    display: block;
+    margin: 0 0 0 auto;
+    padding: 8px 20px;
+    background: linear-gradient(145deg, #5c4033 0%, #4a3520 100%);
+    border: 1px solid #8b6914;
+    border-radius: 6px;
+    color: #d4a84b;
+    font-weight: bold;
+    cursor: pointer;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 13px;
+}
+.territory-description-popover-close:hover {
+    background: linear-gradient(145deg, #6b5040 0%, #5c4033 100%);
+    color: #e8c86a;
+}
+
 /* Модальное окно задания — свиток/пергамент */
 .task-modal-overlay {
     position: fixed;
@@ -675,6 +749,60 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     margin: 2px 0;
 }
 
+.task-mixed-fraction-display { margin-bottom: 10px; }
+.task-add-sub-display .task-add-sub-op {
+    margin: 0 6px;
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #3d2914;
+    vertical-align: middle;
+}
+.task-mixed-fraction-display .task-text { display: inline; }
+/* Вертикальная дробь в блоке «Дробь: …» (числитель, черта, знаменатель) */
+.task-mixed-fraction-display .mixed-frac,
+.task-mixed-fraction-display .frac,
+.task-mixed-fraction-display .frac-int-only {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+}
+.task-mixed-fraction-display .frac-int { font-size: 1.1em; margin-right: 2px; }
+.task-mixed-fraction-display .frac {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 1em;
+}
+.task-mixed-fraction-display .frac-num,
+.task-mixed-fraction-display .frac-den { padding: 0 4px; line-height: 1.2; }
+.task-mixed-fraction-display .frac-line {
+    display: block;
+    width: 100%;
+    min-width: 1.2em;
+    height: 0;
+    border-top: 1.5px solid #3d2914;
+    margin: 1px 0;
+}
+.task-mixed-fraction-fields {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+.task-mixed-fraction-fields .answer-int-wrap input { width: 3em; text-align: center; }
+.task-mixed-fraction-fields .answer-int-wrap input.task-int-part-disabled {
+    background: #e8e0d4;
+    color: #6b5b4a;
+    cursor: not-allowed;
+}
+.task-mixed-fraction-fields .answer-frac-wrap input { width: 3em; text-align: center; padding: 4px 6px; }
+.task-mixed-fraction-fields .answer-frac-line {
+    width: 100%;
+    height: 0;
+    border-top: 2px solid #3d2914;
+    margin: 2px 0;
+}
+
 .task-modal-footer {
     padding: 16px 24px 24px;
     border-top: 1px solid rgba(92,64,51,0.4);
@@ -804,20 +932,84 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     color: #e8c0c0;
 }
 
+/* Модальное окно «Недостаточно энергии» */
+.energy-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1002;
+    padding: 20px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s, visibility 0.25s;
+}
+.energy-modal-overlay.open {
+    opacity: 1;
+    visibility: visible;
+}
+.energy-modal-box {
+    background: linear-gradient(180deg, #f4e4bc 0%, #e8d5a3 100%);
+    border-radius: 4px;
+    padding: 24px 28px;
+    max-width: 360px;
+    width: 100%;
+    box-shadow: 0 0 0 3px #5c4033, 0 12px 40px rgba(0,0,0,0.5);
+    border: 2px solid #3d2914;
+    color: #2c1810;
+}
+.energy-modal-box h3 {
+    margin: 0 0 12px;
+    font-family: 'Cinzel Decorative', 'Cinzel', Georgia, serif;
+    font-size: 1.2rem;
+    color: #3d2914;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.energy-modal-box p {
+    margin: 0 0 20px;
+    line-height: 1.5;
+    color: #2c1810;
+}
+.energy-modal-box .energy-modal-ok {
+    width: 100%;
+    padding: 12px 24px;
+    background: linear-gradient(145deg, #5c4033 0%, #4a3520 100%);
+    color: #d4a84b;
+    border: 2px solid #3d2914;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    font-family: 'Cinzel', Georgia, serif;
+    letter-spacing: 0.05em;
+    transition: transform 0.1s, box-shadow 0.2s;
+}
+.energy-modal-box .energy-modal-ok:hover {
+    transform: translateY(-2px);
+    color: #e8c86a;
+}
+
 @media (max-width: 600px) {
     .territory-page { padding: 12px; }
     .territory-page h1 { font-size: 1.4rem; letter-spacing: 0.04em; }
     .territory-top-nav {
+        flex-direction: column;
         margin-bottom: 12px;
         gap: 8px;
     }
     .territory-top-nav a {
+        width: 100%;
         padding: 12px 16px;
         min-height: 44px;
         display: flex;
         align-items: center;
         justify-content: center;
         font-size: 0.85rem;
+        box-sizing: border-box;
     }
     .territory-player-card {
         flex-direction: column;
@@ -845,6 +1037,23 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     .global-class-name { min-width: 70px; }
     .global-progress { padding: 10px 14px; }
     .global-progress-title { font-size: 0.8rem; }
+    .territory-confirm-wrap { padding: 0 12px; }
+    .territory-confirm-box { max-width: 100%; padding: 18px 20px; }
+    .territory-confirm-buttons {
+        flex-direction: column;
+        gap: 10px;
+    }
+    .territory-confirm-btn {
+        width: 100%;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .task-modal { margin: 16px; max-height: calc(100vh - 32px); }
+    .task-modal-footer .submit-task-btn { min-height: 44px; }
+    .energy-modal-box { margin: 16px; max-width: calc(100% - 32px); }
+    .energy-modal-box .energy-modal-ok { min-height: 44px; }
 }
 </style>
 {% endblock %}
@@ -852,7 +1061,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 {% block content %}
 <div class="territory-page">
     <nav class="territory-top-nav">
-        <a href="{{ url_for('index') }}">← Назад к рейтингу</a>
+        <a href="{{ url_for('territory_clans_top') }}">Топ кланов</a>
         {% if user_logged_in %}
         <a href="{{ url_for('cabinet') }}">Личный кабинет</a>
         {% else %}
@@ -877,14 +1086,14 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         <div class="territory-player-main">
             <p class="territory-player-name">{{ current_user.character_name or current_user.username }}</p>
             <div class="territory-player-level-row">
-                <span class="territory-player-level">Ур. {{ current_user.level or 1 }}</span>
-                <div class="territory-player-xp-wrap" title="Опыт: {{ current_user.xp_in_current_level }} / {{ current_user.xp_needed_for_next_level }}">
-                    <div class="territory-player-xp-fill" style="width: {{ ((current_user.xp_in_current_level / current_user.xp_needed_for_next_level * 100) if current_user.xp_needed_for_next_level else 100) | round(1) }}%;"></div>
+                <span id="playerCardLevel" class="territory-player-level">Ур. {{ current_user.level or 1 }}</span>
+                <div id="playerCardXpWrap" class="territory-player-xp-wrap" title="Опыт: {{ current_user.xp_in_current_level }} / {{ current_user.xp_needed_for_next_level }}">
+                    <div id="playerCardXpFill" class="territory-player-xp-fill" style="width: {{ ((current_user.xp_in_current_level / current_user.xp_needed_for_next_level * 100) if current_user.xp_needed_for_next_level else 100) | round(1) }}%;"></div>
                 </div>
             </div>
             <div class="territory-player-stats">
-                <span><strong>Урон:</strong> {{ current_user.damage }}</span>
-                <span><strong>Защита:</strong> {{ current_user.defense }}</span>
+                <span><strong>Урон:</strong> <span id="playerCardDamage">{{ current_user.damage }}</span></span>
+                <span><strong>Защита:</strong> <span id="playerCardDefense">{{ current_user.defense }}</span></span>
             </div>
         </div>
         <div class="territory-player-clan">
@@ -1036,6 +1245,21 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                     </div>
                 </div>
             </div>
+            <div class="task-answer-wrap task-mixed-fraction-wrap" id="taskAnswerWrapMixedFraction" style="display: none;">
+                <label id="taskMixedFractionLabel">Ваш ответ (смешанное число):</label>
+                <div class="task-mixed-fraction-display" id="taskMixedFracDisplay"></div>
+                <div class="task-add-sub-display task-mixed-fraction-display" id="taskAddSubFracDisplay" style="display: none;"></div>
+                <div class="task-answer-fraction-visual task-mixed-fraction-fields">
+                    <div class="answer-int-wrap">
+                        <input type="number" id="taskAnswerIntPart" min="0" title="Целая часть">
+                    </div>
+                    <div class="answer-frac-wrap">
+                        <input type="number" id="taskAnswerNumMixed" min="0" title="Числитель">
+                        <span class="answer-frac-line"></span>
+                        <input type="number" id="taskAnswerDenMixed" min="1" title="Знаменатель">
+                    </div>
+                </div>
+            </div>
         </div>
         <div class="task-modal-footer">
             <button type="button" class="submit-task-btn" id="submitTaskBtn">Ответить</button>
@@ -1043,7 +1267,24 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     </div>
 </div>
 
+<!-- Модальное окно «Недостаточно энергии» -->
+<div class="energy-modal-overlay" id="energyModal">
+    <div class="energy-modal-box">
+        <h3>⚡ Недостаточно энергии</h3>
+        <p id="energyModalText">Энергия восстанавливается каждые 30 минут (+20% от макс.). Выполняйте больше заданий, чтобы увеличить максимум.</p>
+        <button type="button" class="energy-modal-ok" id="energyModalOk">Понятно</button>
+    </div>
+</div>
+
 <div class="task-result-toast" id="taskResultToast"></div>
+
+<div class="territory-description-popover-overlay" id="territoryDescriptionPopover">
+    <div class="territory-description-popover">
+        <h4 id="territoryDescriptionPopoverTitle"></h4>
+        <p id="territoryDescriptionPopoverText"></p>
+        <button type="button" class="territory-description-popover-close" id="territoryDescriptionPopoverClose">Закрыть</button>
+    </div>
+</div>
 
 <script>
 (function() {
@@ -1152,6 +1393,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
             nameText.setAttribute('y', cy - 16);
             nameText.setAttribute('text-anchor', 'middle');
             nameText.textContent = getRegionDisplayName(index);
+            var regionDesc = (configByIndex[index] && configByIndex[index].description) ? configByIndex[index].description : '';
             overlay.appendChild(nameText);
 
             var overlayLayer = document.getElementById('regionOverlaysLayer');
@@ -1168,6 +1410,43 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
             labelBg.setAttribute('rx', 4);
             labelBg.setAttribute('ry', 4);
             overlay.insertBefore(labelBg, nameText);
+
+            if (regionDesc) {
+                var infoBtn = document.createElementNS(svg.namespaceURI, 'g');
+                infoBtn.classList.add('region-info-btn');
+                infoBtn.setAttribute('data-region-index', String(index));
+                infoBtn.style.cursor = 'pointer';
+                infoBtn.style.pointerEvents = 'auto';
+                var btnY = textBBox.y - pad - 8;
+                var btnSize = 16;
+                var infoRect = document.createElementNS(svg.namespaceURI, 'rect');
+                infoRect.setAttribute('x', cx - btnSize / 2);
+                infoRect.setAttribute('y', btnY - btnSize / 2);
+                infoRect.setAttribute('width', btnSize);
+                infoRect.setAttribute('height', btnSize);
+                infoRect.setAttribute('rx', 2);
+                infoBtn.appendChild(infoRect);
+                var bookIcon = document.createElementNS(svg.namespaceURI, 'text');
+                bookIcon.setAttribute('class', 'region-info-book');
+                bookIcon.setAttribute('x', cx);
+                bookIcon.setAttribute('y', btnY);
+                bookIcon.setAttribute('text-anchor', 'middle');
+                bookIcon.setAttribute('dominant-baseline', 'central');
+                bookIcon.textContent = '\uD83D\uDCD6';
+                infoBtn.appendChild(bookIcon);
+                overlay.insertBefore(infoBtn, labelBg);
+                infoBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    var idx = parseInt(this.getAttribute('data-region-index'), 10);
+                    var cfg = configByIndex[idx];
+                    var titleEl = document.getElementById('territoryDescriptionPopoverTitle');
+                    var textEl = document.getElementById('territoryDescriptionPopoverText');
+                    var popover = document.getElementById('territoryDescriptionPopover');
+                    if (titleEl) titleEl.textContent = cfg && cfg.display_name ? cfg.display_name : ('Зона ' + (idx + 1));
+                    if (textEl) textEl.textContent = (cfg && cfg.description) ? cfg.description : '';
+                    if (popover) popover.classList.add('show');
+                });
+            }
 
             if (!isLocked && strengthTextEl) {
                 var strengthPad = 3;
@@ -1188,6 +1467,14 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     }
 
     initRegionOverlays();
+
+    (function initDescriptionPopover() {
+        var overlay = document.getElementById('territoryDescriptionPopover');
+        var closeBtn = document.getElementById('territoryDescriptionPopoverClose');
+        function hide() { if (overlay) overlay.classList.remove('show'); }
+        if (closeBtn) closeBtn.addEventListener('click', hide);
+        if (overlay) overlay.addEventListener('click', function(e) { if (e.target === overlay) hide(); });
+    })();
 
     (function initHoverLabelLayer() {
         const layer = document.getElementById('hoverLabelLayer');
@@ -1448,6 +1735,15 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 
         if (strengthText) {
             strengthText.textContent = Math.round(r.strength);
+            var strengthBgEl = overlay ? overlay.querySelector('.region-strength-value-bg') : null;
+            if (strengthBgEl) {
+                var strengthPad = 3;
+                var strengthBBox = strengthText.getBBox();
+                strengthBgEl.setAttribute('x', strengthBBox.x - strengthPad);
+                strengthBgEl.setAttribute('y', strengthBBox.y - strengthPad);
+                strengthBgEl.setAttribute('width', Math.max(1, strengthBBox.width) + strengthPad * 2);
+                strengthBgEl.setAttribute('height', Math.max(1, strengthBBox.height) + strengthPad * 2);
+            }
         }
     }
 
@@ -1516,6 +1812,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         document.getElementById('taskAnswerWrapDefault').style.display = 'block';
         document.getElementById('taskAnswerWrapFraction').style.display = 'none';
         document.getElementById('taskAnswerWrapCommonDenom').style.display = 'none';
+        document.getElementById('taskAnswerWrapMixedFraction').style.display = 'none';
         window._currentTask = null;
         document.getElementById('taskModal').classList.add('open');
         fetch('{{ url_for("api_territory_task") }}?region_index=' + encodeURIComponent(String(regionId)))
@@ -1526,7 +1823,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                     window._currentTask = t;
                     document.getElementById('taskModalTitle').textContent = t.title;
                     var textEl = document.getElementById('taskModalText');
-                    if ((t.answer_type === 'fraction' || t.answer_type === 'common_denominator') && t.text && t.text.indexOf('<span') !== -1) {
+                    if ((t.answer_type === 'fraction' || t.answer_type === 'common_denominator' || t.title === 'Правильные/неправильные дроби') && t.text && t.text.indexOf('<span') !== -1) {
                         textEl.innerHTML = t.text;
                     } else {
                         textEl.textContent = t.text;
@@ -1540,9 +1837,12 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                     }
                     var isFraction = t.answer_type === 'fraction';
                     var isCommonDenom = t.answer_type === 'common_denominator';
-                    document.getElementById('taskAnswerWrapDefault').style.display = (isFraction || isCommonDenom) ? 'none' : 'block';
+                    var isMixedFraction = t.answer_type === 'mixed_fraction' || t.answer_type === 'add_sub_fractions';
+                    var isSpecial = isFraction || isCommonDenom || isMixedFraction;
+                    document.getElementById('taskAnswerWrapDefault').style.display = isSpecial ? 'none' : 'block';
                     document.getElementById('taskAnswerWrapFraction').style.display = isFraction ? 'block' : 'none';
                     document.getElementById('taskAnswerWrapCommonDenom').style.display = isCommonDenom ? 'block' : 'none';
+                    document.getElementById('taskAnswerWrapMixedFraction').style.display = isMixedFraction ? 'block' : 'none';
                     document.getElementById('taskAnswerInput').value = '';
                     document.getElementById('taskAnswerNum').value = '';
                     document.getElementById('taskAnswerDen').value = '';
@@ -1550,14 +1850,56 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                     document.getElementById('taskAnswerDenCommon').value = '';
                     document.getElementById('taskAnswerNum2').value = '';
                     document.getElementById('taskAnswerDenCommon2').value = '';
+                    document.getElementById('taskAnswerIntPart').value = '';
+                    document.getElementById('taskAnswerNumMixed').value = '';
+                    document.getElementById('taskAnswerDenMixed').value = '';
                     if (isCommonDenom) {
                         document.getElementById('taskCommonDenomFrac1').innerHTML = t.display_frac1 || '';
                         document.getElementById('taskCommonDenomFrac2').innerHTML = t.display_frac2 || '';
+                    }
+                    if (isMixedFraction) {
+                        var mixedDisp = document.getElementById('taskMixedFracDisplay');
+                        var addSubDisp = document.getElementById('taskAddSubFracDisplay');
+                        var mixedLabel = document.getElementById('taskMixedFractionLabel');
+                        if (t.answer_type === 'add_sub_fractions') {
+                            addSubDisp.style.display = '';
+                            addSubDisp.innerHTML = (t.display_frac1 || '') + ' <span class="task-add-sub-op">' + (t.display_operator || '+') + '</span> ' + (t.display_frac2 || '');
+                            mixedDisp.style.display = 'none';
+                            mixedDisp.innerHTML = '';
+                            if (mixedLabel) mixedLabel.textContent = 'Ваш ответ (несократимая дробь, целая часть если есть):';
+                            var intPartInput = document.getElementById('taskAnswerIntPart');
+                            if (t.int_part_zero) {
+                                intPartInput.disabled = true;
+                                intPartInput.value = '0';
+                                intPartInput.setAttribute('readonly', 'readonly');
+                                intPartInput.classList.add('task-int-part-disabled');
+                            } else {
+                                intPartInput.disabled = false;
+                                intPartInput.removeAttribute('readonly');
+                                intPartInput.classList.remove('task-int-part-disabled');
+                            }
+                        } else {
+                            addSubDisp.style.display = 'none';
+                            addSubDisp.innerHTML = '';
+                            mixedDisp.style.display = '';
+                            mixedDisp.innerHTML = t.display_frac ? ('Дробь: ' + t.display_frac) : '';
+                            if (mixedLabel) mixedLabel.textContent = 'Ваш ответ (смешанное число):';
+                            var intPartInput = document.getElementById('taskAnswerIntPart');
+                            intPartInput.disabled = false;
+                            intPartInput.removeAttribute('readonly');
+                            intPartInput.classList.remove('task-int-part-disabled');
+                        }
                     }
                     if (isFraction) {
                         document.getElementById('taskAnswerNum').focus();
                     } else if (isCommonDenom) {
                         document.getElementById('taskAnswerNum1').focus();
+                    } else if (isMixedFraction) {
+                        if (t.answer_type === 'add_sub_fractions' && t.int_part_zero) {
+                            document.getElementById('taskAnswerNumMixed').focus();
+                        } else {
+                            document.getElementById('taskAnswerIntPart').focus();
+                        }
                     } else {
                         document.getElementById('taskAnswerInput').focus();
                     }
@@ -1566,10 +1908,12 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                         if (ed) ed.textContent = data.current_energy;
                     }
                 } else {
-                    document.getElementById('taskModalTitle').textContent = 'Ошибка';
-                    document.getElementById('taskModalText').textContent = (data.error || 'Не удалось загрузить задачу.');
-                    if (data.error && data.current_energy === undefined && data.error.indexOf('энерг') !== -1) {
+                    if (data.error && (data.current_energy === undefined) && data.error.indexOf('энерг') !== -1) {
                         closeTaskModal();
+                        showEnergyModal(data.error);
+                    } else {
+                        document.getElementById('taskModalTitle').textContent = 'Ошибка';
+                        document.getElementById('taskModalText').textContent = (data.error || 'Не удалось загрузить задачу.');
                     }
                 }
             })
@@ -1585,6 +1929,14 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         window._currentTask = null;
     }
 
+    function showEnergyModal(message) {
+        document.getElementById('energyModalText').textContent = message || 'Энергия восстанавливается каждые 30 минут (+20% от макс.).';
+        document.getElementById('energyModal').classList.add('open');
+    }
+    function closeEnergyModal() {
+        document.getElementById('energyModal').classList.remove('open');
+    }
+
     function showToast(message, isCorrect) {
         const el = document.getElementById('taskResultToast');
         el.textContent = message;
@@ -1592,6 +1944,22 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         setTimeout(function() {
             el.classList.remove('show');
         }, 2500);
+    }
+
+    function updatePlayerCard(data) {
+        if (!data) return;
+        var levelEl = document.getElementById('playerCardLevel');
+        if (levelEl && data.player_level !== undefined) levelEl.textContent = 'Ур. ' + data.player_level;
+        var xpWrap = document.getElementById('playerCardXpWrap');
+        if (xpWrap && data.player_xp_in_level !== undefined && data.player_xp_needed !== undefined) {
+            xpWrap.title = 'Опыт: ' + data.player_xp_in_level + ' / ' + data.player_xp_needed;
+        }
+        var xpFill = document.getElementById('playerCardXpFill');
+        if (xpFill && data.player_xp_pct !== undefined) xpFill.style.width = data.player_xp_pct + '%';
+        var dmgEl = document.getElementById('playerCardDamage');
+        if (dmgEl && data.player_damage !== undefined) dmgEl.textContent = data.player_damage;
+        var defEl = document.getElementById('playerCardDefense');
+        if (defEl && data.player_defense !== undefined) defEl.textContent = data.player_defense;
     }
 
     function submitTaskAnswer(regionId, taskId, answer) {
@@ -1621,6 +1989,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                 if (data.xp_gained) msg += ' +' + data.xp_gained + ' опыта';
                 if (data.leveled_up) msg += ' Уровень ' + data.level + '!';
                 showToast(msg, true);
+                updatePlayerCard(data);
             } else {
                 showToast('Неверный ответ. Попробуйте ещё раз.', false);
             }
@@ -1681,6 +2050,12 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
             if (d1 === '' || d1 === '0') d1 = '1';
             if (d2 === '' || d2 === '0') d2 = '1';
             answer = n1 + '|' + d1 + '|' + n2 + '|' + d2;
+        } else if (task.answer_type === 'mixed_fraction' || task.answer_type === 'add_sub_fractions') {
+            var iPart = document.getElementById('taskAnswerIntPart').value.trim();
+            var nMix = document.getElementById('taskAnswerNumMixed').value.trim();
+            var dMix = document.getElementById('taskAnswerDenMixed').value.trim();
+            if (dMix === '' || dMix === '0') dMix = '1';
+            answer = iPart + '|' + nMix + '|' + dMix;
         } else {
             answer = document.getElementById('taskAnswerInput').value;
         }
@@ -1690,6 +2065,11 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 
     document.getElementById('taskModal').addEventListener('click', function(e) {
         if (e.target === this) closeTaskModal();
+    });
+
+    document.getElementById('energyModalOk').addEventListener('click', closeEnergyModal);
+    document.getElementById('energyModal').addEventListener('click', function(e) {
+        if (e.target === this) closeEnergyModal();
     });
 
     function onTaskAnswerKeydown(e) {
@@ -1702,6 +2082,9 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     document.getElementById('taskAnswerDenCommon').addEventListener('keydown', onTaskAnswerKeydown);
     document.getElementById('taskAnswerNum2').addEventListener('keydown', onTaskAnswerKeydown);
     document.getElementById('taskAnswerDenCommon2').addEventListener('keydown', onTaskAnswerKeydown);
+    document.getElementById('taskAnswerIntPart').addEventListener('keydown', onTaskAnswerKeydown);
+    document.getElementById('taskAnswerNumMixed').addEventListener('keydown', onTaskAnswerKeydown);
+    document.getElementById('taskAnswerDenMixed').addEventListener('keydown', onTaskAnswerKeydown);
 
     renderGlobalProgress();
 

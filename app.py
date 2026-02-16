@@ -8,7 +8,7 @@ from functools import wraps
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.executors.pool import ThreadPoolExecutor
-from sqlalchemy import case, cast, Float, Index, and_
+from sqlalchemy import case, cast, Float, Index, and_, func
 from sqlalchemy.exc import IntegrityError
 import random
 import os
@@ -21,6 +21,15 @@ try:
         generate_equation_task,
         generate_fraction_property_task,
         generate_common_denominator_task,
+        generate_proper_improper_fraction_task,
+        generate_add_sub_fractions_task,
+        generate_mul_div_fractions_task,
+        generate_territory_gcd_lcm_task,
+        generate_territory_motion_task,
+        generate_territory_fraction_word_task,
+        generate_territory_two_unknowns_task,
+        generate_mixed_numbers_task,
+        generate_joint_work_task,
     )
 except ImportError:
     generate_expression_task = None
@@ -28,6 +37,15 @@ except ImportError:
     generate_equation_task = None
     generate_fraction_property_task = None
     generate_common_denominator_task = None
+    generate_proper_improper_fraction_task = None
+    generate_add_sub_fractions_task = None
+    generate_mul_div_fractions_task = None
+    generate_territory_gcd_lcm_task = None
+    generate_territory_motion_task = None
+    generate_territory_fraction_word_task = None
+    generate_territory_two_unknowns_task = None
+    generate_mixed_numbers_task = None
+    generate_joint_work_task = None
 import re
 import shutil
 import tempfile
@@ -164,7 +182,7 @@ USER_BASE_DAMAGE = 5
 USER_BASE_DEFENSE = 5
 USER_BASE_ENERGY = 5
 INITIAL_SKILL_POINTS = 10
-SKILL_POINTS_PER_LEVEL = 1
+SKILL_POINTS_PER_LEVEL = 3
 
 def xp_required_for_level(level):
     """Суммарный опыт для достижения уровня level (для уровня 1 = 0, уровень 2 = 100, 3 = 300, 4 = 600, ...)."""
@@ -208,6 +226,13 @@ class TerritoryTask(db.Model):
             d['answer_type'] = 'fraction'
         if self.title == 'Общий знаменатель' and self.correct_answer and self.correct_answer.count('|') >= 3:
             d['answer_type'] = 'common_denominator'
+        if self.title == 'Правильные/неправильные дроби' and self.correct_answer and '|' in self.correct_answer:
+            d['answer_type'] = 'mixed_fraction' if self.correct_answer.count('|') == 2 else 'fraction'
+        if self.title in ('Сложение и вычитание дробей', 'Умножение и деление дробей', 'Смешанные числа'):
+            d['answer_type'] = 'add_sub_fractions'
+            if self.correct_answer and '|' in self.correct_answer:
+                parts = self.correct_answer.split('|')
+                d['int_part_zero'] = (len(parts) >= 1 and parts[0].strip() == '0')
         return d
 
 
@@ -698,12 +723,13 @@ class TaskGenerator(db.Model):
     name = db.Column(db.String(120), nullable=False)
 
 
-# Битва за территорию: настройки областей (название, заблокирована ли, генератор заданий)
+# Битва за территорию: настройки областей (название, описание, заблокирована ли, генератор заданий)
 class TerritoryRegionConfig(db.Model):
     __tablename__ = 'territory_region_config'
     id = db.Column(db.Integer, primary_key=True)
     region_index = db.Column(db.Integer, unique=True, nullable=False)
     display_name = db.Column(db.String(120), nullable=False)
+    description = db.Column(db.Text, nullable=True)  # подсказка при наведении на название области
     is_locked = db.Column(db.Boolean, default=False, nullable=False)
     task_generator_id = db.Column(db.Integer, db.ForeignKey('task_generator.id'), nullable=True)
     task_generator = db.relationship('TaskGenerator', foreign_keys=[task_generator_id], lazy=True)
@@ -1216,10 +1242,13 @@ with app.app_context():
             print("Создана таблица task_generator")
         if 'territory_region_config' in tables:
             columns = [col['name'] for col in inspector.get_columns('territory_region_config')]
-            if 'task_generator_id' not in columns:
-                with db.engine.begin() as conn:
+            with db.engine.begin() as conn:
+                if 'task_generator_id' not in columns:
                     conn.execute(text('ALTER TABLE territory_region_config ADD COLUMN task_generator_id INTEGER'))
                     print("Добавлена колонка task_generator_id в territory_region_config")
+                if 'description' not in columns:
+                    conn.execute(text('ALTER TABLE territory_region_config ADD COLUMN description TEXT'))
+                    print("Добавлена колонка description в territory_region_config")
         
         if 'class' in tables:
             columns = [col['name'] for col in inspector.get_columns('class')]
@@ -1439,7 +1468,7 @@ def login():
 def logout():
     logout_user()
     flash('Вы успешно вышли из системы', 'info')
-    return redirect(url_for('index'))
+    return redirect(url_for('territory_battle_page'))
 
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -1497,6 +1526,8 @@ def cabinet():
         return redirect(url_for('index'))
     """Личный кабинет пользователя"""
     user = current_user
+    user.ensure_energy_refill()
+    db.session.commit()
     clan = user.clan_obj
     pending_request = ClanJoinRequest.query.filter_by(
         user_id=user.id, status='pending'
@@ -2609,6 +2640,8 @@ def admin_territory_region_save(region_index):
         cfg = TerritoryRegionConfig(region_index=region_index, display_name=data.get('display_name', ''), is_locked=False)
         db.session.add(cfg)
     cfg.display_name = data.get('display_name', cfg.display_name)
+    if 'description' in data:
+        cfg.description = (data.get('description') or '').strip() or None
     cfg.is_locked = bool(data.get('is_locked', cfg.is_locked))
     if 'task_generator_id' in data:
         gen_id = data.get('task_generator_id')
@@ -3145,7 +3178,7 @@ def territory_battle_page():
             'territory_heraldry_url': url_for('static', filename=_avatar_static_filename(c.flag_filename)) if c.flag_filename else None
         })
     regions_config = TerritoryRegionConfig.query.order_by(TerritoryRegionConfig.region_index).all()
-    regions_json = [{'region_index': r.region_index, 'display_name': r.display_name, 'is_locked': r.is_locked} for r in regions_config]
+    regions_json = [{'region_index': r.region_index, 'display_name': r.display_name, 'description': r.description or '', 'is_locked': r.is_locked} for r in regions_config]
     states = TerritoryRegionState.query.order_by(TerritoryRegionState.region_index).all()
     state_by_index = {s.region_index: {'owner_clan_id': s.owner_clan_id, 'strength': s.strength} for s in states}
     current_energy = None
@@ -3154,7 +3187,7 @@ def territory_battle_page():
     clan_flag_url = None
     if user_logged_in and not is_admin and current_user.is_authenticated:
         current_user.ensure_energy_refill()
-        current_energy = current_user.current_energy_value
+        current_energy = _user_current_energy_cached(current_user)
         energy_max = current_user.energy
         avatar_url = url_for('static', filename=_avatar_static_filename(current_user.avatar_filename)) if getattr(current_user, 'avatar_filename', None) else None
         if getattr(current_user, 'clan_obj', None) and getattr(current_user.clan_obj, 'flag_filename', None):
@@ -3177,6 +3210,69 @@ def territory_battle_page():
     )
 
 
+@app.route('/territory-battle/clans-top')
+def territory_clans_top():
+    """Страница топа кланов по владению областями с раскрываемым списком топ-10 участников."""
+    # Подсчёт областей по кланам (1 запрос)
+    territory_counts = db.session.query(
+        TerritoryRegionState.owner_clan_id,
+        func.count(TerritoryRegionState.region_index).label('territory_count')
+    ).filter(TerritoryRegionState.owner_clan_id.isnot(None)).group_by(
+        TerritoryRegionState.owner_clan_id
+    ).order_by(func.count(TerritoryRegionState.region_index).desc()).all()
+
+    clan_ids = [row[0] for row in territory_counts]
+    if not clan_ids:
+        return render_template('territory_clans_top.html', clans_data=[])
+
+    # Все кланы одним запросом
+    clans = Clan.query.filter(Clan.id.in_(clan_ids)).all()
+    clan_by_id = {c.id: c for c in clans}
+
+    # Топ участников по (урон + очки защиты) для всех кланов одним запросом; в Python берём по 10 на клан
+    score_expr = func.coalesce(UserTerritoryStats.total_damage_dealt, 0) + func.coalesce(UserTerritoryStats.total_influence_points, 0)
+    all_members = db.session.query(User, UserTerritoryStats).outerjoin(
+        UserTerritoryStats, User.id == UserTerritoryStats.user_id
+    ).filter(User.clan_id.in_(clan_ids)).order_by(User.clan_id, score_expr.desc()).all()
+
+    # Группируем: для каждого клана — не более 10 участников (уже отсортированы по score)
+    top_per_clan = {}
+    for u, stats in all_members:
+        cid = u.clan_id
+        if cid not in top_per_clan:
+            top_per_clan[cid] = []
+        if len(top_per_clan[cid]) < 10:
+            top_per_clan[cid].append((u, stats))
+
+    clans_data = []
+    for clan_id, territory_count in territory_counts:
+        clan = clan_by_id.get(clan_id)
+        if not clan:
+            continue
+        flag_url = url_for('static', filename=_avatar_static_filename(clan.flag_filename)) if clan.flag_filename else None
+        members_data = []
+        for u, stats in top_per_clan.get(clan_id, []):
+            avatar_url = url_for('static', filename=_avatar_static_filename(u.avatar_filename)) if getattr(u, 'avatar_filename', None) else None
+            dmg = (stats.total_damage_dealt or 0) if stats else 0
+            inf = (stats.total_influence_points or 0) if stats else 0
+            members_data.append({
+                'id': u.id,
+                'character_name': u.character_name or u.username,
+                'level': u.level or 1,
+                'avatar_url': avatar_url,
+                'total_damage_dealt': dmg,
+                'total_influence_points': inf,
+            })
+        clans_data.append({
+            'id': clan.id,
+            'name': clan.name,
+            'flag_url': flag_url,
+            'territory_count': territory_count,
+            'members': members_data,
+        })
+    return render_template('territory_clans_top.html', clans_data=clans_data)
+
+
 def _normalize_answer(s):
     return str(s).strip().lower().replace('\s+', ' ') if s else ''
 
@@ -3194,9 +3290,23 @@ def _territory_difficulty_from_level(level: int) -> int:
 TERRITORY_GENERATOR_BY_NAME = {
     'Вычисления': lambda d: generate_territory_computations(difficulty=d) if generate_territory_computations else None,
     'Уравнения': lambda d: generate_equation_task(difficulty=d) if generate_equation_task else None,
+    'НОД и НОК': lambda d: generate_territory_gcd_lcm_task(difficulty=d) if generate_territory_gcd_lcm_task else None,
     'Основное свойство дроби': lambda d: generate_fraction_property_task(difficulty=d) if generate_fraction_property_task else None,
     'Общий знаменатель': lambda d: generate_common_denominator_task(difficulty=d) if generate_common_denominator_task else None,
+    'Правильные/неправильные дроби': lambda d: generate_proper_improper_fraction_task(difficulty=d) if generate_proper_improper_fraction_task else None,
+    'Сложение и вычитание дробей': lambda d: generate_add_sub_fractions_task(difficulty=d) if generate_add_sub_fractions_task else None,
+    'Умножение и деление дробей': lambda d: generate_mul_div_fractions_task(difficulty=d) if generate_mul_div_fractions_task else None,
+    'Задачи на движение': lambda d: generate_territory_motion_task(difficulty=d) if generate_territory_motion_task else None,
+    'Задачи на дроби': lambda d: generate_territory_fraction_word_task(difficulty=d) if generate_territory_fraction_word_task else None,
+    'сумма/разность и части': lambda d: generate_territory_two_unknowns_task(difficulty=d) if generate_territory_two_unknowns_task else None,
+    'Смешанные числа': lambda d: generate_mixed_numbers_task(difficulty=d) if generate_mixed_numbers_task else None,
+    'Совместная работа': lambda d: generate_joint_work_task(difficulty=d) if generate_joint_work_task else None,
 }
+
+
+def _user_current_energy_cached(user):
+    """Текущая энергия пользователя без повторного вызова ensure_energy_refill (вызывать после одного refill)."""
+    return max(0, user.current_energy if user.current_energy is not None else user.energy)
 
 
 @app.route('/api/territory-battle/task')
@@ -3210,10 +3320,12 @@ def api_territory_task():
     if not current_user.clan_id:
         return jsonify({'success': False, 'error': 'Для участия нужен клан'}), 400
     current_user.ensure_energy_refill()
-    if current_user.current_energy_value < 1:
+    energy_now = _user_current_energy_cached(current_user)
+    if energy_now < 1:
         return jsonify({'success': False, 'error': 'Недостаточно энергии. Восстанавливается каждые 30 мин (+20% от макс.).'}), 400
-    current_user.current_energy = (current_user.current_energy_value or current_user.energy) - 1
+    current_user.current_energy = energy_now - 1
     db.session.commit()
+    energy_after = energy_now - 1
 
     region_index = request.args.get('region_index', type=int)
     difficulty = _territory_difficulty_from_level(current_user.level or 1)
@@ -3237,16 +3349,21 @@ def api_territory_task():
                             )
                             db.session.add(task)
                             db.session.commit()
-                            current_user.ensure_energy_refill()
                             task_dict = task.to_dict_public()
                             if gen_task.get('display_frac1'):
                                 task_dict['display_frac1'] = gen_task['display_frac1']
                             if gen_task.get('display_frac2'):
                                 task_dict['display_frac2'] = gen_task['display_frac2']
+                            if gen_task.get('display_frac'):
+                                task_dict['display_frac'] = gen_task['display_frac']
+                            if gen_task.get('display_operator') is not None:
+                                task_dict['display_operator'] = gen_task['display_operator']
+                            if 'int_part_zero' in gen_task:
+                                task_dict['int_part_zero'] = gen_task['int_part_zero']
                             return jsonify({
                                 'success': True,
                                 'task': task_dict,
-                                'current_energy': current_user.current_energy_value
+                                'current_energy': energy_after
                             })
                     except Exception as e:
                         logger.exception('Ошибка генерации задачи для области %s (генератор %s): %s',
@@ -3255,11 +3372,10 @@ def api_territory_task():
     task = TerritoryTask.query.order_by(db.func.random()).first()
     if not task:
         return jsonify({'success': False, 'error': 'Нет доступных задач'}), 404
-    current_user.ensure_energy_refill()
     return jsonify({
         'success': True,
         'task': task.to_dict_public(),
-        'current_energy': current_user.current_energy_value
+        'current_energy': energy_after
     })
 
 
@@ -3280,6 +3396,9 @@ def api_territory_apply_action():
     region_index = int(region_index)
     if not current_user.clan_id:
         return jsonify({'success': False, 'error': 'Для участия в битве нужен клан'}), 400
+    current_user.ensure_energy_refill()
+    current_energy = _user_current_energy_cached(current_user)
+    stats = current_user.get_territory_stats()
     task = TerritoryTask.query.get(task_id)
     if not task:
         return jsonify({'success': False, 'error': 'Задача не найдена'}), 404
@@ -3332,6 +3451,55 @@ def api_territory_apply_action():
                 correct = False
         except Exception:
             correct = False
+    elif task.title in ('Сложение и вычитание дробей', 'Умножение и деление дробей', 'Смешанные числа') and task.correct_answer and task.correct_answer.count('|') >= 2:
+        try:
+            correct_parts = [p.strip() for p in task.correct_answer.split('|')]
+            user_parts = [p.strip() for p in (answer or '').split('|')]
+            if len(correct_parts) >= 3 and len(user_parts) >= 3:
+                try:
+                    correct = (
+                        int(user_parts[0] or 0) == int(correct_parts[0] or 0)
+                        and int(user_parts[1] or 0) == int(correct_parts[1] or 0)
+                        and int(user_parts[2] or 0) == int(correct_parts[2] or 0)
+                    )
+                except (ValueError, TypeError, IndexError):
+                    correct = False
+            else:
+                correct = False
+        except Exception:
+            correct = False
+    elif task.title == 'Правильные/неправильные дроби' and task.correct_answer and '|' in task.correct_answer:
+        try:
+            correct_parts = [p.strip() for p in task.correct_answer.split('|')]
+            user_parts = [p.strip() for p in (answer or '').split('|')]
+            if len(correct_parts) == 3:
+                try:
+                    correct = (
+                        int(user_parts[0] or 0) == int(correct_parts[0] or 0)
+                        and int(user_parts[1] or 0) == int(correct_parts[1] or 0)
+                        and int(user_parts[2] or 0) == int(correct_parts[2] or 0)
+                    )
+                except (ValueError, TypeError, IndexError):
+                    correct = False
+            elif len(correct_parts) == 2:
+                if len(user_parts) >= 3:
+                    user_num, user_den = user_parts[1], user_parts[2]
+                elif len(user_parts) == 2:
+                    user_num, user_den = user_parts[0], user_parts[1]
+                else:
+                    user_num, user_den = '', ''
+                try:
+                    correct = (
+                        int(user_num or 0) == int(correct_parts[0] or 0)
+                        and int(user_den or 0) == int(correct_parts[1] or 0)
+                        and int(user_den or 0) > 0
+                    )
+                except (ValueError, TypeError):
+                    correct = False
+            else:
+                correct = False
+        except Exception:
+            correct = False
     else:
         correct = _normalize_answer(answer) == _normalize_answer(task.correct_answer)
     clan_id = current_user.clan_id
@@ -3350,11 +3518,15 @@ def api_territory_apply_action():
         db.session.commit()
         return jsonify({
             'success': True, 'correct': False,
-            'owner_clan_id': state.owner_clan_id, 'strength': state.strength
+            'owner_clan_id': state.owner_clan_id, 'strength': state.strength,
+            'current_energy': current_energy
         })
     # Начисляем опыт
     new_level, leveled_up = current_user.add_experience(task.xp_reward)
-    stats = current_user.get_territory_stats()
+    if leveled_up:
+        # При достижении нового уровня энергия восстанавливается до максимума
+        current_user.current_energy = current_user.energy
+        current_energy = current_user.energy
     if state.owner_clan_id is None:
         state.owner_clan_id = clan_id
         state.strength = min(TERRITORY_MAX_STRENGTH, state.strength + power)
@@ -3370,12 +3542,19 @@ def api_territory_apply_action():
             state.strength = power
             stats.total_influence_points += power
     db.session.commit()
-    current_user.ensure_energy_refill()
+    xp_needed = current_user.xp_needed_for_next_level
+    xp_pct = round((current_user.xp_in_current_level / xp_needed * 100), 1) if xp_needed else 100
     return jsonify({
         'success': True, 'correct': True,
         'owner_clan_id': state.owner_clan_id, 'strength': state.strength,
         'xp_gained': task.xp_reward, 'level': new_level, 'leveled_up': leveled_up,
-        'current_energy': current_user.current_energy_value
+        'current_energy': current_energy,
+        'player_level': current_user.level,
+        'player_xp_in_level': current_user.xp_in_current_level,
+        'player_xp_needed': xp_needed,
+        'player_xp_pct': xp_pct,
+        'player_damage': current_user.damage,
+        'player_defense': current_user.defense
     })
 
 
