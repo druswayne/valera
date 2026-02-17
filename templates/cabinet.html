@@ -777,7 +777,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 
         {% if user.id == clan_data.clan.owner_id and clan_data.pending_requests %}
         <!-- Заявки на вступление -->
-        <div class="clan-block">
+        <div class="clan-block" id="clan-join-requests">
             <h3>Заявки на вступление</h3>
             <div id="pendingList" class="pending-list open">
                 {% for r in clan_data.pending_requests %}
@@ -1419,6 +1419,15 @@ var CURRENT_USER_ID = {{ user.id }};
     if (input) input.addEventListener('keydown', function(e) {
         if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }
     });
+})();
+
+(function() {
+    if (window.location.hash !== '#clan-join-requests') return;
+    var el = document.getElementById('clan-join-requests');
+    if (!el) return;
+    setTimeout(function() {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
 })();
 
 </script>

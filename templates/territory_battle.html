@@ -316,6 +316,29 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 }
 #playerClanName { font-weight: bold; color: #d4a84b; }
 #playerClanName a { color: #e8c86a; }
+.territory-clan-pending-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 5px;
+    background: #8b6914;
+    color: #fff;
+    border-radius: 50%;
+    font-size: 0.75rem;
+    font-weight: bold;
+    text-decoration: none;
+    margin-left: 6px;
+    vertical-align: middle;
+    box-shadow: 0 0 8px rgba(212,168,75,0.4);
+    transition: background 0.2s, box-shadow 0.2s;
+}
+.territory-clan-pending-badge:hover {
+    background: #a67c1a;
+    box-shadow: 0 0 12px rgba(212,168,75,0.5);
+    color: #fff;
+}
 .territory-registration-disabled {
     color: #b8a088;
     font-style: italic;
@@ -1158,6 +1181,9 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
             <div class="territory-player-clan-flag-placeholder">⚔</div>
             {% endif %}
             <span id="playerClanName" class="territory-player-clan-name">{{ current_user.clan_obj.name }}</span>
+            {% if clan_pending_join_count and clan_pending_join_count > 0 %}
+            <a href="{{ url_for('cabinet') }}#clan-join-requests" class="territory-clan-pending-badge" title="Есть новые заявки на вступление в клан ({{ clan_pending_join_count }})">📩 {{ clan_pending_join_count }}</a>
+            {% endif %}
             {% else %}
             <div class="territory-player-clan-flag-placeholder">—</div>
             <span id="playerClanName" class="territory-player-clan-name">Нет клана. <a href="{{ url_for('cabinet') }}">Создать или вступить</a></span>

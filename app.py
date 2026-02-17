@@ -3348,6 +3348,9 @@ def territory_battle_page():
     capture_start_time_iso = capture_start_time.isoformat() if capture_start_time else None
     capture_start_time_ms = int(capture_start_time.timestamp() * 1000) if capture_start_time else None
     capture_end_time_ms = int(capture_end_time.timestamp() * 1000) if capture_end_time else None
+    clan_pending_join_count = 0
+    if user_logged_in and not is_admin and getattr(current_user, 'clan_obj', None) and current_user.clan_obj.owner_id == current_user.id:
+        clan_pending_join_count = ClanJoinRequest.query.filter_by(clan_id=current_user.clan_obj.id, status='pending').count()
     return render_template(
         'territory_battle.html',
         clans=clans,
@@ -3365,7 +3368,8 @@ def territory_battle_page():
         current_energy=current_energy,
         energy_max=energy_max,
         avatar_url=avatar_url,
-        clan_flag_url=clan_flag_url
+        clan_flag_url=clan_flag_url,
+        clan_pending_join_count=clan_pending_join_count
     )
 
 
