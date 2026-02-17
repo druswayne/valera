@@ -176,7 +176,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 
 .skills-block { margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(92,64,51,0.6); }
 .skills-block h4 { margin: 0 0 12px; font-size: 1rem; color: #d4a84b; font-family: 'Cinzel', Georgia, serif; }
-.skill-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.skill-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; position: relative; }
 .skill-row label { min-width: 100px; font-weight: bold; color: #c4b098; }
 .skill-row .val { min-width: 2.5em; text-align: center; font-weight: bold; color: #d4a84b; }
 .skill-btn {
@@ -214,6 +214,45 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 .skill-save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .skill-points-block { margin-top: 8px; }
 .skill-points-hint { font-size: 0.9rem; color: #b8a088; margin-top: 6px; }
+.skill-row .stat-help {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1px solid #5c4033;
+    background: #3d2914;
+    color: #d4a84b;
+    font-size: 0.85rem;
+    font-weight: bold;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-left: 2px;
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+.skill-row .stat-help:hover { color: #e8c86a; border-color: #8b6914; background: #4a3520; }
+.skill-row .stat-help.active { border-color: #d4a84b; background: #4a3520; color: #e8c86a; }
+.stat-tooltip {
+    display: none;
+    position: absolute;
+    left: 0;
+    top: 100%;
+    margin-top: 4px;
+    white-space: normal;
+    padding: 10px 14px;
+    max-width: 336px;
+    background: linear-gradient(145deg, #2c1810 0%, #1a0f08 100%);
+    border: 2px solid #5c4033;
+    border-radius: 6px;
+    color: #e8dcc4;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    z-index: 100;
+}
+.stat-tooltip.show { display: block; }
+.skill-row .stat-label-wrap { display: inline-flex; align-items: center; gap: 0; position: relative; }
 .level-block { margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(92,64,51,0.6); }
 .level-block p { margin: 6px 0; }
 .level-progress-wrap {
@@ -301,8 +340,8 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 }
 .clan-btn.danger:hover { color: #ffe0e0; border-color: #a05555; }
 
-.members-list, .territories-list, .pending-list { margin-top: 12px; display: none; }
-.members-list.open, .territories-list.open, .pending-list.open { display: block; }
+.members-list, .territories-list, .pending-list, .clan-chat-content { margin-top: 12px; display: none; }
+.members-list.open, .territories-list.open, .pending-list.open, .clan-chat-content.open { display: block; }
 .member-item, .territory-item, .pending-item {
     display: flex;
     align-items: center;
@@ -363,6 +402,69 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     border-color: #8b4545;
     color: #e8c0c0;
 }
+
+/* Чат с кланом */
+.clan-chat-block { margin-top: 0; }
+.clan-chat-messages {
+    max-height: 280px;
+    overflow-y: auto;
+    margin: 12px 0;
+    padding: 10px;
+    background: rgba(44,24,16,0.6);
+    border-radius: 6px;
+    border: 1px solid #5c4033;
+    display: flex;
+    flex-direction: column;
+}
+.clan-chat-msg {
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    background: rgba(61,41,20,0.5);
+    border-radius: 4px;
+    border-left: 3px solid #8b6914;
+    font-size: 0.95rem;
+    max-width: 80%;
+}
+.clan-chat-msg-own {
+    align-self: flex-end;
+    background: rgba(90,60,30,0.7);
+    border-left: none;
+    border-right: 3px solid #d4a84b;
+    text-align: right;
+}
+.clan-chat-msg:last-child { margin-bottom: 0; }
+.clan-chat-msg .chat-author { font-weight: bold; color: #d4a84b; margin-right: 8px; }
+.clan-chat-msg .chat-time { font-size: 0.8rem; color: #b8a088; margin-left: 6px; }
+.clan-chat-form {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+.clan-chat-form input[type="text"] {
+    flex: 1;
+    min-width: 160px;
+    padding: 10px 14px;
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    background: #2c1810;
+    color: #e8dcc4;
+    font-family: inherit;
+}
+.clan-chat-form input[type="text"]:focus { outline: none; border-color: #8b6914; }
+.clan-chat-form button {
+    padding: 10px 20px;
+    border-radius: 4px;
+    border: 2px solid #5c4033;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    color: #d4a84b;
+    font-weight: bold;
+    font-family: 'Cinzel', Georgia, serif;
+    cursor: pointer;
+}
+.clan-chat-form button:hover { color: #e8c86a; border-color: #8b6914; }
+.clan-chat-form button:disabled { opacity: 0.6; cursor: not-allowed; }
+.clan-chat-empty { color: #b8a088; padding: 12px; text-align: center; font-size: 0.95rem; }
 
 .modal-overlay {
     position: fixed;
@@ -466,6 +568,9 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     .member-item .kick-btn { width: 100%; }
     .pending-item { flex-wrap: wrap; }
     .pending-item .accept-btn, .pending-item .reject-btn { min-height: 40px; }
+    .clan-chat-form { flex-direction: column; }
+    .clan-chat-form input[type="text"] { min-width: 0; width: 100%; }
+    .clan-chat-form button { width: 100%; min-height: 44px; }
     .modal-box { margin: 16px; max-height: calc(100vh - 32px); overflow-y: auto; padding: 20px; }
 }
 </style>
@@ -477,6 +582,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     <nav class="cabinet-top-nav">
         <a href="{{ url_for('index') }}" class="back-link">← На главную</a>
         <a href="{{ url_for('territory_battle_page') }}" class="back-link">Битва за территорию</a>
+        <a href="{{ url_for('territory_clans_top') }}" class="back-link">Топ кланов</a>
         <a href="{{ url_for('logout') }}" class="back-link logout-link">Выйти из аккаунта</a>
     </nav>
     <h1>Личный кабинет</h1>
@@ -511,19 +617,31 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                 <div class="skills-block">
                     <h4>Характеристики</h4>
                     <div class="skill-row">
-                        <label>Урон</label>
-                        <button type="button" class="skill-btn" id="skillDamageMinus" aria-label="Уменьшить урон">−</button>
+                        <span class="stat-label-wrap">
+                            <label>Атака</label>
+                            <button type="button" class="stat-help" id="helpAttack" aria-label="Описание">?</button>
+                            <span class="stat-tooltip" id="tooltipAttack">Урон, который наносится при захвате области.</span>
+                        </span>
+                        <button type="button" class="skill-btn" id="skillDamageMinus" aria-label="Уменьшить атаку">−</button>
                         <span class="val" id="skillDamageVal">{{ user.damage }}</span>
-                        <button type="button" class="skill-btn" id="skillDamagePlus" aria-label="Увеличить урон">+</button>
+                        <button type="button" class="skill-btn" id="skillDamagePlus" aria-label="Увеличить атаку">+</button>
                     </div>
                     <div class="skill-row">
-                        <label>Защита</label>
+                        <span class="stat-label-wrap">
+                            <label>Защита</label>
+                            <button type="button" class="stat-help" id="helpDefense" aria-label="Описание">?</button>
+                            <span class="stat-tooltip" id="tooltipDefense">Очки влияния, которые ваш клан получает при защите области.</span>
+                        </span>
                         <button type="button" class="skill-btn" id="skillDefenseMinus" aria-label="Уменьшить защиту">−</button>
                         <span class="val" id="skillDefenseVal">{{ user.defense }}</span>
                         <button type="button" class="skill-btn" id="skillDefensePlus" aria-label="Увеличить защиту">+</button>
                     </div>
                     <div class="skill-row">
-                        <label>Макс. энергия</label>
+                        <span class="stat-label-wrap">
+                            <label>Макс. энергия</label>
+                            <button type="button" class="stat-help" id="helpEnergy" aria-label="Описание">?</button>
+                            <span class="stat-tooltip" id="tooltipEnergy">Максимальный запас энергии для захвата областей. Восстанавливается со временем (каждые 30 мин).</span>
+                        </span>
                         <button type="button" class="skill-btn" id="skillEnergyMinus" aria-label="Уменьшить макс. энергию">−</button>
                         <span class="val" id="skillEnergyVal">{{ user.energy }}</span>
                         <button type="button" class="skill-btn" id="skillEnergyPlus" aria-label="Увеличить макс. энергию">+</button>
@@ -613,7 +731,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                     <div class="member-avatar-placeholder">👤</div>
                     {% endif %}
                     <div class="member-info">
-                        <span>{{ m.character_name }} ({{ m.username }}){% if m.is_owner %} ★{% endif %}</span>
+                        <span>{{ m.character_name }}{% if m.is_owner %} ★{% endif %}</span>
                         <span class="member-level">Ур. {{ m.level }}</span>
                     </div>
                     {% if user.id == clan_data.clan.owner_id and not m.is_owner %}
@@ -621,6 +739,23 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                     {% endif %}
                 </div>
                 {% endfor %}
+            </div>
+        </div>
+
+        <!-- Чат с кланом -->
+        <div class="clan-block clan-chat-block">
+            <h3>Чат с кланом</h3>
+            <button type="button" id="clanChatToggleBtn" class="clan-members-toggle" onclick="var el=document.getElementById('clanChatContent'); var btn=document.getElementById('clanChatToggleBtn'); el.classList.toggle('open'); if(el.classList.contains('open')){ var m=document.getElementById('clanChatMessages'); if(m) m.scrollTop=m.scrollHeight; btn.textContent='Скрыть чат'; } else { btn.textContent='Показать чат'; }">
+                Показать чат
+            </button>
+            <div id="clanChatContent" class="clan-chat-content">
+                <div id="clanChatMessages" class="clan-chat-messages">
+                    <div class="clan-chat-empty">Загрузка сообщений…</div>
+                </div>
+                <div class="clan-chat-form">
+                    <input type="text" id="clanChatInput" placeholder="Введите сообщение…" maxlength="2000" autocomplete="off">
+                    <button type="button" id="clanChatSendBtn">Отправить</button>
+                </div>
             </div>
         </div>
 
@@ -790,6 +925,37 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     document.getElementById('skillDefenseMinus')?.addEventListener('click', function() { skillMinus('defense'); });
     document.getElementById('skillEnergyPlus')?.addEventListener('click', function() { skillPlus('energy'); });
     document.getElementById('skillEnergyMinus')?.addEventListener('click', function() { skillMinus('energy'); });
+
+    (function() {
+        var helpPairs = [
+            { btn: 'helpAttack', tooltip: 'tooltipAttack' },
+            { btn: 'helpDefense', tooltip: 'tooltipDefense' },
+            { btn: 'helpEnergy', tooltip: 'tooltipEnergy' }
+        ];
+        function closeAllTooltips() {
+            helpPairs.forEach(function(p) {
+                var t = document.getElementById(p.tooltip);
+                var b = document.getElementById(p.btn);
+                if (t) t.classList.remove('show');
+                if (b) b.classList.remove('active');
+            });
+        }
+        helpPairs.forEach(function(p) {
+            var btn = document.getElementById(p.btn);
+            var tooltip = document.getElementById(p.tooltip);
+            if (!btn || !tooltip) return;
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var isOpen = tooltip.classList.contains('show');
+                closeAllTooltips();
+                if (!isOpen) {
+                    tooltip.classList.add('show');
+                    btn.classList.add('active');
+                }
+            });
+        });
+        document.addEventListener('click', closeAllTooltips);
+    })();
     document.getElementById('skillSaveBtn')?.addEventListener('click', function() {
         var btn = this;
         btn.disabled = true;
@@ -1090,6 +1256,170 @@ function confirmCreate() {
         })
         .catch(() => alert('Ошибка соединения'));
 }
+
+var CURRENT_USER_ID = {{ user.id }};
+
+(function clanChat() {
+    var container = document.getElementById('clanChatMessages');
+    if (!container) return;
+    var input = document.getElementById('clanChatInput');
+    var sendBtn = document.getElementById('clanChatSendBtn');
+    var chatUrl = '{{ url_for("api_clan_chat_list") }}';
+    var chatMessages = [];
+    var hasMore = false;
+    var loading = false;
+    var loadingMore = false;
+
+    function formatTime(iso) {
+        if (!iso) return '';
+        var d = new Date(iso);
+        return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' +
+            d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function escapeHtml(s) {
+        if (!s) return '';
+        var div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+    }
+
+    function msgToHtml(m) {
+        var ownClass = (m.user_id === CURRENT_USER_ID) ? ' clan-chat-msg-own' : '';
+        return '<div class="clan-chat-msg' + ownClass + '" data-id="' + m.id + '">' +
+            '<span class="chat-author">' + escapeHtml(m.author_name) + '</span>' +
+            '<span class="chat-time">' + escapeHtml(formatTime(m.created_at)) + '</span>' +
+            '<div class="chat-text">' + escapeHtml(m.text) + '</div></div>';
+    }
+
+    function renderAll() {
+        if (chatMessages.length === 0) {
+            container.innerHTML = '<div class="clan-chat-empty">Пока нет сообщений. Напишите первым!</div>';
+            return;
+        }
+        container.innerHTML = chatMessages.map(msgToHtml).join('');
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function prependMessages(newMsgs) {
+        if (!newMsgs || newMsgs.length === 0) return;
+        var oldScrollHeight = container.scrollHeight;
+        var oldScrollTop = container.scrollTop;
+        var fragment = newMsgs.map(msgToHtml).join('');
+        var emptyEl = container.querySelector('.clan-chat-empty');
+        if (emptyEl) {
+            container.innerHTML = fragment;
+        } else {
+            container.insertAdjacentHTML('afterbegin', fragment);
+        }
+        container.scrollTop = container.scrollHeight - oldScrollHeight + oldScrollTop;
+    }
+
+    function appendMessages(newMsgs) {
+        if (!newMsgs || newMsgs.length === 0) return;
+        var wasAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 20;
+        var emptyEl = container.querySelector('.clan-chat-empty');
+        if (emptyEl) {
+            container.innerHTML = newMsgs.map(msgToHtml).join('');
+        } else {
+            newMsgs.forEach(function(m) {
+                container.insertAdjacentHTML('beforeend', msgToHtml(m));
+            });
+        }
+        if (wasAtBottom) container.scrollTop = container.scrollHeight;
+    }
+
+    function loadClanChat(appendNewOnly) {
+        if (appendNewOnly) {
+            if (chatMessages.length === 0) return;
+            var newestId = chatMessages[chatMessages.length - 1].id;
+            fetch(chatUrl + '?after_id=' + newestId)
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success && data.messages && data.messages.length > 0) {
+                        data.messages.forEach(function(m) { chatMessages.push(m); });
+                        appendMessages(data.messages);
+                    }
+                });
+            return;
+        }
+        if (loading) return;
+        loading = true;
+        fetch(chatUrl + '?limit=20')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                loading = false;
+                if (data.success) {
+                    chatMessages = data.messages || [];
+                    hasMore = !!data.has_more;
+                    renderAll();
+                } else {
+                    container.innerHTML = '<div class="clan-chat-empty">Не удалось загрузить сообщения</div>';
+                }
+            })
+            .catch(function() {
+                loading = false;
+                if (container.querySelector('.clan-chat-empty') && container.textContent.indexOf('Загрузка') !== -1)
+                    container.innerHTML = '<div class="clan-chat-empty">Не удалось загрузить сообщения</div>';
+            });
+    }
+
+    function loadMore() {
+        if (!hasMore || loadingMore || chatMessages.length === 0) return;
+        var oldestId = chatMessages[0].id;
+        loadingMore = true;
+        fetch(chatUrl + '?limit=20&before_id=' + oldestId)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                loadingMore = false;
+                if (data.success && data.messages && data.messages.length > 0) {
+                    hasMore = !!data.has_more;
+                    data.messages.forEach(function(m) { chatMessages.unshift(m); });
+                    prependMessages(data.messages);
+                } else {
+                    hasMore = false;
+                }
+            });
+    }
+
+    container.addEventListener('scroll', function() {
+        if (container.scrollTop < 80 && hasMore && !loadingMore) loadMore();
+    });
+
+    function sendMessage() {
+        var text = (input && input.value || '').trim();
+        if (!text) return;
+        if (sendBtn) sendBtn.disabled = true;
+        fetch(chatUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: text })
+        })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (sendBtn) sendBtn.disabled = false;
+                if (data.success && data.message) {
+                    input.value = '';
+                    chatMessages.push(data.message);
+                    appendMessages([data.message]);
+                } else {
+                    alert(data.error || 'Ошибка отправки');
+                }
+            })
+            .catch(function() {
+                if (sendBtn) sendBtn.disabled = false;
+                alert('Ошибка соединения');
+            });
+    }
+
+    loadClanChat();
+    setInterval(function() { loadClanChat(true); }, 10000);
+
+    if (sendBtn) sendBtn.addEventListener('click', sendMessage);
+    if (input) input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }
+    });
+})();
 
 </script>
 {% endblock %}

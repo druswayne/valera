@@ -111,6 +111,40 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     text-align: center;
 }
 
+.capture-countdown-value {
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #d4a84b;
+    text-align: center;
+    letter-spacing: 0.08em;
+}
+.capture-countdown-hint {
+    font-size: 13px;
+    color: #b8a088;
+    text-align: center;
+    margin: 10px 0 0;
+}
+
+/* Компактный таймер до конца битвы */
+#battleEndCountdownBlock {
+    margin: 0 auto 24px;
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+#battleEndCountdownBlock .global-progress-title {
+    margin-bottom: 0;
+    font-size: 0.75rem;
+}
+#battleEndCountdownBlock .capture-countdown-value {
+    font-size: 1.1rem;
+    letter-spacing: 0.05em;
+}
+
 /* Верхняя панель навигации — только кнопки назад и кабинет */
 .territory-top-nav {
     max-width: 920px;
@@ -1071,13 +1105,29 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 
     <h1>Битва за территорию</h1>
 
-    <div class="global-progress">
+    {% if capture_enabled %}
+    {% if capture_end_time_ms %}
+    <div class="global-progress" id="battleEndCountdownBlock">
+        <span class="global-progress-title">До конца битвы</span>
+        <span id="battleEndCountdownDisplay" class="capture-countdown-value">--:--:--</span>
+    </div>
+    {% endif %}
+    <div class="global-progress" id="globalProgressBlock">
         <div class="global-progress-title">Лидирует</div>
         <div id="globalProgressBars"></div>
     </div>
+    {% else %}
+    <div class="global-progress" id="captureCountdownBlock">
+        <div class="global-progress-title">До старта Битвы за территорию</div>
+        <div id="captureCountdownDisplay" class="capture-countdown-value">--:--:--</div>
+        {% if not capture_start_time_iso %}
+        <p class="capture-countdown-hint">Администратор не указал время старта. Обратитесь к организатору.</p>
+        {% endif %}
+    </div>
+    {% endif %}
 
     <div class="territory-player-card">
-        {% if user_logged_in and is_authenticated %}
+        {% if user_logged_in and (is_authenticated or (not capture_enabled and capture_start_time_iso)) %}
         {% if avatar_url %}
         <img src="{{ avatar_url }}" alt="" class="territory-player-avatar">
         {% else %}
@@ -1114,6 +1164,8 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         {% endif %}
         {% elif user_logged_in and not registration_enabled %}
         <span class="territory-registration-disabled">Регистрация участников отключена</span>
+        {% elif user_logged_in and not capture_enabled %}
+        <span class="territory-registration-disabled">Захват областей отключён</span>
         {% else %}
         <p class="territory-player-name" style="margin:0; flex:1;">Войдите, чтобы видеть профиль и участвовать</p>
         {% endif %}
@@ -1298,6 +1350,10 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     const clansData = {{ clans_json | tojson | safe }};
     const playerClanId = {{ current_user_clan_id | tojson }};
     const isAuthenticated = {{ is_authenticated | tojson }};
+    const captureEnabled = {{ capture_enabled | tojson }};
+    const captureStartTimeIso = {{ capture_start_time_iso | tojson }};
+    const captureStartTimeMs = {{ capture_start_time_ms | tojson }};
+    const captureEndTimeMs = {{ capture_end_time_ms | tojson }};
     const clanColors = {};
     const clanHeraldry = {};
     clansData.forEach(function(c) {
@@ -1327,6 +1383,10 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                 g.classList.add('region-inactive');
                 const path = g.querySelector('.region-path');
                 if (path) path.classList.add('region-locked');
+            } else if (!captureEnabled) {
+                g.classList.add('region-inactive');
+                const path = g.querySelector('.region-path');
+                if (path) path.classList.remove('region-locked');
             } else {
                 g.classList.remove('region-inactive');
                 const path = g.querySelector('.region-path');
@@ -2008,6 +2068,10 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         const regionId = parseInt(g.getAttribute('data-region-id'), 10);
         if (window._territoryMapCenterRegion) window._territoryMapCenterRegion(regionId);
         setTimeout(function() {
+            if (!captureEnabled) {
+                showToast('Захват областей отключён. Ожидайте времени старта.', false);
+                return;
+            }
             if (!isAuthenticated) {
                 showToast('Войдите для участия в битве.', false);
                 return;
@@ -2086,7 +2150,77 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     document.getElementById('taskAnswerNumMixed').addEventListener('keydown', onTaskAnswerKeydown);
     document.getElementById('taskAnswerDenMixed').addEventListener('keydown', onTaskAnswerKeydown);
 
-    renderGlobalProgress();
+    if (captureEnabled) {
+        renderGlobalProgress();
+        if (captureEndTimeMs) {
+            (function runEndCountdown() {
+                var serverTimeOffsetMs = 0;
+                function updateEndCountdown() {
+                    var el = document.getElementById('battleEndCountdownDisplay');
+                    if (!el) return;
+                    var nowMs = Date.now() + serverTimeOffsetMs;
+                    var diff = captureEndTimeMs - nowMs;
+                    if (diff <= 0) {
+                        el.textContent = 'Битва завершена. Обновите страницу.';
+                        return;
+                    }
+                    var sec = Math.floor(diff / 1000) % 60;
+                    var min = Math.floor(diff / 60000) % 60;
+                    var hr = Math.floor(diff / 3600000);
+                    el.textContent = (hr < 10 ? '0' : '') + hr + ':' + (min < 10 ? '0' : '') + min + ':' + (sec < 10 ? '0' : '') + sec;
+                }
+                fetch('/api/territory-battle/server-time')
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (data && data.server_time_ms) {
+                            serverTimeOffsetMs = data.server_time_ms - Date.now();
+                        }
+                        updateEndCountdown();
+                        setInterval(updateEndCountdown, 1000);
+                    })
+                    .catch(function() {
+                        updateEndCountdown();
+                        setInterval(updateEndCountdown, 1000);
+                    });
+            })();
+        }
+    } else if (captureStartTimeMs) {
+        (function runCountdown() {
+            var serverTimeOffsetMs = 0;
+            var blockEl = document.getElementById('captureCountdownBlock');
+            function updateCountdown() {
+                var el = document.getElementById('captureCountdownDisplay');
+                if (!el || !blockEl) return;
+                var nowMs = Date.now() + serverTimeOffsetMs;
+                var diff = captureStartTimeMs - nowMs;
+                if (diff <= 0) {
+                    blockEl.style.display = 'none';
+                    return;
+                }
+                var sec = Math.floor(diff / 1000) % 60;
+                var min = Math.floor(diff / 60000) % 60;
+                var hr = Math.floor(diff / 3600000);
+                el.textContent = (hr < 10 ? '0' : '') + hr + ':' + (min < 10 ? '0' : '') + min + ':' + (sec < 10 ? '0' : '') + sec;
+            }
+            fetch('/api/territory-battle/server-time')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data && data.server_time_ms) {
+                        serverTimeOffsetMs = data.server_time_ms - Date.now();
+                    }
+                    updateCountdown();
+                    if (blockEl && blockEl.style.display !== 'none') {
+                        setInterval(updateCountdown, 1000);
+                    }
+                })
+                .catch(function() {
+                    updateCountdown();
+                    if (blockEl && blockEl.style.display !== 'none') {
+                        setInterval(updateCountdown, 1000);
+                    }
+                });
+        })();
+    }
 
     document.querySelectorAll('.region').forEach(function(g, i) {
         updateRegionUI(i);

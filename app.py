@@ -176,6 +176,19 @@ class ClanJoinRequest(db.Model):
     user = db.relationship('User', backref='clan_join_requests', lazy=True)
 
 
+class ClanChatMessage(db.Model):
+    """Сообщение в чате клана"""
+    __tablename__ = 'clan_chat_message'
+    id = db.Column(db.Integer, primary_key=True)
+    clan_id = db.Column(db.Integer, db.ForeignKey('clan.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    text = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    clan = db.relationship('Clan', backref=db.backref('chat_messages', lazy=True, order_by='ClanChatMessage.created_at'))
+    user = db.relationship('User', backref='clan_chat_messages', lazy=True)
+
+
 # Константы уровней и урона
 # Базовые характеристики (без вложенных очков навыков)
 USER_BASE_DAMAGE = 5
@@ -752,11 +765,14 @@ class TerritoryRegionState(db.Model):
     )
 
 
-# Битва за территорию: общие настройки (регистрация участников)
+# Битва за территорию: общие настройки (регистрация участников, захват областей)
 class TerritoryBattleSetting(db.Model):
     __tablename__ = 'territory_battle_setting'
     id = db.Column(db.Integer, primary_key=True)
     registration_enabled = db.Column(db.Boolean, default=True, nullable=False)
+    capture_enabled = db.Column(db.Boolean, default=True, nullable=False)
+    capture_start_time = db.Column(db.DateTime, nullable=True)
+    capture_end_time = db.Column(db.DateTime, nullable=True)
 
 
 def get_territory_registration_enabled():
@@ -767,6 +783,20 @@ def get_territory_registration_enabled():
         db.session.add(s)
         db.session.commit()
     return s.registration_enabled
+
+
+def get_territory_capture_settings():
+    """Вернуть (capture_enabled, capture_start_time, capture_end_time). datetime — или None."""
+    s = TerritoryBattleSetting.query.first()
+    if not s:
+        s = TerritoryBattleSetting(registration_enabled=True)
+        db.session.add(s)
+        db.session.commit()
+    return (
+        getattr(s, 'capture_enabled', True),
+        getattr(s, 'capture_start_time', None),
+        getattr(s, 'capture_end_time', None)
+    )
 
 
 # Декоратор для проверки прав администратора
@@ -1283,6 +1313,18 @@ with app.app_context():
             db.create_all()
             print("Создана таблица territory_battle_setting")
         tables = inspector.get_table_names()
+        if 'territory_battle_setting' in tables:
+            columns = [col['name'] for col in inspector.get_columns('territory_battle_setting')]
+            with db.engine.begin() as conn:
+                if 'capture_enabled' not in columns:
+                    conn.execute(text('ALTER TABLE territory_battle_setting ADD COLUMN capture_enabled BOOLEAN DEFAULT 1 NOT NULL'))
+                    print("Добавлена колонка capture_enabled в territory_battle_setting")
+                if 'capture_start_time' not in columns:
+                    conn.execute(text('ALTER TABLE territory_battle_setting ADD COLUMN capture_start_time DATETIME'))
+                    print("Добавлена колонка capture_start_time в territory_battle_setting")
+                if 'capture_end_time' not in columns:
+                    conn.execute(text('ALTER TABLE territory_battle_setting ADD COLUMN capture_end_time DATETIME'))
+                    print("Добавлена колонка capture_end_time в territory_battle_setting")
         if 'territory_battle_setting' in tables and TerritoryBattleSetting.query.count() == 0:
             s = TerritoryBattleSetting(registration_enabled=True)
             db.session.add(s)
@@ -1297,9 +1339,9 @@ with app.app_context():
         from sqlalchemy import inspect, text
         inspector = inspect(db.engine)
         tables = inspector.get_table_names()
-        if 'clan' not in tables or 'clan_join_request' not in tables or 'user_territory_stats' not in tables:
+        if 'clan' not in tables or 'clan_join_request' not in tables or 'user_territory_stats' not in tables or 'clan_chat_message' not in tables:
             db.create_all()
-            print("Созданы таблицы clan, clan_join_request, user_territory_stats")
+            print("Созданы таблицы clan, clan_join_request, user_territory_stats, clan_chat_message")
         if 'user' in tables:
             columns = [col['name'] for col in inspector.get_columns('user')]
             with db.engine.begin() as conn:
@@ -1445,10 +1487,10 @@ def login():
         return redirect(url_for('index'))
     
     if request.method == 'POST':
-        username = request.form.get('username')
+        username = (request.form.get('username') or '').strip()
         password = request.form.get('password')
         
-        user = User.query.filter_by(username=username).first()
+        user = User.query.filter(func.lower(User.username) == username.lower()).first() if username else None
         
         if user and user.check_password(password):
             login_user(user)
@@ -1488,7 +1530,7 @@ def register():
         if not username or len(username) < 3:
             flash('Логин должен быть не менее 3 символов', 'error')
             return render_template('register.html', clans=clans)
-        if User.query.filter_by(username=username).first():
+        if User.query.filter(func.lower(User.username) == username.lower()).first():
             flash('Такой логин уже занят', 'error')
             return render_template('register.html', clans=clans)
         if not password or len(password) < 6:
@@ -1777,6 +1819,80 @@ def api_clan_kick(clan_id, user_id):
     target.clan_id = None
     db.session.commit()
     return jsonify({'success': True})
+
+
+@app.route('/api/clan/chat', methods=['GET'])
+@login_required
+def api_clan_chat_list():
+    """Список сообщений чата клана (только для участников клана).
+    Параметры: limit (по умолчанию 20), before_id (подгрузить старые), after_id (только новые, для опроса).
+    """
+    if not current_user.clan_id:
+        return jsonify({'success': False, 'error': 'Вы не в клане'}), 400
+    limit = min(int(request.args.get('limit', 20)), 100)
+    before_id = request.args.get('before_id', type=int)
+    after_id = request.args.get('after_id', type=int)
+    base = ClanChatMessage.query.filter_by(clan_id=current_user.clan_id)
+
+    if after_id:
+        # Только новые сообщения (для опроса)
+        messages = base.filter(ClanChatMessage.id > after_id).order_by(ClanChatMessage.id.asc()).all()
+        items = [
+            {'id': m.id, 'user_id': m.user_id, 'author_name': m.user.character_name or m.user.username,
+             'text': m.text, 'created_at': m.created_at.isoformat() if m.created_at else None}
+            for m in messages
+        ]
+        return jsonify({'success': True, 'messages': items})
+    if before_id:
+        # Подгрузка старых сообщений
+        messages = base.filter(ClanChatMessage.id < before_id).order_by(
+            ClanChatMessage.id.desc()
+        ).limit(limit + 1).all()
+        has_more = len(messages) > limit
+        messages = list(reversed(messages[:limit]))
+        items = [
+            {'id': m.id, 'user_id': m.user_id, 'author_name': m.user.character_name or m.user.username,
+             'text': m.text, 'created_at': m.created_at.isoformat() if m.created_at else None}
+            for m in messages
+        ]
+        return jsonify({'success': True, 'messages': items, 'has_more': has_more})
+    # Первая загрузка: последние limit сообщений
+    total = base.count()
+    messages = base.order_by(ClanChatMessage.id.desc()).limit(limit).all()
+    messages = list(reversed(messages))
+    items = [
+        {'id': m.id, 'user_id': m.user_id, 'author_name': m.user.character_name or m.user.username,
+         'text': m.text, 'created_at': m.created_at.isoformat() if m.created_at else None}
+        for m in messages
+    ]
+    return jsonify({'success': True, 'messages': items, 'has_more': total > limit})
+
+
+@app.route('/api/clan/chat', methods=['POST'])
+@login_required
+def api_clan_chat_send():
+    """Отправить сообщение в чат клана."""
+    if not current_user.clan_id:
+        return jsonify({'success': False, 'error': 'Вы не в клане'}), 400
+    data = request.get_json() or request.form
+    text = (data.get('text') or '').strip()
+    if not text:
+        return jsonify({'success': False, 'error': 'Текст сообщения не может быть пустым'}), 400
+    if len(text) > 2000:
+        return jsonify({'success': False, 'error': 'Сообщение слишком длинное'}), 400
+    msg = ClanChatMessage(clan_id=current_user.clan_id, user_id=current_user.id, text=text)
+    db.session.add(msg)
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'message': {
+            'id': msg.id,
+            'user_id': msg.user_id,
+            'author_name': current_user.character_name or current_user.username,
+            'text': msg.text,
+            'created_at': msg.created_at.isoformat() if msg.created_at else None,
+        }
+    })
 
 
 # Главная страница - рейтинг классов
@@ -2596,7 +2712,10 @@ def admin_territory_battle():
     clans = Clan.query.order_by(Clan.name).all()
     generators = TaskGenerator.query.order_by(TaskGenerator.name).all()
     registration_enabled = get_territory_registration_enabled()
-    return render_template('admin/territory_battle.html', regions=regions, clans=clans, generators=generators, registration_enabled=registration_enabled)
+    capture_enabled, capture_start_time, capture_end_time = get_territory_capture_settings()
+    capture_start_time_iso = capture_start_time.strftime('%Y-%m-%dT%H:%M') if capture_start_time else ''
+    capture_end_time_iso = capture_end_time.strftime('%Y-%m-%dT%H:%M') if capture_end_time else ''
+    return render_template('admin/territory_battle.html', regions=regions, clans=clans, generators=generators, registration_enabled=registration_enabled, capture_enabled=capture_enabled, capture_start_time_iso=capture_start_time_iso, capture_end_time_iso=capture_end_time_iso)
 
 
 @app.route('/admin/territory-battle/generators', methods=['POST'])
@@ -2616,7 +2735,7 @@ def admin_territory_generator_create():
 @app.route('/admin/territory-battle/settings', methods=['POST'])
 @admin_required
 def admin_territory_settings():
-    """Включить/отключить регистрацию участников."""
+    """Включить/отключить регистрацию участников, захват областей и время старта."""
     data = request.get_json() or {}
     enabled = data.get('registration_enabled')
     if enabled is None:
@@ -2627,8 +2746,38 @@ def admin_territory_settings():
         db.session.add(s)
     else:
         s.registration_enabled = bool(enabled)
+    if 'capture_enabled' in data:
+        s.capture_enabled = bool(data['capture_enabled'])
+    if 'capture_start_time' in data:
+        val = data['capture_start_time']
+        if val is None or (isinstance(val, str) and not val.strip()):
+            s.capture_start_time = None
+        else:
+            try:
+                from datetime import datetime
+                st = datetime.fromisoformat(str(val).strip().replace('Z', '+00:00'))
+                s.capture_start_time = st.replace(tzinfo=None) if st.tzinfo else st
+            except (ValueError, TypeError):
+                s.capture_start_time = None
+    if 'capture_end_time' in data:
+        val = data['capture_end_time']
+        if val is None or (isinstance(val, str) and not val.strip()):
+            s.capture_end_time = None
+        else:
+            try:
+                from datetime import datetime
+                et = datetime.fromisoformat(str(val).strip().replace('Z', '+00:00'))
+                s.capture_end_time = et.replace(tzinfo=None) if et.tzinfo else et
+            except (ValueError, TypeError):
+                s.capture_end_time = None
     db.session.commit()
-    return jsonify({'success': True, 'registration_enabled': s.registration_enabled})
+    return jsonify({
+        'success': True,
+        'registration_enabled': s.registration_enabled,
+        'capture_enabled': s.capture_enabled,
+        'capture_start_time': s.capture_start_time.isoformat() if s.capture_start_time else None,
+        'capture_end_time': s.capture_end_time.isoformat() if s.capture_end_time else None
+    })
 
 
 @app.route('/admin/territory-battle/region/<int:region_index>', methods=['POST'])
@@ -2749,7 +2898,7 @@ TERRITORY_DEFAULT_NAMES = [
 @app.route('/admin/territory-battle/reset', methods=['POST'])
 @admin_required
 def admin_territory_reset():
-    """Сброс битвы за территорию: все области без владельца, конфиг областей — по умолчанию. Требуется пароль администратора."""
+    """Сброс битвы за территорию: области без владельца, статистика пользователей и кланов — обнуление. Названия областей, описания и генераторы не меняются. Требуется пароль администратора."""
     data = request.get_json() or {}
     password = (data.get('password') or '').strip()
     if not password:
@@ -2760,16 +2909,18 @@ def admin_territory_reset():
         state.owner_class_id = None
         state.owner_clan_id = None
         state.strength = 0
-    configs = TerritoryRegionConfig.query.order_by(TerritoryRegionConfig.region_index).all()
-    config_by_index = {c.region_index: c for c in configs}
+    for stats in UserTerritoryStats.query.all():
+        stats.total_damage_dealt = 0
+        stats.total_influence_points = 0
+    for u in User.query.all():
+        u.level = 1
+        u.experience = 0
+        u.damage_skill = 0
+        u.defense_skill = 0
+        u.energy_skill = 0
+        u.current_energy = None
+        u.energy_last_refill_at = None
     for i in range(14):
-        name = TERRITORY_DEFAULT_NAMES[i] if i < len(TERRITORY_DEFAULT_NAMES) else f'Область {i}'
-        locked = (i == 10)
-        if i in config_by_index:
-            config_by_index[i].display_name = name
-            config_by_index[i].is_locked = locked
-        else:
-            db.session.add(TerritoryRegionConfig(region_index=i, display_name=name, is_locked=locked))
         st = TerritoryRegionState.query.filter_by(region_index=i).first()
         if st:
             st.owner_class_id = None
@@ -3159,6 +3310,7 @@ TERRITORY_STRENGTH_STEP_OTHER = 25
 def territory_battle_page():
     # Администратор видит страницу как незарегистрированный пользователь (только просмотр, без участия)
     registration_enabled = get_territory_registration_enabled()
+    capture_enabled, capture_start_time, capture_end_time = get_territory_capture_settings()
     is_admin = current_user.is_authenticated and getattr(current_user, 'is_admin', False)
     if is_admin:
         clan_id = None
@@ -3167,7 +3319,7 @@ def territory_battle_page():
     else:
         clan_id = current_user.clan_id if current_user.is_authenticated else None
         user_logged_in = current_user.is_authenticated
-        can_participate = user_logged_in and registration_enabled
+        can_participate = user_logged_in and registration_enabled and capture_enabled
     clans = Clan.query.order_by(Clan.name).all()
     clans_json = []
     for c in clans:
@@ -3193,6 +3345,9 @@ def territory_battle_page():
         if getattr(current_user, 'clan_obj', None) and getattr(current_user.clan_obj, 'flag_filename', None):
             clan_flag_url = url_for('static', filename=_avatar_static_filename(current_user.clan_obj.flag_filename))
 
+    capture_start_time_iso = capture_start_time.isoformat() if capture_start_time else None
+    capture_start_time_ms = int(capture_start_time.timestamp() * 1000) if capture_start_time else None
+    capture_end_time_ms = int(capture_end_time.timestamp() * 1000) if capture_end_time else None
     return render_template(
         'territory_battle.html',
         clans=clans,
@@ -3203,11 +3358,22 @@ def territory_battle_page():
         is_authenticated=can_participate,
         user_logged_in=user_logged_in,
         registration_enabled=registration_enabled,
+        capture_enabled=capture_enabled,
+        capture_start_time_iso=capture_start_time_iso,
+        capture_start_time_ms=capture_start_time_ms,
+        capture_end_time_ms=capture_end_time_ms,
         current_energy=current_energy,
         energy_max=energy_max,
         avatar_url=avatar_url,
         clan_flag_url=clan_flag_url
     )
+
+
+@app.route('/api/territory-battle/server-time')
+def api_territory_server_time():
+    """Текущее время сервера в Unix ms для синхронизации таймера обратного отсчёта."""
+    import time
+    return jsonify({'server_time_ms': int(time.time() * 1000)})
 
 
 @app.route('/territory-battle/clans-top')
@@ -3317,6 +3483,9 @@ def api_territory_task():
         return jsonify({'success': False, 'error': 'Администратор не участвует в битве'}), 403
     if not get_territory_registration_enabled():
         return jsonify({'success': False, 'error': 'Регистрация участников отключена'}), 403
+    capture_enabled, _ = get_territory_capture_settings()
+    if not capture_enabled:
+        return jsonify({'success': False, 'error': 'Захват областей отключён. Ожидайте времени старта.'}), 403
     if not current_user.clan_id:
         return jsonify({'success': False, 'error': 'Для участия нужен клан'}), 400
     current_user.ensure_energy_refill()
@@ -3387,6 +3556,9 @@ def api_territory_apply_action():
         return jsonify({'success': False, 'error': 'Администратор не участвует в битве'}), 403
     if not get_territory_registration_enabled():
         return jsonify({'success': False, 'error': 'Регистрация участников отключена'}), 403
+    capture_enabled, _ = get_territory_capture_settings()
+    if not capture_enabled:
+        return jsonify({'success': False, 'error': 'Захват областей отключён. Ожидайте времени старта.'}), 403
     data = request.get_json() or {}
     region_index = data.get('region_index')
     task_id = data.get('task_id')

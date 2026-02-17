@@ -534,6 +534,27 @@ body {
     </section>
 
     <section class="admin-section">
+        <h2>Захват областей</h2>
+        <p>Когда захват выключен, пользователи не могут атаковать и защищать территории. На странице битвы вместо блока «Лидирует» показывается таймер обратного отсчёта до времени старта.</p>
+        <div class="registration-toggle-wrap">
+            <label class="registration-toggle-label">
+                <input type="checkbox" id="captureEnabledToggle" {% if capture_enabled %}checked{% endif %}>
+                <span class="registration-toggle-switch"></span>
+                <span class="registration-toggle-text" id="captureToggleText">{% if capture_enabled %}Включён{% else %}Выключен{% endif %}</span>
+            </label>
+        </div>
+        <div class="form-group" style="margin-top: 15px;">
+            <label for="captureStartTimeInput">Время старта (для таймера до старта):</label>
+            <input type="datetime-local" id="captureStartTimeInput" value="{{ capture_start_time_iso }}" style="padding: 8px 12px; border-radius: 8px; border: 2px solid #a8b8d0; font-size: 14px;">
+        </div>
+        <div class="form-group" style="margin-top: 10px;">
+            <label for="captureEndTimeInput">Время окончания (для таймера до конца битвы):</label>
+            <input type="datetime-local" id="captureEndTimeInput" value="{{ capture_end_time_iso }}" style="padding: 8px 12px; border-radius: 8px; border: 2px solid #a8b8d0; font-size: 14px;">
+        </div>
+        <button type="button" class="edit-btn" id="saveCaptureSettingsBtn" style="margin-top: 10px;">Сохранить время</button>
+    </section>
+
+    <section class="admin-section">
         <h2>Генераторы заданий</h2>
         <p>Создайте генераторы по названию. Затем для каждой области укажите, какой генератор заданий использовать (или оставьте «Без генератора»).</p>
         <div class="generators-list-wrap">
@@ -646,7 +667,7 @@ body {
 <div class="territory-reset-modal-overlay" id="territoryResetModal">
     <div class="territory-reset-modal">
         <h3>Сброс битвы за территорию</h3>
-        <p>Все области будут сброшены: без владельца, сила 0. Названия и блокировки областей вернутся к значениям по умолчанию (Prague — заблокирована). Для подтверждения введите пароль администратора.</p>
+        <p>Все области будут сброшены: без владельца, сила 0. Названия и блокировки областей — по умолчанию (Prague — заблокирована). Статистика пользователей будет обнулена (уровень 1, опыт 0, навыки 0). Статистика кланов по территориям обнулится (кланы не удаляются). Для подтверждения введите пароль администратора.</p>
         <div class="form-group">
             <label for="territoryResetPassword">Пароль администратора:</label>
             <input type="password" id="territoryResetPassword" placeholder="Пароль" autocomplete="current-password">
@@ -685,6 +706,61 @@ body {
                 toggle.checked = !enabled;
                 textEl.textContent = toggle.checked ? 'Включена' : 'Отключена';
             });
+        });
+    }
+
+    var captureToggle = document.getElementById('captureEnabledToggle');
+    var captureTextEl = document.getElementById('captureToggleText');
+    if (captureToggle) {
+        captureToggle.addEventListener('change', function() {
+            var enabled = this.checked;
+            var startTimeInput = document.getElementById('captureStartTimeInput');
+            var endTimeInput = document.getElementById('captureEndTimeInput');
+            var payload = { registration_enabled: document.getElementById('registrationEnabledToggle').checked, capture_enabled: enabled };
+            if (startTimeInput && startTimeInput.value) payload.capture_start_time = startTimeInput.value;
+            if (endTimeInput && endTimeInput.value) payload.capture_end_time = endTimeInput.value;
+            fetch('{{ url_for("admin_territory_settings") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify(payload)
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.success) {
+                    captureTextEl.textContent = data.capture_enabled ? 'Включён' : 'Выключен';
+                } else {
+                    alert('Ошибка сохранения.');
+                    captureToggle.checked = !enabled;
+                    captureTextEl.textContent = captureToggle.checked ? 'Включён' : 'Выключен';
+                }
+            }).catch(function() {
+                alert('Ошибка соединения.');
+                captureToggle.checked = !enabled;
+                captureTextEl.textContent = captureToggle.checked ? 'Включён' : 'Выключен';
+            });
+        });
+    }
+
+    var saveCaptureBtn = document.getElementById('saveCaptureSettingsBtn');
+    if (saveCaptureBtn) {
+        saveCaptureBtn.addEventListener('click', function() {
+            var regToggle = document.getElementById('registrationEnabledToggle');
+            var capToggle = document.getElementById('captureEnabledToggle');
+            var startTimeInput = document.getElementById('captureStartTimeInput');
+            var endTimeInput = document.getElementById('captureEndTimeInput');
+            var payload = { registration_enabled: regToggle ? regToggle.checked : true, capture_enabled: capToggle ? capToggle.checked : true };
+            payload.capture_start_time = (startTimeInput && startTimeInput.value) ? startTimeInput.value : null;
+            payload.capture_end_time = (endTimeInput && endTimeInput.value) ? endTimeInput.value : null;
+            fetch('{{ url_for("admin_territory_settings") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify(payload)
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.success) {
+                    saveCaptureBtn.textContent = 'Сохранено';
+                    setTimeout(function() { saveCaptureBtn.textContent = 'Сохранить время'; }, 2000);
+                } else {
+                    alert('Ошибка сохранения.');
+                }
+            }).catch(function() { alert('Ошибка соединения.'); });
         });
     }
 })();
