@@ -1095,6 +1095,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 {% block content %}
 <div class="territory-page">
     <nav class="territory-top-nav">
+        <a href="{{ url_for('territory_battle_rules') }}">Как начать?</a>
         <a href="{{ url_for('territory_clans_top') }}">Топ кланов</a>
         {% if user_logged_in %}
         <a href="{{ url_for('cabinet') }}">Личный кабинет</a>
@@ -1142,8 +1143,11 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                 </div>
             </div>
             <div class="territory-player-stats">
-                <span><strong>Урон:</strong> <span id="playerCardDamage">{{ current_user.damage }}</span></span>
+                <span><strong>Атака:</strong> <span id="playerCardDamage">{{ current_user.damage }}</span></span>
                 <span><strong>Защита:</strong> <span id="playerCardDefense">{{ current_user.defense }}</span></span>
+                {% if current_energy is not none and energy_max is not none %}
+                <span class="territory-player-energy" title="Энергия: 1 за задачу. Восстанавливается каждые 30 мин (+20% от макс.).">⚡ <span id="energyDisplay">{{ current_energy }}</span>/{{ energy_max }}</span>
+                {% endif %}
             </div>
         </div>
         <div class="territory-player-clan">
@@ -1159,9 +1163,6 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
             <span id="playerClanName" class="territory-player-clan-name">Нет клана. <a href="{{ url_for('cabinet') }}">Создать или вступить</a></span>
             {% endif %}
         </div>
-        {% if current_energy is not none and energy_max is not none %}
-        <div class="territory-player-energy" title="Энергия: 1 за задачу. Восстанавливается каждые 30 мин (+20% от макс.).">⚡ <span id="energyDisplay">{{ current_energy }}</span>/{{ energy_max }}</div>
-        {% endif %}
         {% elif user_logged_in and not registration_enabled %}
         <span class="territory-registration-disabled">Регистрация участников отключена</span>
         {% elif user_logged_in and not capture_enabled %}
@@ -1340,7 +1341,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 
 <script>
 (function() {
-    const MAX_STRENGTH = 100;
+    const MAX_STRENGTH = 1000;
     const STRENGTH_STEP_SAME = 25;   // за правильный ответ своего класса
     const STRENGTH_STEP_OTHER = 25;  // уменьшение при правильном ответе чужого класса
 

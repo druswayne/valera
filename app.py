@@ -3302,7 +3302,7 @@ def raid_boss_page():
 
 
 # Битва за территорию
-TERRITORY_MAX_STRENGTH = 100
+TERRITORY_MAX_STRENGTH = 1000
 TERRITORY_STRENGTH_STEP_SAME = 25
 TERRITORY_STRENGTH_STEP_OTHER = 25
 
@@ -3374,6 +3374,12 @@ def api_territory_server_time():
     """Текущее время сервера в Unix ms для синхронизации таймера обратного отсчёта."""
     import time
     return jsonify({'server_time_ms': int(time.time() * 1000)})
+
+
+@app.route('/territory-battle/rules')
+def territory_battle_rules():
+    """Страница с обучением и правилами битвы за территорию."""
+    return render_template('territory_battle_rules.html')
 
 
 @app.route('/territory-battle/clans-top')
@@ -3483,7 +3489,7 @@ def api_territory_task():
         return jsonify({'success': False, 'error': 'Администратор не участвует в битве'}), 403
     if not get_territory_registration_enabled():
         return jsonify({'success': False, 'error': 'Регистрация участников отключена'}), 403
-    capture_enabled, _ = get_territory_capture_settings()
+    capture_enabled, _, _ = get_territory_capture_settings()
     if not capture_enabled:
         return jsonify({'success': False, 'error': 'Захват областей отключён. Ожидайте времени старта.'}), 403
     if not current_user.clan_id:
@@ -3556,7 +3562,7 @@ def api_territory_apply_action():
         return jsonify({'success': False, 'error': 'Администратор не участвует в битве'}), 403
     if not get_territory_registration_enabled():
         return jsonify({'success': False, 'error': 'Регистрация участников отключена'}), 403
-    capture_enabled, _ = get_territory_capture_settings()
+    capture_enabled, _, _ = get_territory_capture_settings()
     if not capture_enabled:
         return jsonify({'success': False, 'error': 'Захват областей отключён. Ожидайте времени старта.'}), 403
     data = request.get_json() or {}
