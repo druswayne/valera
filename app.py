@@ -197,15 +197,17 @@ USER_BASE_ENERGY = 5
 INITIAL_SKILL_POINTS = 10
 SKILL_POINTS_PER_LEVEL = 3
 
+XP_BASE_PER_LEVEL = 80  # было 100; прокачка ускорена на 20%
+
 def xp_required_for_level(level):
-    """Суммарный опыт для достижения уровня level (для уровня 1 = 0, уровень 2 = 100, 3 = 300, 4 = 600, ...)."""
+    """Суммарный опыт для достижения уровня level (уровень 1 = 0, 2 = 80, 3 = 240, 4 = 480, ...)."""
     if level <= 1:
         return 0
-    return 100 * level * (level - 1) // 2
+    return XP_BASE_PER_LEVEL * level * (level - 1) // 2
 
 def xp_to_next_level(current_level):
     """Опыт, нужный для перехода с current_level на current_level+1."""
-    return 100 * current_level
+    return XP_BASE_PER_LEVEL * current_level
 
 def user_damage_by_level(level):
     """Урон персонажа (legacy). Используйте user.damage."""
@@ -1696,17 +1698,12 @@ def api_clan_create():
 @app.route('/api/clan/<int:clan_id>/update', methods=['POST'])
 @login_required
 def api_clan_update(clan_id):
-    """Владелец клана может изменить название и эмблему."""
+    """Владелец клана может изменить только эмблему; название клана создатель менять не может."""
     clan = Clan.query.get_or_404(clan_id)
     if clan.owner_id != current_user.id:
         return jsonify({'success': False, 'error': 'Только владелец может редактировать клан'}), 403
     data = request.form
-    name = (data.get('name') or '').strip()
-    if name and len(name) >= 2:
-        existing = Clan.query.filter(Clan.name == name, Clan.id != clan_id).first()
-        if existing:
-            return jsonify({'success': False, 'error': 'Клан с таким названием уже существует'}), 400
-        clan.name = name
+    # Имя клана владелец (создатель) менять не может — не обновляем name
     if 'flag' in request.files:
         f = request.files['flag']
         if f and f.filename and f.filename.rsplit('.', 1)[-1].lower() in ALLOWED_EXTENSIONS:
@@ -3388,25 +3385,42 @@ def territory_battle_rules():
 
 @app.route('/territory-battle/clans-top')
 def territory_clans_top():
-    """Страница топа кланов по владению областями с раскрываемым списком топ-10 участников."""
+    """Страница топа кланов по владению областями с раскрываемым списком топ-10 участников.
+    Сортировка: сначала по числу областей (убыв.), затем по сумме урона + очков защиты (убыв.)."""
     # Подсчёт областей по кланам (1 запрос)
     territory_counts = db.session.query(
         TerritoryRegionState.owner_clan_id,
         func.count(TerritoryRegionState.region_index).label('territory_count')
     ).filter(TerritoryRegionState.owner_clan_id.isnot(None)).group_by(
         TerritoryRegionState.owner_clan_id
-    ).order_by(func.count(TerritoryRegionState.region_index).desc()).all()
+    ).all()
 
     clan_ids = [row[0] for row in territory_counts]
     if not clan_ids:
         return render_template('territory_clans_top.html', clans_data=[])
+
+    # Сумма (урон + очки защиты) по клану для вторичной сортировки
+    score_expr = func.coalesce(UserTerritoryStats.total_damage_dealt, 0) + func.coalesce(UserTerritoryStats.total_influence_points, 0)
+    clan_scores_rows = db.session.query(
+        User.clan_id,
+        func.coalesce(func.sum(score_expr), 0).label('clan_score')
+    ).outerjoin(UserTerritoryStats, User.id == UserTerritoryStats.user_id).filter(
+        User.clan_id.in_(clan_ids)
+    ).group_by(User.clan_id).all()
+    clan_score_by_id = {row[0]: int(row[1] or 0) for row in clan_scores_rows}
+
+    # Сортировка: сначала по числу областей (убыв.), затем по урон+защита (убыв.)
+    territory_counts = sorted(
+        territory_counts,
+        key=lambda r: (r[1], clan_score_by_id.get(r[0], 0)),
+        reverse=True
+    )
 
     # Все кланы одним запросом
     clans = Clan.query.filter(Clan.id.in_(clan_ids)).all()
     clan_by_id = {c.id: c for c in clans}
 
     # Топ участников по (урон + очки защиты) для всех кланов одним запросом; в Python берём по 10 на клан
-    score_expr = func.coalesce(UserTerritoryStats.total_damage_dealt, 0) + func.coalesce(UserTerritoryStats.total_influence_points, 0)
     all_members = db.session.query(User, UserTerritoryStats).outerjoin(
         UserTerritoryStats, User.id == UserTerritoryStats.user_id
     ).filter(User.clan_id.in_(clan_ids)).order_by(User.clan_id, score_expr.desc()).all()

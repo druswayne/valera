@@ -708,7 +708,8 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                     </div>
                     <div style="flex:1; min-width:180px;">
                         <label>Название клана</label>
-                        <input type="text" name="name" value="{{ clan_data.clan.name }}" minlength="2" required>
+                        <input type="text" value="{{ clan_data.clan.name }}" readonly disabled style="opacity:0.9; cursor:not-allowed;" title="Создатель клана не может изменить название">
+                        <p style="margin:4px 0 0; font-size:0.8rem; color:#b8a088;">Изменить название может только администратор.</p>
                     </div>
                 </div>
                 <button type="submit" class="clan-btn">Сохранить</button>
@@ -1108,7 +1109,6 @@ document.getElementById('clanEditForm')?.addEventListener('submit', function(e) 
     var clanId = {{ clan_data.clan.id if clan_data and clan_data.clan else 'null' }};
     if (!clanId) return;
     var fd = new FormData();
-    fd.append('name', form.querySelector('[name=name]').value);
     var flagInput = form.querySelector('[name=flag]');
     if (flagInput && flagInput.files[0]) fd.append('flag', flagInput.files[0]);
     fetch('/api/clan/' + clanId + '/update', { method: 'POST', body: fd })

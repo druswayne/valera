@@ -585,6 +585,15 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     color: #e8c86a;
 }
 
+/* Запрет копирования/выделения текста условия задачи */
+.territory-task-content.no-copy {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+
 /* Модальное окно задания — свиток/пергамент */
 .task-modal-overlay {
     position: fixed;
@@ -1285,8 +1294,10 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
             <h2 id="taskModalTitle">Задание</h2>
         </div>
         <div class="task-modal-body">
-            <div class="task-text" id="taskModalText"></div>
-            <img class="task-image" id="taskModalImage" alt="" style="display: none;">
+            <div class="territory-task-content no-copy" id="territoryTaskContent">
+                <div class="task-text" id="taskModalText"></div>
+                <img class="task-image" id="taskModalImage" alt="" style="display: none;">
+            </div>
             <div class="task-answer-wrap" id="taskAnswerWrapDefault">
                 <label for="taskAnswerInput">Ваш ответ:</label>
                 <input type="text" id="taskAnswerInput">
@@ -1357,6 +1368,18 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 
 <div class="task-result-toast" id="taskResultToast"></div>
 
+<!-- Модальное окно предупреждения о перезагрузке при потере фокуса (защита от списывания) -->
+<div class="task-modal-overlay" id="territoryFocusWarningModal" style="display: none; pointer-events: auto;">
+    <div class="task-modal" style="max-width: 400px;">
+        <div class="task-modal-header"><h2>Внимание</h2></div>
+        <div class="task-modal-body" style="text-align: center; color: #2c1810;">
+            Вы были вне вкладки более 5 секунд.<br>
+            Страница будет автоматически перезагружена через
+            <span id="territoryFocusWarningCountdown" style="font-weight: bold;">2</span> сек.
+        </div>
+    </div>
+</div>
+
 <div class="territory-description-popover-overlay" id="territoryDescriptionPopover">
     <div class="territory-description-popover">
         <h4 id="territoryDescriptionPopoverTitle"></h4>
@@ -1366,6 +1389,101 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 </div>
 
 <script>
+// Запрет копирования текста условия задачи (в блоке модалки задания)
+(function() {
+    const territoryTaskContent = document.getElementById('territoryTaskContent');
+    if (!territoryTaskContent) return;
+    const block = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+    };
+    ['copy', 'cut', 'contextmenu', 'selectstart', 'dragstart'].forEach(function(evt) {
+        territoryTaskContent.addEventListener(evt, block);
+    });
+})();
+
+// Защита от списывания: если вкладка вне фокуса > 5 сек — предупреждение и перезагрузка
+window.territoryFocusProtection = (function() {
+    const MAX_INACTIVE_MS = 5000;
+    const RELOAD_DELAY_MS = 2000;
+    var armed = false;
+    var hiddenSince = null;
+    var reloadTriggered = false;
+    var reloadTimeoutId = null;
+    var countdownIntervalId = null;
+
+    function cleanupTimers() {
+        if (countdownIntervalId) { clearInterval(countdownIntervalId); countdownIntervalId = null; }
+        if (reloadTimeoutId) { clearTimeout(reloadTimeoutId); reloadTimeoutId = null; }
+    }
+    function markHidden() {
+        if (!armed || reloadTriggered) return;
+        if (hiddenSince === null) hiddenSince = Date.now();
+    }
+    function showWarningAndReload() {
+        var modal = document.getElementById('territoryFocusWarningModal');
+        var countdownEl = document.getElementById('territoryFocusWarningCountdown');
+        cleanupTimers();
+        if (modal) {
+            modal.style.display = 'flex';
+            modal.classList.add('open');
+        }
+        var start = Date.now();
+        function updateCountdown() {
+            var remainingMs = Math.max(0, RELOAD_DELAY_MS - (Date.now() - start));
+            var sec = Math.max(0, Math.ceil(remainingMs / 1000));
+            if (countdownEl) countdownEl.textContent = String(sec);
+            if (remainingMs <= 0 && countdownIntervalId) {
+                clearInterval(countdownIntervalId);
+                countdownIntervalId = null;
+            }
+        }
+        updateCountdown();
+        countdownIntervalId = setInterval(updateCountdown, 200);
+        reloadTimeoutId = setTimeout(function() {
+            cleanupTimers();
+            window.location.reload();
+        }, RELOAD_DELAY_MS);
+    }
+    function checkAndReload() {
+        if (!armed || reloadTriggered) return;
+        if (hiddenSince === null) return;
+        if ((Date.now() - hiddenSince) > MAX_INACTIVE_MS) {
+            reloadTriggered = true;
+            showWarningAndReload();
+            return;
+        }
+        hiddenSince = null;
+    }
+    function onVisibilityChange() {
+        if (document.hidden) markHidden();
+        else checkAndReload();
+    }
+    function arm() {
+        if (armed) return;
+        armed = true;
+        hiddenSince = null;
+        reloadTriggered = false;
+        document.addEventListener('visibilitychange', onVisibilityChange);
+        window.addEventListener('blur', markHidden);
+        window.addEventListener('focus', checkAndReload);
+    }
+    function disarm() {
+        if (!armed) return;
+        armed = false;
+        hiddenSince = null;
+        reloadTriggered = false;
+        cleanupTimers();
+        document.removeEventListener('visibilitychange', onVisibilityChange);
+        window.removeEventListener('blur', markHidden);
+        window.removeEventListener('focus', checkAndReload);
+        var modal = document.getElementById('territoryFocusWarningModal');
+        if (modal) { modal.style.display = 'none'; modal.classList.remove('open'); }
+    }
+    return { arm: arm, disarm: disarm };
+})();
+
 (function() {
     const MAX_STRENGTH = 1000;
     const STRENGTH_STEP_SAME = 25;   // за правильный ответ своего класса
@@ -1400,9 +1518,11 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     for (let i = 0; i < REGION_COUNT; i++) {
         const cfg = configByIndex[i];
         const st = (TERRITORY_STATE && TERRITORY_STATE[i]) ? TERRITORY_STATE[i] : { owner_clan_id: null, strength: 0 };
+        const isLocked = !!(cfg && cfg.is_locked);
         state.regions.push({
             ownerId: st.owner_clan_id !== undefined ? st.owner_clan_id : (st.owner_class_id !== undefined ? st.owner_class_id : null),
-            strength: st.strength || 0
+            strength: st.strength || 0,
+            isLocked: isLocked
         });
         const g = regionElements[i];
         if (g) {
@@ -1837,11 +1957,13 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     function renderGlobalProgress() {
         const counts = {};
         clansData.forEach(function(c) { counts[c.id] = 0; });
+        let totalRegions = 0;
         state.regions.forEach(function(r) {
+            if (r.isLocked) return;
+            totalRegions += 1;
             if (r.ownerId !== null) counts[r.ownerId] = (counts[r.ownerId] || 0) + 1;
         });
-
-        const totalRegions = state.regions.length || 1;
+        if (totalRegions === 0) totalRegions = 1;
         const container = document.getElementById('globalProgressBars');
         container.innerHTML = '';
 
@@ -1994,6 +2116,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                         var ed = document.getElementById('energyDisplay');
                         if (ed) ed.textContent = data.current_energy;
                     }
+                    window.territoryFocusProtection && window.territoryFocusProtection.arm();
                 } else {
                     if (data.error && (data.current_energy === undefined) && data.error.indexOf('энерг') !== -1) {
                         closeTaskModal();
@@ -2014,6 +2137,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         document.getElementById('taskModal').classList.remove('open');
         state.currentRegionId = null;
         window._currentTask = null;
+        window.territoryFocusProtection && window.territoryFocusProtection.disarm();
     }
 
     function showEnergyModal(message) {
@@ -2072,6 +2196,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                 renderGlobalProgress();
             }
             if (data.correct) {
+                closeTaskModal();
                 var msg = 'Верно!';
                 if (data.xp_gained) msg += ' +' + data.xp_gained + ' опыта';
                 if (data.leveled_up) msg += ' Уровень ' + data.level + '!';
