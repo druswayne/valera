@@ -891,12 +891,12 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         return skillState.damage !== savedState.damage || skillState.defense !== savedState.defense || skillState.energy !== savedState.energy;
     }
     function updateSkillUI() {
-        var base = 5;
-        document.getElementById('skillDamageVal').textContent = base + skillState.damage;
-        document.getElementById('skillDefenseVal').textContent = base + skillState.defense;
-        document.getElementById('skillEnergyVal').textContent = base + skillState.energy;
+        var baseDamage = 5, baseDefense = 5, baseEnergy = 10;
+        document.getElementById('skillDamageVal').textContent = baseDamage + skillState.damage;
+        document.getElementById('skillDefenseVal').textContent = baseDefense + skillState.defense;
+        document.getElementById('skillEnergyVal').textContent = baseEnergy + skillState.energy;
         var dispDamage = document.getElementById('displayDamage');
-        if (dispDamage) dispDamage.textContent = base + skillState.damage;
+        if (dispDamage) dispDamage.textContent = baseDamage + skillState.damage;
         var av = available();
         var pointsBlock = document.getElementById('skillPointsBlock');
         var pointsHint = document.getElementById('skillPointsHint');
