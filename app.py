@@ -3385,42 +3385,40 @@ def territory_battle_rules():
 
 @app.route('/territory-battle/clans-top')
 def territory_clans_top():
-    """Страница топа кланов по владению областями с раскрываемым списком топ-10 участников.
-    Сортировка: сначала по числу областей (убыв.), затем по сумме урона + очков защиты (убыв.)."""
-    # Подсчёт областей по кланам (1 запрос)
-    territory_counts = db.session.query(
-        TerritoryRegionState.owner_clan_id,
-        func.count(TerritoryRegionState.region_index).label('territory_count')
-    ).filter(TerritoryRegionState.owner_clan_id.isnot(None)).group_by(
-        TerritoryRegionState.owner_clan_id
-    ).all()
+    """Топ-10 кланов: сначала по числу контролируемых областей (убыв.), затем по урону+защите (убыв.).
+    Если кланов с областями меньше 10, добиваем до 10 кланами с 0 областей (ранжируем их по урону+защите)."""
+    # Число областей по каждому клану (включая кланы с 0 областей)
+    all_clans_territory = db.session.query(
+        Clan.id,
+        func.coalesce(func.count(TerritoryRegionState.region_index), 0).label('territory_count')
+    ).outerjoin(TerritoryRegionState, Clan.id == TerritoryRegionState.owner_clan_id).group_by(Clan.id).all()
 
-    clan_ids = [row[0] for row in territory_counts]
-    if not clan_ids:
+    if not all_clans_territory:
         return render_template('territory_clans_top.html', clans_data=[])
 
-    # Сумма (урон + очки защиты) по клану для вторичной сортировки
+    # Сумма (урон + очки защиты) по каждому клану (кланы без участников/статистики дают 0)
     score_expr = func.coalesce(UserTerritoryStats.total_damage_dealt, 0) + func.coalesce(UserTerritoryStats.total_influence_points, 0)
     clan_scores_rows = db.session.query(
         User.clan_id,
         func.coalesce(func.sum(score_expr), 0).label('clan_score')
     ).outerjoin(UserTerritoryStats, User.id == UserTerritoryStats.user_id).filter(
-        User.clan_id.in_(clan_ids)
+        User.clan_id.isnot(None)
     ).group_by(User.clan_id).all()
     clan_score_by_id = {row[0]: int(row[1] or 0) for row in clan_scores_rows}
 
-    # Сортировка: сначала по числу областей (убыв.), затем по урон+защита (убыв.)
-    territory_counts = sorted(
-        territory_counts,
+    # Сортировка: сначала по числу областей (убыв.), затем по урон+защита (убыв.); берём топ-10
+    sorted_clans = sorted(
+        all_clans_territory,
         key=lambda r: (r[1], clan_score_by_id.get(r[0], 0)),
         reverse=True
-    )
+    )[:10]
+    clan_ids = [r[0] for r in sorted_clans]
 
-    # Все кланы одним запросом
+    # Все кланы топ-10 одним запросом
     clans = Clan.query.filter(Clan.id.in_(clan_ids)).all()
     clan_by_id = {c.id: c for c in clans}
 
-    # Топ участников по (урон + очки защиты) для всех кланов одним запросом; в Python берём по 10 на клан
+    # Топ участников по (урон + очки защиты) для этих кланов; в Python берём по 10 на клан
     all_members = db.session.query(User, UserTerritoryStats).outerjoin(
         UserTerritoryStats, User.id == UserTerritoryStats.user_id
     ).filter(User.clan_id.in_(clan_ids)).order_by(User.clan_id, score_expr.desc()).all()
@@ -3435,7 +3433,7 @@ def territory_clans_top():
             top_per_clan[cid].append((u, stats))
 
     clans_data = []
-    for clan_id, territory_count in territory_counts:
+    for clan_id, territory_count in sorted_clans:
         clan = clan_by_id.get(clan_id)
         if not clan:
             continue
