@@ -645,6 +645,97 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 .clan-chat-form button:disabled { opacity: 0.6; cursor: not-allowed; }
 .clan-chat-empty { color: #b8a088; padding: 12px; text-align: center; font-size: 0.95rem; }
 
+/* Плавающая кнопка чата — приятное оформление */
+.floating-chat-btn {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(145deg, #6b5344 0%, #5c4033 50%, #4a3520 100%);
+    color: #e8dcc4;
+    font-size: 1.5rem;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35), 0 0 0 1px rgba(212,168,75,0.2), inset 0 1px 0 rgba(255,255,255,0.08);
+    z-index: 99990;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.floating-chat-btn:hover {
+    background: linear-gradient(145deg, #7a6352 0%, #6b5344 100%);
+    color: #e8c86a;
+    transform: scale(1.08);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.4), 0 0 0 1px rgba(212,168,75,0.35), inset 0 1px 0 rgba(255,255,255,0.12);
+}
+.floating-chat-btn:active {
+    transform: scale(1.02);
+}
+/* Модалка чата с кланом — компактная и аккуратная */
+#clanChatModal.modal-overlay { padding: 16px; }
+#clanChatModal .modal-box,
+.clan-chat-modal .modal-box {
+    max-width: 380px;
+    width: 100%;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    padding: 18px;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.45), 0 0 0 1px rgba(92,64,51,0.4), inset 0 1px 0 rgba(255,255,255,0.15);
+    background: linear-gradient(180deg, #f5e8d0 0%, #e8dcc4 50%, #ddd0b8 100%);
+}
+#clanChatModal .modal-box h3,
+.clan-chat-modal .modal-box h3 { margin: 0 0 12px; font-size: 1.05rem; color: #3d2914; }
+#clanChatModal #clanChatModalBody,
+.clan-chat-modal .clan-chat-modal-body {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+#clanChatModal .clan-chat-content,
+.clan-chat-modal .clan-chat-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+#clanChatModal .clan-chat-content.open,
+.clan-chat-modal .clan-chat-content.open { display: flex !important; }
+#clanChatModal .clan-chat-messages,
+.clan-chat-modal .clan-chat-messages {
+    max-height: 240px;
+    flex: 1;
+    min-height: 120px;
+    border-radius: 8px;
+    border: 1px solid rgba(92,64,51,0.35);
+}
+#clanChatModal .clan-chat-form,
+.clan-chat-modal .clan-chat-form { margin-top: 10px; flex-shrink: 0; }
+#clanChatModal .modal-chat-close,
+.clan-chat-modal .modal-chat-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: rgba(92,64,51,0.15);
+    color: #5c4033;
+    font-size: 1.25rem;
+    cursor: pointer;
+    line-height: 1;
+    transition: background 0.2s, color 0.2s;
+}
+#clanChatModal .modal-chat-close:hover,
+.clan-chat-modal .modal-chat-close:hover { background: rgba(92,64,51,0.3); color: #3d2914; }
+#clanChatModal .modal-box,
+.clan-chat-modal .modal-box { position: relative; }
+
 .modal-overlay {
     position: fixed;
     top: 0; left: 0; width: 100%; height: 100%;
@@ -821,6 +912,11 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     .shop-item-modal .item-image-placeholder { font-size: 2rem; }
     .shop-item-modal .item-price { font-size: 1.1rem; margin: 10px 0; }
     .shop-item-modal .btn-buy { padding: 10px 20px; min-height: 44px; }
+    .floating-chat-btn { bottom: 16px; right: 16px; width: 52px; height: 52px; font-size: 1.4rem; }
+    #clanChatModal.modal-overlay { padding: 12px; }
+    #clanChatModal .modal-box { max-height: 80vh; padding: 14px; border-radius: 10px; }
+    #clanChatModal .clan-chat-messages { max-height: 200px; min-height: 100px; }
+    #clanChatModal .modal-chat-close { top: 8px; right: 8px; width: 32px; height: 32px; }
 }
 </style>
 {% endblock %}
@@ -1032,16 +1128,18 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         <!-- Чат с кланом -->
         <div class="clan-block clan-chat-block">
             <h3>Чат с кланом</h3>
-            <button type="button" id="clanChatToggleBtn" class="clan-members-toggle" onclick="var el=document.getElementById('clanChatContent'); var btn=document.getElementById('clanChatToggleBtn'); el.classList.toggle('open'); if(el.classList.contains('open')){ var m=document.getElementById('clanChatMessages'); if(m) m.scrollTop=m.scrollHeight; btn.textContent='Скрыть чат'; } else { btn.textContent='Показать чат'; }">
+            <button type="button" id="clanChatToggleBtn" class="clan-members-toggle" onclick="var el=document.getElementById('clanChatContent'); var btn=document.getElementById('clanChatToggleBtn'); if(!el) return; el.classList.toggle('open'); if(el.classList.contains('open')){ var m=document.getElementById('clanChatMessages'); if(m) m.scrollTop=m.scrollHeight; btn.textContent='Скрыть чат'; } else { btn.textContent='Показать чат'; }">
                 Показать чат
             </button>
-            <div id="clanChatContent" class="clan-chat-content">
-                <div id="clanChatMessages" class="clan-chat-messages">
-                    <div class="clan-chat-empty">Загрузка сообщений…</div>
-                </div>
-                <div class="clan-chat-form">
-                    <input type="text" id="clanChatInput" placeholder="Введите сообщение…" maxlength="2000" autocomplete="off">
-                    <button type="button" id="clanChatSendBtn">Отправить</button>
+            <div id="clanChatContentHolder">
+                <div id="clanChatContent" class="clan-chat-content">
+                    <div id="clanChatMessages" class="clan-chat-messages">
+                        <div class="clan-chat-empty">Загрузка сообщений…</div>
+                    </div>
+                    <div class="clan-chat-form">
+                        <input type="text" id="clanChatInput" placeholder="Введите сообщение…" maxlength="2000" autocomplete="off">
+                        <button type="button" id="clanChatSendBtn">Отправить</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1119,9 +1217,22 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     </div>
 </div>
 </div>
+{% if clan_data %}
+<button type="button" class="floating-chat-btn" id="floatingChatBtn" aria-label="Открыть чат с кланом" title="Чат с кланом">💬</button>
+{% endif %}
 {% endblock %}
 
 {% block modals %}
+{% if clan_data %}
+<!-- Модальное окно чата с кланом -->
+<div class="modal-overlay" id="clanChatModal">
+    <div class="modal-box">
+        <button type="button" class="modal-chat-close" id="clanChatModalClose" aria-label="Закрыть">×</button>
+        <h3>Чат с кланом</h3>
+        <div id="clanChatModalBody"></div>
+    </div>
+</div>
+{% endif %}
 <!-- Модальное окно выхода из клана -->
 <div class="modal-overlay" id="leaveModal">
     <div class="modal-box">
@@ -1739,6 +1850,35 @@ var CURRENT_USER_ID = {{ user.id }};
     if (sendBtn) sendBtn.addEventListener('click', sendMessage);
     if (input) input.addEventListener('keydown', function(e) {
         if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }
+    });
+})();
+
+(function floatingChatModal() {
+    var btn = document.getElementById('floatingChatBtn');
+    var modal = document.getElementById('clanChatModal');
+    var modalBody = document.getElementById('clanChatModalBody');
+    var closeBtn = document.getElementById('clanChatModalClose');
+    var content = document.getElementById('clanChatContent');
+    var holder = document.getElementById('clanChatContentHolder');
+    if (!btn || !modal || !modalBody || !content || !holder) return;
+
+    function openChatModal() {
+        modalBody.appendChild(content);
+        content.classList.add('open');
+        modal.classList.add('open');
+        var messages = document.getElementById('clanChatMessages');
+        if (messages) messages.scrollTop = messages.scrollHeight;
+    }
+    function closeChatModal() {
+        modal.classList.remove('open');
+        modalBody.removeChild(content);
+        holder.appendChild(content);
+    }
+
+    btn.addEventListener('click', openChatModal);
+    if (closeBtn) closeBtn.addEventListener('click', closeChatModal);
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) closeChatModal();
     });
 })();
 

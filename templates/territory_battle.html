@@ -1064,6 +1064,103 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     color: #e8c86a;
 }
 
+/* Плавающая кнопка чата с кланом */
+.floating-chat-btn {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(145deg, #6b5344 0%, #5c4033 50%, #4a3520 100%);
+    color: #e8dcc4;
+    font-size: 1.5rem;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35), 0 0 0 1px rgba(212,168,75,0.2), inset 0 1px 0 rgba(255,255,255,0.08);
+    z-index: 99990;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.floating-chat-btn:hover {
+    background: linear-gradient(145deg, #7a6352 0%, #6b5344 100%);
+    color: #e8c86a;
+    transform: scale(1.08);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.4), 0 0 0 1px rgba(212,168,75,0.35), inset 0 1px 0 rgba(255,255,255,0.12);
+}
+.floating-chat-btn:active { transform: scale(1.02); }
+
+/* Кнопка чата в углу блока карты */
+.map-wrap .floating-chat-btn,
+.floating-chat-btn--map {
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    width: 48px;
+    height: 48px;
+    font-size: 1.35rem;
+}
+
+/* Модалка чата на странице битвы */
+.clan-chat-modal-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.75);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    padding: 20px;
+}
+.clan-chat-modal-overlay.open {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+.clan-chat-modal .modal-box {
+    max-width: 380px;
+    width: 100%;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    padding: 18px;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.45), 0 0 0 1px rgba(92,64,51,0.4), inset 0 1px 0 rgba(255,255,255,0.15);
+    background: linear-gradient(180deg, #f5e8d0 0%, #e8dcc4 50%, #ddd0b8 100%);
+    border: 2px solid #5c4033;
+    color: #2c1810;
+    position: relative;
+}
+.clan-chat-modal .modal-box h3 { margin: 0 0 12px; font-size: 1.05rem; color: #3d2914; font-family: 'Cinzel', Georgia, serif; }
+.clan-chat-modal .clan-chat-modal-body { flex: 1; min-height: 0; overflow: hidden; }
+.clan-chat-modal .clan-chat-content { display: flex; flex-direction: column; height: 100%; }
+.clan-chat-modal .clan-chat-messages {
+    max-height: 240px; min-height: 120px; overflow-y: auto; margin: 0 0 10px; padding: 10px;
+    background: rgba(44,24,16,0.08); border-radius: 8px; border: 1px solid rgba(92,64,51,0.35);
+    display: flex; flex-direction: column;
+}
+.clan-chat-modal .clan-chat-msg { padding: 8px 10px; margin-bottom: 8px; background: rgba(61,41,20,0.2); border-radius: 4px; border-left: 3px solid #8b6914; font-size: 0.95rem; max-width: 85%; }
+.clan-chat-modal .clan-chat-msg-own { align-self: flex-end; border-left: none; border-right: 3px solid #d4a84b; text-align: right; background: rgba(90,60,30,0.25); }
+.clan-chat-modal .clan-chat-msg .chat-author { font-weight: bold; color: #5c4033; margin-right: 8px; }
+.clan-chat-modal .clan-chat-msg .chat-time { font-size: 0.8rem; color: #8b7355; margin-left: 6px; }
+.clan-chat-modal .clan-chat-form { display: flex; gap: 10px; margin-top: 0; flex-shrink: 0; }
+.clan-chat-modal .clan-chat-form input[type="text"] {
+    flex: 1; min-width: 0; padding: 10px 14px; border: 2px solid #5c4033; border-radius: 6px; background: #fff; color: #2c1810; font-family: inherit;
+}
+.clan-chat-modal .clan-chat-form button {
+    padding: 10px 18px; border-radius: 6px; border: 2px solid #5c4033; background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    color: #d4a84b; font-weight: bold; font-family: 'Cinzel', Georgia, serif; cursor: pointer;
+}
+.clan-chat-modal .clan-chat-form button:hover { color: #e8c86a; border-color: #8b6914; }
+.clan-chat-modal .clan-chat-empty { color: #8b7355; padding: 12px; text-align: center; font-size: 0.95rem; }
+.clan-chat-modal .modal-chat-close {
+    position: absolute; top: 10px; right: 10px; width: 34px; height: 34px; padding: 0; border: none; border-radius: 50%;
+    background: rgba(92,64,51,0.15); color: #5c4033; font-size: 1.25rem; cursor: pointer; line-height: 1;
+}
+.clan-chat-modal .modal-chat-close:hover { background: rgba(92,64,51,0.3); color: #3d2914; }
+
 @media (max-width: 600px) {
     .territory-page { padding: 12px; }
     .territory-page h1 { font-size: 1.4rem; letter-spacing: 0.04em; }
@@ -1125,6 +1222,12 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     .task-modal-footer .submit-task-btn { min-height: 44px; }
     .energy-modal-box { margin: 16px; max-width: calc(100% - 32px); }
     .energy-modal-box .energy-modal-ok { min-height: 44px; }
+    .floating-chat-btn { bottom: 16px; right: 16px; width: 52px; height: 52px; font-size: 1.4rem; }
+    .map-wrap .floating-chat-btn { bottom: 12px; right: 12px; width: 44px; height: 44px; font-size: 1.2rem; }
+    .clan-chat-modal-overlay { padding: 12px; }
+    .clan-chat-modal .modal-box { max-height: 80vh; padding: 14px; }
+    .clan-chat-modal .clan-chat-messages { max-height: 200px; min-height: 100px; }
+    .clan-chat-modal .modal-chat-close { top: 8px; right: 8px; width: 32px; height: 32px; }
 }
 </style>
 {% endblock %}
@@ -1331,6 +1434,9 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
             </div>
         </div>
     </div>
+    {% if user_logged_in and current_user.clan_id %}
+    <button type="button" class="floating-chat-btn floating-chat-btn--map" id="battleFloatingChatBtn" aria-label="Чат с кланом" title="Чат с кланом">💬</button>
+    {% endif %}
     </div>
 </div>
 
@@ -1412,6 +1518,29 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         <button type="button" class="energy-modal-ok" id="energyModalOk">Понятно</button>
     </div>
 </div>
+
+{% if user_logged_in and current_user.clan_id %}
+<!-- Модальное окно чата с кланом (страница битвы) -->
+<div class="clan-chat-modal-overlay" id="battleClanChatModal">
+    <div class="clan-chat-modal">
+        <div class="modal-box">
+            <button type="button" class="modal-chat-close" id="battleClanChatModalClose" aria-label="Закрыть">×</button>
+            <h3>Чат с кланом</h3>
+            <div class="clan-chat-modal-body">
+                <div class="clan-chat-content open">
+                    <div class="clan-chat-messages" id="battleClanChatMessages">
+                        <div class="clan-chat-empty">Загрузка сообщений…</div>
+                    </div>
+                    <div class="clan-chat-form">
+                        <input type="text" id="battleClanChatInput" placeholder="Введите сообщение…" maxlength="2000" autocomplete="off">
+                        <button type="button" id="battleClanChatSendBtn">Отправить</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <div class="task-result-toast" id="taskResultToast"></div>
 
@@ -2444,5 +2573,149 @@ window.territoryFocusProtection = (function() {
         updateRegionUI(i);
     });
 })();
+
+{% if user_logged_in and current_user.clan_id %}
+(function battleClanChat() {
+    var container = document.getElementById('battleClanChatMessages');
+    if (!container) return;
+    var input = document.getElementById('battleClanChatInput');
+    var sendBtn = document.getElementById('battleClanChatSendBtn');
+    var modal = document.getElementById('battleClanChatModal');
+    var closeBtn = document.getElementById('battleClanChatModalClose');
+    var openBtn = document.getElementById('battleFloatingChatBtn');
+    var chatUrl = '{{ url_for("api_clan_chat_list") }}';
+    var currentUserId = {{ current_user.id }};
+    var chatMessages = [];
+    var hasMore = false;
+    var loading = false;
+    var loadingMore = false;
+
+    function formatTime(iso) {
+        if (!iso) return '';
+        var d = new Date(iso);
+        return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' +
+            d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    }
+    function escapeHtml(s) {
+        if (!s) return '';
+        var div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+    }
+    function msgToHtml(m) {
+        var ownClass = (m.user_id === currentUserId) ? ' clan-chat-msg-own' : '';
+        return '<div class="clan-chat-msg' + ownClass + '" data-id="' + m.id + '">' +
+            '<span class="chat-author">' + escapeHtml(m.author_name) + '</span>' +
+            '<span class="chat-time">' + escapeHtml(formatTime(m.created_at)) + '</span>' +
+            '<div class="chat-text">' + escapeHtml(m.text) + '</div></div>';
+    }
+    function renderAll() {
+        if (chatMessages.length === 0) {
+            container.innerHTML = '<div class="clan-chat-empty">Пока нет сообщений. Напишите первым!</div>';
+            return;
+        }
+        container.innerHTML = chatMessages.map(msgToHtml).join('');
+        container.scrollTop = container.scrollHeight;
+    }
+    function appendMessages(newMsgs) {
+        if (!newMsgs || newMsgs.length === 0) return;
+        var wasAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 20;
+        var emptyEl = container.querySelector('.clan-chat-empty');
+        if (emptyEl) {
+            container.innerHTML = newMsgs.map(msgToHtml).join('');
+        } else {
+            newMsgs.forEach(function(m) {
+                container.insertAdjacentHTML('beforeend', msgToHtml(m));
+            });
+        }
+        if (wasAtBottom) container.scrollTop = container.scrollHeight;
+    }
+    function loadChat(appendNewOnly) {
+        if (appendNewOnly) {
+            if (chatMessages.length === 0) return;
+            var newestId = chatMessages[chatMessages.length - 1].id;
+            fetch(chatUrl + '?after_id=' + newestId)
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success && data.messages && data.messages.length > 0) {
+                        data.messages.forEach(function(m) { chatMessages.push(m); });
+                        appendMessages(data.messages);
+                    }
+                });
+            return;
+        }
+        if (loading) return;
+        loading = true;
+        fetch(chatUrl + '?limit=20')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                loading = false;
+                if (data.success) {
+                    chatMessages = data.messages || [];
+                    hasMore = !!data.has_more;
+                    renderAll();
+                } else {
+                    container.innerHTML = '<div class="clan-chat-empty">Не удалось загрузить сообщения</div>';
+                }
+            })
+            .catch(function() {
+                loading = false;
+                if (container.querySelector('.clan-chat-empty') && container.textContent.indexOf('Загрузка') !== -1)
+                    container.innerHTML = '<div class="clan-chat-empty">Не удалось загрузить сообщения</div>';
+            });
+    }
+    function sendMessage() {
+        var text = (input && input.value || '').trim();
+        if (!text) return;
+        if (sendBtn) sendBtn.disabled = true;
+        fetch(chatUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: text })
+        })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (sendBtn) sendBtn.disabled = false;
+                if (data.success && data.message) {
+                    input.value = '';
+                    chatMessages.push(data.message);
+                    appendMessages([data.message]);
+                } else {
+                    alert(data.error || 'Ошибка отправки');
+                }
+            })
+            .catch(function() {
+                if (sendBtn) sendBtn.disabled = false;
+                alert('Ошибка соединения');
+            });
+    }
+
+    loadChat();
+    setInterval(function() { loadChat(true); }, 10000);
+    if (sendBtn) sendBtn.addEventListener('click', sendMessage);
+    if (input) input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }
+    });
+
+    function openModal() {
+        if (modal) {
+            modal.classList.add('open');
+            loadChat();
+            setTimeout(function() {
+                var el = document.getElementById('battleClanChatMessages');
+                if (el) el.scrollTop = el.scrollHeight;
+            }, 50);
+        }
+    }
+    function closeModal() {
+        if (modal) modal.classList.remove('open');
+    }
+    if (openBtn) openBtn.addEventListener('click', openModal);
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (modal) modal.addEventListener('click', function(e) {
+        if (e.target === modal) closeModal();
+    });
+})();
+{% endif %}
 </script>
 {% endblock %}
