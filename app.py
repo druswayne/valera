@@ -197,17 +197,25 @@ USER_BASE_ENERGY = 10
 INITIAL_SKILL_POINTS = 10
 SKILL_POINTS_PER_LEVEL = 3
 
+# Базовый XP за уровень после 10-го
 XP_BASE_PER_LEVEL = 80  # было 100; прокачка ускорена на 20%
+# Ускоренная прокачка до 10 уровня (примерно в 2 раза быстрее)
+XP_BASE_PER_LEVEL_BELOW_10 = 40
 
 def xp_required_for_level(level):
-    """Суммарный опыт для достижения уровня level (уровень 1 = 0, 2 = 80, 3 = 240, 4 = 480, ...)."""
+    """Суммарный опыт для достижения уровня level.
+
+    Для уровней 2–10 используется уменьшенная база XP, чтобы ускорить раннюю прокачку.
+    """
     if level <= 1:
         return 0
-    return XP_BASE_PER_LEVEL * level * (level - 1) // 2
+    base = XP_BASE_PER_LEVEL_BELOW_10 if level <= 10 else XP_BASE_PER_LEVEL
+    return base * level * (level - 1) // 2
 
 def xp_to_next_level(current_level):
     """Опыт, нужный для перехода с current_level на current_level+1."""
-    return XP_BASE_PER_LEVEL * current_level
+    base = XP_BASE_PER_LEVEL_BELOW_10 if current_level < 10 else XP_BASE_PER_LEVEL
+    return base * current_level
 
 def user_damage_by_level(level):
     """Урон персонажа (legacy). Используйте user.damage."""
