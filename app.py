@@ -1300,20 +1300,36 @@ with app.app_context():
                     conn.execute(text('ALTER TABLE class ADD COLUMN territory_heraldry_filename VARCHAR(255)'))
                     print("Добавлена колонка territory_heraldry_filename в class")
         
+        # Регионы Болгарии (28 областей): BG-01..BG-26, BG-28 Yambol, BG-27 Shumen
+        BULGARIA_REGION_COUNT = 28
+        default_bulgaria_names = [
+            'Blagoevgrad', 'Burgas', 'Varna', 'Veliko Tarnovo', 'Vidin', 'Vratsa', 'Gabrovo', 'Dobrich',
+            'Kardzhali', 'Kyustendil', 'Lovech', 'Montana', 'Pazardzhik', 'Pernik', 'Pleven', 'Plovdiv',
+            'Razgrad', 'Ruse', 'Silistra', 'Sliven', 'Smolyan', 'Sofia-Grad', 'Sofia', 'Stara Zagora',
+            'Targovishte', 'Haskovo', 'Yambol', 'Shumen'
+        ]
         if 'territory_region_config' in tables and TerritoryRegionConfig.query.count() == 0:
-            default_names = [
-                'Jihočeský', 'Jihomoravský', 'Karlovarský', 'Královéhradecký', 'Liberecký',
-                'Moravskoslezský', 'Olomoucký', 'Pardubický', 'Zlínský', 'Plzeňský',
-                'Prague', 'Středočeský', 'Ústecký', 'Vysočina'
-            ]
-            for i, name in enumerate(default_names):
-                cfg = TerritoryRegionConfig(region_index=i, display_name=name, is_locked=(i == 10))
+            for i, name in enumerate(default_bulgaria_names):
+                cfg = TerritoryRegionConfig(region_index=i, display_name=name, is_locked=(i == 21))  # Sofia-Grad
                 db.session.add(cfg)
             db.session.commit()
-            print("Заполнены настройки областей по умолчанию")
+            print("Заполнены настройки областей по умолчанию (Болгария)")
+        elif 'territory_region_config' in tables:
+            # Миграция: добавить недостающие регионы (если было 14, добавить 14..27)
+            existing_indices = {r.region_index for r in TerritoryRegionConfig.query.all()}
+            for i in range(BULGARIA_REGION_COUNT):
+                if i not in existing_indices and i < len(default_bulgaria_names):
+                    db.session.add(TerritoryRegionConfig(region_index=i, display_name=default_bulgaria_names[i], is_locked=(i == 21)))
+            db.session.commit()
+            if 'territory_region_state' in tables:
+                existing_state_indices = {s.region_index for s in TerritoryRegionState.query.all()}
+                for i in range(BULGARIA_REGION_COUNT):
+                    if i not in existing_state_indices:
+                        db.session.add(TerritoryRegionState(region_index=i, owner_class_id=None, owner_clan_id=None, strength=0))
+                db.session.commit()
         
         if 'territory_region_state' in tables and TerritoryRegionState.query.count() == 0:
-            for i in range(14):
+            for i in range(BULGARIA_REGION_COUNT):
                 state = TerritoryRegionState(region_index=i, owner_class_id=None, owner_clan_id=None, strength=0)
                 db.session.add(state)
             db.session.commit()
@@ -2925,7 +2941,7 @@ def admin_territory_reset():
         u.energy_skill = 0
         u.current_energy = None
         u.energy_last_refill_at = None
-    for i in range(14):
+    for i in range(28):
         st = TerritoryRegionState.query.filter_by(region_index=i).first()
         if st:
             st.owner_class_id = None
