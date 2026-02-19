@@ -1605,8 +1605,10 @@ window.territoryFocusProtection = (function() {
             if (!path) return;
 
             const bbox = path.getBBox();
-            const cx = bbox.x + bbox.width / 2;
-            const cy = bbox.y + bbox.height / 2;
+            let cx = bbox.x + bbox.width / 2;
+            let cy = bbox.y + bbox.height / 2;
+            if (index === 9) cy += 0.1 * 396;
+            if (index === 21) cx += 0.05 * 615;
 
             const overlay = document.createElementNS(svg.namespaceURI, 'g');
             overlay.classList.add('region-overlay');
@@ -1641,65 +1643,73 @@ window.territoryFocusProtection = (function() {
                 overlay.appendChild(strengthTextEl);
             }
 
-            const nameText = document.createElementNS(svg.namespaceURI, 'text');
-            nameText.classList.add('region-label');
-            nameText.setAttribute('x', cx);
-            nameText.setAttribute('y', cy - 16);
-            nameText.setAttribute('text-anchor', 'middle');
-            nameText.textContent = getRegionDisplayName(index);
             var regionDesc = (configByIndex[index] && configByIndex[index].description) ? configByIndex[index].description : '';
-            overlay.appendChild(nameText);
+            var displayName = (configByIndex[index] && configByIndex[index].display_name) ? String(configByIndex[index].display_name).trim() : '';
+            var hasNameBlock = displayName !== '';
 
-            var overlayLayer = document.getElementById('regionOverlaysLayer');
-            (overlayLayer || g).appendChild(overlay);
+            if (hasNameBlock) {
+                const nameText = document.createElementNS(svg.namespaceURI, 'text');
+                nameText.classList.add('region-label');
+                nameText.setAttribute('x', cx);
+                nameText.setAttribute('y', cy - 16);
+                nameText.setAttribute('text-anchor', 'middle');
+                nameText.textContent = displayName;
+                overlay.appendChild(nameText);
 
-            var pad = 4;
-            var textBBox = nameText.getBBox();
-            var labelBg = document.createElementNS(svg.namespaceURI, 'rect');
-            labelBg.classList.add('region-label-bg');
-            labelBg.setAttribute('x', textBBox.x - pad);
-            labelBg.setAttribute('y', textBBox.y - pad);
-            labelBg.setAttribute('width', Math.max(1, textBBox.width) + pad * 2);
-            labelBg.setAttribute('height', Math.max(1, textBBox.height) + pad * 2);
-            labelBg.setAttribute('rx', 4);
-            labelBg.setAttribute('ry', 4);
-            overlay.insertBefore(labelBg, nameText);
+                var overlayLayer = document.getElementById('regionOverlaysLayer');
+                (overlayLayer || g).appendChild(overlay);
 
-            if (regionDesc) {
-                var infoBtn = document.createElementNS(svg.namespaceURI, 'g');
-                infoBtn.classList.add('region-info-btn');
-                infoBtn.setAttribute('data-region-index', String(index));
-                infoBtn.style.cursor = 'pointer';
-                infoBtn.style.pointerEvents = 'auto';
-                var btnY = textBBox.y - pad - 8;
-                var btnSize = 16;
-                var infoRect = document.createElementNS(svg.namespaceURI, 'rect');
-                infoRect.setAttribute('x', cx - btnSize / 2);
-                infoRect.setAttribute('y', btnY - btnSize / 2);
-                infoRect.setAttribute('width', btnSize);
-                infoRect.setAttribute('height', btnSize);
-                infoRect.setAttribute('rx', 2);
-                infoBtn.appendChild(infoRect);
-                var bookIcon = document.createElementNS(svg.namespaceURI, 'text');
-                bookIcon.setAttribute('class', 'region-info-book');
-                bookIcon.setAttribute('x', cx);
-                bookIcon.setAttribute('y', btnY);
-                bookIcon.setAttribute('text-anchor', 'middle');
-                bookIcon.setAttribute('dominant-baseline', 'central');
-                bookIcon.textContent = '\uD83D\uDCD6';
-                infoBtn.appendChild(bookIcon);
-                overlay.insertBefore(infoBtn, labelBg);
-                infoBtn.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    var idx = parseInt(this.getAttribute('data-region-index'), 10);
-                    var cfg = configByIndex[idx];
-                    var titleEl = document.getElementById('territoryDescriptionPopoverTitle');
-                    var textEl = document.getElementById('territoryDescriptionPopoverText');
-                    var popover = document.getElementById('territoryDescriptionPopover');
-                    if (titleEl) titleEl.textContent = cfg && cfg.display_name ? cfg.display_name : ('Зона ' + (idx + 1));
-                    if (textEl) textEl.textContent = (cfg && cfg.description) ? cfg.description : '';
-                    if (popover) popover.classList.add('show');
-                });
+                var pad = 4;
+                var textBBox = nameText.getBBox();
+                var labelBg = document.createElementNS(svg.namespaceURI, 'rect');
+                labelBg.classList.add('region-label-bg');
+                labelBg.setAttribute('x', textBBox.x - pad);
+                labelBg.setAttribute('y', textBBox.y - pad);
+                labelBg.setAttribute('width', Math.max(1, textBBox.width) + pad * 2);
+                labelBg.setAttribute('height', Math.max(1, textBBox.height) + pad * 2);
+                labelBg.setAttribute('rx', 4);
+                labelBg.setAttribute('ry', 4);
+                overlay.insertBefore(labelBg, nameText);
+
+                if (regionDesc) {
+                    var infoBtn = document.createElementNS(svg.namespaceURI, 'g');
+                    infoBtn.classList.add('region-info-btn');
+                    infoBtn.setAttribute('data-region-index', String(index));
+                    infoBtn.style.cursor = 'pointer';
+                    infoBtn.style.pointerEvents = 'auto';
+                    var btnY = textBBox.y - pad - 8;
+                    var btnSize = 16;
+                    var infoRect = document.createElementNS(svg.namespaceURI, 'rect');
+                    infoRect.setAttribute('x', cx - btnSize / 2);
+                    infoRect.setAttribute('y', btnY - btnSize / 2);
+                    infoRect.setAttribute('width', btnSize);
+                    infoRect.setAttribute('height', btnSize);
+                    infoRect.setAttribute('rx', 2);
+                    infoBtn.appendChild(infoRect);
+                    var bookIcon = document.createElementNS(svg.namespaceURI, 'text');
+                    bookIcon.setAttribute('class', 'region-info-book');
+                    bookIcon.setAttribute('x', cx);
+                    bookIcon.setAttribute('y', btnY);
+                    bookIcon.setAttribute('text-anchor', 'middle');
+                    bookIcon.setAttribute('dominant-baseline', 'central');
+                    bookIcon.textContent = '\uD83D\uDCD6';
+                    infoBtn.appendChild(bookIcon);
+                    overlay.insertBefore(infoBtn, labelBg);
+                    infoBtn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        var idx = parseInt(this.getAttribute('data-region-index'), 10);
+                        var cfg = configByIndex[idx];
+                        var titleEl = document.getElementById('territoryDescriptionPopoverTitle');
+                        var textEl = document.getElementById('territoryDescriptionPopoverText');
+                        var popover = document.getElementById('territoryDescriptionPopover');
+                        if (titleEl) titleEl.textContent = cfg && cfg.display_name ? cfg.display_name : ('Зона ' + (idx + 1));
+                        if (textEl) textEl.textContent = (cfg && cfg.description) ? cfg.description : '';
+                        if (popover) popover.classList.add('show');
+                    });
+                }
+            } else {
+                var overlayLayer = document.getElementById('regionOverlaysLayer');
+                (overlayLayer || g).appendChild(overlay);
             }
 
             if (!isLocked && strengthTextEl) {
