@@ -2686,6 +2686,8 @@ window.territoryFocusProtection = (function() {
     });
 
     function openModal() {
+        var taskModalEl = document.getElementById('taskModal');
+        if (taskModalEl && taskModalEl.classList.contains('open')) return;
         if (modal) {
             modal.classList.add('open');
             loadChat();
