@@ -95,6 +95,15 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     font-size: 1.25rem;
     letter-spacing: 0.04em;
 }
+.section-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+.section-title-row h2 { margin: 0; }
 
 .profile-row { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
 .avatar-wrap {
@@ -271,6 +280,172 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 }
 .energy-display { margin: 10px 0 0; }
 .energy-hint { font-size: 0.85rem; color: #b8a088; }
+
+/* Блок баланса Нумов — в верхнем правом углу блока «Личная информация» */
+.nums-balance-block {
+    margin-left: auto;
+    background: linear-gradient(145deg, #5c4020 0%, #4a3018 50%, #3d2814 100%);
+    border: 2px solid #d4a84b;
+    border-radius: 10px;
+    padding: 14px 20px;
+    box-shadow: 0 0 20px rgba(212, 168, 75, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 4px 12px rgba(0, 0, 0, 0.35);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+    min-width: 140px;
+}
+.nums-balance-block .nums-balance-main {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+}
+.nums-balance-block .nums-value {
+    font-family: 'Cinzel Decorative', 'Cinzel', Georgia, serif;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #e8c86a;
+    text-shadow: 0 0 12px rgba(232, 200, 106, 0.45), 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+.nums-balance-block .nums-suffix {
+    color: #d4a84b;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+.nums-balance-block .nums-tooltip-wrap {
+    position: relative;
+    flex-shrink: 0;
+}
+.nums-balance-block .stat-help {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1px solid #5c4033;
+    background: #3d2914;
+    color: #d4a84b;
+    font-size: 0.85rem;
+    font-weight: bold;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+.nums-balance-block .stat-help:hover { color: #e8c86a; border-color: #8b6914; background: #4a3520; }
+.nums-balance-block .stat-help.active { border-color: #d4a84b; background: #4a3520; color: #e8c86a; }
+.nums-balance-block .stat-tooltip {
+    left: auto;
+    right: 0;
+    min-width: 260px;
+    max-width: 320px;
+}
+
+/* Сворачиваемые блоки */
+.cabinet-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    cursor: pointer;
+    user-select: none;
+    margin-bottom: 0;
+}
+.cabinet-section-header h2 { margin: 0; }
+.cabinet-section-body { margin-top: 16px; }
+.cabinet-section.collapsed .cabinet-section-body { display: none; }
+.cabinet-section.collapsed .section-toggle { transform: rotate(-90deg); }
+.section-toggle {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    color: #d4a84b;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: transform 0.2s;
+    padding: 0;
+    line-height: 1;
+}
+.section-toggle:hover { color: #e8c86a; }
+
+/* Блок «Баланс и Лавка предметов» */
+.balance-shop-section .balance-display-row {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.balance-shop-section .balance-display-row .nums-balance-block {
+    margin-left: 0;
+    width: 100%;
+    box-sizing: border-box;
+    justify-content: flex-start;
+}
+.balance-shop-section .shop-toggle-btn {
+    padding: 10px 20px;
+    border-radius: 6px;
+    border: 2px solid #5c4033;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    color: #d4a84b;
+    font-weight: bold;
+    font-family: 'Cinzel', Georgia, serif;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+}
+.balance-shop-section .shop-toggle-btn:hover { color: #e8c86a; border-color: #8b6914; }
+.shop-grid-wrap { display: none; margin-top: 16px; }
+.shop-grid-wrap.open { display: block; }
+.shop-category-block { margin-bottom: 24px; }
+.shop-category-block h4 { color: #c4a574; font-size: 1rem; margin: 0 0 12px; font-family: 'Cinzel', Georgia, serif; }
+.shop-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 16px;
+}
+.shop-item-tile {
+    background: linear-gradient(145deg, #3d2914 0%, #2c1810 100%);
+    border: 2px solid #5c4033;
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.shop-item-tile:hover { border-color: #d4a84b; box-shadow: 0 0 12px rgba(212,168,75,0.2); }
+.shop-item-tile img { width: 64px; height: 64px; object-fit: cover; border-radius: 6px; margin-bottom: 8px; }
+.shop-item-tile .tile-placeholder { width: 64px; height: 64px; margin: 0 auto 8px; background: #2c1810; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: #5c4033; }
+.shop-item-tile .tile-name { font-weight: bold; color: #e8dcc4; font-size: 0.9rem; margin-bottom: 4px; }
+.shop-item-tile .tile-price { color: #d4a84b; font-size: 0.9rem; }
+
+.inventory-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 12px;
+}
+.inventory-tile {
+    background: linear-gradient(145deg, #3d2914 0%, #2c1810 100%);
+    border: 2px solid #5c4033;
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+    opacity: 0.85;
+}
+.inventory-tile img { width: 48px; height: 48px; object-fit: cover; border-radius: 4px; margin-bottom: 6px; }
+.inventory-tile .tile-placeholder { width: 48px; height: 48px; margin: 0 auto 6px; background: #2c1810; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: #5c4033; }
+.inventory-tile .tile-name { font-size: 0.8rem; color: #b8a088; }
+.inventory-empty { color: #b8a088; padding: 16px; text-align: center; }
+
+/* Модалка товара в лавке */
+.shop-item-modal .modal-box { max-width: 420px; }
+.shop-item-modal .item-image { width: 120px; height: 120px; object-fit: cover; border-radius: 8px; margin: 0 auto 12px; display: block; }
+.shop-item-modal .item-image-placeholder { width: 120px; height: 120px; margin: 0 auto 12px; background: #2c1810; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 3rem; color: #5c4033; }
+.shop-item-modal .item-price { font-size: 1.25rem; color: #8b6914; font-weight: bold; margin: 12px 0; }
+.shop-item-modal .btn-buy { padding: 12px 24px; border-radius: 6px; border: 2px solid #5c4033; background: linear-gradient(145deg, #5c4033 0%, #4a3520 100%); color: #d4a84b; font-weight: bold; cursor: pointer; font-family: 'Cinzel', Georgia, serif; }
+.shop-item-modal .btn-buy:hover:not(:disabled) { color: #e8c86a; border-color: #8b6914; }
+.shop-item-modal .btn-buy:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .clan-info { margin-bottom: 12px; }
 .clan-name { font-weight: bold; color: #d4a84b; font-size: 1.1rem; font-family: 'Cinzel', Georgia, serif; }
@@ -541,6 +716,10 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 @media (max-width: 600px) {
     .cabinet-page { padding: 12px; }
     .cabinet-page h1 { font-size: 1.35rem; margin-bottom: 16px; }
+    .section-title-row { flex-direction: column; align-items: stretch; gap: 8px; }
+    .nums-balance-block { padding: 14px 16px; margin-left: 0; }
+    .nums-balance-block .nums-value { font-size: 1.5rem; }
+    .nums-balance-block .nums-suffix { font-size: 1.1rem; }
     .cabinet-top-nav { flex-direction: column; gap: 8px; margin-bottom: 12px; }
     .cabinet-top-nav .back-link { width: 100%; }
     .cabinet-section { padding: 16px; margin-bottom: 16px; }
@@ -587,8 +766,12 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     </nav>
     <h1>Личный кабинет</h1>
 
-    <div class="cabinet-section">
-        <h2>Личная информация</h2>
+    <div class="cabinet-section" data-section="personal">
+        <div class="cabinet-section-header" data-toggle-section>
+            <h2>Личная информация</h2>
+            <button type="button" class="section-toggle" aria-label="Свернуть/развернуть">▼</button>
+        </div>
+        <div class="cabinet-section-body">
         <div class="profile-row">
             <div class="avatar-wrap" id="avatarWrap" title="Нажмите, чтобы изменить аватар">
                 <input type="file" id="avatarFileInput" accept="image/*" style="display: none;">
@@ -653,10 +836,58 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                 </div>
             </div>
         </div>
+        </div>
     </div>
 
-    <div class="cabinet-section">
-        <h2>Статистика битвы за территорию</h2>
+    <div class="cabinet-section balance-shop-section collapsed" data-section="balance-shop">
+        <div class="cabinet-section-header" data-toggle-section>
+            <h2>Баланс и Лавка предметов</h2>
+            <button type="button" class="section-toggle" aria-label="Свернуть/развернуть">▼</button>
+        </div>
+        <div class="cabinet-section-body">
+            <div class="balance-display-row">
+                <div class="nums-balance-block" aria-label="Баланс Нумов">
+                    <div class="nums-balance-main">
+                        <span class="nums-value" id="numsBalanceDisplay">{{ user.nums_balance or 0 }}</span>
+                        <span class="nums-suffix">Нумов</span>
+                    </div>
+                    <span class="stat-label-wrap nums-tooltip-wrap">
+                        <button type="button" class="stat-help" id="helpNums" aria-label="Описание">?</button>
+                        <span class="stat-tooltip" id="tooltipNums">Нумы начисляются за правильное решение задач в битве за территорию. Награда зависит от уровня сложности задания.</span>
+                    </span>
+                </div>
+                <button type="button" class="shop-toggle-btn" id="shopToggleBtn">Лавка предметов</button>
+            </div>
+            <div class="shop-grid-wrap" id="shopGridWrap">
+                <div class="shop-category-block" id="shopCategoryEnhancement">
+                    <h4>Усиления</h4>
+                    <div class="shop-tiles" id="shopTilesEnhancement"></div>
+                </div>
+                <div class="shop-category-block" id="shopCategoryCurse">
+                    <h4>Проклятия</h4>
+                    <div class="shop-tiles" id="shopTilesCurse"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="cabinet-section collapsed" data-section="inventory">
+        <div class="cabinet-section-header" data-toggle-section>
+            <h2>Инвентарь</h2>
+            <button type="button" class="section-toggle" aria-label="Свернуть/развернуть">▼</button>
+        </div>
+        <div class="cabinet-section-body">
+            <div class="inventory-tiles" id="inventoryTiles"></div>
+            <p class="inventory-empty" id="inventoryEmpty" style="display: none;">Пока пусто. Покупайте товары в лавке.</p>
+        </div>
+    </div>
+
+    <div class="cabinet-section collapsed" data-section="stats">
+        <div class="cabinet-section-header" data-toggle-section>
+            <h2>Статистика битвы за территорию</h2>
+            <button type="button" class="section-toggle" aria-label="Свернуть/развернуть">▼</button>
+        </div>
+        <div class="cabinet-section-body">
         <div class="stats-row">
             <div class="stat-item">
                 <strong>Урон нанесённый другим кланам</strong>
@@ -667,10 +898,15 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                 <span id="statInfluence">{{ user.total_influence_points }}</span>
             </div>
         </div>
+        </div>
     </div>
 
-    <div class="cabinet-section">
-        <h2>Клан</h2>
+    <div class="cabinet-section collapsed" data-section="clan">
+        <div class="cabinet-section-header" data-toggle-section>
+            <h2>Клан</h2>
+            <button type="button" class="section-toggle" aria-label="Свернуть/развернуть">▼</button>
+        </div>
+        <div class="cabinet-section-body">
         {% if clan_data %}
         <!-- Информация о клане -->
         <div class="clan-block">
@@ -810,6 +1046,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
             <button type="button" class="clan-btn" onclick="openCreateModal()">Создать клан</button>
         </div>
         {% endif %}
+        </div>
     </div>
 </div>
 </div>
@@ -866,6 +1103,20 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         <div class="modal-buttons">
             <button type="button" class="btn-cancel" onclick="closeCreateModal()">Отмена</button>
             <button type="button" class="btn-confirm" onclick="confirmCreate()">Создать</button>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно товара лавки -->
+<div class="modal-overlay shop-item-modal" id="shopItemModal">
+    <div class="modal-box">
+        <h3 id="shopItemModalTitle">Товар</h3>
+        <div id="shopItemModalImageWrap"></div>
+        <p id="shopItemModalDesc" style="margin: 12px 0; color: #2c1810;"></p>
+        <p class="item-price" id="shopItemModalPrice"></p>
+        <div class="modal-buttons">
+            <button type="button" class="btn-cancel" id="shopItemModalClose">Закрыть</button>
+            <button type="button" class="btn-confirm btn-buy" id="shopItemModalBuy" disabled>Купить</button>
         </div>
     </div>
 </div>
@@ -931,7 +1182,8 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         var helpPairs = [
             { btn: 'helpAttack', tooltip: 'tooltipAttack' },
             { btn: 'helpDefense', tooltip: 'tooltipDefense' },
-            { btn: 'helpEnergy', tooltip: 'tooltipEnergy' }
+            { btn: 'helpEnergy', tooltip: 'tooltipEnergy' },
+            { btn: 'helpNums', tooltip: 'tooltipNums' }
         ];
         function closeAllTooltips() {
             helpPairs.forEach(function(p) {
@@ -1428,6 +1680,179 @@ var CURRENT_USER_ID = {{ user.id }};
     setTimeout(function() {
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
+})();
+
+(function() {
+    document.querySelectorAll('[data-toggle-section]').forEach(function(header) {
+        var section = header.closest('.cabinet-section');
+        if (!section) return;
+        header.addEventListener('click', function() {
+            section.classList.toggle('collapsed');
+        });
+    });
+    var shopToggleBtn = document.getElementById('shopToggleBtn');
+    var shopGridWrap = document.getElementById('shopGridWrap');
+    if (shopToggleBtn && shopGridWrap) {
+        shopToggleBtn.addEventListener('click', function() {
+            shopGridWrap.classList.toggle('open');
+        });
+    }
+    var balanceDisplay = document.getElementById('numsBalanceDisplay');
+    function getBalance() { return parseInt(balanceDisplay ? balanceDisplay.textContent : 0, 10) || 0; }
+    function setBalance(v) { if (balanceDisplay) balanceDisplay.textContent = v; }
+
+    function renderShopTiles(items) {
+        var enh = document.getElementById('shopTilesEnhancement');
+        var cur = document.getElementById('shopTilesCurse');
+        if (!enh || !cur) return;
+        enh.innerHTML = '';
+        cur.innerHTML = '';
+        (items.enhancement || []).forEach(function(it) { enh.appendChild(createTile(it)); });
+        (items.curse || []).forEach(function(it) { cur.appendChild(createTile(it)); });
+    }
+    function createTile(it) {
+        var div = document.createElement('div');
+        div.className = 'shop-item-tile';
+        div.setAttribute('data-item-id', it.id);
+        if (it.image_url) {
+            var img = document.createElement('img');
+            img.src = it.image_url;
+            img.alt = it.name;
+            div.appendChild(img);
+        } else {
+            var ph = document.createElement('div');
+            ph.className = 'tile-placeholder';
+            ph.textContent = '📦';
+            div.appendChild(ph);
+        }
+        var name = document.createElement('div');
+        name.className = 'tile-name';
+        name.textContent = it.name;
+        div.appendChild(name);
+        var price = document.createElement('div');
+        price.className = 'tile-price';
+        price.textContent = it.price + ' Нумов';
+        div.appendChild(price);
+        return div;
+    }
+    function loadShop() {
+        fetch('{{ url_for("api_shop_items") }}')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success && data.items) renderShopTiles(data.items);
+            });
+    }
+    function loadInventory() {
+        fetch('{{ url_for("api_cabinet_inventory") }}')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var container = document.getElementById('inventoryTiles');
+                var empty = document.getElementById('inventoryEmpty');
+                if (!container) return;
+                container.innerHTML = '';
+                var list = (data.success && data.inventory) ? data.inventory : [];
+                if (list.length === 0) {
+                    if (empty) empty.style.display = 'block';
+                    return;
+                }
+                if (empty) empty.style.display = 'none';
+                list.forEach(function(p) {
+                    var div = document.createElement('div');
+                    div.className = 'inventory-tile';
+                    if (p.image_url) {
+                        var img = document.createElement('img');
+                        img.src = p.image_url;
+                        img.alt = p.name;
+                        div.appendChild(img);
+                    } else {
+                        var ph = document.createElement('div');
+                        ph.className = 'tile-placeholder';
+                        ph.textContent = '📦';
+                        div.appendChild(ph);
+                    }
+                    var name = document.createElement('div');
+                    name.className = 'tile-name';
+                    name.textContent = p.name;
+                    div.appendChild(name);
+                    container.appendChild(div);
+                });
+            });
+    }
+    loadShop();
+    loadInventory();
+
+    var shopItemModal = document.getElementById('shopItemModal');
+    var shopItemModalTitle = document.getElementById('shopItemModalTitle');
+    var shopItemModalImageWrap = document.getElementById('shopItemModalImageWrap');
+    var shopItemModalDesc = document.getElementById('shopItemModalDesc');
+    var shopItemModalPrice = document.getElementById('shopItemModalPrice');
+    var shopItemModalBuy = document.getElementById('shopItemModalBuy');
+    var shopItemModalClose = document.getElementById('shopItemModalClose');
+    var currentShopItemId = null;
+
+    document.getElementById('shopGridWrap')?.addEventListener('click', function(e) {
+        var tile = e.target.closest('.shop-item-tile');
+        if (!tile) return;
+        var id = tile.getAttribute('data-item-id');
+        if (!id) return;
+        fetch('{{ url_for("api_shop_item_detail", item_id=0) }}'.replace('/0', '/' + id))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.success || !data.item) return;
+                var item = data.item;
+                currentShopItemId = item.id;
+                shopItemModalTitle.textContent = item.name;
+                shopItemModalImageWrap.innerHTML = '';
+                if (item.image_url) {
+                    var img = document.createElement('img');
+                    img.className = 'item-image';
+                    img.src = item.image_url;
+                    img.alt = item.name;
+                    shopItemModalImageWrap.appendChild(img);
+                } else {
+                    var ph = document.createElement('div');
+                    ph.className = 'item-image-placeholder';
+                    ph.textContent = '📦';
+                    shopItemModalImageWrap.appendChild(ph);
+                }
+                shopItemModalDesc.textContent = item.description || '—';
+                shopItemModalPrice.textContent = item.price + ' Нумов';
+                var balance = getBalance();
+                shopItemModalBuy.disabled = balance < item.price;
+                shopItemModal.classList.add('open');
+                shopItemModal.style.display = 'flex';
+            });
+    });
+    function closeShopItemModal() {
+        shopItemModal.classList.remove('open');
+        shopItemModal.style.display = 'none';
+        currentShopItemId = null;
+    }
+    shopItemModalClose?.addEventListener('click', closeShopItemModal);
+    shopItemModal?.addEventListener('click', function(e) {
+        if (e.target === shopItemModal) closeShopItemModal();
+    });
+    shopItemModalBuy?.addEventListener('click', function() {
+        if (!currentShopItemId || this.disabled) return;
+        this.disabled = true;
+        fetch('{{ url_for("api_shop_purchase") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ item_id: currentShopItemId })
+        })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    setBalance(data.balance);
+                    loadInventory();
+                    closeShopItemModal();
+                } else {
+                    alert(data.error || 'Ошибка');
+                }
+            })
+            .catch(function() { alert('Ошибка соединения'); })
+            .finally(function() { shopItemModalBuy.disabled = false; });
+    });
 })();
 
 </script>

@@ -2264,6 +2264,7 @@ window.territoryFocusProtection = (function() {
                 closeTaskModal();
                 var msg = 'Верно!';
                 if (data.xp_gained) msg += ' +' + data.xp_gained + ' опыта';
+                if (data.nums_gained) msg += ' +' + data.nums_gained + ' Нумов';
                 if (data.leveled_up) msg += ' Уровень ' + data.level + '!';
                 showToast(msg, true);
                 updatePlayerCard(data);

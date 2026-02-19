@@ -440,6 +440,35 @@ body {
     opacity: 1;
     visibility: visible;
 }
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s, visibility 0.25s;
+}
+.modal-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+.modal-overlay .modal-box {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border-radius: 20px;
+    padding: 24px;
+    width: 90%;
+    border: 3px solid #c8a2c8;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    max-height: 90vh;
+    overflow-y: auto;
+}
 .clan-members-modal,
 .clan-delete-modal {
     background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
@@ -610,6 +639,37 @@ body {
     </section>
 
     <section class="admin-section">
+        <h2>Редактор лавки</h2>
+        <p>Товары лавки отображаются в личном кабинете в блоке «Баланс и Лавка предметов». Категории: Усиления (улучшают характеристики) и Проклятия (ухудшают у всего клана).</p>
+        <button type="button" class="edit-btn" id="shopItemAddBtn">Добавить товар</button>
+        <div class="admin-table-wrap" style="margin-top: 12px;">
+            <table class="admin-table" id="shopItemsTable">
+                <thead>
+                    <tr>
+                        <th>Название</th>
+                        <th>Категория</th>
+                        <th>Цена (Нумы)</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="shopItemsTbody">
+                    {% for item in shop_items or [] %}
+                    <tr data-item-id="{{ item.id }}">
+                        <td>{{ item.name }}</td>
+                        <td>{{ 'Усиления' if item.category == 'enhancement' else 'Проклятия' }}</td>
+                        <td>{{ item.price }}</td>
+                        <td>
+                            <button type="button" class="edit-btn shop-item-edit-btn" data-item-id="{{ item.id }}">Изменить</button>
+                            <button type="button" class="territory-reset-btn shop-item-delete-btn" data-item-id="{{ item.id }}">Удалить</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="admin-section">
         <h2>Кланы</h2>
         <p>Название, цвет заливки захваченной области и флаг клана. Кланы создаются участниками в личном кабинете. Здесь можно просматривать участников, изменить название, цвет и флаг, а также удалить клан.</p>
         <div class="territory-classes-grid">
@@ -660,6 +720,47 @@ body {
         <div class="clan-delete-modal-buttons">
             <button type="button" class="clan-delete-cancel" id="clanDeleteCancel">Отмена</button>
             <button type="button" class="clan-delete-confirm" id="clanDeleteConfirm">Удалить</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="shopItemEditorModal">
+    <div class="modal-box" style="max-width: 560px;">
+        <h3 id="shopItemEditorTitle">Добавить товар</h3>
+        <form id="shopItemEditorForm">
+            <input type="hidden" id="shopItemEditorId" name="id">
+            <div class="form-group">
+                <label>Название</label>
+                <input type="text" id="shopItemEditorName" name="name" required maxlength="200" style="width:100%;">
+            </div>
+            <div class="form-group">
+                <label>Изображение</label>
+                <input type="file" id="shopItemEditorImage" name="image" accept=".jpg,.jpeg,.png,.gif,.webp">
+            </div>
+            <div class="form-group">
+                <label>Описание</label>
+                <textarea id="shopItemEditorDesc" name="description" rows="3" style="width:100%;"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Цена (Нумы)</label>
+                <input type="number" id="shopItemEditorPrice" name="price" min="0" value="0" style="width:120px;">
+            </div>
+            <div class="form-group">
+                <label>Категория</label>
+                <select id="shopItemEditorCategory" name="category" style="min-width:160px;">
+                    <option value="enhancement">Усиления</option>
+                    <option value="curse">Проклятия</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Эффекты (для усиления: % улучшения и на кого; для проклятия: % ухудшения на весь клан)</label>
+                <div id="shopItemEffectsContainer"></div>
+                <button type="button" class="edit-btn" id="shopItemAddEffectBtn">+ Добавить эффект</button>
+            </div>
+        </form>
+        <div class="modal-buttons" style="margin-top: 16px;">
+            <button type="button" class="btn-cancel" id="shopItemEditorCancel">Отмена</button>
+            <button type="button" class="btn-confirm" id="shopItemEditorSave">Сохранить</button>
         </div>
     </div>
 </div>
@@ -982,6 +1083,177 @@ document.getElementById('clanDeleteConfirm').addEventListener('click', function(
     });
     input.addEventListener('keydown', function(e) {
         if (e.key === 'Enter') confirmBtn.click();
+    });
+})();
+
+(function() {
+    var EFFECT_TYPES = [
+        { value: 'damage', label: 'Атака' },
+        { value: 'defense', label: 'Защита' },
+        { value: 'current_energy', label: 'Текущая энергия' },
+        { value: 'max_energy', label: 'Макс. энергия' },
+        { value: 'xp_reward', label: 'Опыт за задачу' },
+        { value: 'nums_reward', label: 'Нумы за задачу' }
+    ];
+    var modal = document.getElementById('shopItemEditorModal');
+    var container = document.getElementById('shopItemEffectsContainer');
+    var addEffectBtn = document.getElementById('shopItemAddEffectBtn');
+
+    function addEffectRow(data) {
+        data = data || {};
+        var row = document.createElement('div');
+        row.className = 'shop-effect-row';
+        row.style.cssText = 'display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap; align-items:center;';
+        var typeSel = document.createElement('select');
+        typeSel.name = 'effect_type';
+        EFFECT_TYPES.forEach(function(o) {
+            var opt = document.createElement('option');
+            opt.value = o.value;
+            opt.textContent = o.label;
+            if (data.effect_type === o.value) opt.selected = true;
+            typeSel.appendChild(opt);
+        });
+        var pct = document.createElement('input');
+        pct.type = 'number';
+        pct.name = 'percent_change';
+        pct.placeholder = '%';
+        pct.value = data.percent_change != null ? data.percent_change : '';
+        pct.style.width = '70px';
+        var targetSel = document.createElement('select');
+        targetSel.name = 'target';
+        var optSelf = document.createElement('option');
+        optSelf.value = 'self';
+        optSelf.textContent = 'Личное';
+        var optClan = document.createElement('option');
+        optClan.value = 'clan';
+        optClan.textContent = 'На весь клан';
+        targetSel.appendChild(optSelf);
+        targetSel.appendChild(optClan);
+        if (data.target === 'clan') optClan.selected = true;
+        var dur = document.createElement('input');
+        dur.type = 'number';
+        dur.name = 'duration_minutes';
+        dur.placeholder = 'мин (пусто = без ограничения)';
+        dur.value = data.duration_minutes != null && data.duration_minutes !== '' ? data.duration_minutes : '';
+        dur.style.width = '180px';
+        var delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.textContent = '×';
+        delBtn.className = 'territory-reset-btn';
+        delBtn.style.padding = '4px 10px';
+        delBtn.onclick = function() { row.remove(); };
+        row.appendChild(typeSel);
+        row.appendChild(pct);
+        row.appendChild(targetSel);
+        row.appendChild(dur);
+        row.appendChild(delBtn);
+        container.appendChild(row);
+    }
+
+    function getEffectsFromForm() {
+        var rows = container.querySelectorAll('.shop-effect-row');
+        var arr = [];
+        rows.forEach(function(row) {
+            var typeSel = row.querySelector('select[name="effect_type"]');
+            var pct = row.querySelector('input[name="percent_change"]');
+            var targetSel = row.querySelector('select[name="target"]');
+            var dur = row.querySelector('input[name="duration_minutes"]');
+            arr.push({
+                effect_type: typeSel ? typeSel.value : 'damage',
+                percent_change: pct && pct.value !== '' ? parseFloat(pct.value) : 0,
+                target: targetSel ? targetSel.value : 'self',
+                duration_minutes: dur && dur.value !== '' ? parseInt(dur.value, 10) : null
+            });
+        });
+        return arr;
+    }
+
+    document.getElementById('shopItemAddBtn').addEventListener('click', function() {
+        document.getElementById('shopItemEditorTitle').textContent = 'Добавить товар';
+        document.getElementById('shopItemEditorId').value = '';
+        document.getElementById('shopItemEditorName').value = '';
+        document.getElementById('shopItemEditorDesc').value = '';
+        document.getElementById('shopItemEditorPrice').value = '0';
+        document.getElementById('shopItemEditorCategory').value = 'enhancement';
+        document.getElementById('shopItemEditorImage').value = '';
+        container.innerHTML = '';
+        addEffectRow();
+        if (modal) modal.classList.add('show');
+    });
+
+    document.querySelectorAll('.shop-item-edit-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var id = this.getAttribute('data-item-id');
+            fetch('/api/admin/shop/items').then(function(r) { return r.json(); }).then(function(data) {
+                if (!data.success || !data.items) return;
+                var item = data.items.find(function(i) { return i.id === parseInt(id, 10); });
+                if (!item) return;
+                document.getElementById('shopItemEditorTitle').textContent = 'Редактировать товар';
+                document.getElementById('shopItemEditorId').value = item.id;
+                document.getElementById('shopItemEditorName').value = item.name || '';
+                document.getElementById('shopItemEditorDesc').value = item.description || '';
+                document.getElementById('shopItemEditorPrice').value = item.price != null ? item.price : 0;
+                document.getElementById('shopItemEditorCategory').value = item.category || 'enhancement';
+                document.getElementById('shopItemEditorImage').value = '';
+                container.innerHTML = '';
+                (item.effects || []).forEach(function(e) { addEffectRow(e); });
+                if (container.querySelectorAll('.shop-effect-row').length === 0) addEffectRow();
+                if (modal) modal.classList.add('show');
+            });
+        });
+    });
+
+    document.getElementById('shopItemAddEffectBtn').addEventListener('click', function() {
+        addEffectRow();
+    });
+
+    document.getElementById('shopItemEditorCancel').addEventListener('click', function() {
+        if (modal) modal.classList.remove('show');
+    });
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) modal.classList.remove('show');
+    });
+
+    document.getElementById('shopItemEditorSave').addEventListener('click', function() {
+        var id = document.getElementById('shopItemEditorId').value;
+        var fd = new FormData();
+        fd.append('name', document.getElementById('shopItemEditorName').value.trim());
+        fd.append('description', document.getElementById('shopItemEditorDesc').value.trim());
+        fd.append('price', document.getElementById('shopItemEditorPrice').value);
+        fd.append('category', document.getElementById('shopItemEditorCategory').value);
+        fd.append('effects', JSON.stringify(getEffectsFromForm()));
+        var imgInput = document.getElementById('shopItemEditorImage');
+        if (imgInput.files && imgInput.files[0]) fd.append('image', imgInput.files[0]);
+        var url = id ? '/api/admin/shop/item/' + id : '/api/admin/shop/item';
+        var method = id ? 'POST' : 'POST';
+        var saveBtn = this;
+        saveBtn.disabled = true;
+        fetch(url, { method: method, body: fd })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    if (modal) modal.classList.remove('show');
+                    window.location.reload();
+                } else {
+                    alert(data.error || 'Ошибка сохранения.');
+                }
+            })
+            .catch(function() { alert('Ошибка соединения.'); })
+            .finally(function() { saveBtn.disabled = false; });
+    });
+
+    document.querySelectorAll('.shop-item-delete-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var id = this.getAttribute('data-item-id');
+            if (!confirm('Удалить этот товар?')) return;
+            fetch('/api/admin/shop/item/' + id, { method: 'DELETE' })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) window.location.reload();
+                    else alert(data.error || 'Ошибка удаления.');
+                })
+                .catch(function() { alert('Ошибка соединения.'); });
+        });
     });
 })();
 </script>

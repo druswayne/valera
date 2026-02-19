@@ -10,6 +10,7 @@ from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.executors.pool import ThreadPoolExecutor
 from sqlalchemy import case, cast, Float, Index, and_, func
 from sqlalchemy.exc import IntegrityError
+import json
 import random
 import os
 import logging
@@ -99,6 +100,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads/tasks'
 app.config['AVATAR_FOLDER'] = 'static/uploads/avatars'
 app.config['CLAN_FLAG_FOLDER'] = 'static/uploads/clan_flags'
+app.config['SHOP_IMAGE_FOLDER'] = 'static/uploads/shop'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
@@ -226,6 +228,22 @@ def skill_points_total_for_level(level):
     return INITIAL_SKILL_POINTS + max(0, level - 1) * SKILL_POINTS_PER_LEVEL
 
 
+def nums_reward_range_for_level(level):
+    """Диапазон награды в Нумах за правильное решение задачи в зависимости от уровня. Возвращает (min_nums, max_nums)."""
+    level = max(1, min(100, int(level or 1)))
+    base = 40 + level * 5
+    spread = 5 + level // 3
+    low = max(10, base - spread)
+    high = base + spread
+    return (low, high)
+
+
+def roll_nums_reward(level):
+    """Случайная награда в Нумах за правильное решение с разбросом по уровню."""
+    low, high = nums_reward_range_for_level(level)
+    return random.randint(low, high)
+
+
 class TerritoryTask(db.Model):
     """Задача для битвы за территорию (с опытом за решение)"""
     __tablename__ = 'territory_task'
@@ -273,6 +291,7 @@ class User(UserMixin, db.Model):
     energy_skill = db.Column(db.Integer, default=0, nullable=False)
     current_energy = db.Column(db.Integer, nullable=True)  # None = полный запас
     energy_last_refill_at = db.Column(db.DateTime, nullable=True)  # время последнего восстановления
+    nums_balance = db.Column(db.Integer, default=0, nullable=False)  # Нумы (валюта за правильные решения задач)
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -388,6 +407,54 @@ class UserTerritoryStats(db.Model):
     total_damage_dealt = db.Column(db.Integer, default=0, nullable=False)  # урон при атаке чужих областей
     total_influence_points = db.Column(db.Integer, default=0, nullable=False)  # очки при защите своей области
 
+
+# --- Лавка предметов (усиления / проклятия), покупка за Нумы ---
+SHOP_CATEGORY_ENHANCEMENT = 'enhancement'
+SHOP_CATEGORY_CURSE = 'curse'
+SHOP_EFFECT_TYPES = ['damage', 'defense', 'current_energy', 'max_energy', 'xp_reward', 'nums_reward']
+
+
+class ShopItem(db.Model):
+    """Товар лавки: усиление или проклятие"""
+    __tablename__ = 'shop_item'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    image_filename = db.Column(db.String(255), nullable=True)
+    description = db.Column(db.Text, nullable=True)
+    price = db.Column(db.Integer, nullable=False, default=0)  # цена в Нумах
+    category = db.Column(db.String(20), nullable=False)  # enhancement / curse
+    sort_order = db.Column(db.Integer, default=0, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    effects = db.relationship('ShopItemEffect', backref='shop_item', lazy=True, cascade='all, delete-orphan')
+
+    def to_dict(self):
+        """Для совместимости со старым API (game, api/shop-items)."""
+        return {'id': self.id, 'name': self.name, 'price': self.price}
+
+
+class ShopItemEffect(db.Model):
+    """Один эффект товара: тип (атака/защита/...), % изменения, на кого (self/clan), длительность в минутах (NULL = без ограничения)"""
+    __tablename__ = 'shop_item_effect'
+    id = db.Column(db.Integer, primary_key=True)
+    shop_item_id = db.Column(db.Integer, db.ForeignKey('shop_item.id'), nullable=False)
+    effect_type = db.Column(db.String(30), nullable=False)  # damage, defense, current_energy, max_energy, xp_reward, nums_reward
+    percent_change = db.Column(db.Float, nullable=False)  # для усиления > 0, для проклятия < 0
+    target = db.Column(db.String(10), nullable=True)  # 'self' | 'clan'
+    duration_minutes = db.Column(db.Integer, nullable=True)  # NULL = неограниченно
+
+
+class UserShopPurchase(db.Model):
+    """Покупка пользователя в лавке (инвентарь)"""
+    __tablename__ = 'user_shop_purchase'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    shop_item_id = db.Column(db.Integer, db.ForeignKey('shop_item.id'), nullable=False)
+    purchased_at = db.Column(db.DateTime, default=datetime.utcnow)
+    used_at = db.Column(db.DateTime, nullable=True)  # когда активирован (пока не используется)
+    user = db.relationship('User', backref=db.backref('shop_purchases', lazy=True))
+    shop_item = db.relationship('ShopItem', backref=db.backref('purchases', lazy=True))
+
+
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))
@@ -459,19 +526,6 @@ class Prize(db.Model):
             'students_change': self.students_change,
             'valera_change': self.valera_change,
             'probability': self.probability
-        }
-
-class ShopItem(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(200), nullable=False)
-    price = db.Column(db.Integer, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'name': self.name,
-            'price': self.price
         }
 
 class WeeklyTask(db.Model):
@@ -1359,7 +1413,34 @@ with app.app_context():
     except Exception as e:
         print(f"Ошибка при миграции битвы за территорию: {e}")
         db.create_all()
-    
+
+    # Лавка предметов (shop_item, shop_item_effect, user_shop_purchase)
+    try:
+        from sqlalchemy import inspect as _inspect
+        inspector = _inspect(db.engine)
+        tables = inspector.get_table_names()
+        if 'shop_item' not in tables or 'shop_item_effect' not in tables or 'user_shop_purchase' not in tables:
+            db.create_all()
+            print("Созданы таблицы лавки: shop_item, shop_item_effect, user_shop_purchase")
+        if 'shop_item' in tables:
+            columns = [col['name'] for col in inspector.get_columns('shop_item')]
+            with db.engine.begin() as conn:
+                if 'image_filename' not in columns:
+                    conn.execute(text('ALTER TABLE shop_item ADD COLUMN image_filename VARCHAR(255)'))
+                    print("Добавлена колонка image_filename в shop_item")
+                if 'description' not in columns:
+                    conn.execute(text('ALTER TABLE shop_item ADD COLUMN description TEXT'))
+                    print("Добавлена колонка description в shop_item")
+                if 'category' not in columns:
+                    conn.execute(text("ALTER TABLE shop_item ADD COLUMN category VARCHAR(20) DEFAULT 'enhancement'"))
+                    print("Добавлена колонка category в shop_item")
+                if 'sort_order' not in columns:
+                    conn.execute(text('ALTER TABLE shop_item ADD COLUMN sort_order INTEGER DEFAULT 0'))
+                    print("Добавлена колонка sort_order в shop_item")
+    except Exception as e:
+        print(f"Ошибка при создании таблиц лавки: {e}")
+        db.create_all()
+
     # Миграция: кланы и пользователи (character_name, clan_id, avatar, territory stats)
     try:
         from sqlalchemy import inspect, text
@@ -1401,6 +1482,9 @@ with app.app_context():
                 if 'energy_last_refill_at' not in columns:
                     conn.execute(text('ALTER TABLE user ADD COLUMN energy_last_refill_at TIMESTAMP'))
                     print("Добавлена колонка energy_last_refill_at в user")
+                if 'nums_balance' not in columns:
+                    conn.execute(text('ALTER TABLE user ADD COLUMN nums_balance INTEGER DEFAULT 0 NOT NULL'))
+                    print("Добавлена колонка nums_balance в user")
         if 'territory_task' not in tables:
             db.create_all()
             print("Создана таблица territory_task")
@@ -1682,6 +1766,90 @@ def api_cabinet_skills():
         'current_energy': user.current_energy_value,
         'skill_points_available': user.skill_points_available,
     })
+
+
+def _shop_item_to_dict(item, include_effects=False):
+    """Словарь товара для API (image_url, без эффектов по умолчанию)."""
+    d = {
+        'id': item.id,
+        'name': item.name,
+        'description': item.description or '',
+        'price': item.price,
+        'category': item.category,
+        'image_url': url_for('static', filename=_avatar_static_filename(item.image_filename)) if item.image_filename else None,
+    }
+    if include_effects:
+        d['effects'] = [
+            {'effect_type': e.effect_type, 'percent_change': e.percent_change, 'target': e.target, 'duration_minutes': e.duration_minutes}
+            for e in item.effects
+        ]
+    return d
+
+
+@app.route('/api/shop/items')
+@login_required
+def api_shop_items():
+    """Список товаров лавки по категориям (для блока «Лавка предметов»)."""
+    items = ShopItem.query.order_by(ShopItem.category, ShopItem.sort_order, ShopItem.id).all()
+    by_category = {'enhancement': [], 'curse': []}
+    for item in items:
+        by_category.setdefault(item.category, []).append(_shop_item_to_dict(item))
+    return jsonify({'success': True, 'items': by_category})
+
+
+@app.route('/api/shop/item/<int:item_id>')
+@login_required
+def api_shop_item_detail(item_id):
+    """Один товар для модалки (с эффектами для отображения)."""
+    item = ShopItem.query.get(item_id)
+    if not item:
+        return jsonify({'success': False, 'error': 'Товар не найден'}), 404
+    return jsonify({'success': True, 'item': _shop_item_to_dict(item, include_effects=True)})
+
+
+@app.route('/api/shop/purchase', methods=['POST'])
+@login_required
+def api_shop_purchase():
+    """Покупка товара за Нумы."""
+    if current_user.is_admin:
+        return jsonify({'success': False, 'error': 'Администратор не участвует'}), 403
+    data = request.get_json() or {}
+    item_id = data.get('item_id')
+    if not item_id:
+        return jsonify({'success': False, 'error': 'Укажите item_id'}), 400
+    item = ShopItem.query.get(item_id)
+    if not item:
+        return jsonify({'success': False, 'error': 'Товар не найден'}), 404
+    balance = current_user.nums_balance or 0
+    if balance < item.price:
+        return jsonify({'success': False, 'error': 'Недостаточно Нумов', 'balance': balance, 'price': item.price}), 400
+    current_user.nums_balance = balance - item.price
+    purchase = UserShopPurchase(user_id=current_user.id, shop_item_id=item.id)
+    db.session.add(purchase)
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'balance': current_user.nums_balance,
+        'purchase_id': purchase.id,
+    })
+
+
+@app.route('/api/cabinet/inventory')
+@login_required
+def api_cabinet_inventory():
+    """Список купленных товаров (инвентарь)."""
+    purchases = UserShopPurchase.query.filter_by(user_id=current_user.id).order_by(UserShopPurchase.purchased_at.desc()).all()
+    out = []
+    for p in purchases:
+        out.append({
+            'id': p.id,
+            'item_id': p.shop_item_id,
+            'name': p.shop_item.name,
+            'image_url': url_for('static', filename=_avatar_static_filename(p.shop_item.image_filename)) if p.shop_item.image_filename else None,
+            'purchased_at': p.purchased_at.isoformat() if p.purchased_at else None,
+            'category': p.shop_item.category,
+        })
+    return jsonify({'success': True, 'inventory': out})
 
 
 @app.route('/api/clans')
@@ -2288,8 +2456,9 @@ def delete_prize(prize_id):
 def create_shop_item():
     data = request.json
     new_item = ShopItem(
-        name=data['name'],
-        price=data['price']
+        name=data.get('name', '').strip() or 'Товар',
+        price=int(data.get('price', 0)),
+        category=data.get('category', SHOP_CATEGORY_ENHANCEMENT)
     )
     db.session.add(new_item)
     db.session.commit()
@@ -2736,7 +2905,8 @@ def admin_territory_battle():
     capture_enabled, capture_start_time, capture_end_time = get_territory_capture_settings()
     capture_start_time_iso = capture_start_time.strftime('%Y-%m-%dT%H:%M') if capture_start_time else ''
     capture_end_time_iso = capture_end_time.strftime('%Y-%m-%dT%H:%M') if capture_end_time else ''
-    return render_template('admin/territory_battle.html', regions=regions, clans=clans, generators=generators, registration_enabled=registration_enabled, capture_enabled=capture_enabled, capture_start_time_iso=capture_start_time_iso, capture_end_time_iso=capture_end_time_iso)
+    shop_items = ShopItem.query.order_by(ShopItem.category, ShopItem.sort_order, ShopItem.id).all()
+    return render_template('admin/territory_battle.html', regions=regions, clans=clans, generators=generators, registration_enabled=registration_enabled, capture_enabled=capture_enabled, capture_start_time_iso=capture_start_time_iso, capture_end_time_iso=capture_end_time_iso, shop_items=shop_items)
 
 
 @app.route('/admin/territory-battle/generators', methods=['POST'])
@@ -2951,6 +3121,124 @@ def admin_territory_reset():
             db.session.add(TerritoryRegionState(region_index=i, owner_class_id=None, owner_clan_id=None, strength=0))
     db.session.commit()
     return jsonify({'success': True})
+
+
+# --- Админ: редактор лавки (в разделе битвы за территорию) ---
+@app.route('/api/admin/shop/items')
+@admin_required
+def api_admin_shop_items():
+    """Список всех товаров лавки для админки."""
+    items = ShopItem.query.order_by(ShopItem.category, ShopItem.sort_order, ShopItem.id).all()
+    out = []
+    for item in items:
+        d = _shop_item_to_dict(item, include_effects=True)
+        out.append(d)
+    return jsonify({'success': True, 'items': out})
+
+
+def _shop_save_image(file, item_id=None):
+    """Сохранить загруженное изображение товара; вернуть путь относительно static (uploads/shop/...)."""
+    if not file or not file.filename:
+        return None
+    ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else 'jpg'
+    if ext not in ('jpg', 'jpeg', 'png', 'gif', 'webp'):
+        return None
+    folder = os.path.join(app.root_path, app.config['SHOP_IMAGE_FOLDER'])
+    os.makedirs(folder, exist_ok=True)
+    prefix = 'item_' + (str(item_id) if item_id else 'new')
+    filename = f'{prefix}_{datetime.utcnow().strftime("%Y%m%d_%H%M%S")}.{ext}'
+    filepath = os.path.join(folder, filename)
+    file.save(filepath)
+    return f'uploads/shop/{filename}'
+
+
+@app.route('/api/admin/shop/item', methods=['POST'])
+@admin_required
+def api_admin_shop_item_create():
+    """Создать товар лавки. Form: name, description, price, category, image; effects = JSON array."""
+    name = (request.form.get('name') or '').strip()
+    if not name:
+        return jsonify({'success': False, 'error': 'Укажите название'}), 400
+    try:
+        price = int(request.form.get('price', 0))
+    except (TypeError, ValueError):
+        price = 0
+    category = (request.form.get('category') or '').strip().lower()
+    if category not in (SHOP_CATEGORY_ENHANCEMENT, SHOP_CATEGORY_CURSE):
+        category = SHOP_CATEGORY_ENHANCEMENT
+    description = (request.form.get('description') or '').strip() or None
+    effects_json = request.form.get('effects', '[]')
+    try:
+        effects_list = json.loads(effects_json) if isinstance(effects_json, str) else (effects_json if isinstance(effects_json, list) else [])
+    except Exception:
+        effects_list = []
+    item = ShopItem(name=name, description=description, price=price, category=category)
+    db.session.add(item)
+    db.session.flush()
+    if 'image' in request.files:
+        path = _shop_save_image(request.files['image'], item.id)
+        if path:
+            item.image_filename = path
+    for e in effects_list:
+        eff = ShopItemEffect(
+            shop_item_id=item.id,
+            effect_type=e.get('effect_type') or 'damage',
+            percent_change=float(e.get('percent_change', 0)),
+            target=e.get('target'),
+            duration_minutes=int(e['duration_minutes']) if e.get('duration_minutes') not in (None, '') else None,
+        )
+        db.session.add(eff)
+    db.session.commit()
+    return jsonify({'success': True, 'item': _shop_item_to_dict(item, include_effects=True)})
+
+
+@app.route('/api/admin/shop/item/<int:item_id>', methods=['POST', 'PUT', 'DELETE'])
+@admin_required
+def api_admin_shop_item_update_delete(item_id):
+    item = ShopItem.query.get(item_id)
+    if not item:
+        return jsonify({'success': False, 'error': 'Товар не найден'}), 404
+    if request.method == 'DELETE':
+        db.session.delete(item)
+        db.session.commit()
+        return jsonify({'success': True})
+    name = (request.form.get('name') or '').strip()
+    if name:
+        item.name = name
+    description = request.form.get('description')
+    if description is not None:
+        item.description = description.strip() or None
+    try:
+        price = int(request.form.get('price', item.price))
+        item.price = price
+    except (TypeError, ValueError):
+        pass
+    category = (request.form.get('category') or '').strip().lower()
+    if category in (SHOP_CATEGORY_ENHANCEMENT, SHOP_CATEGORY_CURSE):
+        item.category = category
+    effects_json = request.form.get('effects', '[]')
+    try:
+        effects_list = json.loads(effects_json) if isinstance(effects_json, str) else (effects_json if isinstance(effects_json, list) else [])
+    except Exception:
+        effects_list = []
+    if 'image' in request.files and request.files['image'].filename:
+        path = _shop_save_image(request.files['image'], item.id)
+        if path:
+            item.image_filename = path
+    if request.form.get('delete_image') in ('1', 'true', 'yes'):
+        item.image_filename = None
+    ShopItemEffect.query.filter_by(shop_item_id=item.id).delete()
+    for e in effects_list:
+        eff = ShopItemEffect(
+            shop_item_id=item.id,
+            effect_type=e.get('effect_type') or 'damage',
+            percent_change=float(e.get('percent_change', 0)),
+            target=e.get('target'),
+            duration_minutes=int(e['duration_minutes']) if e.get('duration_minutes') not in (None, '') else None,
+        )
+        db.session.add(eff)
+    db.session.commit()
+    return jsonify({'success': True, 'item': _shop_item_to_dict(item, include_effects=True)})
 
 
 def _resolve_primary_db_path() -> str | None:
@@ -3486,7 +3774,7 @@ def territory_clans_top():
 
 
 def _normalize_answer(s):
-    return str(s).strip().lower().replace('\s+', ' ') if s else ''
+    return re.sub(r'\s+', ' ', str(s).strip().lower()) if s else ''
 
 
 def _territory_difficulty_from_level(level: int) -> int:
@@ -3745,6 +4033,9 @@ def api_territory_apply_action():
         # При достижении нового уровня энергия восстанавливается до максимума
         current_user.current_energy = current_user.energy
         current_energy = current_user.energy
+    # Начисляем Нумы за правильное решение (с разбросом по уровню)
+    nums_gained = roll_nums_reward(current_user.level)
+    current_user.nums_balance = (current_user.nums_balance or 0) + nums_gained
     if state.owner_clan_id is None:
         state.owner_clan_id = clan_id
         state.strength = min(TERRITORY_MAX_STRENGTH, state.strength + power)
@@ -3766,6 +4057,8 @@ def api_territory_apply_action():
         'success': True, 'correct': True,
         'owner_clan_id': state.owner_clan_id, 'strength': state.strength,
         'xp_gained': task.xp_reward, 'level': new_level, 'leveled_up': leveled_up,
+        'nums_gained': nums_gained,
+        'player_nums_balance': current_user.nums_balance or 0,
         'current_energy': current_energy,
         'player_level': current_user.level,
         'player_xp_in_level': current_user.xp_in_current_level,
