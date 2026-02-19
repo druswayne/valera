@@ -1092,17 +1092,6 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 }
 .floating-chat-btn:active { transform: scale(1.02); }
 
-/* Кнопка чата в углу блока карты */
-.map-wrap .floating-chat-btn,
-.floating-chat-btn--map {
-    position: absolute;
-    bottom: 16px;
-    right: 16px;
-    width: 48px;
-    height: 48px;
-    font-size: 1.35rem;
-}
-
 /* Модалка чата на странице битвы */
 .clan-chat-modal-overlay {
     position: fixed;
@@ -1223,7 +1212,6 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     .energy-modal-box { margin: 16px; max-width: calc(100% - 32px); }
     .energy-modal-box .energy-modal-ok { min-height: 44px; }
     .floating-chat-btn { bottom: 16px; right: 16px; width: 52px; height: 52px; font-size: 1.4rem; }
-    .map-wrap .floating-chat-btn { bottom: 12px; right: 12px; width: 44px; height: 44px; font-size: 1.2rem; }
     .clan-chat-modal-overlay { padding: 12px; }
     .clan-chat-modal .modal-box { max-height: 80vh; padding: 14px; }
     .clan-chat-modal .clan-chat-messages { max-height: 200px; min-height: 100px; }
@@ -1434,10 +1422,10 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
             </div>
         </div>
     </div>
-    {% if user_logged_in and current_user.clan_id %}
-    <button type="button" class="floating-chat-btn floating-chat-btn--map" id="battleFloatingChatBtn" aria-label="Чат с кланом" title="Чат с кланом">💬</button>
-    {% endif %}
     </div>
+    {% if user_logged_in and current_user.clan_id %}
+    <button type="button" class="floating-chat-btn" id="battleFloatingChatBtn" aria-label="Чат с кланом" title="Чат с кланом">💬</button>
+    {% endif %}
 </div>
 
 <!-- Модальное окно задания -->
