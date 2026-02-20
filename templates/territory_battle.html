@@ -636,6 +636,10 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 .territory-buff-detail-image img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 2px solid #5c4033; }
 .territory-buff-detail-time { font-size: 0.9rem; color: #b8a088; margin-top: 8px; }
 .region-buff-icons image { cursor: pointer; }
+.territory-map .region-buff-icons image,
+.territory-map .region-buff-icons .territory-buff-icon-placeholder {
+    filter: drop-shadow(0 1px 3px rgba(0,0,0,0.9));
+}
 
 /* Запрет копирования/выделения текста условия задачи */
 .territory-task-content.no-copy {
@@ -1923,32 +1927,6 @@ window.territoryFocusProtection = (function() {
                     });
                 }
             }
-            var regionBuffs = (typeof TERRITORY_REGION_ACTIVE_BUFFS !== 'undefined' && TERRITORY_REGION_ACTIVE_BUFFS[index]) ? TERRITORY_REGION_ACTIVE_BUFFS[index] : [];
-            if (regionBuffs.length > 0) {
-                var buffG = document.createElementNS(svg.namespaceURI, 'g');
-                buffG.classList.add('region-buff-icons');
-                buffG.setAttribute('transform', 'translate(' + cx + ',' + (cy + 4) + ')');
-                var w = 14, gap = 2;
-                var totalW = regionBuffs.length * w + Math.max(0, regionBuffs.length - 1) * gap;
-                var startX = -totalW / 2 + w / 2;
-                regionBuffs.forEach(function(b, i) {
-                    if (!b.image_url) return;
-                    var img = document.createElementNS(svg.namespaceURI, 'image');
-                    img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', b.image_url);
-                    img.setAttribute('x', startX + i * (w + gap) - w / 2);
-                    img.setAttribute('y', -w / 2);
-                    img.setAttribute('width', w);
-                    img.setAttribute('height', w);
-                    img.classList.add('territory-buff-icon');
-                    img.setAttribute('data-buff-name', b.name || '');
-                    img.setAttribute('data-buff-desc', b.description || '');
-                    img.setAttribute('data-buff-image', b.image_url || '');
-                    img.setAttribute('data-buff-used', b.used_at || '');
-                    img.setAttribute('data-buff-expires', b.expires_at || '');
-                    buffG.appendChild(img);
-                });
-                overlay.appendChild(buffG);
-            }
             if (!hasNameBlock) {
                 var overlayLayer = document.getElementById('regionOverlaysLayer');
                 (overlayLayer || g).appendChild(overlay);
@@ -1968,6 +1946,65 @@ window.territoryFocusProtection = (function() {
                 overlay.insertBefore(strengthBg, strengthTextEl);
                 overlay.appendChild(strengthBg);
                 overlay.appendChild(strengthTextEl);
+            }
+            var regionBuffs = (typeof TERRITORY_REGION_ACTIVE_BUFFS !== 'undefined' && TERRITORY_REGION_ACTIVE_BUFFS[String(index)]) ? TERRITORY_REGION_ACTIVE_BUFFS[String(index)] : [];
+            if (regionBuffs.length > 0) {
+                var buffG = document.createElementNS(svg.namespaceURI, 'g');
+                buffG.classList.add('region-buff-icons');
+                buffG.setAttribute('pointer-events', 'auto');
+                var buffY = cy + 35.64;
+                buffG.setAttribute('transform', 'translate(' + cx + ',' + buffY + ')');
+                var w = 14, gap = 2;
+                var n = regionBuffs.length;
+                var startX = n <= 1 ? 0 : -(n - 1) * (w + gap) / 2;
+                regionBuffs.forEach(function(b, i) {
+                    var href = b.image_url || '';
+                    var x = startX + i * (w + gap) - w / 2;
+                    var y = -w / 2;
+                    if (href) {
+                        var img = document.createElementNS(svg.namespaceURI, 'image');
+                        img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', href);
+                        img.setAttribute('x', x);
+                        img.setAttribute('y', y);
+                        img.setAttribute('width', w);
+                        img.setAttribute('height', w);
+                        img.classList.add('territory-buff-icon');
+                        img.setAttribute('data-buff-name', b.name || '');
+                        img.setAttribute('data-buff-desc', b.description || '');
+                        img.setAttribute('data-buff-image', href);
+                        img.setAttribute('data-buff-used', b.used_at || '');
+                        img.setAttribute('data-buff-expires', b.expires_at || '');
+                        buffG.appendChild(img);
+                    } else {
+                        var place = document.createElementNS(svg.namespaceURI, 'g');
+                        place.classList.add('territory-buff-icon');
+                        place.classList.add('territory-buff-icon-placeholder');
+                        place.setAttribute('data-buff-name', b.name || '');
+                        place.setAttribute('data-buff-desc', b.description || '');
+                        place.setAttribute('data-buff-image', '');
+                        place.setAttribute('data-buff-used', b.used_at || '');
+                        place.setAttribute('data-buff-expires', b.expires_at || '');
+                        var rect = document.createElementNS(svg.namespaceURI, 'rect');
+                        rect.setAttribute('x', x);
+                        rect.setAttribute('y', y);
+                        rect.setAttribute('width', w);
+                        rect.setAttribute('height', w);
+                        rect.setAttribute('rx', 2);
+                        rect.setAttribute('fill', '#5c4033');
+                        var txt = document.createElementNS(svg.namespaceURI, 'text');
+                        txt.setAttribute('x', x + w / 2);
+                        txt.setAttribute('y', y + w / 2);
+                        txt.setAttribute('text-anchor', 'middle');
+                        txt.setAttribute('dominant-baseline', 'central');
+                        txt.setAttribute('font-size', '10');
+                        txt.setAttribute('fill', '#c4b098');
+                        txt.textContent = '\uD83D\uDCE6';
+                        place.appendChild(rect);
+                        place.appendChild(txt);
+                        buffG.appendChild(place);
+                    }
+                });
+                overlay.appendChild(buffG);
             }
         });
     }
