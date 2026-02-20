@@ -2053,8 +2053,7 @@ def api_cabinet_inventory_use(purchase_id):
         clan_id = int(data_clan_id)
         if Clan.query.get(clan_id) is None:
             return jsonify({'success': False, 'error': 'Клан не найден'}), 400
-        if current_user.clan_id != clan_id:
-            return jsonify({'success': False, 'error': 'Можно применить только к своему клану'}), 400
+        # Разрешено применять на любой выбранный клан (свой или чужой)
     else:
         clan_id = None
 
