@@ -414,16 +414,22 @@ SHOP_CATEGORY_CURSE = 'curse'
 SHOP_EFFECT_TYPES = ['damage', 'defense', 'current_energy', 'max_energy', 'xp_reward', 'nums_reward']
 
 
+# Контекст лавки: territory = битва за территорию (кабинет), game = лавка призов на странице игры
+SHOP_CONTEXT_TERRITORY = 'territory'
+SHOP_CONTEXT_GAME = 'game'
+
+
 class ShopItem(db.Model):
-    """Товар лавки: усиление или проклятие"""
+    """Товар лавки: усиление/проклятие (territory) или приз в прайсе (game)."""
     __tablename__ = 'shop_item'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)
     image_filename = db.Column(db.String(255), nullable=True)
     description = db.Column(db.Text, nullable=True)
-    price = db.Column(db.Integer, nullable=False, default=0)  # цена в Нумах
-    category = db.Column(db.String(20), nullable=False)  # enhancement / curse
+    price = db.Column(db.Integer, nullable=False, default=0)  # в Нумах (territory) или в монетах (game)
+    category = db.Column(db.String(20), nullable=False)  # enhancement / curse (territory) или для game
     sort_order = db.Column(db.Integer, default=0, nullable=False)
+    shop_context = db.Column(db.String(20), nullable=False, default=SHOP_CONTEXT_TERRITORY)  # territory | game
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     effects = db.relationship('ShopItemEffect', backref='shop_item', lazy=True, cascade='all, delete-orphan')
 
@@ -432,14 +438,20 @@ class ShopItem(db.Model):
         return {'id': self.id, 'name': self.name, 'price': self.price}
 
 
+# Действие предмета лавки территории: self = личное, clan = на весь клан, region = на область
+SHOP_EFFECT_TARGET_SELF = 'self'
+SHOP_EFFECT_TARGET_CLAN = 'clan'
+SHOP_EFFECT_TARGET_REGION = 'region'
+
+
 class ShopItemEffect(db.Model):
-    """Один эффект товара: тип (атака/защита/...), % изменения, на кого (self/clan), длительность в минутах (NULL = без ограничения)"""
+    """Один эффект товара: тип (атака/защита/...), % изменения, действие (self/clan/region), длительность в минутах (NULL = без ограничения)"""
     __tablename__ = 'shop_item_effect'
     id = db.Column(db.Integer, primary_key=True)
     shop_item_id = db.Column(db.Integer, db.ForeignKey('shop_item.id'), nullable=False)
     effect_type = db.Column(db.String(30), nullable=False)  # damage, defense, current_energy, max_energy, xp_reward, nums_reward
     percent_change = db.Column(db.Float, nullable=False)  # для усиления > 0, для проклятия < 0
-    target = db.Column(db.String(10), nullable=True)  # 'self' | 'clan'
+    target = db.Column(db.String(20), nullable=True)  # 'self' | 'clan' | 'region'
     duration_minutes = db.Column(db.Integer, nullable=True)  # NULL = неограниченно
 
 
@@ -453,6 +465,22 @@ class UserShopPurchase(db.Model):
     used_at = db.Column(db.DateTime, nullable=True)  # когда активирован (пока не используется)
     user = db.relationship('User', backref=db.backref('shop_purchases', lazy=True))
     shop_item = db.relationship('ShopItem', backref=db.backref('purchases', lazy=True))
+
+
+class ActiveItemBuff(db.Model):
+    """Активное улучшение от использованного предмета (с длительностью или разовое).
+    Один из: user_id (личное), clan_id (на клан), region_index (на область)."""
+    __tablename__ = 'active_item_buff'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    clan_id = db.Column(db.Integer, db.ForeignKey('clan.id'), nullable=True)
+    region_index = db.Column(db.Integer, nullable=True)
+    shop_item_id = db.Column(db.Integer, db.ForeignKey('shop_item.id'), nullable=False)
+    used_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    one_shot = db.Column(db.Boolean, default=False, nullable=False)  # разовое: применить и удалить после одного действия
+    user = db.relationship('User', backref=db.backref('active_buffs', lazy=True))
+    clan = db.relationship('Clan', backref=db.backref('active_buffs', lazy=True))
+    shop_item = db.relationship('ShopItem', backref=db.backref('active_buffs', lazy=True))
 
 
 @login_manager.user_loader
@@ -1437,6 +1465,9 @@ with app.app_context():
                 if 'sort_order' not in columns:
                     conn.execute(text('ALTER TABLE shop_item ADD COLUMN sort_order INTEGER DEFAULT 0'))
                     print("Добавлена колонка sort_order в shop_item")
+                if 'shop_context' not in columns:
+                    conn.execute(text("ALTER TABLE shop_item ADD COLUMN shop_context VARCHAR(20) NOT NULL DEFAULT 'territory'"))
+                    print("Добавлена колонка shop_context в shop_item")
     except Exception as e:
         print(f"Ошибка при создании таблиц лавки: {e}")
         db.create_all()
@@ -1786,11 +1817,139 @@ def _shop_item_to_dict(item, include_effects=False):
     return d
 
 
+def _active_buffs_query(user_id=None, clan_id=None, region_index=None):
+    """Базовый запрос активных баффов по одному из критериев (все ещё действующие по времени)."""
+    now = datetime.utcnow()
+    q = ActiveItemBuff.query
+    if user_id is not None:
+        q = q.filter(ActiveItemBuff.user_id == user_id)
+    if clan_id is not None:
+        q = q.filter(ActiveItemBuff.clan_id == clan_id)
+    if region_index is not None:
+        q = q.filter(ActiveItemBuff.region_index == region_index)
+    return q
+
+
+def _is_buff_effect_active(effect, used_at, one_shot, now):
+    """Эффект активен, если: разовый ещё не использован; с длительностью — used_at + duration >= now."""
+    if one_shot:
+        return True
+    if effect.duration_minutes is None:
+        return True
+    from datetime import timedelta
+    expires = used_at + timedelta(minutes=effect.duration_minutes)
+    return now <= expires
+
+
+def get_active_buffs_for_display(user_id=None, clan_id=None, region_index=None):
+    """Список активных баффов для отображения (название, иконка, время использования, макс. время окончания).
+    Возвращаются только баффы с длительностью действия (для отображения иконок на странице битвы)."""
+    now = datetime.utcnow()
+    from datetime import timedelta
+    rows = _active_buffs_query(user_id=user_id, clan_id=clan_id, region_index=region_index).all()
+    out = []
+    for b in rows:
+        item = b.shop_item
+        if not item:
+            continue
+        max_end = None
+        has_duration = False
+        for e in item.effects:
+            if e.duration_minutes is not None:
+                has_duration = True
+                end = b.used_at + timedelta(minutes=e.duration_minutes)
+                if max_end is None or end > max_end:
+                    max_end = end
+        if b.one_shot and not has_duration:
+            max_end = None
+        if max_end is None:
+            continue
+        if now > max_end:
+            continue
+        static_path = _avatar_static_filename(item.image_filename) if item.image_filename else None
+        image_url = url_for('static', filename=static_path, _external=True) if static_path else None
+        used_iso = b.used_at.isoformat() if b.used_at else None
+        expires_iso = max_end.isoformat() if max_end else None
+        used_display = b.used_at.strftime('%d.%m.%Y %H:%M') if b.used_at else None
+        expires_display = max_end.strftime('%d.%m.%Y %H:%M') if max_end else None
+        out.append({
+            'id': b.id,
+            'shop_item_id': item.id,
+            'name': item.name,
+            'description': item.description or '',
+            'image_url': image_url,
+            'used_at': used_iso,
+            'expires_at': expires_iso,
+            'used_at_display': used_display,
+            'expires_at_display': expires_display,
+            'one_shot': b.one_shot,
+        })
+    return out
+
+
+def _get_multipliers_for_action(user_id, clan_id, region_index, is_attack):
+    """
+    Суммарные множители (1 + sum(percent/100)) по типам эффектов для одного действия.
+    user_id, clan_id — для личных/клановых баффов; region_index — для баффов области.
+    is_attack: True = атака чужой области (damage), False = защита своей (defense).
+    Возвращает dict: damage_pct, defense_pct, xp_reward_pct, nums_reward_pct (суммы процентов).
+    """
+    now = datetime.utcnow()
+    damage_pct = 0.0
+    defense_pct = 0.0
+    xp_reward_pct = 0.0
+    nums_reward_pct = 0.0
+
+    def apply_effects(buff):
+        nonlocal damage_pct, defense_pct, xp_reward_pct, nums_reward_pct
+        item = buff.shop_item
+        if not item:
+            return
+        for e in item.effects:
+            if not _is_buff_effect_active(e, buff.used_at, buff.one_shot, now):
+                continue
+            pct = e.percent_change or 0
+            if e.effect_type == 'damage':
+                damage_pct += pct
+            elif e.effect_type == 'defense':
+                defense_pct += pct
+            elif e.effect_type == 'xp_reward':
+                xp_reward_pct += pct
+            elif e.effect_type == 'nums_reward':
+                nums_reward_pct += pct
+
+    # Личные и клановые баффы (для текущего пользователя)
+    if user_id is not None:
+        for b in _active_buffs_query(user_id=user_id).all():
+            apply_effects(b)
+        if clan_id is not None:
+            for b in _active_buffs_query(clan_id=clan_id).all():
+                apply_effects(b)
+    # Баффы области
+    if region_index is not None:
+        for b in _active_buffs_query(region_index=region_index).all():
+            apply_effects(b)
+
+    return {
+        'damage_pct': damage_pct,
+        'defense_pct': defense_pct,
+        'xp_reward_pct': xp_reward_pct,
+        'nums_reward_pct': nums_reward_pct,
+    }
+
+
+def _consume_one_shot_buffs(user_id, clan_id, region_index):
+    """Удалить разовые баффы после применения действия (вызывать после применения урона/опыта/нумов)."""
+    q = _active_buffs_query(user_id=user_id, clan_id=clan_id, region_index=region_index).filter(ActiveItemBuff.one_shot == True)
+    for b in q.all():
+        db.session.delete(b)
+
+
 @app.route('/api/shop/items')
 @login_required
 def api_shop_items():
-    """Список товаров лавки по категориям (для блока «Лавка предметов»)."""
-    items = ShopItem.query.order_by(ShopItem.category, ShopItem.sort_order, ShopItem.id).all()
+    """Список товаров лавки по категориям (для блока «Лавка предметов» в битве за территорию)."""
+    items = ShopItem.query.filter_by(shop_context=SHOP_CONTEXT_TERRITORY).order_by(ShopItem.category, ShopItem.sort_order, ShopItem.id).all()
     by_category = {'enhancement': [], 'curse': []}
     for item in items:
         by_category.setdefault(item.category, []).append(_shop_item_to_dict(item))
@@ -1800,9 +1959,9 @@ def api_shop_items():
 @app.route('/api/shop/item/<int:item_id>')
 @login_required
 def api_shop_item_detail(item_id):
-    """Один товар для модалки (с эффектами для отображения)."""
+    """Один товар для модалки (с эффектами для отображения). Только лавка территории."""
     item = ShopItem.query.get(item_id)
-    if not item:
+    if not item or item.shop_context != SHOP_CONTEXT_TERRITORY:
         return jsonify({'success': False, 'error': 'Товар не найден'}), 404
     return jsonify({'success': True, 'item': _shop_item_to_dict(item, include_effects=True)})
 
@@ -1818,7 +1977,7 @@ def api_shop_purchase():
     if not item_id:
         return jsonify({'success': False, 'error': 'Укажите item_id'}), 400
     item = ShopItem.query.get(item_id)
-    if not item:
+    if not item or item.shop_context != SHOP_CONTEXT_TERRITORY:
         return jsonify({'success': False, 'error': 'Товар не найден'}), 404
     balance = current_user.nums_balance or 0
     if balance < item.price:
@@ -1837,8 +1996,12 @@ def api_shop_purchase():
 @app.route('/api/cabinet/inventory')
 @login_required
 def api_cabinet_inventory():
-    """Список купленных товаров (инвентарь)."""
-    purchases = UserShopPurchase.query.filter_by(user_id=current_user.id).order_by(UserShopPurchase.purchased_at.desc()).all()
+    """Список купленных товаров лавки территории (инвентарь)."""
+    purchases = UserShopPurchase.query.filter(
+        UserShopPurchase.user_id == current_user.id
+    ).join(ShopItem, UserShopPurchase.shop_item_id == ShopItem.id).filter(
+        ShopItem.shop_context == SHOP_CONTEXT_TERRITORY
+    ).order_by(UserShopPurchase.purchased_at.desc()).all()
     out = []
     for p in purchases:
         out.append({
@@ -1850,6 +2013,94 @@ def api_cabinet_inventory():
             'category': p.shop_item.category,
         })
     return jsonify({'success': True, 'inventory': out})
+
+
+@app.route('/api/cabinet/inventory/<int:purchase_id>/use', methods=['POST'])
+@login_required
+def api_cabinet_inventory_use(purchase_id):
+    """Использовать предмет из инвентаря. Для предметов «на область» в body передать region_index."""
+    if current_user.is_admin:
+        return jsonify({'success': False, 'error': 'Администратор не участвует'}), 403
+    purchase = UserShopPurchase.query.filter_by(id=purchase_id, user_id=current_user.id).first()
+    if not purchase:
+        return jsonify({'success': False, 'error': 'Покупка не найдена'}), 404
+    item = purchase.shop_item
+    if not item or item.shop_context != SHOP_CONTEXT_TERRITORY:
+        return jsonify({'success': False, 'error': 'Предмет не найден'}), 404
+    effects = list(item.effects)
+    if not effects:
+        db.session.delete(purchase)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Предмет использован'})
+
+    data = request.get_json() or {}
+    targets = {e.target for e in effects if e.target}
+    region_index = data.get('region_index')
+    data_clan_id = data.get('clan_id')
+    if SHOP_EFFECT_TARGET_REGION in targets:
+        if region_index is None:
+            return jsonify({'success': False, 'error': 'Укажите область (region_index) для применения'}), 400
+        region_index = int(region_index)
+        if TerritoryRegionConfig.query.filter_by(region_index=region_index).first() is None:
+            return jsonify({'success': False, 'error': 'Область не найдена'}), 400
+    if SHOP_EFFECT_TARGET_CLAN in targets:
+        if data_clan_id is None:
+            return jsonify({'success': False, 'error': 'Укажите клан (clan_id) для применения'}), 400
+        clan_id = int(data_clan_id)
+        if Clan.query.get(clan_id) is None:
+            return jsonify({'success': False, 'error': 'Клан не найден'}), 400
+        if current_user.clan_id != clan_id:
+            return jsonify({'success': False, 'error': 'Можно применить только к своему клану'}), 400
+    else:
+        clan_id = None
+
+    # Определяем одну запись баффа: личное, клан или область
+    user_id = None
+    reg_idx = None
+    if SHOP_EFFECT_TARGET_REGION in targets:
+        reg_idx = region_index
+    elif SHOP_EFFECT_TARGET_CLAN in targets:
+        pass
+    else:
+        user_id = current_user.id
+
+    # Разовые (без длительности) = one_shot: сработает один раз при следующем действии
+    has_duration = any(e.duration_minutes is not None for e in effects)
+    one_shot = not has_duration
+
+    # Мгновенные эффекты при использовании
+    for e in effects:
+        if e.effect_type == 'current_energy' and (e.target == SHOP_EFFECT_TARGET_SELF or not e.target):
+            current_user.ensure_energy_refill()
+            max_e = current_user.energy
+            cur = current_user.current_energy if current_user.current_energy is not None else max_e
+            add = max(0, int(max_e * (e.percent_change or 0) / 100))
+            current_user.current_energy = min(max_e, cur + add)
+        elif e.effect_type == 'current_energy' and e.target == SHOP_EFFECT_TARGET_CLAN and clan_id:
+            for u in User.query.filter_by(clan_id=clan_id).all():
+                u.ensure_energy_refill()
+                max_e = u.energy
+                cur = u.current_energy if u.current_energy is not None else max_e
+                add = max(0, int(max_e * (e.percent_change or 0) / 100))
+                u.current_energy = min(max_e, cur + add)
+
+    buff = ActiveItemBuff(
+        user_id=user_id,
+        clan_id=clan_id,
+        region_index=reg_idx,
+        shop_item_id=item.id,
+        used_at=datetime.utcnow(),
+        one_shot=one_shot,
+    )
+    db.session.add(buff)
+    db.session.delete(purchase)
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'message': 'Предмет использован',
+        'buff_id': buff.id,
+        'one_shot': one_shot,
+    })
 
 
 @app.route('/api/clans')
@@ -2010,6 +2261,21 @@ def api_clan_kick(clan_id, user_id):
     return jsonify({'success': True})
 
 
+@app.route('/api/clan/chat/unread-count')
+@login_required
+def api_clan_chat_unread_count():
+    """Количество новых сообщений от других участников (id > after_id). Параметр: after_id (опционально)."""
+    if not current_user.clan_id:
+        return jsonify({'success': False, 'error': 'Вы не в клане'}), 400
+    after_id = request.args.get('after_id', type=int) or 0
+    count = ClanChatMessage.query.filter(
+        ClanChatMessage.clan_id == current_user.clan_id,
+        ClanChatMessage.id > after_id,
+        ClanChatMessage.user_id != current_user.id,
+    ).count()
+    return jsonify({'success': True, 'count': count})
+
+
 @app.route('/api/clan/chat', methods=['GET'])
 @login_required
 def api_clan_chat_list():
@@ -2108,8 +2374,8 @@ def class_game(class_id):
     class_obj = db.get_or_404(Class, class_id)
     valera_prizes = Prize.query.filter_by(prize_type='valera').all()
     students_prizes = Prize.query.filter_by(prize_type='students').all()
-    shop_items = ShopItem.query.order_by(ShopItem.price).all()
-    return render_template('game.html', 
+    shop_items = ShopItem.query.filter_by(shop_context=SHOP_CONTEXT_GAME).order_by(ShopItem.price).all()
+    return render_template('game.html',
                          class_obj=class_obj,
                          valera_prizes=[p.to_dict() for p in valera_prizes],
                          students_prizes=[p.to_dict() for p in students_prizes],
@@ -2400,8 +2666,8 @@ def redeem_student_rating(class_id, student_id):
 def admin_prizes():
     valera_prizes = Prize.query.filter_by(prize_type='valera').all()
     students_prizes = Prize.query.filter_by(prize_type='students').all()
-    shop_items = ShopItem.query.order_by(ShopItem.price).all()
-    return render_template('admin/prizes.html', 
+    shop_items = ShopItem.query.filter_by(shop_context=SHOP_CONTEXT_GAME).order_by(ShopItem.price).all()
+    return render_template('admin/prizes.html',
                          valera_prizes=valera_prizes,
                          students_prizes=students_prizes,
                          shop_items=shop_items)
@@ -2454,11 +2720,13 @@ def delete_prize(prize_id):
 @app.route('/api/shop-items', methods=['POST'])
 @admin_required
 def create_shop_item():
+    """Создать товар лавки призов (game). Используется в admin/prizes."""
     data = request.json
     new_item = ShopItem(
         name=data.get('name', '').strip() or 'Товар',
         price=int(data.get('price', 0)),
-        category=data.get('category', SHOP_CATEGORY_ENHANCEMENT)
+        category=data.get('category', 'game'),
+        shop_context=SHOP_CONTEXT_GAME
     )
     db.session.add(new_item)
     db.session.commit()
@@ -2468,6 +2736,8 @@ def create_shop_item():
 @admin_required
 def update_shop_item(item_id):
     item = db.get_or_404(ShopItem, item_id)
+    if item.shop_context != SHOP_CONTEXT_GAME:
+        return jsonify({'success': False, 'error': 'Товар не найден'}), 404
     data = request.json
     
     if 'name' in data:
@@ -2482,6 +2752,8 @@ def update_shop_item(item_id):
 @admin_required
 def delete_shop_item(item_id):
     item = db.get_or_404(ShopItem, item_id)
+    if item.shop_context != SHOP_CONTEXT_GAME:
+        return jsonify({'success': False, 'error': 'Товар не найден'}), 404
     db.session.delete(item)
     db.session.commit()
     return jsonify({'success': True})
@@ -2905,7 +3177,7 @@ def admin_territory_battle():
     capture_enabled, capture_start_time, capture_end_time = get_territory_capture_settings()
     capture_start_time_iso = capture_start_time.strftime('%Y-%m-%dT%H:%M') if capture_start_time else ''
     capture_end_time_iso = capture_end_time.strftime('%Y-%m-%dT%H:%M') if capture_end_time else ''
-    shop_items = ShopItem.query.order_by(ShopItem.category, ShopItem.sort_order, ShopItem.id).all()
+    shop_items = ShopItem.query.filter_by(shop_context=SHOP_CONTEXT_TERRITORY).order_by(ShopItem.category, ShopItem.sort_order, ShopItem.id).all()
     return render_template('admin/territory_battle.html', regions=regions, clans=clans, generators=generators, registration_enabled=registration_enabled, capture_enabled=capture_enabled, capture_start_time_iso=capture_start_time_iso, capture_end_time_iso=capture_end_time_iso, shop_items=shop_items)
 
 
@@ -3127,8 +3399,8 @@ def admin_territory_reset():
 @app.route('/api/admin/shop/items')
 @admin_required
 def api_admin_shop_items():
-    """Список всех товаров лавки для админки."""
-    items = ShopItem.query.order_by(ShopItem.category, ShopItem.sort_order, ShopItem.id).all()
+    """Список товаров лавки битвы за территорию для админки."""
+    items = ShopItem.query.filter_by(shop_context=SHOP_CONTEXT_TERRITORY).order_by(ShopItem.category, ShopItem.sort_order, ShopItem.id).all()
     out = []
     for item in items:
         d = _shop_item_to_dict(item, include_effects=True)
@@ -3172,19 +3444,22 @@ def api_admin_shop_item_create():
         effects_list = json.loads(effects_json) if isinstance(effects_json, str) else (effects_json if isinstance(effects_json, list) else [])
     except Exception:
         effects_list = []
-    item = ShopItem(name=name, description=description, price=price, category=category)
+    item = ShopItem(name=name, description=description, price=price, category=category, shop_context=SHOP_CONTEXT_TERRITORY)
     db.session.add(item)
     db.session.flush()
     if 'image' in request.files:
         path = _shop_save_image(request.files['image'], item.id)
         if path:
             item.image_filename = path
+    _valid_targets = (SHOP_EFFECT_TARGET_SELF, SHOP_EFFECT_TARGET_CLAN, SHOP_EFFECT_TARGET_REGION)
     for e in effects_list:
+        t = (e.get('target') or '').strip().lower()
+        target = t if t in _valid_targets else SHOP_EFFECT_TARGET_SELF
         eff = ShopItemEffect(
             shop_item_id=item.id,
             effect_type=e.get('effect_type') or 'damage',
             percent_change=float(e.get('percent_change', 0)),
-            target=e.get('target'),
+            target=target,
             duration_minutes=int(e['duration_minutes']) if e.get('duration_minutes') not in (None, '') else None,
         )
         db.session.add(eff)
@@ -3196,7 +3471,7 @@ def api_admin_shop_item_create():
 @admin_required
 def api_admin_shop_item_update_delete(item_id):
     item = ShopItem.query.get(item_id)
-    if not item:
+    if not item or item.shop_context != SHOP_CONTEXT_TERRITORY:
         return jsonify({'success': False, 'error': 'Товар не найден'}), 404
     if request.method == 'DELETE':
         db.session.delete(item)
@@ -3228,12 +3503,15 @@ def api_admin_shop_item_update_delete(item_id):
     if request.form.get('delete_image') in ('1', 'true', 'yes'):
         item.image_filename = None
     ShopItemEffect.query.filter_by(shop_item_id=item.id).delete()
+    _valid_targets = (SHOP_EFFECT_TARGET_SELF, SHOP_EFFECT_TARGET_CLAN, SHOP_EFFECT_TARGET_REGION)
     for e in effects_list:
+        t = (e.get('target') or '').strip().lower()
+        target = t if t in _valid_targets else SHOP_EFFECT_TARGET_SELF
         eff = ShopItemEffect(
             shop_item_id=item.id,
             effect_type=e.get('effect_type') or 'damage',
             percent_change=float(e.get('percent_change', 0)),
-            target=e.get('target'),
+            target=target,
             duration_minutes=int(e['duration_minutes']) if e.get('duration_minutes') not in (None, '') else None,
         )
         db.session.add(eff)
@@ -3660,6 +3938,16 @@ def territory_battle_page():
     clan_pending_join_count = 0
     if user_logged_in and not is_admin and getattr(current_user, 'clan_obj', None) and current_user.clan_obj.owner_id == current_user.id:
         clan_pending_join_count = ClanJoinRequest.query.filter_by(clan_id=current_user.clan_obj.id, status='pending').count()
+    # Активные баффы для отображения иконок (только с длительностью; разовые не показываем в списке)
+    user_active_buffs = []
+    clan_active_buffs = []
+    region_active_buffs = {}
+    if user_logged_in and not is_admin and current_user.is_authenticated:
+        user_active_buffs = get_active_buffs_for_display(user_id=current_user.id)
+        if clan_id:
+            clan_active_buffs = get_active_buffs_for_display(clan_id=clan_id)
+        for r in regions_config:
+            region_active_buffs[r.region_index] = get_active_buffs_for_display(region_index=r.region_index)
     return render_template(
         'territory_battle.html',
         clans=clans,
@@ -3678,8 +3966,18 @@ def territory_battle_page():
         energy_max=energy_max,
         avatar_url=avatar_url,
         clan_flag_url=clan_flag_url,
-        clan_pending_join_count=clan_pending_join_count
+        clan_pending_join_count=clan_pending_join_count,
+        user_active_buffs=user_active_buffs,
+        clan_active_buffs=clan_active_buffs,
+        region_active_buffs=region_active_buffs,
     )
+
+
+@app.route('/api/territory/regions')
+def api_territory_regions():
+    """Список областей для выбора (например, при использовании предмета «на область»)."""
+    regions = TerritoryRegionConfig.query.order_by(TerritoryRegionConfig.region_index).all()
+    return jsonify([{'region_index': r.region_index, 'display_name': r.display_name or f'Область {r.region_index + 1}'} for r in regions])
 
 
 @app.route('/api/territory-battle/server-time')
@@ -4019,7 +4317,10 @@ def api_territory_apply_action():
     # Энергия уже списана при открытии модалки с заданием (api_territory_task)
     # Урон при атаке (чужая/нейтральная область), защита при усилении своей
     is_own_region = (state.owner_clan_id == clan_id)
-    power = current_user.defense if is_own_region else current_user.damage
+    base_power = current_user.defense if is_own_region else current_user.damage
+    mult = _get_multipliers_for_action(current_user.id, clan_id, region_index, is_attack=not is_own_region)
+    power_pct = mult['defense_pct'] if is_own_region else mult['damage_pct']
+    power = max(1, int(round(base_power * (1 + power_pct / 100.0))))
     if not correct:
         db.session.commit()
         return jsonify({
@@ -4027,14 +4328,18 @@ def api_territory_apply_action():
             'owner_clan_id': state.owner_clan_id, 'strength': state.strength,
             'current_energy': current_energy
         })
+    # Множители опыта и нумов от баффов
+    xp_mult = 1 + (mult['xp_reward_pct'] / 100.0)
+    nums_mult = 1 + (mult['nums_reward_pct'] / 100.0)
+    effective_xp = max(0, int(round(task.xp_reward * xp_mult)))
     # Начисляем опыт
-    new_level, leveled_up = current_user.add_experience(task.xp_reward)
+    new_level, leveled_up = current_user.add_experience(effective_xp)
     if leveled_up:
         # При достижении нового уровня энергия восстанавливается до максимума
         current_user.current_energy = current_user.energy
         current_energy = current_user.energy
     # Начисляем Нумы за правильное решение (с разбросом по уровню)
-    nums_gained = roll_nums_reward(current_user.level)
+    nums_gained = max(0, int(round(roll_nums_reward(current_user.level) * nums_mult)))
     current_user.nums_balance = (current_user.nums_balance or 0) + nums_gained
     if state.owner_clan_id is None:
         state.owner_clan_id = clan_id
@@ -4050,13 +4355,14 @@ def api_territory_apply_action():
             state.owner_clan_id = clan_id
             state.strength = power
             stats.total_influence_points += power
+    _consume_one_shot_buffs(current_user.id, clan_id, region_index)
     db.session.commit()
     xp_needed = current_user.xp_needed_for_next_level
     xp_pct = round((current_user.xp_in_current_level / xp_needed * 100), 1) if xp_needed else 100
     return jsonify({
         'success': True, 'correct': True,
         'owner_clan_id': state.owner_clan_id, 'strength': state.strength,
-        'xp_gained': task.xp_reward, 'level': new_level, 'leveled_up': leveled_up,
+        'xp_gained': effective_xp, 'level': new_level, 'leveled_up': leveled_up,
         'nums_gained': nums_gained,
         'player_nums_balance': current_user.nums_balance or 0,
         'current_energy': current_energy,

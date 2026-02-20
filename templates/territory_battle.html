@@ -263,6 +263,49 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     border-radius: 4px;
     transition: width 0.25s ease;
 }
+.territory-player-name-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.territory-buff-icons {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+.territory-buff-icon {
+    width: 24px;
+    height: 24px;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 1px solid rgba(212,168,75,0.4);
+    cursor: pointer;
+}
+.territory-buff-icon:hover {
+    border-color: #d4a84b;
+    filter: brightness(1.15);
+}
+.territory-buff-icon-placeholder {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    border: 1px solid rgba(212,168,75,0.4);
+    cursor: pointer;
+    font-size: 14px;
+    background: #2c1810;
+    box-sizing: border-box;
+}
+.territory-buff-icon-placeholder:hover {
+    border-color: #d4a84b;
+}
+.territory-buff-icons-clan {
+    margin-top: 4px;
+}
 .territory-player-stats {
     display: flex;
     gap: 14px;
@@ -589,6 +632,10 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     background: linear-gradient(145deg, #6b5040 0%, #5c4033 100%);
     color: #e8c86a;
 }
+.territory-buff-detail-image { margin: 10px 0; }
+.territory-buff-detail-image img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 2px solid #5c4033; }
+.territory-buff-detail-time { font-size: 0.9rem; color: #b8a088; margin-top: 8px; }
+.region-buff-icons image { cursor: pointer; }
 
 /* Запрет копирования/выделения текста условия задачи */
 .territory-task-content.no-copy {
@@ -1091,6 +1138,20 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     box-shadow: 0 6px 20px rgba(0,0,0,0.4), 0 0 0 1px rgba(212,168,75,0.35), inset 0 1px 0 rgba(255,255,255,0.12);
 }
 .floating-chat-btn:active { transform: scale(1.02); }
+.floating-chat-btn .chat-unread-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #dc2626;
+    border: 2px solid #3d2914;
+    display: none;
+}
+.floating-chat-btn.has-unread .chat-unread-badge {
+    display: block;
+}
 
 /* Модалка чата на странице битвы */
 .clan-chat-modal-overlay {
@@ -1191,6 +1252,8 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         justify-content: center;
     }
     .territory-map .region-label { font-size: 7px; }
+    .territory-buff-icon { width: 20px; height: 20px; }
+    .territory-buff-icons-clan { margin-top: 2px; }
     .global-class-name { min-width: 70px; }
     .global-progress { padding: 10px 14px; }
     .global-progress-title { font-size: 0.8rem; }
@@ -1263,7 +1326,20 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         <div class="territory-player-avatar-placeholder">👤</div>
         {% endif %}
         <div class="territory-player-main">
-            <p class="territory-player-name">{{ current_user.character_name or current_user.username }}</p>
+            <p class="territory-player-name-row">
+                <span class="territory-player-name">{{ current_user.character_name or current_user.username }}</span>
+                {% if user_active_buffs %}
+                <span class="territory-buff-icons territory-buff-icons-user" title="Активные улучшения">
+                    {% for b in user_active_buffs %}
+                    {% if b.image_url %}
+                    <img class="territory-buff-icon" src="{{ b.image_url }}" alt="{{ b.name }}" title="{{ b.name }}{% if b.expires_at_display %} — до {{ b.expires_at_display }}{% endif %}" data-buff-name="{{ b.name }}" data-buff-desc="{{ b.description }}" data-buff-image="{{ b.image_url }}" data-buff-used="{{ b.used_at or '' }}" data-buff-expires="{{ b.expires_at or '' }}">
+                    {% else %}
+                    <span class="territory-buff-icon territory-buff-icon-placeholder" title="{{ b.name }}{% if b.expires_at_display %} — до {{ b.expires_at_display }}{% endif %}" data-buff-name="{{ b.name }}" data-buff-desc="{{ b.description }}" data-buff-image="" data-buff-used="{{ b.used_at or '' }}" data-buff-expires="{{ b.expires_at or '' }}">📦</span>
+                    {% endif %}
+                    {% endfor %}
+                </span>
+                {% endif %}
+            </p>
             <div class="territory-player-level-row">
                 <span id="playerCardLevel" class="territory-player-level">Ур. {{ current_user.level or 1 }}</span>
                 <div id="playerCardXpWrap" class="territory-player-xp-wrap" title="Опыт: {{ current_user.xp_in_current_level }} / {{ current_user.xp_needed_for_next_level }}">
@@ -1286,6 +1362,17 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
             <div class="territory-player-clan-flag-placeholder">⚔</div>
             {% endif %}
             <span id="playerClanName" class="territory-player-clan-name">{{ current_user.clan_obj.name }}</span>
+            {% if clan_active_buffs %}
+            <div class="territory-buff-icons territory-buff-icons-clan">
+                {% for b in clan_active_buffs %}
+                {% if b.image_url %}
+                <img class="territory-buff-icon" src="{{ b.image_url }}" alt="{{ b.name }}" title="{{ b.name }}{% if b.expires_at_display %} — до {{ b.expires_at_display }}{% endif %}" data-buff-name="{{ b.name }}" data-buff-desc="{{ b.description }}" data-buff-image="{{ b.image_url }}" data-buff-used="{{ b.used_at or '' }}" data-buff-expires="{{ b.expires_at or '' }}">
+                {% else %}
+                <span class="territory-buff-icon territory-buff-icon-placeholder" title="{{ b.name }}{% if b.expires_at_display %} — до {{ b.expires_at_display }}{% endif %}" data-buff-name="{{ b.name }}" data-buff-desc="{{ b.description }}" data-buff-image="" data-buff-used="{{ b.used_at or '' }}" data-buff-expires="{{ b.expires_at or '' }}">📦</span>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
             {% if clan_pending_join_count and clan_pending_join_count > 0 %}
             <a href="{{ url_for('cabinet') }}#clan-join-requests" class="territory-clan-pending-badge" title="Есть новые заявки на вступление в клан ({{ clan_pending_join_count }})">📩 {{ clan_pending_join_count }}</a>
             {% endif %}
@@ -1424,7 +1511,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     </div>
     </div>
     {% if user_logged_in and current_user.clan_id %}
-    <button type="button" class="floating-chat-btn" id="battleFloatingChatBtn" aria-label="Чат с кланом" title="Чат с кланом">💬</button>
+    <button type="button" class="floating-chat-btn" id="battleFloatingChatBtn" aria-label="Чат с кланом" title="Чат с кланом" data-clan-id="{{ current_user.clan_id if (user_logged_in and current_user.clan_id) else '' }}">💬<span class="chat-unread-badge" id="battleClanChatUnreadBadge" aria-hidden="true" title="Есть новые сообщения"></span></button>
     {% endif %}
 </div>
 
@@ -1552,6 +1639,16 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     </div>
 </div>
 
+<div class="territory-description-popover-overlay" id="territoryBuffDetailPopover">
+    <div class="territory-description-popover">
+        <h4 id="territoryBuffDetailTitle"></h4>
+        <div id="territoryBuffDetailImageWrap" class="territory-buff-detail-image"></div>
+        <p id="territoryBuffDetailDesc"></p>
+        <p id="territoryBuffDetailTime" class="territory-buff-detail-time"></p>
+        <button type="button" class="territory-description-popover-close" id="territoryBuffDetailClose">Закрыть</button>
+    </div>
+</div>
+
 <script>
 // Запрет копирования текста условия задачи (в блоке модалки задания)
 (function() {
@@ -1655,6 +1752,7 @@ window.territoryFocusProtection = (function() {
 
     const TERRITORY_REGIONS_CONFIG = {{ regions_json | tojson | safe }};
     const TERRITORY_STATE = {{ territory_state_json | tojson | safe }};
+    const TERRITORY_REGION_ACTIVE_BUFFS = {{ region_active_buffs | tojson | safe }};
 
     const clansData = {{ clans_json | tojson | safe }};
     const playerClanId = {{ current_user_clan_id | tojson }};
@@ -1824,6 +1922,32 @@ window.territoryFocusProtection = (function() {
                         if (popover) popover.classList.add('show');
                     });
                 }
+                var regionBuffs = (typeof TERRITORY_REGION_ACTIVE_BUFFS !== 'undefined' && TERRITORY_REGION_ACTIVE_BUFFS[index]) ? TERRITORY_REGION_ACTIVE_BUFFS[index] : [];
+                if (regionBuffs.length > 0) {
+                    var buffG = document.createElementNS(svg.namespaceURI, 'g');
+                    buffG.classList.add('region-buff-icons');
+                    buffG.setAttribute('transform', 'translate(' + cx + ',' + (cy + 4) + ')');
+                    var w = 14, gap = 2;
+                    var totalW = regionBuffs.length * w + Math.max(0, regionBuffs.length - 1) * gap;
+                    var startX = -totalW / 2 + w / 2;
+                    regionBuffs.forEach(function(b, i) {
+                        if (!b.image_url) return;
+                        var img = document.createElementNS(svg.namespaceURI, 'image');
+                        img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', b.image_url);
+                        img.setAttribute('x', startX + i * (w + gap) - w / 2);
+                        img.setAttribute('y', -w / 2);
+                        img.setAttribute('width', w);
+                        img.setAttribute('height', w);
+                        img.classList.add('territory-buff-icon');
+                        img.setAttribute('data-buff-name', b.name || '');
+                        img.setAttribute('data-buff-desc', b.description || '');
+                        img.setAttribute('data-buff-image', b.image_url || '');
+                        img.setAttribute('data-buff-used', b.used_at || '');
+                        img.setAttribute('data-buff-expires', b.expires_at || '');
+                        buffG.appendChild(img);
+                    });
+                    overlay.appendChild(buffG);
+                }
             } else {
                 var overlayLayer = document.getElementById('regionOverlaysLayer');
                 (overlayLayer || g).appendChild(overlay);
@@ -1853,6 +1977,51 @@ window.territoryFocusProtection = (function() {
         var overlay = document.getElementById('territoryDescriptionPopover');
         var closeBtn = document.getElementById('territoryDescriptionPopoverClose');
         function hide() { if (overlay) overlay.classList.remove('show'); }
+        if (closeBtn) closeBtn.addEventListener('click', hide);
+        if (overlay) overlay.addEventListener('click', function(e) { if (e.target === overlay) hide(); });
+    })();
+
+    function formatBuffTime(isoStr) {
+        if (!isoStr || typeof isoStr !== 'string') return '';
+        var d = new Date(isoStr);
+        if (isNaN(d.getTime())) return isoStr;
+        var day = ('0' + d.getDate()).slice(-2);
+        var month = ('0' + (d.getMonth() + 1)).slice(-2);
+        var year = d.getFullYear();
+        var h = ('0' + d.getHours()).slice(-2);
+        var min = ('0' + d.getMinutes()).slice(-2);
+        return day + '.' + month + '.' + year + ' ' + h + ':' + min;
+    }
+
+    (function initBuffDetailPopover() {
+        var overlay = document.getElementById('territoryBuffDetailPopover');
+        var titleEl = document.getElementById('territoryBuffDetailTitle');
+        var imageWrap = document.getElementById('territoryBuffDetailImageWrap');
+        var descEl = document.getElementById('territoryBuffDetailDesc');
+        var timeEl = document.getElementById('territoryBuffDetailTime');
+        var closeBtn = document.getElementById('territoryBuffDetailClose');
+        function hide() { if (overlay) overlay.classList.remove('show'); }
+        document.addEventListener('click', function(e) {
+            var icon = e.target.closest('.territory-buff-icon');
+            if (!icon) return;
+            e.preventDefault();
+            if (titleEl) titleEl.textContent = icon.getAttribute('data-buff-name') || '';
+            if (imageWrap) {
+                var imgUrl = icon.getAttribute('data-buff-image');
+                imageWrap.innerHTML = imgUrl ? '<img src="' + imgUrl.replace(/"/g, '&quot;') + '" alt="">' : '';
+            }
+            if (descEl) descEl.textContent = icon.getAttribute('data-buff-desc') || '—';
+            var used = icon.getAttribute('data-buff-used');
+            var expires = icon.getAttribute('data-buff-expires');
+            if (timeEl) {
+                var usedStr = formatBuffTime(used);
+                var expiresStr = formatBuffTime(expires);
+                if (expiresStr) timeEl.textContent = 'Использован: ' + usedStr + '. Действует до: ' + expiresStr;
+                else if (usedStr) timeEl.textContent = 'Использован: ' + usedStr;
+                else timeEl.textContent = '';
+            }
+            if (overlay) overlay.classList.add('show');
+        });
         if (closeBtn) closeBtn.addEventListener('click', hide);
         if (overlay) overlay.addEventListener('click', function(e) { if (e.target === overlay) hide(); });
     })();
@@ -2678,12 +2847,51 @@ window.territoryFocusProtection = (function() {
             });
     }
 
+    var clanId = (openBtn && openBtn.getAttribute('data-clan-id')) || '';
+    var storageKey = 'clanChatLastRead_' + clanId;
+    var unreadUrl = '{{ url_for("api_clan_chat_unread_count") }}';
+    function getLastReadId() {
+        try { return parseInt(localStorage.getItem(storageKey) || '0', 10); } catch (e) { return 0; }
+    }
+    function setLastReadId(id) {
+        try { localStorage.setItem(storageKey, String(id)); } catch (e) {}
+    }
+    function updateUnreadBadge() {
+        var afterId = getLastReadId();
+        fetch(unreadUrl + (afterId ? '?after_id=' + afterId : ''))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (openBtn) {
+                    if (data.success && data.count > 0) openBtn.classList.add('has-unread');
+                    else openBtn.classList.remove('has-unread');
+                }
+            })
+            .catch(function() {});
+    }
+    function markAsRead() {
+        var messages = document.getElementById('battleClanChatMessages');
+        if (!messages) return;
+        var msgs = messages.querySelectorAll('.clan-chat-msg');
+        var maxId = 0;
+        msgs.forEach(function(m) {
+            var id = parseInt(m.getAttribute('data-id'), 10);
+            if (id > maxId) maxId = id;
+        });
+        if (maxId > 0) setLastReadId(maxId);
+        if (openBtn) openBtn.classList.remove('has-unread');
+    }
+
     loadChat();
     setInterval(function() { loadChat(true); }, 10000);
     if (sendBtn) sendBtn.addEventListener('click', sendMessage);
     if (input) input.addEventListener('keydown', function(e) {
         if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }
     });
+
+    updateUnreadBadge();
+    setInterval(function() {
+        if (modal && !modal.classList.contains('open')) updateUnreadBadge();
+    }, 25000);
 
     function openModal() {
         var taskModalEl = document.getElementById('taskModal');
@@ -2694,10 +2902,12 @@ window.territoryFocusProtection = (function() {
             setTimeout(function() {
                 var el = document.getElementById('battleClanChatMessages');
                 if (el) el.scrollTop = el.scrollHeight;
-            }, 50);
+                markAsRead();
+            }, 300);
         }
     }
     function closeModal() {
+        markAsRead();
         if (modal) modal.classList.remove('open');
     }
     if (openBtn) openBtn.addEventListener('click', openModal);

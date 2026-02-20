@@ -753,7 +753,7 @@ body {
                 </select>
             </div>
             <div class="form-group">
-                <label>Эффекты (для усиления: % улучшения и на кого; для проклятия: % ухудшения на весь клан)</label>
+                <label>Эффекты (тип, % изменения, действие: личное / на весь клан / на область, длительность в мин.)</label>
                 <div id="shopItemEffectsContainer"></div>
                 <button type="button" class="edit-btn" id="shopItemAddEffectBtn">+ Добавить эффект</button>
             </div>
@@ -1127,9 +1127,14 @@ document.getElementById('clanDeleteConfirm').addEventListener('click', function(
         var optClan = document.createElement('option');
         optClan.value = 'clan';
         optClan.textContent = 'На весь клан';
+        var optRegion = document.createElement('option');
+        optRegion.value = 'region';
+        optRegion.textContent = 'На область';
         targetSel.appendChild(optSelf);
         targetSel.appendChild(optClan);
+        targetSel.appendChild(optRegion);
         if (data.target === 'clan') optClan.selected = true;
+        else if (data.target === 'region') optRegion.selected = true;
         var dur = document.createElement('input');
         dur.type = 'number';
         dur.name = 'duration_minutes';
