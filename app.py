@@ -3955,12 +3955,13 @@ def territory_battle_page():
     user_active_buffs = []
     clan_active_buffs = []
     region_active_buffs = {}
+    # Баффы областей показываем всем (на карте видно, какие области под эффектами)
+    for r in regions_config:
+        region_active_buffs[r.region_index] = get_active_buffs_for_display(region_index=r.region_index)
     if user_logged_in and not is_admin and current_user.is_authenticated:
         user_active_buffs = get_active_buffs_for_display(user_id=current_user.id)
         if clan_id:
             clan_active_buffs = get_active_buffs_for_display(clan_id=clan_id)
-        for r in regions_config:
-            region_active_buffs[r.region_index] = get_active_buffs_for_display(region_index=r.region_index)
     return render_template(
         'territory_battle.html',
         clans=clans,
