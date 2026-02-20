@@ -1909,6 +1909,10 @@ def _get_multipliers_for_action(user_id, clan_id, region_index, is_attack):
             if not _is_buff_effect_active(e, buff.used_at, buff.one_shot, now):
                 continue
             pct = e.percent_change or 0
+            if item.category == SHOP_CATEGORY_CURSE and pct > 0:
+                pct = -pct
+            elif item.category == SHOP_CATEGORY_ENHANCEMENT and pct < 0:
+                pct = -pct
             if e.effect_type == 'damage':
                 damage_pct += pct
             elif e.effect_type == 'defense':
@@ -2068,21 +2072,31 @@ def api_cabinet_inventory_use(purchase_id):
     has_duration = any(e.duration_minutes is not None for e in effects)
     one_shot = not has_duration
 
-    # Мгновенные эффекты при использовании
+    # Мгновенные эффекты при использовании (улучшения — плюс, проклятия — минус)
     for e in effects:
         if e.effect_type == 'current_energy' and (e.target == SHOP_EFFECT_TARGET_SELF or not e.target):
             current_user.ensure_energy_refill()
             max_e = current_user.energy
             cur = current_user.current_energy if current_user.current_energy is not None else max_e
-            add = max(0, int(max_e * (e.percent_change or 0) / 100))
-            current_user.current_energy = min(max_e, cur + add)
+            pct = e.percent_change or 0
+            if item.category == SHOP_CATEGORY_CURSE and pct > 0:
+                pct = -pct
+            elif item.category == SHOP_CATEGORY_ENHANCEMENT and pct < 0:
+                pct = -pct
+            add = int(max_e * pct / 100)
+            current_user.current_energy = min(max_e, max(0, cur + add))
         elif e.effect_type == 'current_energy' and e.target == SHOP_EFFECT_TARGET_CLAN and clan_id:
             for u in User.query.filter_by(clan_id=clan_id).all():
                 u.ensure_energy_refill()
                 max_e = u.energy
                 cur = u.current_energy if u.current_energy is not None else max_e
-                add = max(0, int(max_e * (e.percent_change or 0) / 100))
-                u.current_energy = min(max_e, cur + add)
+                pct = e.percent_change or 0
+                if item.category == SHOP_CATEGORY_CURSE and pct > 0:
+                    pct = -pct
+                elif item.category == SHOP_CATEGORY_ENHANCEMENT and pct < 0:
+                    pct = -pct
+                add = int(max_e * pct / 100)
+                u.current_energy = min(max_e, max(0, cur + add))
 
     buff = ActiveItemBuff(
         user_id=user_id,
