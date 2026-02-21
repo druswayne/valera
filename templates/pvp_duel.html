@@ -1,0 +1,1415 @@
+{% extends "base.html" %}
+
+{% block title %}Дуэль — PvP Арена{% endblock %}
+
+{% block extra_head %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Cinzel+Decorative:wght@700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; }
+.pvp-duel-page {
+    min-height: 100vh;
+    background: #3d2914 linear-gradient(180deg, rgba(61,41,20,0.97) 0%, #2c1810 50%, #1a0f08 100%);
+    padding: 20px;
+    color: #e8dcc4;
+    font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Roman', serif;
+    position: relative;
+}
+.pvp-duel-page::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+}
+.pvp-duel-page > * { position: relative; z-index: 1; }
+.pvp-duel-page h1 {
+    font-family: 'Cinzel Decorative', 'Cinzel', Georgia, serif;
+    text-align: center;
+    margin: 0 0 20px;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #d4a84b;
+    text-shadow: 0 0 20px rgba(212,168,75,0.3), 0 2px 4px rgba(0,0,0,0.5);
+    letter-spacing: 0.08em;
+}
+.pvp-duel-opponent {
+    max-width: 560px;
+    margin: 0 auto 24px;
+    padding: 16px;
+    background: linear-gradient(145deg, #4a2820 0%, #3d2018 35%, #352018 100%);
+    border: 2px solid #6b4033;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: inset 0 1px 0 rgba(180,80,60,0.12), 0 4px 12px rgba(0,0,0,0.35);
+}
+.pvp-duel-opponent .avatar-wrap { flex-shrink: 0; }
+.pvp-duel-opponent .avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #2c1810;
+    border: 2px solid #5c4033;
+}
+.pvp-duel-opponent .avatar-placeholder {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #2c1810;
+    border: 2px solid #5c4033;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+}
+.pvp-duel-opponent .main { flex: 1; }
+.pvp-duel-opponent .name-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.pvp-duel-opponent .name { font-family: 'Cinzel', Georgia, serif; font-weight: bold; font-size: 1.1rem; color: #e8dcc4; }
+.pvp-duel-buff-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    object-fit: cover;
+    vertical-align: middle;
+    border: 1px solid rgba(212,168,75,0.4);
+}
+.pvp-duel-opponent .stats { color: #c4b098; font-size: 0.95rem; margin-top: 4px; }
+.pvp-duel-hp-wrap {
+    margin-top: 8px;
+    height: 12px;
+    background: #2c1810;
+    border: 1px solid #5c4033;
+    border-radius: 6px;
+    overflow: hidden;
+}
+.pvp-duel-hp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #8b6914, #d4a84b);
+    border-radius: 5px;
+    transition: width 0.3s;
+}
+.pvp-duel-hp-text { font-size: 0.85rem; margin-top: 2px; color: #c4b098; }
+
+.pvp-duel-me {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    max-width: 320px;
+    padding: 14px;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    border: 2px solid #5c4033;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: inset 0 1px 0 rgba(212,168,75,0.12), 0 4px 12px rgba(0,0,0,0.35);
+}
+.pvp-duel-me .avatar { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; background: #2c1810; border: 2px solid #5c4033; }
+.pvp-duel-me .avatar-placeholder { width: 48px; height: 48px; border-radius: 50%; background: #2c1810; border: 2px solid #5c4033; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+.pvp-duel-me .main { flex: 1; }
+.pvp-duel-me .name { font-family: 'Cinzel', Georgia, serif; font-weight: bold; color: #e8dcc4; }
+.pvp-duel-me .stats { font-size: 0.9rem; color: #c4b098; }
+.pvp-duel-me .pvp-duel-hp-wrap { margin-top: 6px; }
+
+.pvp-duel-task-area {
+    max-width: 560px;
+    margin: 0 auto 100px;
+    padding: 24px;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    border-radius: 8px;
+    border: 2px solid #5c4033;
+    box-shadow: inset 0 1px 0 rgba(212,168,75,0.12), 0 4px 12px rgba(0,0,0,0.35);
+}
+.pvp-duel-task-area h2 { margin-top: 0; font-family: 'Cinzel', Georgia, serif; color: #d4a84b; font-size: 1.2rem; letter-spacing: 0.04em; }
+.pvp-duel-turn-msg { color: #c4b098; margin-bottom: 16px; }
+.pvp-duel-task-text { margin: 12px 0; white-space: pre-wrap; line-height: 1.5; color: #e8dcc4; }
+.pvp-duel-task-answer { margin-top: 16px; }
+.pvp-duel-task-answer input[type="text"],
+.pvp-duel-task-answer input[type="number"] {
+    padding: 10px 14px;
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    background: #2c1810;
+    color: #e8dcc4;
+    font-size: 1rem;
+    font-family: inherit;
+    width: 100%;
+    max-width: 300px;
+}
+.pvp-duel-task-answer input:focus { outline: none; border-color: #8b6914; }
+.pvp-duel-task-answer .submit-btn {
+    margin-top: 12px;
+    padding: 10px 24px;
+    background: linear-gradient(145deg, #5c4033 0%, #4a3520 100%);
+    color: #d4a84b;
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    font-weight: bold;
+    font-family: 'Cinzel', Georgia, serif;
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.pvp-duel-task-answer .submit-btn:hover {
+    color: #e8c86a;
+    border-color: #8b6914;
+    box-shadow: 0 0 12px rgba(212,168,75,0.25);
+}
+/* Кнопки «Получить задачу» и «Ответить» — единый средневековый стиль */
+.pvp-duel-task-area .submit-btn,
+#duelGetTaskBtn {
+    padding: 12px 24px;
+    background: linear-gradient(145deg, #5c4033 0%, #4a3520 100%);
+    color: #d4a84b;
+    border: 2px solid #5c4033;
+    border-radius: 6px;
+    font-weight: bold;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 1rem;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(212,168,75,0.1);
+    transition: color 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+.pvp-duel-task-area .submit-btn:hover,
+#duelGetTaskBtn:hover {
+    color: #e8c86a;
+    border-color: #8b6914;
+    box-shadow: 0 0 14px rgba(212,168,75,0.3);
+}
+.pvp-duel-task-area #duelGetTaskWrap .submit-btn {
+    min-width: 180px;
+}
+.pvp-duel-finished {
+    text-align: center;
+    padding: 40px 20px;
+    max-width: 500px;
+    margin: 0 auto 100px;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    border-radius: 8px;
+    border: 2px solid #5c4033;
+    box-shadow: inset 0 1px 0 rgba(212,168,75,0.12), 0 4px 12px rgba(0,0,0,0.35);
+}
+.pvp-duel-finished h2 { font-family: 'Cinzel', Georgia, serif; color: #d4a84b; }
+.pvp-duel-finished .winner-msg { font-size: 1.2rem; margin: 20px 0; color: #e8dcc4; }
+.pvp-duel-finished a.pvp-btn {
+    display: inline-block;
+    margin-top: 20px;
+    padding: 12px 24px;
+    background: linear-gradient(145deg, #5c4033 0%, #4a3520 100%);
+    color: #d4a84b;
+    text-decoration: none;
+    border-radius: 4px;
+    border: 2px solid #5c4033;
+    font-weight: bold;
+    font-family: 'Cinzel', Georgia, serif;
+    letter-spacing: 0.04em;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.pvp-duel-finished a.pvp-btn:hover {
+    color: #e8c86a;
+    border-color: #8b6914;
+    box-shadow: 0 0 12px rgba(212,168,75,0.25);
+}
+
+.pvp-duel-nav {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+.pvp-duel-nav a {
+    color: #d4a84b;
+    text-decoration: none;
+    padding: 10px 18px;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    border: 1px solid #5c4033;
+    border-radius: 4px;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.9rem;
+    font-weight: bold;
+    letter-spacing: 0.04em;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    transition: color 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+.pvp-duel-nav a:hover {
+    color: #e8c86a;
+    border-color: #8b6914;
+    box-shadow: 0 0 12px rgba(212,168,75,0.25);
+}
+.pvp-surrender-btn {
+    padding: 10px 18px;
+    background: linear-gradient(145deg, #5c3020 0%, #4a2518 100%);
+    color: #e8b4a0;
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-family: 'Cinzel', Georgia, serif;
+    font-weight: bold;
+    letter-spacing: 0.04em;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.pvp-surrender-btn:hover {
+    color: #f0c0b0;
+    border-color: #8b4530;
+    box-shadow: 0 0 10px rgba(180,80,60,0.3);
+}
+
+/* Блок задачи — как на странице битвы за территорию (условие + поля для дробей) */
+.pvp-duel-task-inner {
+    background: linear-gradient(180deg, #f4e4bc 0%, #e8d5a3 50%, #dcc898 100%);
+    border: 2px solid #5c4033;
+    border-radius: 8px;
+    padding: 20px;
+    color: #2c1810;
+    margin-top: 12px;
+}
+.pvp-duel-task-inner .task-title { font-size: 1.2rem; font-weight: bold; color: #3d2914; margin-bottom: 12px; }
+.pvp-duel-task-inner .task-text {
+    margin-bottom: 16px;
+    line-height: 1.65;
+    white-space: pre-wrap;
+    color: #2c1810;
+}
+.pvp-duel-task-inner .task-image { max-width: 100%; height: auto; border-radius: 4px; margin-bottom: 16px; border: 2px solid #5c4033; }
+.pvp-duel-task-inner .task-answer-wrap { margin-top: 16px; }
+.pvp-duel-task-inner .task-answer-wrap label { display: block; margin-bottom: 8px; font-weight: bold; color: #3d2914; }
+.pvp-duel-task-inner .task-answer-wrap input {
+    padding: 10px 14px;
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    font-size: 16px;
+    background: rgba(255,255,255,0.6);
+    color: #2c1810;
+}
+.pvp-duel-task-inner .task-answer-wrap input:focus { outline: none; border-color: #8b6914; }
+/* Дроби в условии */
+.pvp-duel-task-inner .task-text .mixed-frac,
+.pvp-duel-task-inner .task-text .frac,
+.pvp-duel-task-inner .task-text .frac-int-only { display: inline-flex; align-items: center; vertical-align: middle; }
+.pvp-duel-task-inner .task-text .frac-int { font-size: 1.1em; margin-right: 2px; }
+.pvp-duel-task-inner .task-text .frac { display: inline-flex; flex-direction: column; align-items: center; font-size: 1em; }
+.pvp-duel-task-inner .task-text .frac-num,
+.pvp-duel-task-inner .task-text .frac-den { padding: 0 4px; line-height: 1.2; }
+.pvp-duel-task-inner .task-text .frac-line { display: block; width: 100%; min-width: 1.2em; height: 0; border-top: 1.5px solid #3d2914; margin: 1px 0; }
+/* Ответ-дробь: числитель/знаменатель */
+.pvp-duel-task-inner .task-answer-fraction-visual { display: inline-flex; align-items: center; gap: 8px; margin-top: 8px; }
+.pvp-duel-task-inner .task-answer-fraction-visual .answer-frac-wrap { display: inline-flex; flex-direction: column; align-items: center; }
+.pvp-duel-task-inner .task-answer-fraction-visual .answer-frac-wrap input { width: 3em; text-align: center; padding: 4px 6px; }
+.pvp-duel-task-inner .task-answer-fraction-visual .answer-frac-line { width: 100%; height: 0; border-top: 2px solid #3d2914; margin: 2px 0; }
+.pvp-duel-task-inner input[type="number"]::-webkit-inner-spin-button,
+.pvp-duel-task-inner input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.pvp-duel-task-inner input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+/* Общий знаменатель */
+.pvp-duel-task-inner .task-common-denom-visual { margin-top: 12px; }
+.pvp-duel-task-inner .task-common-denom-row-eq { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+.pvp-duel-task-inner .task-common-denom-row-eq:last-child { margin-bottom: 0; }
+.pvp-duel-task-inner .task-common-denom-original { min-height: 2em; display: inline-flex; align-items: center; }
+.pvp-duel-task-inner .task-common-denom-eq { font-size: 1.4em; font-weight: bold; color: #3d2914; }
+.pvp-duel-task-inner .task-common-denom-visual .answer-frac-wrap { display: inline-flex; flex-direction: column; align-items: center; }
+.pvp-duel-task-inner .task-common-denom-visual .answer-frac-wrap input { width: 3em; text-align: center; padding: 4px 6px; }
+.pvp-duel-task-inner .task-common-denom-visual .answer-frac-line { width: 100%; height: 0; border-top: 2px solid #3d2914; margin: 2px 0; }
+/* Смешанные числа / сложение-вычитание дробей */
+.pvp-duel-task-inner .task-mixed-fraction-display { margin-bottom: 10px; }
+.pvp-duel-task-inner .task-add-sub-op { margin: 0 6px; font-size: 1.2em; font-weight: bold; color: #3d2914; }
+.pvp-duel-task-inner .task-mixed-fraction-display .frac,
+.pvp-duel-task-inner .task-mixed-fraction-display .mixed-frac { display: inline-flex; align-items: center; vertical-align: middle; }
+.pvp-duel-task-inner .task-mixed-fraction-display .frac { flex-direction: column; }
+.pvp-duel-task-inner .task-mixed-fraction-fields { display: inline-flex; align-items: center; gap: 8px; margin-top: 8px; }
+.pvp-duel-task-inner .task-mixed-fraction-fields .answer-int-wrap input { width: 3em; text-align: center; }
+.pvp-duel-task-inner .task-mixed-fraction-fields .answer-int-wrap input.task-int-part-disabled { background: #e8e0d4; color: #6b5b4a; cursor: not-allowed; }
+.pvp-duel-task-inner .task-mixed-fraction-fields .answer-frac-wrap input { width: 3em; text-align: center; padding: 4px 6px; }
+.pvp-duel-task-inner .task-mixed-fraction-fields .answer-frac-line { width: 100%; height: 0; border-top: 2px solid #3d2914; margin: 2px 0; }
+
+/* Защита от списывания: запрет копирования текста задачи */
+.pvp-duel-task-inner.no-copy {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Модальное окно предупреждения о перезагрузке при потере фокуса */
+.pvp-duel-focus-warning-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+/* Модальное окно результата ответа (правильно/неправильно и урон) */
+.pvp-duel-result-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 99998;
+    padding: 20px;
+}
+.pvp-duel-result-modal-overlay.open {
+    display: flex !important;
+}
+.pvp-duel-result-modal-box {
+    max-width: 360px;
+    width: 100%;
+    padding: 24px;
+    border-radius: 10px;
+    border: 2px solid #5c4033;
+    background: linear-gradient(180deg, #f5e8d0 0%, #e8dcc4 50%, #ddd0b8 100%);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    text-align: center;
+    color: #2c1810;
+}
+.pvp-duel-result-modal-box h3 {
+    margin: 0 0 12px;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 1.2rem;
+    color: #3d2914;
+}
+.pvp-duel-result-modal-box .result-msg { margin-bottom: 16px; font-size: 1rem; line-height: 1.4; }
+.pvp-duel-result-modal-box.result-correct h3 { color: #2d5c1a; }
+.pvp-duel-result-modal-box.result-correct .result-msg { color: #1a3d10; }
+.pvp-duel-result-modal-box.result-wrong h3 { color: #5c2a1a; }
+.pvp-duel-result-modal-box.result-wrong .result-msg { color: #3d1810; }
+.pvp-duel-result-modal-box .result-close-btn {
+    padding: 10px 24px;
+    background: linear-gradient(145deg, #5c4033 0%, #4a3520 100%);
+    color: #d4a84b;
+    border: 2px solid #5c4033;
+    border-radius: 6px;
+    font-weight: bold;
+    font-family: 'Cinzel', Georgia, serif;
+    cursor: pointer;
+}
+.pvp-duel-result-modal-box .result-close-btn:hover {
+    color: #e8c86a;
+    border-color: #8b6914;
+}
+
+/* Модальное окно подтверждения сдачи */
+.pvp-duel-surrender-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 99998;
+    padding: 20px;
+}
+.pvp-duel-surrender-modal-overlay.open { display: flex !important; }
+.pvp-duel-surrender-modal-box {
+    max-width: 360px;
+    width: 100%;
+    padding: 24px;
+    border-radius: 10px;
+    border: 2px solid #5c4033;
+    background: linear-gradient(180deg, #f5e8d0 0%, #e8dcc4 50%, #ddd0b8 100%);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    text-align: center;
+    color: #2c1810;
+}
+.pvp-duel-surrender-modal-box h3 { margin: 0 0 16px; font-family: 'Cinzel', Georgia, serif; font-size: 1.2rem; color: #3d2914; }
+.pvp-duel-surrender-modal-box .surrender-msg { margin-bottom: 20px; font-size: 1rem; line-height: 1.4; }
+.pvp-duel-surrender-modal-box .surrender-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.pvp-duel-surrender-modal-box .surrender-cancel-btn,
+.pvp-duel-surrender-modal-box .surrender-confirm-btn {
+    padding: 10px 24px;
+    border-radius: 6px;
+    font-weight: bold;
+    font-family: 'Cinzel', Georgia, serif;
+    cursor: pointer;
+    border: 2px solid #5c4033;
+}
+.pvp-duel-surrender-modal-box .surrender-cancel-btn {
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    color: #d4a84b;
+}
+.pvp-duel-surrender-modal-box .surrender-cancel-btn:hover { color: #e8c86a; border-color: #8b6914; }
+.pvp-duel-surrender-modal-box .surrender-confirm-btn {
+    background: linear-gradient(145deg, #5c3020 0%, #4a2518 100%);
+    color: #e8b4a0;
+}
+.pvp-duel-surrender-modal-box .surrender-confirm-btn:hover { color: #f0c0b0; border-color: #8b4530; }
+
+.pvp-duel-focus-warning-overlay.open {
+    display: flex;
+}
+.pvp-duel-focus-warning-box {
+    background: linear-gradient(180deg, #f4e4bc 0%, #e8d5a3 100%);
+    border: 2px solid #5c4033;
+    border-radius: 8px;
+    padding: 24px;
+    max-width: 400px;
+    text-align: center;
+    color: #2c1810;
+}
+.pvp-duel-focus-warning-box h3 { margin-top: 0; color: #3d2914; }
+
+/* Таймер дуэли */
+.pvp-duel-timer {
+    text-align: center;
+    margin: 0 auto 20px;
+    padding: 12px 20px;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    border-radius: 8px;
+    border: 2px solid #5c4033;
+    max-width: 560px;
+    width: 100%;
+    box-sizing: border-box;
+    box-shadow: inset 0 1px 0 rgba(212,168,75,0.12), 0 4px 12px rgba(0,0,0,0.35);
+}
+.pvp-duel-timer-label { font-size: 0.9rem; color: #c4b098; margin-bottom: 4px; font-family: 'Cinzel', Georgia, serif; }
+.pvp-duel-timer-value { font-size: 1.8rem; font-weight: bold; color: #d4a84b; font-variant-numeric: tabular-nums; font-family: 'Cinzel', Georgia, serif; letter-spacing: 0.08em; }
+.pvp-duel-timer-value.time-up { color: #e8c86a; }
+
+/* Плавающая кнопка чата с кланом (как на битве за территорию) */
+.floating-chat-btn {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(145deg, #6b5344 0%, #5c4033 50%, #4a3520 100%);
+    color: #e8dcc4;
+    font-size: 1.5rem;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35), 0 0 0 1px rgba(212,168,75,0.2), inset 0 1px 0 rgba(255,255,255,0.08);
+    z-index: 99990;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.floating-chat-btn:hover {
+    background: linear-gradient(145deg, #7a6352 0%, #6b5344 100%);
+    color: #e8c86a;
+    transform: scale(1.08);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.4), 0 0 0 1px rgba(212,168,75,0.35), inset 0 1px 0 rgba(255,255,255,0.12);
+}
+.floating-chat-btn .chat-unread-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #dc2626;
+    border: 2px solid #3d2914;
+    display: none;
+}
+.floating-chat-btn.has-unread .chat-unread-badge { display: block; }
+.clan-chat-modal-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.75);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    padding: 20px;
+}
+.clan-chat-modal-overlay.open { display: flex !important; visibility: visible !important; opacity: 1 !important; }
+.clan-chat-modal .modal-box {
+    max-width: 380px;
+    width: 100%;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    padding: 18px;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.45), 0 0 0 1px rgba(92,64,51,0.4), inset 0 1px 0 rgba(255,255,255,0.15);
+    background: linear-gradient(180deg, #f5e8d0 0%, #e8dcc4 50%, #ddd0b8 100%);
+    border: 2px solid #5c4033;
+    color: #2c1810;
+    position: relative;
+}
+.clan-chat-modal .modal-box h3 { margin: 0 0 12px; font-size: 1.05rem; color: #3d2914; font-family: 'Cinzel', Georgia, serif; }
+.clan-chat-modal .clan-chat-modal-body { flex: 1; min-height: 0; overflow: hidden; }
+.clan-chat-modal .clan-chat-content { display: flex; flex-direction: column; height: 100%; }
+.clan-chat-modal .clan-chat-messages {
+    max-height: 240px; min-height: 120px; overflow-y: auto; margin: 0 0 10px; padding: 10px;
+    background: rgba(44,24,16,0.08); border-radius: 8px; border: 1px solid rgba(92,64,51,0.35);
+    display: flex; flex-direction: column;
+}
+.clan-chat-modal .clan-chat-msg { padding: 8px 10px; margin-bottom: 8px; background: rgba(61,41,20,0.2); border-radius: 4px; border-left: 3px solid #8b6914; font-size: 0.95rem; max-width: 85%; }
+.clan-chat-modal .clan-chat-msg-own { align-self: flex-end; border-left: none; border-right: 3px solid #d4a84b; text-align: right; background: rgba(90,60,30,0.25); }
+.clan-chat-modal .clan-chat-msg .chat-author { font-weight: bold; color: #5c4033; margin-right: 8px; }
+.clan-chat-modal .clan-chat-msg .chat-time { font-size: 0.8rem; color: #8b7355; margin-left: 6px; }
+.clan-chat-modal .clan-chat-form { display: flex; gap: 10px; margin-top: 0; flex-shrink: 0; }
+.clan-chat-modal .clan-chat-form input[type="text"] {
+    flex: 1; min-width: 0; padding: 10px 14px; border: 2px solid #5c4033; border-radius: 6px; background: #fff; color: #2c1810; font-family: inherit;
+}
+.clan-chat-modal .clan-chat-form button {
+    padding: 10px 18px; border-radius: 6px; border: 2px solid #5c4033; background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    color: #d4a84b; font-weight: bold; font-family: 'Cinzel', Georgia, serif; cursor: pointer;
+}
+.clan-chat-modal .clan-chat-form button:hover { color: #e8c86a; border-color: #8b6914; }
+.clan-chat-modal .clan-chat-empty { color: #8b7355; padding: 12px; text-align: center; font-size: 0.95rem; }
+.clan-chat-modal .modal-chat-close {
+    position: absolute; top: 10px; right: 10px; width: 34px; height: 34px; padding: 0; border: none; border-radius: 50%;
+    background: rgba(92,64,51,0.15); color: #5c4033; font-size: 1.25rem; cursor: pointer; line-height: 1;
+}
+.clan-chat-modal .modal-chat-close:hover { background: rgba(92,64,51,0.3); color: #3d2914; }
+
+@media (max-width: 768px) {
+    .pvp-duel-page { padding: 12px; }
+    .pvp-duel-page h1 { font-size: 1.4rem; margin-bottom: 14px; }
+    .pvp-duel-page nav {
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 12px;
+    }
+    .pvp-duel-page nav a,
+    .pvp-surrender-btn {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        max-width: 280px;
+    }
+    .pvp-duel-opponent {
+        max-width: 100%;
+        padding: 12px;
+        margin-bottom: 16px;
+    }
+    .pvp-duel-opponent .avatar,
+    .pvp-duel-opponent .avatar-placeholder { width: 52px; height: 52px; font-size: 24px; }
+    .pvp-duel-opponent .name { font-size: 1rem; }
+    .pvp-duel-opponent .stats { font-size: 0.85rem; }
+    .pvp-duel-timer { width: 100%; max-width: 100%; margin-bottom: 14px; padding: 10px 14px; }
+    .pvp-duel-timer-value { font-size: 1.5rem; }
+    .pvp-duel-task-area {
+        max-width: 100%;
+        margin-bottom: 20px;
+        padding: 16px;
+    }
+    .pvp-duel-task-area h2 { font-size: 1.1rem; }
+    .pvp-duel-task-inner { padding: 14px; }
+    .pvp-duel-task-answer .submit-btn { min-height: 44px; width: 100%; max-width: 100%; }
+    .pvp-duel-me {
+        position: relative;
+        bottom: auto;
+        right: auto;
+        max-width: 100%;
+        margin: 16px auto 24px;
+    }
+    .pvp-duel-me .avatar,
+    .pvp-duel-me .avatar-placeholder { width: 44px; height: 44px; font-size: 20px; }
+    .pvp-duel-me .name, .pvp-duel-me .stats { font-size: 0.9rem; }
+    .pvp-duel-finished { padding: 24px 16px; margin-bottom: 24px; }
+    .pvp-duel-finished .winner-msg { font-size: 1rem; }
+    .pvp-duel-finished a.pvp-btn { min-height: 44px; padding: 14px 24px; display: inline-flex; align-items: center; justify-content: center; }
+    .pvp-duel-focus-warning-box { margin: 16px; padding: 20px; }
+    .floating-chat-btn { bottom: 16px; right: 16px; width: 52px; height: 52px; font-size: 1.4rem; }
+    .clan-chat-modal-overlay { padding: 12px; }
+    .clan-chat-modal .modal-box { max-height: 80vh; padding: 14px; }
+    .clan-chat-modal .clan-chat-messages { max-height: 200px; min-height: 100px; }
+    .clan-chat-modal .modal-chat-close { top: 8px; right: 8px; width: 32px; height: 32px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pvp-duel-page">
+    <nav class="pvp-duel-nav">
+        <a href="{{ url_for('pvp_arena_page') }}">← На арену</a>
+        {% if not finished %}
+        <button type="button" class="pvp-surrender-btn" id="pvpSurrenderBtn">Сдаться</button>
+        {% endif %}
+    </nav>
+    <h1>⚔️ Дуэль</h1>
+
+    {% if not finished %}
+    <div style="text-align: center;">
+        <div class="pvp-duel-timer" id="pvpDuelTimer">
+            <div class="pvp-duel-timer-label">До конца дуэли</div>
+            <div class="pvp-duel-timer-value" id="pvpDuelTimerValue">5:00</div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if finished %}
+    <div class="pvp-duel-finished">
+        <h2>Дуэль завершена</h2>
+        <p class="winner-msg">
+            {% if winner %}
+                Победитель: <strong>{{ winner.character_name or winner.username }}</strong>
+            {% else %}
+                Время вышло. Ничья (у обоих одинаковое здоровье).
+            {% endif %}
+        </p>
+        <p style="color:#c4b098;">Награда за участие: 100 Нумов.</p>
+        <a href="{{ url_for('pvp_arena_page') }}" class="pvp-btn">На арену</a>
+    </div>
+    {% else %}
+    <div class="pvp-duel-opponent">
+        <div class="avatar-wrap">
+            {% if opp_avatar_url %}
+            <img src="{{ opp_avatar_url }}" alt="" class="avatar">
+            {% else %}
+            <div class="avatar-placeholder">👤</div>
+            {% endif %}
+        </div>
+        <div class="main">
+            <div class="name-row">
+                <span class="name">{{ opponent.character_name or opponent.username }}</span>
+                {% if opp_buffs %}
+                {% for b in opp_buffs %}
+                {% if b.image_url %}
+                <img class="pvp-duel-buff-icon" src="{{ b.image_url }}" alt="{{ b.name }}" title="{{ b.name }}">
+                {% else %}
+                <span class="pvp-duel-buff-icon" title="{{ b.name }}" style="display:inline-block; width:24px; height:24px; background:#444; border-radius:4px; text-align:center; font-size:14px;">📦</span>
+                {% endif %}
+                {% endfor %}
+                {% endif %}
+            </div>
+            <div class="stats">Ур. {{ opponent.level or 1 }} · Атака: {{ opponent.damage }} · Защита: {{ opponent.defense }}</div>
+            <div class="pvp-duel-hp-wrap">
+                <div class="pvp-duel-hp-fill" id="oppHpFill" style="width: {{ (opp_health / opp_max_health * 100) if opp_max_health else 0 }}%;"></div>
+            </div>
+            <div class="pvp-duel-hp-text" id="oppHpText">{{ opp_health }} / {{ opp_max_health }}</div>
+        </div>
+    </div>
+
+    <div class="pvp-duel-task-area" id="duelTaskArea">
+        <h2>Задание</h2>
+        <div class="pvp-duel-turn-msg" id="duelTurnMsg">
+            Решайте задачи — за правильный ответ сопернику наносится урон.
+        </div>
+        <div id="duelTaskContent" style="display:none;">
+            <div class="pvp-duel-task-inner no-copy" id="duelTaskContentNoCopy">
+                <div class="task-title" id="duelTaskTitle"></div>
+                <div class="task-text" id="duelTaskText"></div>
+                <img class="task-image" id="duelTaskImage" alt="" style="display: none;">
+                <div class="task-answer-wrap" id="duelAnswerWrapDefault">
+                    <label for="duelTaskAnswerInput">Ваш ответ:</label>
+                    <input type="text" id="duelTaskAnswerInput" placeholder="Ваш ответ">
+                </div>
+                <div class="task-answer-wrap task-fraction-wrap" id="duelAnswerWrapFraction" style="display: none;">
+                    <label>Ваш ответ:</label>
+                    <div class="task-answer-fraction-visual">
+                        <div class="answer-frac-wrap">
+                            <input type="number" id="duelTaskAnswerNum" min="0" title="Числитель">
+                            <span class="answer-frac-line"></span>
+                            <input type="number" id="duelTaskAnswerDen" min="1" title="Знаменатель">
+                        </div>
+                    </div>
+                </div>
+                <div class="task-answer-wrap task-common-denom-wrap" id="duelAnswerWrapCommonDenom" style="display: none;">
+                    <label>Ваш ответ:</label>
+                    <div class="task-common-denom-visual">
+                        <div class="task-common-denom-row-eq">
+                            <div class="task-common-denom-original task-text" id="duelCommonDenomFrac1"></div>
+                            <span class="task-common-denom-eq">=</span>
+                            <div class="answer-frac-wrap">
+                                <input type="number" id="duelTaskAnswerNum1" min="0" title="Числитель 1">
+                                <span class="answer-frac-line"></span>
+                                <input type="number" id="duelTaskAnswerDenCommon" min="1" title="Знаменатель 1">
+                            </div>
+                        </div>
+                        <div class="task-common-denom-row-eq">
+                            <div class="task-common-denom-original task-text" id="duelCommonDenomFrac2"></div>
+                            <span class="task-common-denom-eq">=</span>
+                            <div class="answer-frac-wrap">
+                                <input type="number" id="duelTaskAnswerNum2" min="0" title="Числитель 2">
+                                <span class="answer-frac-line"></span>
+                                <input type="number" id="duelTaskAnswerDenCommon2" min="1" title="Знаменатель 2">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="task-answer-wrap task-mixed-fraction-wrap" id="duelAnswerWrapMixedFraction" style="display: none;">
+                    <label id="duelMixedFractionLabel">Ваш ответ (смешанное число):</label>
+                    <div class="task-mixed-fraction-display" id="duelMixedFracDisplay"></div>
+                    <div class="task-add-sub-display task-mixed-fraction-display" id="duelAddSubFracDisplay" style="display: none;"></div>
+                    <div class="task-answer-fraction-visual task-mixed-fraction-fields">
+                        <div class="answer-int-wrap">
+                            <input type="number" id="duelTaskAnswerIntPart" min="0" title="Целая часть">
+                        </div>
+                        <div class="answer-frac-wrap">
+                            <input type="number" id="duelTaskAnswerNumMixed" min="0" title="Числитель">
+                            <span class="answer-frac-line"></span>
+                            <input type="number" id="duelTaskAnswerDenMixed" min="1" title="Знаменатель">
+                        </div>
+                    </div>
+                </div>
+                <div style="margin-top: 16px;">
+                    <button type="button" class="submit-btn" id="duelSubmitAnswer">Ответить</button>
+                </div>
+            </div>
+        </div>
+        <div id="duelGetTaskWrap" style="display:block;">
+            <button type="button" class="submit-btn" id="duelGetTaskBtn">Получить задачу</button>
+        </div>
+    </div>
+
+    <div class="pvp-duel-me">
+        <div class="avatar-wrap">
+            {% if my_avatar_url %}
+            <img src="{{ my_avatar_url }}" alt="" class="avatar">
+            {% else %}
+            <div class="avatar-placeholder">👤</div>
+            {% endif %}
+        </div>
+        <div class="main">
+            <div class="name-row">
+                <span class="name">{{ current_user.character_name or current_user.username }}</span>
+                {% if my_buffs %}
+                {% for b in my_buffs %}
+                {% if b.image_url %}
+                <img class="pvp-duel-buff-icon" src="{{ b.image_url }}" alt="{{ b.name }}" title="{{ b.name }}">
+                {% else %}
+                <span class="pvp-duel-buff-icon" title="{{ b.name }}" style="display:inline-block; width:24px; height:24px; background:#444; border-radius:4px; text-align:center; font-size:14px;">📦</span>
+                {% endif %}
+                {% endfor %}
+                {% endif %}
+            </div>
+            <div class="stats">Ур. {{ current_user.level or 1 }} · Атака: {{ current_user.damage }} · Защита: {{ current_user.defense }}</div>
+            <div class="pvp-duel-hp-wrap">
+                <div class="pvp-duel-hp-fill" id="myHpFill" style="width: {{ (my_health / my_max_health * 100) if my_max_health else 0 }}%;"></div>
+            </div>
+            <div class="pvp-duel-hp-text" id="myHpText">{{ my_health }} / {{ my_max_health }}</div>
+        </div>
+    </div>
+
+    <!-- Предупреждение о перезагрузке при потере фокуса (защита от списывания) -->
+    <div class="pvp-duel-focus-warning-overlay" id="pvpDuelFocusWarningModal">
+        <div class="pvp-duel-focus-warning-box">
+            <h3>Внимание</h3>
+            <p>Вы были вне вкладки более 5 секунд.<br>Страница будет автоматически перезагружена через <span id="pvpDuelFocusWarningCountdown" style="font-weight: bold;">2</span> сек.</p>
+        </div>
+    </div>
+
+    <!-- Модальное окно подтверждения сдачи -->
+    <div class="pvp-duel-surrender-modal-overlay" id="pvpDuelSurrenderModal">
+        <div class="pvp-duel-surrender-modal-box">
+            <h3>Сдаться?</h3>
+            <p class="surrender-msg">Вы проиграете дуэль.</p>
+            <div class="surrender-btns">
+                <button type="button" class="surrender-cancel-btn" id="pvpDuelSurrenderCancelBtn">Отмена</button>
+                <button type="button" class="surrender-confirm-btn" id="pvpDuelSurrenderConfirmBtn">Сдаться</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно результата ответа (правильно / неправильно и урон) -->
+    <div class="pvp-duel-result-modal-overlay" id="pvpDuelResultModal">
+        <div class="pvp-duel-result-modal-box" id="pvpDuelResultModalBox">
+            <h3 id="pvpDuelResultTitle">Результат</h3>
+            <p class="result-msg" id="pvpDuelResultMsg"></p>
+            <button type="button" class="result-close-btn" id="pvpDuelResultCloseBtn">Понятно</button>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% if current_user.clan_id %}
+<button type="button" class="floating-chat-btn" id="pvpDuelClanChatBtn" aria-label="Чат с кланом" title="Чат с кланом" data-clan-id="{{ current_user.clan_id }}">💬<span class="chat-unread-badge" id="pvpDuelClanChatUnreadBadge" aria-hidden="true" title="Есть новые сообщения"></span></button>
+<div class="clan-chat-modal-overlay" id="pvpDuelClanChatModal">
+    <div class="clan-chat-modal">
+        <div class="modal-box">
+            <button type="button" class="modal-chat-close" id="pvpDuelClanChatModalClose" aria-label="Закрыть">×</button>
+            <h3>Чат с кланом</h3>
+            <div class="clan-chat-modal-body">
+                <div class="clan-chat-content open">
+                    <div class="clan-chat-messages" id="pvpDuelClanChatMessages">
+                        <div class="clan-chat-empty">Загрузка сообщений…</div>
+                    </div>
+                    <div class="clan-chat-form">
+                        <input type="text" id="pvpDuelClanChatInput" placeholder="Введите сообщение…" maxlength="2000" autocomplete="off">
+                        <button type="button" id="pvpDuelClanChatSendBtn">Отправить</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if not finished %}
+<script>
+// Запрет копирования текста задачи (как на странице битвы за территорию)
+(function() {
+    var el = document.getElementById('duelTaskContentNoCopy');
+    if (!el) return;
+    var block = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+    };
+    ['copy', 'cut', 'contextmenu', 'selectstart', 'dragstart'].forEach(function(evt) {
+        el.addEventListener(evt, block);
+    });
+})();
+
+// Защита от списывания: если вкладка вне фокуса > 5 сек — предупреждение и перезагрузка
+window.pvpDuelFocusProtection = (function() {
+    var MAX_INACTIVE_MS = 5000;
+    var RELOAD_DELAY_MS = 2000;
+    var armed = false;
+    var hiddenSince = null;
+    var reloadTriggered = false;
+    var reloadTimeoutId = null;
+    var countdownIntervalId = null;
+
+    function cleanupTimers() {
+        if (countdownIntervalId) { clearInterval(countdownIntervalId); countdownIntervalId = null; }
+        if (reloadTimeoutId) { clearTimeout(reloadTimeoutId); reloadTimeoutId = null; }
+    }
+    function markHidden() {
+        if (!armed || reloadTriggered) return;
+        if (hiddenSince === null) hiddenSince = Date.now();
+    }
+    function showWarningAndReload() {
+        var modal = document.getElementById('pvpDuelFocusWarningModal');
+        var countdownEl = document.getElementById('pvpDuelFocusWarningCountdown');
+        cleanupTimers();
+        if (modal) {
+            modal.style.display = 'flex';
+            modal.classList.add('open');
+        }
+        var start = Date.now();
+        function updateCountdown() {
+            var remainingMs = Math.max(0, RELOAD_DELAY_MS - (Date.now() - start));
+            var sec = Math.max(0, Math.ceil(remainingMs / 1000));
+            if (countdownEl) countdownEl.textContent = String(sec);
+        }
+        updateCountdown();
+        countdownIntervalId = setInterval(updateCountdown, 200);
+        reloadTimeoutId = setTimeout(function() {
+            cleanupTimers();
+            window.location.reload();
+        }, RELOAD_DELAY_MS);
+    }
+    function checkAndReload() {
+        if (!armed || reloadTriggered) return;
+        if (hiddenSince === null) return;
+        if ((Date.now() - hiddenSince) > MAX_INACTIVE_MS) {
+            reloadTriggered = true;
+            showWarningAndReload();
+            return;
+        }
+        hiddenSince = null;
+    }
+    function onVisibilityChange() {
+        if (document.hidden) markHidden();
+        else checkAndReload();
+    }
+    function arm() {
+        if (armed) return;
+        armed = true;
+        hiddenSince = null;
+        reloadTriggered = false;
+        document.addEventListener('visibilitychange', onVisibilityChange);
+        window.addEventListener('blur', markHidden);
+        window.addEventListener('focus', checkAndReload);
+    }
+    function disarm() {
+        if (!armed) return;
+        armed = false;
+        hiddenSince = null;
+        reloadTriggered = false;
+        cleanupTimers();
+        document.removeEventListener('visibilitychange', onVisibilityChange);
+        window.removeEventListener('blur', markHidden);
+        window.removeEventListener('focus', checkAndReload);
+        var modal = document.getElementById('pvpDuelFocusWarningModal');
+        if (modal) { modal.style.display = 'none'; modal.classList.remove('open'); }
+    }
+    return { arm: arm, disarm: disarm };
+})();
+</script>
+<script>
+(function() {
+    var duelId = {{ duel_id }};
+    var stateUrl = '/api/pvp/duel/' + duelId + '/state';
+    var taskUrl = '/api/pvp/duel/' + duelId + '/task';
+    var answerUrl = '/api/pvp/duel/' + duelId + '/answer';
+    var surrenderUrl = '/api/pvp/duel/' + duelId + '/surrender';
+
+    var duelEndsAtIso = {{ duel_ends_at_iso|default('', true)|tojson }};
+    var duelTimerIntervalId = null;
+    function updateDuelTimer() {
+        var el = document.getElementById('pvpDuelTimerValue');
+        if (!el) return;
+        if (!duelEndsAtIso) return;
+        var endMs = new Date(duelEndsAtIso).getTime();
+        if (isNaN(endMs)) return;
+        var nowMs = Date.now();
+        var remainingMs = Math.max(0, endMs - nowMs);
+        if (remainingMs <= 0) {
+            el.textContent = 'Время вышло!';
+            el.classList.add('time-up');
+            if (duelTimerIntervalId) { clearInterval(duelTimerIntervalId); duelTimerIntervalId = null; }
+            fetch(stateUrl).then(function(r) { return r.json(); }).then(function(d) {
+                if (d.success && d.status === 'finished') {
+                    window.location.href = '{{ url_for("pvp_duel_page", duel_id=duel_id) }}';
+                }
+            });
+            return;
+        }
+        var totalSec = Math.floor(remainingMs / 1000);
+        var min = Math.floor(totalSec / 60);
+        var sec = totalSec % 60;
+        el.textContent = min + ':' + (sec < 10 ? '0' : '') + sec;
+        el.classList.remove('time-up');
+    }
+    updateDuelTimer();
+    duelTimerIntervalId = setInterval(updateDuelTimer, 1000);
+
+    function showAnswerResultModal(correct, damage) {
+        var overlay = document.getElementById('pvpDuelResultModal');
+        var box = document.getElementById('pvpDuelResultModalBox');
+        var titleEl = document.getElementById('pvpDuelResultTitle');
+        var msgEl = document.getElementById('pvpDuelResultMsg');
+        if (!overlay || !box || !titleEl || !msgEl) return;
+        box.classList.remove('result-correct', 'result-wrong');
+        if (correct) {
+            box.classList.add('result-correct');
+            titleEl.textContent = 'Верно!';
+            msgEl.textContent = 'Сопернику нанесено урона: ' + damage;
+        } else {
+            box.classList.add('result-wrong');
+            titleEl.textContent = 'Неверный ответ';
+            msgEl.textContent = 'Попробуйте другую задачу.';
+        }
+        overlay.classList.add('open');
+        clearTimeout(window._pvpDuelResultAutoClose);
+        window._pvpDuelResultAutoClose = setTimeout(function() {
+            overlay.classList.remove('open');
+        }, 3500);
+    }
+    var resultCloseBtn = document.getElementById('pvpDuelResultCloseBtn');
+    if (resultCloseBtn) {
+        resultCloseBtn.addEventListener('click', function() {
+            var overlay = document.getElementById('pvpDuelResultModal');
+            if (overlay) overlay.classList.remove('open');
+            if (window._pvpDuelResultAutoClose) clearTimeout(window._pvpDuelResultAutoClose);
+        });
+    }
+    document.getElementById('pvpDuelResultModal') && document.getElementById('pvpDuelResultModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            this.classList.remove('open');
+            if (window._pvpDuelResultAutoClose) clearTimeout(window._pvpDuelResultAutoClose);
+        }
+    });
+
+    var surrenderBtn = document.getElementById('pvpSurrenderBtn');
+    var surrenderModal = document.getElementById('pvpDuelSurrenderModal');
+    var surrenderCancelBtn = document.getElementById('pvpDuelSurrenderCancelBtn');
+    var surrenderConfirmBtn = document.getElementById('pvpDuelSurrenderConfirmBtn');
+    if (surrenderBtn && surrenderModal) {
+        surrenderBtn.addEventListener('click', function() {
+            surrenderModal.classList.add('open');
+        });
+    }
+    if (surrenderCancelBtn && surrenderModal) {
+        surrenderCancelBtn.addEventListener('click', function() {
+            surrenderModal.classList.remove('open');
+        });
+    }
+    if (surrenderConfirmBtn && surrenderModal) {
+        surrenderConfirmBtn.addEventListener('click', function() {
+            surrenderModal.classList.remove('open');
+            fetch(surrenderUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    if (d.success) window.location.href = '{{ url_for("pvp_arena_page") }}';
+                    else alert(d.error || 'Ошибка');
+                });
+        });
+    }
+    if (surrenderModal) {
+        surrenderModal.addEventListener('click', function(e) {
+            if (e.target === this) this.classList.remove('open');
+        });
+    }
+
+    function updateState(data) {
+        if (data && data.duel_ends_at_iso) duelEndsAtIso = data.duel_ends_at_iso;
+        if (!data || data.status === 'finished') {
+            if (data && data.status === 'finished') {
+                window.location.href = '{{ url_for("pvp_duel_page", duel_id=duel_id) }}';
+            }
+            return;
+        }
+        var oppFill = document.getElementById('oppHpFill');
+        var oppText = document.getElementById('oppHpText');
+        var myFill = document.getElementById('myHpFill');
+        var myText = document.getElementById('myHpText');
+        if (oppFill) oppFill.style.width = (data.opp_health / data.opp_max_health * 100) + '%';
+        if (oppText) oppText.textContent = data.opp_health + ' / ' + data.opp_max_health;
+        if (myFill) myFill.style.width = (data.my_health / data.my_max_health * 100) + '%';
+        if (myText) myText.textContent = data.my_health + ' / ' + data.my_max_health;
+    }
+
+    function pollState() {
+        fetch(stateUrl)
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (d.success) updateState(d);
+            });
+    }
+
+    function fillDuelTask(t) {
+        document.getElementById('duelTaskTitle').textContent = t.title || 'Задача';
+        var textEl = document.getElementById('duelTaskText');
+        if ((t.answer_type === 'fraction' || t.answer_type === 'common_denominator' || t.title === 'Правильные/неправильные дроби') && t.text && t.text.indexOf('<span') !== -1) {
+            textEl.innerHTML = t.text;
+        } else {
+            textEl.textContent = t.text || '';
+        }
+        var img = document.getElementById('duelTaskImage');
+        if (t.image_url) {
+            img.src = t.image_url;
+            img.style.display = 'block';
+        } else {
+            img.style.display = 'none';
+        }
+        var isFraction = t.answer_type === 'fraction';
+        var isCommonDenom = t.answer_type === 'common_denominator';
+        var isMixedFraction = t.answer_type === 'mixed_fraction' || t.answer_type === 'add_sub_fractions';
+        var isSpecial = isFraction || isCommonDenom || isMixedFraction;
+        document.getElementById('duelAnswerWrapDefault').style.display = isSpecial ? 'none' : 'block';
+        document.getElementById('duelAnswerWrapFraction').style.display = isFraction ? 'block' : 'none';
+        document.getElementById('duelAnswerWrapCommonDenom').style.display = isCommonDenom ? 'block' : 'none';
+        document.getElementById('duelAnswerWrapMixedFraction').style.display = isMixedFraction ? 'block' : 'none';
+        document.getElementById('duelTaskAnswerInput').value = '';
+        document.getElementById('duelTaskAnswerNum').value = '';
+        document.getElementById('duelTaskAnswerDen').value = '';
+        document.getElementById('duelTaskAnswerNum1').value = '';
+        document.getElementById('duelTaskAnswerDenCommon').value = '';
+        document.getElementById('duelTaskAnswerNum2').value = '';
+        document.getElementById('duelTaskAnswerDenCommon2').value = '';
+        document.getElementById('duelTaskAnswerIntPart').value = '';
+        document.getElementById('duelTaskAnswerNumMixed').value = '';
+        document.getElementById('duelTaskAnswerDenMixed').value = '';
+        if (isCommonDenom) {
+            document.getElementById('duelCommonDenomFrac1').innerHTML = t.display_frac1 || '';
+            document.getElementById('duelCommonDenomFrac2').innerHTML = t.display_frac2 || '';
+        }
+        if (isMixedFraction) {
+            var mixedDisp = document.getElementById('duelMixedFracDisplay');
+            var addSubDisp = document.getElementById('duelAddSubFracDisplay');
+            var mixedLabel = document.getElementById('duelMixedFractionLabel');
+            if (t.answer_type === 'add_sub_fractions') {
+                addSubDisp.style.display = '';
+                addSubDisp.innerHTML = (t.display_frac1 || '') + ' <span class="task-add-sub-op">' + (t.display_operator || '+') + '</span> ' + (t.display_frac2 || '');
+                mixedDisp.style.display = 'none';
+                mixedDisp.innerHTML = '';
+                if (mixedLabel) mixedLabel.textContent = 'Ваш ответ (несократимая дробь, целая часть если есть):';
+                var intPartInput = document.getElementById('duelTaskAnswerIntPart');
+                if (t.int_part_zero) {
+                    intPartInput.disabled = true;
+                    intPartInput.value = '0';
+                    intPartInput.setAttribute('readonly', 'readonly');
+                    intPartInput.classList.add('task-int-part-disabled');
+                } else {
+                    intPartInput.disabled = false;
+                    intPartInput.removeAttribute('readonly');
+                    intPartInput.classList.remove('task-int-part-disabled');
+                }
+            } else {
+                addSubDisp.style.display = 'none';
+                addSubDisp.innerHTML = '';
+                mixedDisp.style.display = '';
+                mixedDisp.innerHTML = t.display_frac ? ('Дробь: ' + t.display_frac) : '';
+                if (mixedLabel) mixedLabel.textContent = 'Ваш ответ (смешанное число):';
+                var intPartInput = document.getElementById('duelTaskAnswerIntPart');
+                intPartInput.disabled = false;
+                intPartInput.removeAttribute('readonly');
+                intPartInput.classList.remove('task-int-part-disabled');
+            }
+        }
+    }
+
+    function collectDuelAnswer(task) {
+        if (task.answer_type === 'fraction') {
+            var n = document.getElementById('duelTaskAnswerNum').value.trim();
+            var d = document.getElementById('duelTaskAnswerDen').value.trim();
+            if (d === '' || d === '0') d = '1';
+            return n + '|' + d;
+        }
+        if (task.answer_type === 'common_denominator') {
+            var n1 = document.getElementById('duelTaskAnswerNum1').value.trim();
+            var d1 = document.getElementById('duelTaskAnswerDenCommon').value.trim();
+            var n2 = document.getElementById('duelTaskAnswerNum2').value.trim();
+            var d2 = document.getElementById('duelTaskAnswerDenCommon2').value.trim();
+            if (d1 === '' || d1 === '0') d1 = '1';
+            if (d2 === '' || d2 === '0') d2 = '1';
+            return n1 + '|' + d1 + '|' + n2 + '|' + d2;
+        }
+        if (task.answer_type === 'mixed_fraction' || task.answer_type === 'add_sub_fractions') {
+            var iPart = document.getElementById('duelTaskAnswerIntPart').value.trim();
+            var nMix = document.getElementById('duelTaskAnswerNumMixed').value.trim();
+            var dMix = document.getElementById('duelTaskAnswerDenMixed').value.trim();
+            if (dMix === '' || dMix === '0') dMix = '1';
+            return iPart + '|' + nMix + '|' + dMix;
+        }
+        return document.getElementById('duelTaskAnswerInput').value;
+    }
+
+    document.getElementById('duelGetTaskBtn').addEventListener('click', function() {
+        fetch(taskUrl)
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (!d.success) {
+                    alert(d.error || 'Ошибка');
+                    return;
+                }
+                window._currentTask = d.task;
+                window._currentTaskId = d.task_id;
+                fillDuelTask(d.task);
+                document.getElementById('duelTaskContent').style.display = 'block';
+                document.getElementById('duelGetTaskWrap').style.display = 'none';
+                window.pvpDuelFocusProtection && window.pvpDuelFocusProtection.arm();
+            });
+    });
+
+    document.getElementById('duelSubmitAnswer').addEventListener('click', function() {
+        var taskId = window._currentTaskId;
+        var task = window._currentTask;
+        if (!taskId || !task) return;
+        var answer = collectDuelAnswer(task);
+        fetch(answerUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ task_id: taskId, answer: answer })
+        }).then(function(r) { return r.json(); }).then(function(d) {
+            if (!d.success) {
+                alert(d.error || 'Ошибка');
+                return;
+            }
+            window._currentTask = null;
+            window._currentTaskId = null;
+            document.getElementById('duelTaskContent').style.display = 'none';
+            document.getElementById('duelGetTaskWrap').style.display = 'block';
+            window.pvpDuelFocusProtection && window.pvpDuelFocusProtection.disarm();
+            updateState(d);
+            showAnswerResultModal(d.correct, d.damage || 0);
+            if (d.status === 'finished') {
+                setTimeout(function() {
+                    window.location.href = '{{ url_for("pvp_duel_page", duel_id=duel_id) }}';
+                }, 500);
+            }
+        });
+    });
+
+    function duelAnswerKeydown(e) {
+        if (e.key === 'Enter') document.getElementById('duelSubmitAnswer').click();
+    }
+    document.getElementById('duelTaskAnswerInput').addEventListener('keydown', duelAnswerKeydown);
+    document.getElementById('duelTaskAnswerNum').addEventListener('keydown', duelAnswerKeydown);
+    document.getElementById('duelTaskAnswerDen').addEventListener('keydown', duelAnswerKeydown);
+    document.getElementById('duelTaskAnswerNum1').addEventListener('keydown', duelAnswerKeydown);
+    document.getElementById('duelTaskAnswerDenCommon').addEventListener('keydown', duelAnswerKeydown);
+    document.getElementById('duelTaskAnswerNum2').addEventListener('keydown', duelAnswerKeydown);
+    document.getElementById('duelTaskAnswerDenCommon2').addEventListener('keydown', duelAnswerKeydown);
+    document.getElementById('duelTaskAnswerIntPart').addEventListener('keydown', duelAnswerKeydown);
+    document.getElementById('duelTaskAnswerNumMixed').addEventListener('keydown', duelAnswerKeydown);
+    document.getElementById('duelTaskAnswerDenMixed').addEventListener('keydown', duelAnswerKeydown);
+
+    setInterval(pollState, 2000);
+})();
+</script>
+{% endif %}
+
+{% if current_user.clan_id %}
+<script>
+(function() {
+    var container = document.getElementById('pvpDuelClanChatMessages');
+    if (!container) return;
+    var input = document.getElementById('pvpDuelClanChatInput');
+    var sendBtn = document.getElementById('pvpDuelClanChatSendBtn');
+    var modal = document.getElementById('pvpDuelClanChatModal');
+    var closeBtn = document.getElementById('pvpDuelClanChatModalClose');
+    var openBtn = document.getElementById('pvpDuelClanChatBtn');
+    var chatUrl = '{{ url_for("api_clan_chat_list") }}';
+    var currentUserId = {{ current_user.id }};
+    var chatMessages = [];
+    var loading = false;
+    function formatTime(iso) {
+        if (!iso) return '';
+        var d = new Date(iso);
+        return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' +
+            d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    }
+    function escapeHtml(s) {
+        if (!s) return '';
+        var div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+    }
+    function msgToHtml(m) {
+        var ownClass = (m.user_id === currentUserId) ? ' clan-chat-msg-own' : '';
+        return '<div class="clan-chat-msg' + ownClass + '" data-id="' + m.id + '">' +
+            '<span class="chat-author">' + escapeHtml(m.author_name) + '</span>' +
+            '<span class="chat-time">' + escapeHtml(formatTime(m.created_at)) + '</span>' +
+            '<div class="chat-text">' + escapeHtml(m.text) + '</div></div>';
+    }
+    function renderAll() {
+        if (chatMessages.length === 0) {
+            container.innerHTML = '<div class="clan-chat-empty">Пока нет сообщений. Напишите первым!</div>';
+            return;
+        }
+        container.innerHTML = chatMessages.map(msgToHtml).join('');
+        container.scrollTop = container.scrollHeight;
+    }
+    function appendMessages(newMsgs) {
+        if (!newMsgs || newMsgs.length === 0) return;
+        var wasAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 20;
+        var emptyEl = container.querySelector('.clan-chat-empty');
+        if (emptyEl) {
+            container.innerHTML = newMsgs.map(msgToHtml).join('');
+        } else {
+            newMsgs.forEach(function(m) {
+                container.insertAdjacentHTML('beforeend', msgToHtml(m));
+            });
+        }
+        if (wasAtBottom) container.scrollTop = container.scrollHeight;
+    }
+    function loadChat(appendNewOnly) {
+        if (appendNewOnly) {
+            if (chatMessages.length === 0) return;
+            var newestId = chatMessages[chatMessages.length - 1].id;
+            fetch(chatUrl + '?after_id=' + newestId)
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success && data.messages && data.messages.length > 0) {
+                        data.messages.forEach(function(m) { chatMessages.push(m); });
+                        appendMessages(data.messages);
+                    }
+                });
+            return;
+        }
+        if (loading) return;
+        loading = true;
+        fetch(chatUrl + '?limit=20')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                loading = false;
+                if (data.success) {
+                    chatMessages = data.messages || [];
+                    renderAll();
+                } else {
+                    container.innerHTML = '<div class="clan-chat-empty">Не удалось загрузить сообщения</div>';
+                }
+            })
+            .catch(function() {
+                loading = false;
+                if (container.querySelector('.clan-chat-empty') && container.textContent.indexOf('Загрузка') !== -1)
+                    container.innerHTML = '<div class="clan-chat-empty">Не удалось загрузить сообщения</div>';
+            });
+    }
+    function sendMessage() {
+        var text = (input && input.value || '').trim();
+        if (!text) return;
+        if (sendBtn) sendBtn.disabled = true;
+        fetch(chatUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: text })
+        })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (sendBtn) sendBtn.disabled = false;
+                if (data.success && data.message) {
+                    input.value = '';
+                    chatMessages.push(data.message);
+                    appendMessages([data.message]);
+                } else {
+                    alert(data.error || 'Ошибка отправки');
+                }
+            })
+            .catch(function() {
+                if (sendBtn) sendBtn.disabled = false;
+                alert('Ошибка соединения');
+            });
+    }
+    var clanId = (openBtn && openBtn.getAttribute('data-clan-id')) || '';
+    var storageKey = 'clanChatLastRead_' + clanId;
+    var unreadUrl = '{{ url_for("api_clan_chat_unread_count") }}';
+    function getLastReadId() {
+        try { return parseInt(localStorage.getItem(storageKey) || '0', 10); } catch (e) { return 0; }
+    }
+    function setLastReadId(id) {
+        try { localStorage.setItem(storageKey, String(id)); } catch (e) {}
+    }
+    function updateUnreadBadge() {
+        var afterId = getLastReadId();
+        fetch(unreadUrl + (afterId ? '?after_id=' + afterId : ''))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (openBtn) {
+                    if (data.success && data.count > 0) openBtn.classList.add('has-unread');
+                    else openBtn.classList.remove('has-unread');
+                }
+            })
+            .catch(function() {});
+    }
+    function markAsRead() {
+        var msgs = container.querySelectorAll('.clan-chat-msg');
+        var maxId = 0;
+        msgs.forEach(function(m) {
+            var id = parseInt(m.getAttribute('data-id'), 10);
+            if (id > maxId) maxId = id;
+        });
+        if (maxId > 0) setLastReadId(maxId);
+        if (openBtn) openBtn.classList.remove('has-unread');
+    }
+    loadChat();
+    setInterval(function() { loadChat(true); }, 10000);
+    if (sendBtn) sendBtn.addEventListener('click', sendMessage);
+    if (input) input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }
+    });
+    updateUnreadBadge();
+    setInterval(function() {
+        if (modal && !modal.classList.contains('open')) updateUnreadBadge();
+    }, 25000);
+    function openModal() {
+        if (modal) {
+            modal.classList.add('open');
+            loadChat();
+            setTimeout(function() {
+                if (container) container.scrollTop = container.scrollHeight;
+                markAsRead();
+            }, 300);
+        }
+    }
+    function closeModal() {
+        markAsRead();
+        if (modal) modal.classList.remove('open');
+    }
+    if (openBtn) openBtn.addEventListener('click', openModal);
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (modal) modal.addEventListener('click', function(e) {
+        if (e.target === modal) closeModal();
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

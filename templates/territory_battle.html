@@ -1292,6 +1292,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     <nav class="territory-top-nav">
         <a href="{{ url_for('territory_battle_rules') }}">Как начать?</a>
         <a href="{{ url_for('territory_clans_top') }}">Топ кланов</a>
+        <a href="{{ url_for('pvp_arena_page') }}">PvP Арена</a>
         {% if user_logged_in %}
         <a href="{{ url_for('cabinet') }}">Личный кабинет</a>
         {% else %}

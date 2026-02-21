@@ -1,0 +1,953 @@
+{% extends "base.html" %}
+
+{% block title %}PvP Арена — Валера в пещере{% endblock %}
+
+{% block extra_head %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Cinzel+Decorative:wght@700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; }
+.pvp-page {
+    min-height: 100vh;
+    background: #3d2914 linear-gradient(180deg, rgba(61,41,20,0.97) 0%, #2c1810 50%, #1a0f08 100%);
+    padding: 20px;
+    color: #e8dcc4;
+    font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Roman', serif;
+    position: relative;
+}
+.pvp-page::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+}
+.pvp-page > * { position: relative; z-index: 1; }
+.pvp-page h1 {
+    font-family: 'Cinzel Decorative', 'Cinzel', Georgia, serif;
+    text-align: center;
+    margin: 0 0 24px;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #d4a84b;
+    text-shadow: 0 0 20px rgba(212,168,75,0.3), 0 2px 4px rgba(0,0,0,0.5);
+    letter-spacing: 0.08em;
+}
+.pvp-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+.pvp-nav a {
+    color: #d4a84b;
+    text-decoration: none;
+    padding: 10px 18px;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    border: 1px solid #5c4033;
+    border-radius: 4px;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.9rem;
+    letter-spacing: 0.04em;
+    font-weight: bold;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    transition: color 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+.pvp-nav a:hover {
+    color: #e8c86a;
+    border-color: #8b6914;
+    box-shadow: 0 0 12px rgba(212,168,75,0.25);
+}
+.pvp-card {
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    border: 2px solid #5c4033;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+    box-shadow: inset 0 1px 0 rgba(212,168,75,0.12), 0 4px 12px rgba(0,0,0,0.35);
+}
+.pvp-card h2 {
+    margin-top: 0;
+    font-family: 'Cinzel', Georgia, serif;
+    color: #d4a84b;
+    font-size: 1.2rem;
+    letter-spacing: 0.04em;
+}
+.pvp-btn {
+    padding: 12px 24px;
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    font-size: 1rem;
+    cursor: pointer;
+    background: linear-gradient(145deg, #5c4033 0%, #4a3520 100%);
+    color: #d4a84b;
+    font-weight: bold;
+    font-family: 'Cinzel', Georgia, serif;
+    letter-spacing: 0.04em;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    transition: color 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+.pvp-btn:hover {
+    color: #e8c86a;
+    border-color: #8b6914;
+    box-shadow: 0 0 12px rgba(212,168,75,0.25);
+}
+.pvp-btn-secondary {
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    color: #d4a84b;
+    border: 1px solid #5c4033;
+}
+.pvp-btn-secondary:hover {
+    color: #e8c86a;
+    border-color: #8b6914;
+}
+.pvp-enter-block {
+    text-align: center;
+    padding: 40px 20px;
+}
+.pvp-enter-block p {
+    margin: 16px 0;
+    color: #c4b098;
+}
+.pvp-enter-block .pvp-btn { margin-top: 10px; }
+.pvp-min-level-msg {
+    color: #d4a84b;
+    font-weight: bold;
+}
+.pvp-participants {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 12px;
+    max-height: 280px;
+    overflow-y: auto;
+}
+.pvp-participants::-webkit-scrollbar { width: 8px; }
+.pvp-participants::-webkit-scrollbar-track { background: #2c1810; border-radius: 4px; }
+.pvp-participants::-webkit-scrollbar-thumb { background: #5c4033; border-radius: 4px; }
+.pvp-participant-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: rgba(44,24,16,0.5);
+    border: 1px solid #5c4033;
+    border-radius: 6px;
+    color: #e8dcc4;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.pvp-participant-btn:hover {
+    border-color: #8b6914;
+    box-shadow: 0 0 10px rgba(212,168,75,0.2);
+}
+.pvp-participant-btn-disabled {
+    opacity: 0.65;
+    background: rgba(44,24,16,0.6);
+    border-color: #4a4038;
+    cursor: default;
+    pointer-events: none;
+}
+.pvp-participant-btn-disabled .pvp-participant-name,
+.pvp-participant-btn-disabled .pvp-participant-level { color: #8a8278; }
+.pvp-participant-btn-disabled .pvp-participant-hint { color: #7a7268; font-size: 0.85rem; }
+.pvp-participant-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #2c1810;
+    border: 2px solid #5c4033;
+}
+.pvp-participant-info { flex: 1; }
+.pvp-participant-name { font-family: 'Cinzel', Georgia, serif; font-weight: bold; color: #e8dcc4; }
+.pvp-participant-level { color: #c4b098; font-size: 0.9rem; }
+.pvp-challenges-list {
+    margin-top: 12px;
+    max-height: 220px;
+    overflow-y: auto;
+}
+.pvp-challenges-list::-webkit-scrollbar { width: 8px; }
+.pvp-challenges-list::-webkit-scrollbar-track { background: #2c1810; border-radius: 4px; }
+.pvp-challenges-list::-webkit-scrollbar-thumb { background: #5c4033; border-radius: 4px; }
+.pvp-challenge-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px;
+    background: rgba(44,24,16,0.4);
+    border: 1px solid #5c4033;
+    border-radius: 6px;
+    margin-bottom: 8px;
+}
+.pvp-challenge-item .pvp-btn { padding: 8px 16px; font-size: 0.9rem; }
+.pvp-chat-messages {
+    height: 280px;
+    overflow-y: auto;
+    background: #2c1810;
+    border: 1px solid #5c4033;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 12px;
+}
+.pvp-chat-msg {
+    margin-bottom: 10px;
+    padding: 8px 10px;
+    background: rgba(61,41,20,0.6);
+    border-radius: 6px;
+    font-size: 0.95rem;
+    border: 1px solid rgba(92,64,51,0.5);
+}
+.pvp-chat-msg-own { background: rgba(139,105,20,0.25); border-color: rgba(212,168,75,0.3); }
+.pvp-chat-msg .chat-author { font-weight: bold; color: #d4a84b; margin-right: 8px; }
+.pvp-chat-msg .chat-time { color: #b8a088; font-size: 0.8rem; }
+.pvp-chat-form {
+    display: flex;
+    gap: 8px;
+}
+.pvp-chat-form input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    background: #2c1810;
+    color: #e8dcc4;
+    font-size: 1rem;
+    font-family: inherit;
+}
+.pvp-chat-form input::placeholder { color: #b8a088; }
+.pvp-chat-form input:focus { outline: none; border-color: #8b6914; }
+.pvp-empty { color: #b8a088; text-align: center; padding: 20px; }
+
+/* Плавающая кнопка чата с кланом (как на битве за территорию) */
+.floating-chat-btn {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(145deg, #6b5344 0%, #5c4033 50%, #4a3520 100%);
+    color: #e8dcc4;
+    font-size: 1.5rem;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35), 0 0 0 1px rgba(212,168,75,0.2), inset 0 1px 0 rgba(255,255,255,0.08);
+    z-index: 99990;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.floating-chat-btn:hover {
+    background: linear-gradient(145deg, #7a6352 0%, #6b5344 100%);
+    color: #e8c86a;
+    transform: scale(1.08);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.4), 0 0 0 1px rgba(212,168,75,0.35), inset 0 1px 0 rgba(255,255,255,0.12);
+}
+.floating-chat-btn .chat-unread-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #dc2626;
+    border: 2px solid #3d2914;
+    display: none;
+}
+.floating-chat-btn.has-unread .chat-unread-badge { display: block; }
+.clan-chat-modal-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.75);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    padding: 20px;
+}
+.clan-chat-modal-overlay.open { display: flex !important; visibility: visible !important; opacity: 1 !important; }
+.clan-chat-modal .modal-box {
+    max-width: 380px;
+    width: 100%;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    padding: 18px;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.45), 0 0 0 1px rgba(92,64,51,0.4), inset 0 1px 0 rgba(255,255,255,0.15);
+    background: linear-gradient(180deg, #f5e8d0 0%, #e8dcc4 50%, #ddd0b8 100%);
+    border: 2px solid #5c4033;
+    color: #2c1810;
+    position: relative;
+}
+.clan-chat-modal .modal-box h3 { margin: 0 0 12px; font-size: 1.05rem; color: #3d2914; font-family: 'Cinzel', Georgia, serif; }
+.clan-chat-modal .clan-chat-modal-body { flex: 1; min-height: 0; overflow: hidden; }
+.clan-chat-modal .clan-chat-content { display: flex; flex-direction: column; height: 100%; }
+.clan-chat-modal .clan-chat-messages {
+    max-height: 240px; min-height: 120px; overflow-y: auto; margin: 0 0 10px; padding: 10px;
+    background: rgba(44,24,16,0.08); border-radius: 8px; border: 1px solid rgba(92,64,51,0.35);
+    display: flex; flex-direction: column;
+}
+.clan-chat-modal .clan-chat-msg { padding: 8px 10px; margin-bottom: 8px; background: rgba(61,41,20,0.2); border-radius: 4px; border-left: 3px solid #8b6914; font-size: 0.95rem; max-width: 85%; }
+.clan-chat-modal .clan-chat-msg-own { align-self: flex-end; border-left: none; border-right: 3px solid #d4a84b; text-align: right; background: rgba(90,60,30,0.25); }
+.clan-chat-modal .clan-chat-msg .chat-author { font-weight: bold; color: #5c4033; margin-right: 8px; }
+.clan-chat-modal .clan-chat-msg .chat-time { font-size: 0.8rem; color: #8b7355; margin-left: 6px; }
+.clan-chat-modal .clan-chat-form { display: flex; gap: 10px; margin-top: 0; flex-shrink: 0; }
+.clan-chat-modal .clan-chat-form input[type="text"] {
+    flex: 1; min-width: 0; padding: 10px 14px; border: 2px solid #5c4033; border-radius: 6px; background: #fff; color: #2c1810; font-family: inherit;
+}
+.clan-chat-modal .clan-chat-form button {
+    padding: 10px 18px; border-radius: 6px; border: 2px solid #5c4033; background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    color: #d4a84b; font-weight: bold; font-family: 'Cinzel', Georgia, serif; cursor: pointer;
+}
+.clan-chat-modal .clan-chat-form button:hover { color: #e8c86a; border-color: #8b6914; }
+.clan-chat-modal .clan-chat-empty { color: #8b7355; padding: 12px; text-align: center; font-size: 0.95rem; }
+.clan-chat-modal .modal-chat-close {
+    position: absolute; top: 10px; right: 10px; width: 34px; height: 34px; padding: 0; border: none; border-radius: 50%;
+    background: rgba(92,64,51,0.15); color: #5c4033; font-size: 1.25rem; cursor: pointer; line-height: 1;
+}
+.clan-chat-modal .modal-chat-close:hover { background: rgba(92,64,51,0.3); color: #3d2914; }
+
+/* Модальное окно сообщения арены (Вызов отправлен! / ошибка) */
+.pvp-arena-msg-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 99998;
+    padding: 20px;
+}
+.pvp-arena-msg-modal-overlay.open { display: flex !important; }
+.pvp-arena-msg-modal-box {
+    max-width: 340px;
+    width: 100%;
+    padding: 24px;
+    border-radius: 10px;
+    border: 2px solid #5c4033;
+    background: linear-gradient(180deg, #f5e8d0 0%, #e8dcc4 50%, #ddd0b8 100%);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    text-align: center;
+    color: #2c1810;
+}
+.pvp-arena-msg-modal-box h3 { margin: 0 0 12px; font-family: 'Cinzel', Georgia, serif; font-size: 1.1rem; color: #3d2914; }
+.pvp-arena-msg-modal-box .pvp-arena-msg-text { margin-bottom: 16px; font-size: 1rem; line-height: 1.4; }
+.pvp-arena-msg-modal-box .pvp-arena-msg-close {
+    padding: 10px 24px;
+    background: linear-gradient(145deg, #5c4033 0%, #4a3520 100%);
+    color: #d4a84b;
+    border: 2px solid #5c4033;
+    border-radius: 6px;
+    font-weight: bold;
+    font-family: 'Cinzel', Georgia, serif;
+    cursor: pointer;
+}
+.pvp-arena-msg-modal-box .pvp-arena-msg-close:hover { color: #e8c86a; border-color: #8b6914; }
+
+@media (max-width: 768px) {
+    .pvp-page { padding: 12px; }
+    .pvp-page h1 { font-size: 1.5rem; margin-bottom: 16px; }
+    .pvp-nav { gap: 8px; margin-bottom: 16px; }
+    .pvp-nav a {
+        padding: 10px 14px;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .pvp-card {
+        padding: 14px;
+        margin-bottom: 14px;
+        border-radius: 10px;
+    }
+    .pvp-card h2 { font-size: 1.1rem; }
+    .pvp-btn, .pvp-btn-secondary {
+        min-height: 44px;
+        padding: 12px 20px;
+        font-size: 1rem;
+    }
+    .pvp-participants { max-height: 220px; }
+    .pvp-participant-btn {
+        width: 100%;
+        min-height: 48px;
+        padding: 12px;
+    }
+    .pvp-challenges-list { max-height: 180px; }
+    .pvp-challenge-item {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+    .pvp-challenge-item .pvp-btn { min-height: 44px; }
+    .pvp-chat-messages { height: 220px; padding: 10px; }
+    .pvp-chat-form { flex-direction: column; }
+    .pvp-chat-form input { min-height: 44px; }
+    .pvp-chat-form .pvp-btn { min-height: 44px; }
+    .floating-chat-btn { bottom: 16px; right: 16px; width: 52px; height: 52px; font-size: 1.4rem; }
+    .clan-chat-modal-overlay { padding: 12px; }
+    .clan-chat-modal .modal-box { max-height: 80vh; padding: 14px; }
+    .clan-chat-modal .clan-chat-messages { max-height: 200px; min-height: 100px; }
+    .clan-chat-modal .modal-chat-close { top: 8px; right: 8px; width: 32px; height: 32px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pvp-page">
+    <nav class="pvp-nav">
+        <a href="{{ url_for('cabinet') }}">Личный кабинет</a>
+        <a href="{{ url_for('territory_battle_page') }}">Битва за территорию</a>
+    </nav>
+    <h1>⚔️ PvP Арена</h1>
+
+    {% if not can_enter %}
+    <div class="pvp-card">
+        <div class="pvp-enter-block">
+            <p class="pvp-min-level-msg">Вход на арену доступен с {{ pvp_min_level }} уровня.</p>
+            <p>Ваш уровень: {{ current_user.level or 1 }}. Прокачайтесь в личном кабинете и в битве за территорию.</p>
+            <a href="{{ url_for('cabinet') }}" class="pvp-btn pvp-btn-secondary">В личный кабинет</a>
+        </div>
+    </div>
+    {% elif not on_arena %}
+    <div class="pvp-card">
+        <div class="pvp-enter-block">
+            <p>Войдите на арену, чтобы сражаться с другими игроками в дуэлях и общаться в чате.</p>
+            <button type="button" class="pvp-btn" id="pvpEnterBtn">Войти на арену</button>
+        </div>
+    </div>
+    {% else %}
+    <div class="pvp-card">
+        <h2>Вы на арене</h2>
+        <button type="button" class="pvp-btn pvp-btn-secondary" id="pvpLeaveBtn">Выйти с арены</button>
+    </div>
+
+    <div class="pvp-card" id="pvpChallengesCard">
+        <h2>Входящие вызовы</h2>
+        <div class="pvp-challenges-list" id="pvpChallengesList">
+            <div class="pvp-empty" id="pvpChallengesEmpty">Нет входящих вызовов</div>
+        </div>
+    </div>
+
+    <div class="pvp-card" id="pvpParticipantsCard">
+        <h2>Участники арены (вызвать на бой)</h2>
+        <div class="pvp-participants" id="pvpParticipantsList">
+            <div class="pvp-empty" id="pvpParticipantsEmpty">Загрузка…</div>
+        </div>
+    </div>
+
+    <div class="pvp-card" id="pvpChatCard">
+        <h2>Чат арены</h2>
+        <div class="pvp-chat-messages" id="pvpChatMessages"></div>
+        <div class="pvp-chat-form">
+            <input type="text" id="pvpChatInput" placeholder="Введите сообщение…" maxlength="2000" autocomplete="off">
+            <button type="button" class="pvp-btn" id="pvpChatSend">Отправить</button>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% if can_enter %}
+<div class="pvp-arena-msg-modal-overlay" id="pvpArenaMsgModal">
+    <div class="pvp-arena-msg-modal-box">
+        <h3 id="pvpArenaMsgTitle">Сообщение</h3>
+        <p class="pvp-arena-msg-text" id="pvpArenaMsgText"></p>
+        <button type="button" class="pvp-arena-msg-close" id="pvpArenaMsgCloseBtn">Понятно</button>
+    </div>
+</div>
+{% endif %}
+
+{% if current_user.clan_id %}
+<button type="button" class="floating-chat-btn" id="pvpArenaClanChatBtn" aria-label="Чат с кланом" title="Чат с кланом" data-clan-id="{{ current_user.clan_id }}">💬<span class="chat-unread-badge" id="pvpArenaClanChatUnreadBadge" aria-hidden="true" title="Есть новые сообщения"></span></button>
+<div class="clan-chat-modal-overlay" id="pvpArenaClanChatModal">
+    <div class="clan-chat-modal">
+        <div class="modal-box">
+            <button type="button" class="modal-chat-close" id="pvpArenaClanChatModalClose" aria-label="Закрыть">×</button>
+            <h3>Чат с кланом</h3>
+            <div class="clan-chat-modal-body">
+                <div class="clan-chat-content open">
+                    <div class="clan-chat-messages" id="pvpArenaClanChatMessages">
+                        <div class="clan-chat-empty">Загрузка сообщений…</div>
+                    </div>
+                    <div class="clan-chat-form">
+                        <input type="text" id="pvpArenaClanChatInput" placeholder="Введите сообщение…" maxlength="2000" autocomplete="off">
+                        <button type="button" id="pvpArenaClanChatSendBtn">Отправить</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if can_enter %}
+<script>
+(function() {
+    function showPvpArenaModal(title, text) {
+        var overlay = document.getElementById('pvpArenaMsgModal');
+        var titleEl = document.getElementById('pvpArenaMsgTitle');
+        var textEl = document.getElementById('pvpArenaMsgText');
+        if (overlay && titleEl && textEl) {
+            titleEl.textContent = title;
+            textEl.textContent = text;
+            overlay.classList.add('open');
+        }
+    }
+    var arenaMsgClose = document.getElementById('pvpArenaMsgCloseBtn');
+    if (arenaMsgClose) {
+        arenaMsgClose.addEventListener('click', function() {
+            var overlay = document.getElementById('pvpArenaMsgModal');
+            if (overlay) overlay.classList.remove('open');
+        });
+    }
+    var arenaMsgOverlay = document.getElementById('pvpArenaMsgModal');
+    if (arenaMsgOverlay) {
+        arenaMsgOverlay.addEventListener('click', function(e) {
+            if (e.target === this) this.classList.remove('open');
+        });
+    }
+
+    var enterBtn = document.getElementById('pvpEnterBtn');
+    var leaveBtn = document.getElementById('pvpLeaveBtn');
+    if (enterBtn) {
+        enterBtn.addEventListener('click', function() {
+            fetch('{{ url_for("api_pvp_enter") }}', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    if (d.success) location.reload();
+                    else alert(d.error || 'Ошибка');
+                });
+        });
+    }
+    if (leaveBtn) {
+        leaveBtn.addEventListener('click', function() {
+            fetch('{{ url_for("api_pvp_leave") }}', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    if (d.success) location.reload();
+                    else alert(d.error || 'Ошибка');
+                });
+        });
+        var leaveUrl = '{{ url_for("api_pvp_leave") }}';
+        window.addEventListener('beforeunload', function() {
+            navigator.sendBeacon(leaveUrl, new Blob([], { type: 'application/json' }));
+        });
+    }
+
+    function loadChallenges() {
+        fetch('{{ url_for("api_pvp_challenges") }}')
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                var list = document.getElementById('pvpChallengesList');
+                var empty = document.getElementById('pvpChallengesEmpty');
+                if (!d.success || !d.challenges || d.challenges.length === 0) {
+                    empty.style.display = 'block';
+                    list.querySelectorAll('.pvp-challenge-item').forEach(function(el) { el.remove(); });
+                    return;
+                }
+                empty.style.display = 'none';
+                list.querySelectorAll('.pvp-challenge-item').forEach(function(el) { el.remove(); });
+                d.challenges.forEach(function(c) {
+                    var div = document.createElement('div');
+                    div.className = 'pvp-challenge-item';
+                    div.innerHTML = '<div><strong>' + escapeHtml(c.challenger_name) + '</strong> (ур. ' + c.challenger_level + ')</div>' +
+                        '<div><button type="button" class="pvp-btn pvp-btn-secondary decline-challenge" data-id="' + c.id + '">Отклонить</button> ' +
+                        '<button type="button" class="pvp-btn accept-challenge" data-id="' + c.id + '">Принять</button></div>';
+                    list.appendChild(div);
+                });
+                list.querySelectorAll('.accept-challenge').forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        var id = parseInt(btn.getAttribute('data-id'), 10);
+                        fetch('{{ url_for("api_pvp_accept_challenge") }}', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ challenge_id: id })
+                        }).then(function(r) { return r.json(); }).then(function(d) {
+                            if (d.success && d.duel_id) window.location.href = '{{ url_for("pvp_duel_page", duel_id=0) }}'.replace('0', d.duel_id);
+                            else alert(d.error || 'Ошибка');
+                        });
+                    });
+                });
+                list.querySelectorAll('.decline-challenge').forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        var id = parseInt(btn.getAttribute('data-id'), 10);
+                        fetch('{{ url_for("api_pvp_decline_challenge") }}', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ challenge_id: id })
+                        }).then(function(r) { return r.json(); }).then(function(d) {
+                            if (d.success) loadChallenges();
+                        });
+                    });
+                });
+            });
+    }
+
+    function loadParticipants() {
+        fetch('{{ url_for("api_pvp_participants") }}')
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                var list = document.getElementById('pvpParticipantsList');
+                var empty = document.getElementById('pvpParticipantsEmpty');
+                if (!d.success) return;
+                var participants = d.participants || [];
+                empty.style.display = participants.length ? 'none' : 'block';
+                empty.textContent = 'Нет других участников на арене';
+                list.querySelectorAll('.pvp-participant-btn').forEach(function(el) { el.remove(); });
+                participants.forEach(function(p) {
+                    var btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'pvp-participant-btn' + (p.can_challenge ? '' : ' pvp-participant-btn-disabled');
+                    var hint = p.can_challenge
+                        ? '<span style="color:#d4a84b; font-weight:bold;">Вызвать на бой</span>'
+                        : '<span class="pvp-participant-hint">Вне диапазона уровней (±5)</span>';
+                    btn.innerHTML = (p.avatar_url ? '<img src="' + escapeHtml(p.avatar_url) + '" alt="" class="pvp-participant-avatar">' : '') +
+                        '<div class="pvp-participant-info"><span class="pvp-participant-name">' + escapeHtml(p.character_name) + '</span><br><span class="pvp-participant-level">Ур. ' + p.level + ' | Атака: ' + p.damage + ' | Защита: ' + p.defense + '</span></div>' +
+                        hint;
+                    if (p.can_challenge) {
+                        (function(defenderId) {
+                            btn.addEventListener('click', function() {
+                                fetch('{{ url_for("api_pvp_challenge") }}', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ defender_id: defenderId })
+                                }).then(function(r) { return r.json(); }).then(function(d) {
+                                    if (d.success) showPvpArenaModal('Вызов отправлен!', 'Ожидайте ответа соперника.');
+                                    else showPvpArenaModal('Ошибка', d.error || 'Ошибка');
+                                });
+                            });
+                        })(p.id);
+                    }
+                    list.appendChild(btn);
+                });
+            });
+    }
+
+    function escapeHtml(s) {
+        if (!s) return '';
+        var div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+    }
+
+    var chatMessages = [];
+    var chatHasMore = false;
+    var chatLoadingOlder = false;
+    var chatBaseUrl = '{{ url_for("api_pvp_chat_get") }}';
+
+    function msgToHtml(m) {
+        var own = m.user_id === {{ current_user.id }} ? ' pvp-chat-msg-own' : '';
+        return '<div class="pvp-chat-msg' + own + '" data-id="' + m.id + '"><span class="chat-author">' + escapeHtml(m.user_name) + '</span><span class="chat-time">' + escapeHtml(m.created_at ? new Date(m.created_at).toLocaleString('ru-RU') : '') + '</span><br><div class="chat-text">' + escapeHtml(m.text) + '</div></div>';
+    }
+    function loadChat() {
+        var url = chatBaseUrl + '?limit=20';
+        fetch(url)
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (!d.success) return;
+                chatMessages = d.messages || [];
+                chatHasMore = d.has_more || false;
+                renderChat();
+                var cont = document.getElementById('pvpChatMessages');
+                if (cont) cont.scrollTop = cont.scrollHeight;
+            });
+    }
+    function loadChatOlder() {
+        if (chatLoadingOlder || !chatHasMore || chatMessages.length === 0) return;
+        var oldestId = chatMessages[0].id;
+        chatLoadingOlder = true;
+        var cont = document.getElementById('pvpChatMessages');
+        var prevScrollHeight = cont ? cont.scrollHeight : 0;
+        fetch(chatBaseUrl + '?limit=20&before_id=' + oldestId)
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                chatLoadingOlder = false;
+                if (!d.success || !d.messages || d.messages.length === 0) return;
+                chatHasMore = d.has_more || false;
+                chatMessages = d.messages.concat(chatMessages);
+                renderChat();
+                if (cont) cont.scrollTop = cont.scrollHeight - prevScrollHeight;
+            })
+            .catch(function() { chatLoadingOlder = false; });
+    }
+    function renderChat() {
+        var cont = document.getElementById('pvpChatMessages');
+        if (!cont) return;
+        if (chatMessages.length === 0) {
+            cont.innerHTML = '<div class="pvp-empty">Пока нет сообщений</div>';
+            return;
+        }
+        cont.innerHTML = chatMessages.map(msgToHtml).join('');
+    }
+    function appendNewChatMessages(newMsgs, scrollToBottom) {
+        if (!newMsgs || newMsgs.length === 0) return;
+        var cont = document.getElementById('pvpChatMessages');
+        if (!cont) return;
+        var emptyEl = cont.querySelector('.pvp-empty');
+        if (emptyEl) {
+            chatMessages = newMsgs;
+            renderChat();
+            cont.scrollTop = cont.scrollHeight;
+            return;
+        }
+        newMsgs.forEach(function(m) {
+            chatMessages.push(m);
+            cont.insertAdjacentHTML('beforeend', msgToHtml(m));
+        });
+        if (scrollToBottom !== false) cont.scrollTop = cont.scrollHeight;
+    }
+    document.getElementById('pvpChatMessages').addEventListener('scroll', function() {
+        var cont = this;
+        if (cont.scrollTop < 80) loadChatOlder();
+    });
+    document.getElementById('pvpChatSend').addEventListener('click', function() {
+        var input = document.getElementById('pvpChatInput');
+        var text = (input.value || '').trim();
+        if (!text) return;
+        fetch('{{ url_for("api_pvp_chat_post") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: text })
+        }).then(function(r) { return r.json(); }).then(function(d) {
+            if (d.success) {
+                input.value = '';
+                loadChat();
+            } else alert(d.error || 'Ошибка');
+        });
+    });
+    document.getElementById('pvpChatInput').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') document.getElementById('pvpChatSend').click();
+    });
+
+    if (document.getElementById('pvpChallengesList')) {
+        loadChallenges();
+        setInterval(loadChallenges, 5000);
+        // Инициатор вызова: как только соперник принял дуэль — перенаправить на страницу боя
+        setInterval(function() {
+            fetch('{{ url_for("api_pvp_my_active_duel") }}')
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    if (d.success && d.duel_id) {
+                        window.location.href = '{{ url_for("pvp_duel_page", duel_id=0) }}'.replace('0', d.duel_id);
+                    }
+                });
+        }, 2000);
+    }
+    if (document.getElementById('pvpParticipantsList')) {
+        loadParticipants();
+        setInterval(loadParticipants, 8000);
+    }
+    if (document.getElementById('pvpChatMessages')) {
+        loadChat();
+        setInterval(function() {
+            var cont = document.getElementById('pvpChatMessages');
+            if (!cont) return;
+            var atBottom = cont.scrollHeight - cont.scrollTop - cont.clientHeight < 50;
+            fetch(chatBaseUrl + '?limit=20')
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    if (!d.success || !d.messages) return;
+                    if (atBottom) {
+                        chatMessages = d.messages;
+                        chatHasMore = d.has_more || false;
+                        renderChat();
+                        cont.scrollTop = cont.scrollHeight;
+                    } else {
+                        var maxId = chatMessages.length ? Math.max.apply(null, chatMessages.map(function(m) { return m.id; })) : 0;
+                        var newOnes = d.messages.filter(function(m) { return m.id > maxId; });
+                        if (newOnes.length) appendNewChatMessages(newOnes, false);
+                    }
+                });
+        }, 4000);
+    }
+})();
+</script>
+{% endif %}
+
+{% if current_user.clan_id %}
+<script>
+(function() {
+    var container = document.getElementById('pvpArenaClanChatMessages');
+    if (!container) return;
+    var input = document.getElementById('pvpArenaClanChatInput');
+    var sendBtn = document.getElementById('pvpArenaClanChatSendBtn');
+    var modal = document.getElementById('pvpArenaClanChatModal');
+    var closeBtn = document.getElementById('pvpArenaClanChatModalClose');
+    var openBtn = document.getElementById('pvpArenaClanChatBtn');
+    var chatUrl = '{{ url_for("api_clan_chat_list") }}';
+    var currentUserId = {{ current_user.id }};
+    var chatMessages = [];
+    var loading = false;
+    function formatTime(iso) {
+        if (!iso) return '';
+        var d = new Date(iso);
+        return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' +
+            d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    }
+    function escapeHtml(s) {
+        if (!s) return '';
+        var div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+    }
+    function msgToHtml(m) {
+        var ownClass = (m.user_id === currentUserId) ? ' clan-chat-msg-own' : '';
+        return '<div class="clan-chat-msg' + ownClass + '" data-id="' + m.id + '">' +
+            '<span class="chat-author">' + escapeHtml(m.author_name) + '</span>' +
+            '<span class="chat-time">' + escapeHtml(formatTime(m.created_at)) + '</span>' +
+            '<div class="chat-text">' + escapeHtml(m.text) + '</div></div>';
+    }
+    function renderAll() {
+        if (chatMessages.length === 0) {
+            container.innerHTML = '<div class="clan-chat-empty">Пока нет сообщений. Напишите первым!</div>';
+            return;
+        }
+        container.innerHTML = chatMessages.map(msgToHtml).join('');
+        container.scrollTop = container.scrollHeight;
+    }
+    function appendMessages(newMsgs) {
+        if (!newMsgs || newMsgs.length === 0) return;
+        var wasAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 20;
+        var emptyEl = container.querySelector('.clan-chat-empty');
+        if (emptyEl) {
+            container.innerHTML = newMsgs.map(msgToHtml).join('');
+        } else {
+            newMsgs.forEach(function(m) {
+                container.insertAdjacentHTML('beforeend', msgToHtml(m));
+            });
+        }
+        if (wasAtBottom) container.scrollTop = container.scrollHeight;
+    }
+    function loadChat(appendNewOnly) {
+        if (appendNewOnly) {
+            if (chatMessages.length === 0) return;
+            var newestId = chatMessages[chatMessages.length - 1].id;
+            fetch(chatUrl + '?after_id=' + newestId)
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success && data.messages && data.messages.length > 0) {
+                        data.messages.forEach(function(m) { chatMessages.push(m); });
+                        appendMessages(data.messages);
+                    }
+                });
+            return;
+        }
+        if (loading) return;
+        loading = true;
+        fetch(chatUrl + '?limit=20')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                loading = false;
+                if (data.success) {
+                    chatMessages = data.messages || [];
+                    renderAll();
+                } else {
+                    container.innerHTML = '<div class="clan-chat-empty">Не удалось загрузить сообщения</div>';
+                }
+            })
+            .catch(function() {
+                loading = false;
+                if (container.querySelector('.clan-chat-empty') && container.textContent.indexOf('Загрузка') !== -1)
+                    container.innerHTML = '<div class="clan-chat-empty">Не удалось загрузить сообщения</div>';
+            });
+    }
+    function sendMessage() {
+        var text = (input && input.value || '').trim();
+        if (!text) return;
+        if (sendBtn) sendBtn.disabled = true;
+        fetch(chatUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: text })
+        })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (sendBtn) sendBtn.disabled = false;
+                if (data.success && data.message) {
+                    input.value = '';
+                    chatMessages.push(data.message);
+                    appendMessages([data.message]);
+                } else {
+                    alert(data.error || 'Ошибка отправки');
+                }
+            })
+            .catch(function() {
+                if (sendBtn) sendBtn.disabled = false;
+                alert('Ошибка соединения');
+            });
+    }
+    var clanId = (openBtn && openBtn.getAttribute('data-clan-id')) || '';
+    var storageKey = 'clanChatLastRead_' + clanId;
+    var unreadUrl = '{{ url_for("api_clan_chat_unread_count") }}';
+    function getLastReadId() {
+        try { return parseInt(localStorage.getItem(storageKey) || '0', 10); } catch (e) { return 0; }
+    }
+    function setLastReadId(id) {
+        try { localStorage.setItem(storageKey, String(id)); } catch (e) {}
+    }
+    function updateUnreadBadge() {
+        var afterId = getLastReadId();
+        fetch(unreadUrl + (afterId ? '?after_id=' + afterId : ''))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (openBtn) {
+                    if (data.success && data.count > 0) openBtn.classList.add('has-unread');
+                    else openBtn.classList.remove('has-unread');
+                }
+            })
+            .catch(function() {});
+    }
+    function markAsRead() {
+        var msgs = container.querySelectorAll('.clan-chat-msg');
+        var maxId = 0;
+        msgs.forEach(function(m) {
+            var id = parseInt(m.getAttribute('data-id'), 10);
+            if (id > maxId) maxId = id;
+        });
+        if (maxId > 0) setLastReadId(maxId);
+        if (openBtn) openBtn.classList.remove('has-unread');
+    }
+    loadChat();
+    setInterval(function() { loadChat(true); }, 10000);
+    if (sendBtn) sendBtn.addEventListener('click', sendMessage);
+    if (input) input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }
+    });
+    updateUnreadBadge();
+    setInterval(function() {
+        if (modal && !modal.classList.contains('open')) updateUnreadBadge();
+    }, 25000);
+    function openModal() {
+        if (modal) {
+            modal.classList.add('open');
+            loadChat();
+            setTimeout(function() {
+                if (container) container.scrollTop = container.scrollHeight;
+                markAsRead();
+            }, 300);
+        }
+    }
+    function closeModal() {
+        markAsRead();
+        if (modal) modal.classList.remove('open');
+    }
+    if (openBtn) openBtn.addEventListener('click', openModal);
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (modal) modal.addEventListener('click', function(e) {
+        if (e.target === modal) closeModal();
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

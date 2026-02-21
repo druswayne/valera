@@ -191,6 +191,62 @@ class ClanChatMessage(db.Model):
     user = db.relationship('User', backref='clan_chat_messages', lazy=True)
 
 
+# PvP Арена
+class PvPArenaPresence(db.Model):
+    """Кто сейчас на PvP арене (вошёл в арену)."""
+    __tablename__ = 'pvp_arena_presence'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, unique=True)
+    entered_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref=db.backref('pvp_arena_presence', uselist=False, lazy=True, cascade='all, delete-orphan'))
+
+
+class PvPArenaChatMessage(db.Model):
+    """Сообщение в общем чате арены (видят только те, кто на арене)."""
+    __tablename__ = 'pvp_arena_chat_message'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    text = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref='pvp_arena_chat_messages', lazy=True)
+
+
+class PvPDuelChallenge(db.Model):
+    """Вызов на дуэль (ожидает принятия/отказа)."""
+    __tablename__ = 'pvp_duel_challenge'
+    id = db.Column(db.Integer, primary_key=True)
+    challenger_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    defender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    status = db.Column(db.String(20), default='pending', nullable=False)  # pending, accepted, declined
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    challenger = db.relationship('User', foreign_keys=[challenger_id], lazy=True)
+    defender = db.relationship('User', foreign_keys=[defender_id], lazy=True)
+
+
+class PvPDuel(db.Model):
+    """Активная или завершённая дуэль."""
+    __tablename__ = 'pvp_duel'
+    id = db.Column(db.Integer, primary_key=True)
+    challenger_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    defender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    challenger_health = db.Column(db.Integer, nullable=False)
+    defender_health = db.Column(db.Integer, nullable=False)
+    challenger_max_health = db.Column(db.Integer, nullable=False)
+    defender_max_health = db.Column(db.Integer, nullable=False)
+    current_turn_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # чей ход отвечать на задачу
+    status = db.Column(db.String(20), default='active', nullable=False)  # active, finished
+    winner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    finished_at = db.Column(db.DateTime, nullable=True)
+
+    challenger = db.relationship('User', foreign_keys=[challenger_id], lazy=True)
+    defender = db.relationship('User', foreign_keys=[defender_id], lazy=True)
+    winner = db.relationship('User', foreign_keys=[winner_id], lazy=True)
+
+
 # Константы уровней и урона
 # Базовые характеристики (без вложенных очков навыков)
 USER_BASE_DAMAGE = 5
@@ -4089,6 +4145,102 @@ def _normalize_answer(s):
     return re.sub(r'\s+', ' ', str(s).strip().lower()) if s else ''
 
 
+def _check_task_answer(task, answer):
+    """Проверка ответа на задачу (та же логика, что в битве за территорию). Возвращает bool."""
+    if task.title == 'Основное свойство дроби' and task.correct_answer and '|' in task.correct_answer:
+        try:
+            correct_parts = [p.strip() for p in task.correct_answer.split('|')]
+            user_parts = [p.strip() for p in (answer or '').split('|')]
+            if len(correct_parts) >= 3:
+                correct_num, correct_den = correct_parts[1], correct_parts[2]
+            elif len(correct_parts) == 2:
+                correct_num, correct_den = correct_parts[0], correct_parts[1]
+            else:
+                correct_num, correct_den = '', ''
+            if len(user_parts) >= 3:
+                user_num, user_den = user_parts[1], user_parts[2]
+            elif len(user_parts) == 2:
+                user_num, user_den = user_parts[0], user_parts[1]
+            else:
+                user_num, user_den = '', ''
+            try:
+                u_n, u_d = int(user_num or 0), int(user_den or 0)
+                c_n, c_d = int(correct_num or 0), int(correct_den or 0)
+                return u_d > 0 and c_d > 0 and u_n == c_n and u_d == c_d
+            except (ValueError, TypeError):
+                return user_num == correct_num and user_den == correct_den
+        except Exception:
+            return False
+    if task.title == 'Общий знаменатель' and task.correct_answer and task.correct_answer.count('|') >= 3:
+        try:
+            correct_parts = [p.strip() for p in task.correct_answer.split('|')]
+            user_parts = [p.strip() for p in (answer or '').split('|')]
+            if len(correct_parts) >= 4 and len(user_parts) >= 4:
+                try:
+                    return (
+                        int(user_parts[0] or 0) == int(correct_parts[0] or 0)
+                        and int(user_parts[1] or 0) == int(correct_parts[1] or 0)
+                        and int(user_parts[2] or 0) == int(correct_parts[2] or 0)
+                        and int(user_parts[3] or 0) == int(correct_parts[3] or 0)
+                    )
+                except (ValueError, TypeError):
+                    return (
+                        user_parts[0] == correct_parts[0] and user_parts[1] == correct_parts[1]
+                        and user_parts[2] == correct_parts[2] and user_parts[3] == correct_parts[3]
+                    )
+            return False
+        except Exception:
+            return False
+    if task.title in ('Сложение и вычитание дробей', 'Умножение и деление дробей', 'Смешанные числа') and task.correct_answer and task.correct_answer.count('|') >= 2:
+        try:
+            correct_parts = [p.strip() for p in task.correct_answer.split('|')]
+            user_parts = [p.strip() for p in (answer or '').split('|')]
+            if len(correct_parts) >= 3 and len(user_parts) >= 3:
+                try:
+                    return (
+                        int(user_parts[0] or 0) == int(correct_parts[0] or 0)
+                        and int(user_parts[1] or 0) == int(correct_parts[1] or 0)
+                        and int(user_parts[2] or 0) == int(correct_parts[2] or 0)
+                    )
+                except (ValueError, TypeError, IndexError):
+                    return False
+            return False
+        except Exception:
+            return False
+    if task.title == 'Правильные/неправильные дроби' and task.correct_answer and '|' in task.correct_answer:
+        try:
+            correct_parts = [p.strip() for p in task.correct_answer.split('|')]
+            user_parts = [p.strip() for p in (answer or '').split('|')]
+            if len(correct_parts) == 3:
+                try:
+                    return (
+                        int(user_parts[0] or 0) == int(correct_parts[0] or 0)
+                        and int(user_parts[1] or 0) == int(correct_parts[1] or 0)
+                        and int(user_parts[2] or 0) == int(correct_parts[2] or 0)
+                    )
+                except (ValueError, TypeError, IndexError):
+                    return False
+            elif len(correct_parts) == 2:
+                if len(user_parts) >= 3:
+                    user_num, user_den = user_parts[1], user_parts[2]
+                elif len(user_parts) == 2:
+                    user_num, user_den = user_parts[0], user_parts[1]
+                else:
+                    user_num, user_den = '', ''
+                try:
+                    return (
+                        int(user_num or 0) == int(correct_parts[0] or 0)
+                        and int(user_den or 0) == int(correct_parts[1] or 0)
+                        and int(user_den or 0) > 0
+                    )
+                except (ValueError, TypeError):
+                    return False
+            return False
+        except Exception:
+            return False
+    return _normalize_answer(answer) == _normalize_answer(task.correct_answer)
+
+
 def _territory_difficulty_from_level(level: int) -> int:
     """Определить уровень сложности (1–3) по уровню игрока."""
     if level < 10:
@@ -4387,6 +4539,505 @@ def api_territory_apply_action():
         'player_damage': current_user.damage,
         'player_defense': current_user.defense
     })
+
+
+# --- PvP Арена ---
+PVP_MIN_LEVEL = 5
+PVP_LEVEL_RANGE = 5
+PVP_HEALTH_PER_LEVEL = 20
+PVP_REWARD_BASE_MULT = 50
+PVP_REWARD_SPREAD = 0.3
+PVP_DUEL_DURATION_MINUTES = 5
+
+
+@app.route('/pvp-arena')
+@login_required
+def pvp_arena_page():
+    """Страница PvP арены: кнопка входа (5+ ур.), после входа — список участников и чат."""
+    level = current_user.level or 1
+    can_enter = level >= PVP_MIN_LEVEL
+    presence = PvPArenaPresence.query.filter_by(user_id=current_user.id).first()
+    on_arena = presence is not None
+    # Если пользователь в активной дуэли — перенаправить на страницу дуэли
+    active_duel = PvPDuel.query.filter(
+        db.or_(
+            PvPDuel.challenger_id == current_user.id,
+            PvPDuel.defender_id == current_user.id
+        ),
+        PvPDuel.status == 'active'
+    ).first()
+    if active_duel:
+        return redirect(url_for('pvp_duel_page', duel_id=active_duel.id))
+    avatar_url = url_for('static', filename=_avatar_static_filename(current_user.avatar_filename)) if getattr(current_user, 'avatar_filename', None) else None
+    return render_template(
+        'pvp_arena.html',
+        can_enter=can_enter,
+        on_arena=on_arena,
+        pvp_min_level=PVP_MIN_LEVEL,
+        avatar_url=avatar_url,
+    )
+
+
+@app.route('/api/pvp/enter', methods=['POST'])
+@login_required
+def api_pvp_enter():
+    if (current_user.level or 1) < PVP_MIN_LEVEL:
+        return jsonify({'success': False, 'error': f'Вход на арену доступен с {PVP_MIN_LEVEL} уровня'}), 403
+    presence = PvPArenaPresence.query.filter_by(user_id=current_user.id).first()
+    if not presence:
+        presence = PvPArenaPresence(user_id=current_user.id)
+        db.session.add(presence)
+        db.session.commit()
+    return jsonify({'success': True})
+
+
+@app.route('/api/pvp/leave', methods=['POST'])
+@login_required
+def api_pvp_leave():
+    PvPArenaPresence.query.filter_by(user_id=current_user.id).delete()
+    PvPDuelChallenge.query.filter(
+        db.or_(
+            PvPDuelChallenge.challenger_id == current_user.id,
+            PvPDuelChallenge.defender_id == current_user.id,
+        ),
+        PvPDuelChallenge.status == 'pending',
+    ).delete(synchronize_session=False)
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@app.route('/api/pvp/participants')
+@login_required
+def api_pvp_participants():
+    """Список всех пользователей на арене. can_challenge — можно ли вызвать (диапазон уровней ±PVP_LEVEL_RANGE)."""
+    presences = PvPArenaPresence.query.all()
+    my_level = current_user.level or 1
+    low, high = my_level - PVP_LEVEL_RANGE, my_level + PVP_LEVEL_RANGE
+    participants = []
+    for p in presences:
+        if p.user_id == current_user.id:
+            continue
+        u = User.query.get(p.user_id)
+        if not u:
+            continue
+        lvl = u.level or 1
+        can_challenge = low <= lvl <= high
+        avatar_url = url_for('static', filename=_avatar_static_filename(u.avatar_filename)) if getattr(u, 'avatar_filename', None) else None
+        participants.append({
+            'id': u.id,
+            'username': u.username,
+            'character_name': u.character_name or u.username,
+            'level': lvl,
+            'damage': u.damage,
+            'defense': u.defense,
+            'avatar_url': avatar_url,
+            'can_challenge': can_challenge,
+        })
+    return jsonify({'success': True, 'participants': participants})
+
+
+@app.route('/api/pvp/chat', methods=['GET'])
+@login_required
+def api_pvp_chat_get():
+    """Сообщения чата арены. Без before_id — последние limit сообщений (по умолчанию 20). С before_id — более старые сообщения (для подгрузки при скролле)."""
+    presence = PvPArenaPresence.query.filter_by(user_id=current_user.id).first()
+    if not presence:
+        return jsonify({'success': False, 'error': 'Вы не на арене'}), 403
+    limit = min(100, request.args.get('limit', 20, type=int))
+    before_id = request.args.get('before_id', type=int)
+    if before_id is not None:
+        messages = PvPArenaChatMessage.query.filter(PvPArenaChatMessage.id < before_id).order_by(PvPArenaChatMessage.id.desc()).limit(limit).all()
+        messages = list(reversed(messages))
+        has_more = len(messages) == limit
+    else:
+        messages = PvPArenaChatMessage.query.order_by(PvPArenaChatMessage.id.desc()).limit(limit).all()
+        messages = list(reversed(messages))
+        min_id = min((m.id for m in messages), default=None)
+        has_more = PvPArenaChatMessage.query.filter(PvPArenaChatMessage.id < min_id).first() is not None if min_id is not None else False
+    out = []
+    for m in messages:
+        u = User.query.get(m.user_id)
+        name = (u.character_name or u.username) if u else '?'
+        avatar_url = url_for('static', filename=_avatar_static_filename(u.avatar_filename)) if u and getattr(u, 'avatar_filename', None) else None
+        out.append({
+            'id': m.id,
+            'user_id': m.user_id,
+            'user_name': name,
+            'avatar_url': avatar_url,
+            'text': m.text,
+            'created_at': m.created_at.isoformat() if m.created_at else None,
+        })
+    return jsonify({'success': True, 'messages': out, 'has_more': has_more})
+
+
+@app.route('/api/pvp/chat', methods=['POST'])
+@login_required
+def api_pvp_chat_post():
+    presence = PvPArenaPresence.query.filter_by(user_id=current_user.id).first()
+    if not presence:
+        return jsonify({'success': False, 'error': 'Вы не на арене'}), 403
+    data = request.get_json() or {}
+    text = (data.get('text') or '').strip()
+    if not text or len(text) > 2000:
+        return jsonify({'success': False, 'error': 'Сообщение пустое или слишком длинное'}), 400
+    msg = PvPArenaChatMessage(user_id=current_user.id, text=text)
+    db.session.add(msg)
+    db.session.commit()
+    return jsonify({'success': True, 'id': msg.id})
+
+
+@app.route('/api/pvp/challenge', methods=['POST'])
+@login_required
+def api_pvp_challenge():
+    """Вызвать на дуэль (проверка уровня ±5)."""
+    presence = PvPArenaPresence.query.filter_by(user_id=current_user.id).first()
+    if not presence:
+        return jsonify({'success': False, 'error': 'Вы не на арене'}), 403
+    data = request.get_json() or {}
+    defender_id = data.get('defender_id')
+    if not defender_id:
+        return jsonify({'success': False, 'error': 'Укажите соперника'}), 400
+    defender = User.query.get(defender_id)
+    if not defender:
+        return jsonify({'success': False, 'error': 'Соперник не найден'}), 404
+    if defender.id == current_user.id:
+        return jsonify({'success': False, 'error': 'Нельзя вызвать самого себя'}), 400
+    def_presence = PvPArenaPresence.query.filter_by(user_id=defender.id).first()
+    if not def_presence:
+        return jsonify({'success': False, 'error': 'Соперник не на арене'}), 400
+    my_level = current_user.level or 1
+    def_level = defender.level or 1
+    if abs(my_level - def_level) > PVP_LEVEL_RANGE:
+        return jsonify({'success': False, 'error': f'Можно вызывать только игроков с уровнем в диапазоне ±{PVP_LEVEL_RANGE}'}), 400
+    # Проверить, нет ли уже ожидающего вызова от меня к этому игроку
+    existing = PvPDuelChallenge.query.filter_by(
+        challenger_id=current_user.id, defender_id=defender.id, status='pending'
+    ).first()
+    if existing:
+        return jsonify({'success': False, 'error': 'Вы уже отправили вызов этому игроку'}), 400
+    challenge = PvPDuelChallenge(challenger_id=current_user.id, defender_id=defender.id, status='pending')
+    db.session.add(challenge)
+    db.session.commit()
+    return jsonify({'success': True, 'challenge_id': challenge.id})
+
+
+@app.route('/api/pvp/challenges')
+@login_required
+def api_pvp_challenges():
+    """Входящие вызовы на дуэль (для отображения кнопки «Принять»)."""
+    incoming = PvPDuelChallenge.query.filter_by(defender_id=current_user.id, status='pending').order_by(PvPDuelChallenge.created_at.desc()).all()
+    out = []
+    for c in incoming:
+        u = c.challenger
+        if not u:
+            continue
+        avatar_url = url_for('static', filename=_avatar_static_filename(u.avatar_filename)) if getattr(u, 'avatar_filename', None) else None
+        out.append({
+            'id': c.id,
+            'challenger_id': u.id,
+            'challenger_name': u.character_name or u.username,
+            'challenger_level': u.level or 1,
+            'avatar_url': avatar_url,
+        })
+    return jsonify({'success': True, 'challenges': out})
+
+
+@app.route('/api/pvp/accept-challenge', methods=['POST'])
+@login_required
+def api_pvp_accept_challenge():
+    data = request.get_json() or {}
+    challenge_id = data.get('challenge_id')
+    if not challenge_id:
+        return jsonify({'success': False, 'error': 'challenge_id обязателен'}), 400
+    challenge = PvPDuelChallenge.query.get(challenge_id)
+    if not challenge or challenge.defender_id != current_user.id or challenge.status != 'pending':
+        return jsonify({'success': False, 'error': 'Вызов не найден или уже обработан'}), 404
+    challenge.status = 'accepted'
+    db.session.commit()
+    # Создать дуэль
+    ch = challenge.challenger
+    de = challenge.defender
+    max_hp_ch = PVP_HEALTH_PER_LEVEL * (ch.level or 1)
+    max_hp_de = PVP_HEALTH_PER_LEVEL * (de.level or 1)
+    duel = PvPDuel(
+        challenger_id=ch.id,
+        defender_id=de.id,
+        challenger_health=max_hp_ch,
+        defender_health=max_hp_de,
+        challenger_max_health=max_hp_ch,
+        defender_max_health=max_hp_de,
+        current_turn_user_id=ch.id,
+        status='active',
+    )
+    db.session.add(duel)
+    db.session.commit()
+    return jsonify({'success': True, 'duel_id': duel.id})
+
+
+@app.route('/api/pvp/my-active-duel')
+@login_required
+def api_pvp_my_active_duel():
+    """Есть ли у текущего пользователя активная дуэль (чтобы перенаправить инициатора вызова на страницу боя)."""
+    duel = PvPDuel.query.filter(
+        db.or_(
+            PvPDuel.challenger_id == current_user.id,
+            PvPDuel.defender_id == current_user.id
+        ),
+        PvPDuel.status == 'active'
+    ).first()
+    return jsonify({'success': True, 'duel_id': duel.id if duel else None})
+
+
+@app.route('/api/pvp/decline-challenge', methods=['POST'])
+@login_required
+def api_pvp_decline_challenge():
+    data = request.get_json() or {}
+    challenge_id = data.get('challenge_id')
+    if not challenge_id:
+        return jsonify({'success': False, 'error': 'challenge_id обязателен'}), 400
+    challenge = PvPDuelChallenge.query.get(challenge_id)
+    if not challenge or challenge.defender_id != current_user.id or challenge.status != 'pending':
+        return jsonify({'success': False, 'error': 'Вызов не найден или уже обработан'}), 404
+    challenge.status = 'declined'
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+def _pvp_duel_check_time_limit(duel):
+    """Если дуэль активна и время вышло (5 мин) — завершить по оставшемуся здоровью. Победитель тот, у кого больше HP; при равенстве — ничья."""
+    if duel.status != 'active' or not duel.created_at:
+        return
+    end_time = duel.created_at + timedelta(minutes=PVP_DUEL_DURATION_MINUTES)
+    if datetime.utcnow() <= end_time:
+        return
+    if duel.challenger_health > duel.defender_health:
+        duel.winner_id = duel.challenger_id
+    elif duel.defender_health > duel.challenger_health:
+        duel.winner_id = duel.defender_id
+    else:
+        duel.winner_id = None
+    duel.status = 'finished'
+    duel.finished_at = datetime.utcnow()
+    avg_level = ((duel.challenger.level or 1) + (duel.defender.level or 1)) / 2.0
+    base_reward = avg_level * PVP_REWARD_BASE_MULT
+    spread = base_reward * PVP_REWARD_SPREAD
+    for u in (duel.challenger, duel.defender):
+        reward = max(0, int(round(base_reward + random.uniform(-spread, spread))))
+        u.nums_balance = (u.nums_balance or 0) + reward
+    db.session.commit()
+
+
+def _pvp_duel_damage(attacker, defender):
+    """Урон в дуэли: max(5, атака атакующего − защита соперника * 0.2)."""
+    atk = attacker.damage
+    defense = defender.defense * 0.2
+    dmg = max(5, int(round(atk - defense)))
+    return dmg
+
+
+@app.route('/pvp-duel/<int:duel_id>')
+@login_required
+def pvp_duel_page(duel_id):
+    duel = PvPDuel.query.get(duel_id)
+    if not duel:
+        flash('Дуэль не найдена.', 'error')
+        return redirect(url_for('pvp_arena_page'))
+    if current_user.id not in (duel.challenger_id, duel.defender_id):
+        flash('Вы не участник этой дуэли.', 'error')
+        return redirect(url_for('pvp_arena_page'))
+    if duel.status == 'finished':
+        return render_template('pvp_duel.html', duel_id=duel_id, duel=duel, finished=True, winner=duel.winner)
+    opponent = duel.defender if current_user.id == duel.challenger_id else duel.challenger
+    me_is_challenger = current_user.id == duel.challenger_id
+    my_health = duel.challenger_health if me_is_challenger else duel.defender_health
+    my_max = duel.challenger_max_health if me_is_challenger else duel.defender_max_health
+    opp_health = duel.defender_health if me_is_challenger else duel.challenger_health
+    opp_max = duel.defender_max_health if me_is_challenger else duel.challenger_max_health
+    my_turn = duel.current_turn_user_id == current_user.id
+    opp_avatar = url_for('static', filename=_avatar_static_filename(opponent.avatar_filename)) if getattr(opponent, 'avatar_filename', None) else None
+    my_avatar = url_for('static', filename=_avatar_static_filename(current_user.avatar_filename)) if getattr(current_user, 'avatar_filename', None) else None
+    opp_buffs = get_active_buffs_for_display(user_id=opponent.id)
+    my_buffs = get_active_buffs_for_display(user_id=current_user.id)
+    duel_ends_at = duel.created_at + timedelta(minutes=PVP_DUEL_DURATION_MINUTES) if duel.created_at else None
+    # Передаём время окончания в UTC с суффиксом Z, чтобы JS не интерпретировал как локальное
+    duel_ends_at_iso = (duel_ends_at.isoformat() + 'Z') if duel_ends_at else None
+    return render_template(
+        'pvp_duel.html',
+        duel_id=duel_id,
+        duel=duel,
+        finished=False,
+        opponent=opponent,
+        my_health=my_health,
+        my_max_health=my_max,
+        opp_health=opp_health,
+        opp_max_health=opp_max,
+        my_turn=my_turn,
+        opp_avatar_url=opp_avatar,
+        my_avatar_url=my_avatar,
+        opp_buffs=opp_buffs,
+        my_buffs=my_buffs,
+        duel_ends_at_iso=duel_ends_at_iso,
+        duel_duration_minutes=PVP_DUEL_DURATION_MINUTES,
+    )
+
+
+@app.route('/api/pvp/duel/<int:duel_id>/state')
+@login_required
+def api_pvp_duel_state(duel_id):
+    duel = PvPDuel.query.get(duel_id)
+    if not duel or current_user.id not in (duel.challenger_id, duel.defender_id):
+        return jsonify({'success': False, 'error': 'Дуэль не найдена'}), 404
+    _pvp_duel_check_time_limit(duel)
+    me_is_challenger = current_user.id == duel.challenger_id
+    end_time = duel.created_at + timedelta(minutes=PVP_DUEL_DURATION_MINUTES) if duel.created_at else None
+    duel_ends_at_iso = (end_time.isoformat() + 'Z') if end_time else None
+    return jsonify({
+        'success': True,
+        'status': duel.status,
+        'challenger_health': duel.challenger_health,
+        'defender_health': duel.defender_health,
+        'challenger_max_health': duel.challenger_max_health,
+        'defender_max_health': duel.defender_max_health,
+        'winner_id': duel.winner_id,
+        'my_health': duel.challenger_health if me_is_challenger else duel.defender_health,
+        'my_max_health': duel.challenger_max_health if me_is_challenger else duel.defender_max_health,
+        'opp_health': duel.defender_health if me_is_challenger else duel.challenger_health,
+        'opp_max_health': duel.defender_max_health if me_is_challenger else duel.challenger_max_health,
+        'duel_ends_at_iso': duel_ends_at_iso,
+    })
+
+
+def _pvp_random_task(difficulty):
+    """Случайная задача для дуэли: случайный генератор или из БД."""
+    if TERRITORY_GENERATOR_BY_NAME:
+        name = random.choice(list(TERRITORY_GENERATOR_BY_NAME.keys()))
+        gen_fn = TERRITORY_GENERATOR_BY_NAME[name]
+        if gen_fn:
+            try:
+                t = gen_fn(difficulty)
+                if t:
+                    task = TerritoryTask(
+                        title=t.get('title', 'Задача'),
+                        text=t.get('description', ''),
+                        correct_answer=t.get('correct_answer', ''),
+                        xp_reward=t.get('points', 20),
+                    )
+                    db.session.add(task)
+                    db.session.flush()
+                    d = task.to_dict_public()
+                    if t.get('display_frac1'):
+                        d['display_frac1'] = t['display_frac1']
+                    if t.get('display_frac2'):
+                        d['display_frac2'] = t['display_frac2']
+                    if t.get('display_frac'):
+                        d['display_frac'] = t['display_frac']
+                    if t.get('display_operator') is not None:
+                        d['display_operator'] = t['display_operator']
+                    if 'int_part_zero' in t:
+                        d['int_part_zero'] = t['int_part_zero']
+                    return task, d
+            except Exception as e:
+                logger.exception('PvP task gen error: %s', e)
+    task = TerritoryTask.query.order_by(db.func.random()).first()
+    if not task:
+        return None, None
+    return task, task.to_dict_public()
+
+
+@app.route('/api/pvp/duel/<int:duel_id>/task')
+@login_required
+def api_pvp_duel_task(duel_id):
+    duel = PvPDuel.query.get(duel_id)
+    if not duel or current_user.id not in (duel.challenger_id, duel.defender_id):
+        return jsonify({'success': False, 'error': 'Дуэль не найдена'}), 404
+    _pvp_duel_check_time_limit(duel)
+    if duel.status != 'active':
+        return jsonify({'success': False, 'error': 'Дуэль завершена'}), 400
+    avg_level = ((duel.challenger.level or 1) + (duel.defender.level or 1)) // 2
+    difficulty = _territory_difficulty_from_level(max(1, avg_level))
+    task, task_dict = _pvp_random_task(difficulty)
+    if not task or not task_dict:
+        return jsonify({'success': False, 'error': 'Нет доступных задач'}), 404
+    db.session.commit()
+    return jsonify({'success': True, 'task': task_dict, 'task_id': task.id})
+
+
+@app.route('/api/pvp/duel/<int:duel_id>/answer', methods=['POST'])
+@login_required
+def api_pvp_duel_answer(duel_id):
+    duel = PvPDuel.query.get(duel_id)
+    if not duel or current_user.id not in (duel.challenger_id, duel.defender_id):
+        return jsonify({'success': False, 'error': 'Дуэль не найдена'}), 404
+    _pvp_duel_check_time_limit(duel)
+    if duel.status != 'active':
+        return jsonify({'success': False, 'error': 'Дуэль завершена'}), 400
+    data = request.get_json() or {}
+    task_id = data.get('task_id')
+    answer = data.get('answer')
+    if task_id is None:
+        return jsonify({'success': False, 'error': 'task_id обязателен'}), 400
+    task = TerritoryTask.query.get(task_id)
+    if not task:
+        return jsonify({'success': False, 'error': 'Задача не найдена'}), 404
+    correct = _check_task_answer(task, answer)
+    attacker = current_user
+    defender = duel.defender if current_user.id == duel.challenger_id else duel.challenger
+    dmg = _pvp_duel_damage(attacker, defender) if correct else 0
+    if correct:
+        if current_user.id == duel.challenger_id:
+            duel.defender_health = max(0, duel.defender_health - dmg)
+        else:
+            duel.challenger_health = max(0, duel.challenger_health - dmg)
+        if duel.challenger_health <= 0 or duel.defender_health <= 0:
+            duel.status = 'finished'
+            duel.winner_id = attacker.id
+            duel.finished_at = datetime.utcnow()
+            avg_level = ((duel.challenger.level or 1) + (duel.defender.level or 1)) / 2.0
+            base_reward = avg_level * PVP_REWARD_BASE_MULT
+            spread = base_reward * PVP_REWARD_SPREAD
+            for u in (duel.challenger, duel.defender):
+                reward = max(0, int(round(base_reward + random.uniform(-spread, spread))))
+                u.nums_balance = (u.nums_balance or 0) + reward
+    db.session.commit()
+    me_is_challenger = current_user.id == duel.challenger_id
+    return jsonify({
+        'success': True,
+        'correct': correct,
+        'damage': dmg,
+        'status': duel.status,
+        'winner_id': duel.winner_id,
+        'challenger_health': duel.challenger_health,
+        'defender_health': duel.defender_health,
+        'challenger_max_health': duel.challenger_max_health,
+        'defender_max_health': duel.defender_max_health,
+        'my_health': duel.challenger_health if me_is_challenger else duel.defender_health,
+        'my_max_health': duel.challenger_max_health if me_is_challenger else duel.defender_max_health,
+        'opp_health': duel.defender_health if me_is_challenger else duel.challenger_health,
+        'opp_max_health': duel.defender_max_health if me_is_challenger else duel.challenger_max_health,
+    })
+
+
+@app.route('/api/pvp/duel/<int:duel_id>/surrender', methods=['POST'])
+@login_required
+def api_pvp_duel_surrender(duel_id):
+    """Сдаться и выйти из дуэли. Игрок проигрывает, победителем становится соперник."""
+    duel = PvPDuel.query.get(duel_id)
+    if not duel or current_user.id not in (duel.challenger_id, duel.defender_id):
+        return jsonify({'success': False, 'error': 'Дуэль не найдена'}), 404
+    if duel.status != 'active':
+        return jsonify({'success': False, 'error': 'Дуэль уже завершена'}), 400
+    winner = duel.defender if current_user.id == duel.challenger_id else duel.challenger
+    duel.status = 'finished'
+    duel.winner_id = winner.id
+    duel.finished_at = datetime.utcnow()
+    avg_level = ((duel.challenger.level or 1) + (duel.defender.level or 1)) / 2.0
+    base_reward = avg_level * PVP_REWARD_BASE_MULT
+    spread = base_reward * PVP_REWARD_SPREAD
+    for u in (duel.challenger, duel.defender):
+        reward = max(0, int(round(base_reward + random.uniform(-spread, spread))))
+        u.nums_balance = (u.nums_balance or 0) + reward
+    db.session.commit()
+    return jsonify({'success': True})
 
 
 # Тестовая страница для просмотра анимации сундука (без логики рейда/дропа)
