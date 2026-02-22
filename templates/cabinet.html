@@ -47,6 +47,33 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     margin-bottom: 20px;
     align-items: center;
 }
+.cabinet-burger-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    color: #d4a84b;
+    font-size: 1.4rem;
+    cursor: pointer;
+    font-family: inherit;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.cabinet-burger-btn:hover {
+    color: #e8c86a;
+    border-color: #8b6914;
+}
+.cabinet-top-nav-links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+}
 .cabinet-top-nav .back-link {
     display: inline-flex;
     align-items: center;
@@ -400,6 +427,78 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     min-height: 48px;
 }
 .balance-shop-section .shop-toggle-btn:hover { color: #e8c86a; border-color: #8b6914; }
+.nums-transfer-block {
+    margin-bottom: 20px;
+    background: rgba(44,24,16,0.4);
+    border: 1px solid #5c4033;
+    border-radius: 8px;
+    overflow: hidden;
+}
+.nums-transfer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 16px;
+    cursor: pointer;
+    user-select: none;
+}
+.nums-transfer-header:hover { background: rgba(92,64,51,0.2); }
+.nums-transfer-title { margin: 0; font-size: 1rem; color: #d4a84b; font-family: 'Cinzel', Georgia, serif; }
+.nums-transfer-toggle {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    color: #d4a84b;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    transition: transform 0.2s;
+}
+.nums-transfer-block.collapsed .nums-transfer-toggle { transform: rotate(-90deg); }
+.nums-transfer-body {
+    padding: 0 16px 16px;
+    border-top: 1px solid rgba(92,64,51,0.4);
+}
+.nums-transfer-block.collapsed .nums-transfer-body { display: none; }
+.nums-transfer-desc { margin: 12px 0; font-size: 0.9rem; color: #b8a088; }
+.nums-transfer-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    align-items: flex-end;
+}
+.nums-transfer-form label { display: block; font-size: 0.9rem; color: #c4a574; margin-bottom: 4px; }
+.nums-transfer-form input[type="text"],
+.nums-transfer-form input[type="number"] {
+    padding: 8px 12px;
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    background: #2c1810;
+    color: #e8dcc4;
+    font-family: inherit;
+    min-width: 120px;
+}
+.nums-transfer-form input[type="number"] { min-width: 80px; }
+.nums-transfer-form input[type="number"]::-webkit-inner-spin-button,
+.nums-transfer-form input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.nums-transfer-form input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+.nums-transfer-btn {
+    padding: 10px 20px;
+    border-radius: 6px;
+    border: 2px solid #5c4033;
+    background: linear-gradient(145deg, #4a5034 0%, #3d4528 100%);
+    color: #d4e0a8;
+    font-weight: bold;
+    font-family: 'Cinzel', Georgia, serif;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+}
+.nums-transfer-btn:hover { color: #e8f0c0; border-color: #6b7345; }
+.nums-transfer-error { margin: 10px 0 0; color: #e8a088; font-size: 0.9rem; }
 .shop-grid-wrap { display: none; margin-top: 16px; }
 .shop-grid-wrap.open { display: block; }
 .shop-category-block { margin-bottom: 24px; }
@@ -570,7 +669,8 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 }
 .member-item .member-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .member-item .member-level { font-size: 0.8rem; color: #d4a84b; font-weight: bold; }
-.member-item .kick-btn, .pending-item .accept-btn, .pending-item .reject-btn {
+.member-item .member-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.member-item .kick-btn, .member-item .transfer-ownership-btn, .pending-item .accept-btn, .pending-item .reject-btn {
     padding: 8px 14px;
     border-radius: 4px;
     border: 2px solid;
@@ -579,6 +679,12 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     font-weight: bold;
     font-family: 'Cinzel', Georgia, serif;
 }
+.member-item .transfer-ownership-btn {
+    background: linear-gradient(145deg, #4a5034 0%, #3d4528 100%);
+    border-color: #6b7345;
+    color: #d4e0a8;
+}
+.member-item .transfer-ownership-btn:hover { color: #e8f0c0; border-color: #8b9545; }
 .member-item .kick-btn {
     background: linear-gradient(145deg, #5c3434 0%, #4a2828 100%);
     border-color: #8b4545;
@@ -628,6 +734,8 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 .clan-chat-msg:last-child { margin-bottom: 0; }
 .clan-chat-msg .chat-author { font-weight: bold; color: #d4a84b; margin-right: 8px; }
 .clan-chat-msg .chat-time { font-size: 0.8rem; color: #b8a088; margin-left: 6px; }
+.clan-chat-msg,
+.clan-chat-msg .chat-text { overflow-wrap: break-word; word-break: break-word; min-width: 0; }
 .clan-chat-form {
     display: flex;
     gap: 10px;
@@ -669,7 +777,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     border-radius: 50%;
     border: none;
     background: linear-gradient(145deg, #6b5344 0%, #5c4033 50%, #4a3520 100%);
-    color: #e8dcc4;
+    color: #fff;
     font-size: 1.5rem;
     cursor: pointer;
     box-shadow: 0 4px 14px rgba(0,0,0,0.35), 0 0 0 1px rgba(212,168,75,0.2), inset 0 1px 0 rgba(255,255,255,0.08);
@@ -704,6 +812,18 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 }
 /* Модалка чата с кланом — компактная и аккуратная */
 #clanChatModal.modal-overlay { padding: 16px; }
+#clanChatModal .clan-chat-messages .clan-chat-msg,
+#clanChatModal .clan-chat-messages .clan-chat-msg .chat-text,
+.clan-chat-modal .clan-chat-msg,
+.clan-chat-modal .clan-chat-msg .chat-text { overflow-wrap: break-word; word-break: break-word; min-width: 0; }
+#clanChatModal .clan-chat-msg,
+#clanChatModal .clan-chat-msg .chat-text,
+.clan-chat-modal .clan-chat-msg,
+.clan-chat-modal .clan-chat-msg .chat-text { color: #fff; }
+#clanChatModal .clan-chat-msg .chat-author { color: #e8c86a; }
+.clan-chat-modal .clan-chat-msg .chat-author { color: #e8c86a; }
+#clanChatModal .clan-chat-msg .chat-time,
+.clan-chat-modal .clan-chat-msg .chat-time { color: rgba(255,255,255,0.85); }
 #clanChatModal .modal-box,
 .clan-chat-modal .modal-box {
     max-width: 380px;
@@ -739,7 +859,12 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     min-height: 120px;
     border-radius: 8px;
     border: 1px solid rgba(92,64,51,0.35);
+    background: rgba(44,24,16,0.6);
 }
+#clanChatModal .clan-chat-msg,
+.clan-chat-modal .clan-chat-msg { background: rgba(61,41,20,0.5); }
+#clanChatModal .clan-chat-empty,
+.clan-chat-modal .clan-chat-empty { color: rgba(255,255,255,0.9); }
 #clanChatModal .clan-chat-form,
 .clan-chat-modal .clan-chat-form { margin-top: 10px; flex-shrink: 0; }
 #clanChatModal .modal-chat-close,
@@ -843,8 +968,36 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     .nums-balance-block { padding: 14px 16px; margin-left: 0; }
     .nums-balance-block .nums-value { font-size: 1.5rem; }
     .nums-balance-block .nums-suffix { font-size: 1.1rem; }
-    .cabinet-top-nav { flex-direction: column; gap: 8px; margin-bottom: 12px; }
-    .cabinet-top-nav .back-link { width: 100%; }
+    .cabinet-top-nav {
+        flex-wrap: nowrap;
+        justify-content: flex-end;
+        margin-bottom: 12px;
+        gap: 0;
+        position: relative;
+        z-index: 100000;
+    }
+    .cabinet-burger-btn { display: flex; }
+    .cabinet-top-nav-links {
+        display: none;
+        position: absolute;
+        top: 100%;
+        right: 0;
+        margin-top: 8px;
+        flex-direction: column;
+        min-width: 200px;
+        background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+        border: 2px solid #5c4033;
+        border-radius: 8px;
+        padding: 8px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        z-index: 100001;
+        gap: 4px;
+    }
+    .cabinet-top-nav.open .cabinet-top-nav-links {
+        display: flex;
+    }
+    .cabinet-top-nav.open .cabinet-top-nav-links .logout-link { margin-left: 0; }
+    .cabinet-top-nav .back-link { width: 100%; min-height: 44px; }
     .cabinet-section { padding: 16px; margin-bottom: 16px; }
     .cabinet-section h2 { font-size: 1.1rem; }
     .profile-row { flex-direction: column; align-items: flex-start; gap: 16px; }
@@ -867,7 +1020,8 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     .clan-edit-form input[type="text"] { max-width: 100%; }
     .clan-members-toggle, .clan-btn { width: 100%; text-align: center; margin: 4px 0; min-height: 44px; display: flex; align-items: center; justify-content: center; }
     .member-item { flex-wrap: wrap; gap: 8px; }
-    .member-item .kick-btn { width: 100%; }
+    .member-item .member-actions { width: 100%; }
+    .member-item .kick-btn, .member-item .transfer-ownership-btn { flex: 1; min-width: 120px; }
     .pending-item { flex-wrap: wrap; }
     .pending-item .accept-btn, .pending-item .reject-btn { min-height: 40px; }
     .clan-chat-form { flex-direction: column; }
@@ -889,12 +1043,32 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         padding: 12px 14px;
         justify-content: flex-start;
     }
+    /* Описание баланса нумов — не выходить за экран на мобильных */
+    .nums-balance-block {
+        position: relative;
+    }
+    .nums-balance-block .nums-tooltip-wrap {
+        position: static;
+    }
+    .nums-balance-block .stat-tooltip {
+        left: 0;
+        right: 0;
+        top: 100%;
+        margin-top: 6px;
+        width: auto;
+        max-width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+    }
     .balance-shop-section .shop-toggle-btn {
         width: 100%;
         padding: 12px 16px;
         font-size: 1rem;
         min-height: 44px;
     }
+    .nums-transfer-form { flex-direction: column; align-items: stretch; }
+    .nums-transfer-form input[type="text"], .nums-transfer-form input[type="number"] { min-width: 0; width: 100%; box-sizing: border-box; }
+    .nums-transfer-btn { width: 100%; min-height: 44px; }
     .shop-grid-wrap { margin-top: 12px; }
     .shop-category-block { margin-bottom: 16px; }
     .shop-category-block h4 { font-size: 0.95rem; margin-bottom: 10px; }
@@ -952,11 +1126,14 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 {% block content %}
 <div class="cabinet-page">
 <div class="cabinet-inner">
-    <nav class="cabinet-top-nav">
-        <a href="{{ url_for('territory_battle_page') }}" class="back-link">Битва за территорию</a>
-        <a href="{{ url_for('pvp_arena_page') }}" class="back-link">PvP Арена</a>
-        <a href="{{ url_for('territory_clans_top') }}" class="back-link">Топ кланов</a>
-        <a href="{{ url_for('logout') }}" class="back-link logout-link">Выйти из аккаунта</a>
+    <nav class="cabinet-top-nav" id="cabinetTopNav">
+        <button type="button" class="cabinet-burger-btn" id="cabinetBurgerBtn" aria-label="Меню">☰</button>
+        <div class="cabinet-top-nav-links">
+            <a href="{{ url_for('territory_battle_page') }}" class="back-link">Битва за территорию</a>
+            <a href="{{ url_for('pvp_arena_page') }}" class="back-link">PvP Арена</a>
+            <a href="{{ url_for('game_rating_page', tab='clans') }}" class="back-link">Рейтинг</a>
+            <a href="{{ url_for('logout') }}" class="back-link logout-link">Выйти из аккаунта</a>
+        </div>
     </nav>
     <h1>Личный кабинет</h1>
 
@@ -1050,6 +1227,23 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                         <button type="button" class="stat-help" id="helpNums" aria-label="Описание">?</button>
                         <span class="stat-tooltip" id="tooltipNums">Нумы начисляются за правильное решение задач в битве за территорию. Награда зависит от уровня сложности задания.</span>
                     </span>
+                </div>
+            </div>
+            <div class="nums-transfer-block collapsed" id="numsTransferBlock">
+                <div class="nums-transfer-header" id="numsTransferHeader" data-toggle-nums-transfer>
+                    <h3 class="nums-transfer-title">Перевести Нумы</h3>
+                    <button type="button" class="nums-transfer-toggle" aria-label="Свернуть/развернуть">▼</button>
+                </div>
+                <div class="nums-transfer-body">
+                    <p class="nums-transfer-desc">Переведите часть своих Нумов другому игроку по его логину.</p>
+                    <form id="numsTransferForm" class="nums-transfer-form">
+                        <label for="numsTransferUsername">Логин получателя</label>
+                        <input type="text" id="numsTransferUsername" name="username" placeholder="Логин игрока" autocomplete="off" required>
+                        <label for="numsTransferAmount">Сумма (Нумов)</label>
+                        <input type="number" id="numsTransferAmount" name="amount" min="1" placeholder="0" required>
+                        <button type="submit" class="nums-transfer-btn">Перевести</button>
+                    </form>
+                    <p id="numsTransferError" class="nums-transfer-error" style="display: none;"></p>
                 </div>
             </div>
             <div class="shop-grid-wrap" id="shopGridWrap">
@@ -1147,7 +1341,10 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                         <span class="member-level">Ур. {{ m.level }}</span>
                     </div>
                     {% if user.id == clan_data.clan.owner_id and not m.is_owner %}
-                    <button class="kick-btn" data-user-id="{{ m.id }}">Исключить</button>
+                    <span class="member-actions">
+                        <button type="button" class="transfer-ownership-btn" data-user-id="{{ m.id }}" data-character-name="{{ (m.character_name or m.username) | e }}">Передать владение</button>
+                        <button class="kick-btn" data-user-id="{{ m.id }}">Исключить</button>
+                    </span>
                     {% endif %}
                 </div>
                 {% endfor %}
@@ -1209,7 +1406,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 
         <!-- Выход из клана -->
         <div class="clan-block">
-            <button type="button" class="clan-btn danger" onclick="openLeaveModal()">Выйти из клана</button>
+            <button type="button" id="leaveClanBtn" class="clan-btn danger" onclick="openLeaveModal()" data-is-owner="{{ '1' if (clan_data and user.id == clan_data.clan.owner_id) else '0' }}">Выйти из клана</button>
         </div>
         {% elif pending_request %}
         <div class="clan-block">
@@ -1265,11 +1462,23 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 <!-- Модальное окно выхода из клана -->
 <div class="modal-overlay" id="leaveModal">
     <div class="modal-box">
-        <h3>Выйти из клана?</h3>
-        <p>Вы уверены, что хотите покинуть клан?</p>
+        <h3 id="leaveModalTitle">Выйти из клана?</h3>
+        <p id="leaveModalText">Вы уверены, что хотите покинуть клан?</p>
         <div class="modal-buttons">
             <button class="btn-cancel" onclick="closeLeaveModal()">Отмена</button>
-            <button class="btn-confirm danger" onclick="confirmLeave()">Выйти</button>
+            <button class="btn-confirm danger" id="leaveModalConfirmBtn" onclick="confirmLeave()">Выйти</button>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно передачи владения кланом -->
+<div class="modal-overlay" id="transferOwnershipModal">
+    <div class="modal-box">
+        <h3>Передать владение кланом?</h3>
+        <p id="transferOwnershipModalText">Передать владение кланом участнику «…»? Вы перестанете быть создателем клана.</p>
+        <div class="modal-buttons">
+            <button type="button" class="btn-cancel" onclick="closeTransferOwnershipModal()">Отмена</button>
+            <button type="button" class="btn-confirm" id="transferOwnershipConfirmBtn">Передать владение</button>
         </div>
     </div>
 </div>
@@ -1355,6 +1564,19 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 
 {% block scripts %}
 <script>
+(function() {
+    var nav = document.getElementById('cabinetTopNav');
+    var btn = document.getElementById('cabinetBurgerBtn');
+    if (nav && btn) {
+        function closeMenu() { nav.classList.remove('open'); }
+        function toggleMenu() { nav.classList.toggle('open'); }
+        btn.addEventListener('click', function(e) { e.stopPropagation(); toggleMenu(); });
+        var linksWrap = nav.querySelector('.cabinet-top-nav-links');
+        if (linksWrap) linksWrap.addEventListener('click', function(e) { e.stopPropagation(); });
+        nav.querySelectorAll('.cabinet-top-nav-links a').forEach(function(a) { a.addEventListener('click', closeMenu); });
+        document.addEventListener('click', closeMenu);
+    }
+})();
 (function() {
     var totalSkillPoints = {{ user.skill_points_total }};
     var skillState = {
@@ -1627,11 +1849,67 @@ document.querySelectorAll('.kick-btn').forEach(btn => {
             });
     });
 });
+var transferOwnershipPendingUserId = null;
+function openTransferOwnershipModal(userId, characterName) {
+    transferOwnershipPendingUserId = userId;
+    var textEl = document.getElementById('transferOwnershipModalText');
+    if (textEl) textEl.textContent = 'Передать владение кланом участнику «' + (characterName || 'этому участнику') + '»? Вы перестанете быть создателем клана.';
+    var m = document.getElementById('transferOwnershipModal');
+    if (m) { m.style.display = 'flex'; m.style.visibility = 'visible'; m.classList.add('open'); document.body.appendChild(m); }
+}
+function closeTransferOwnershipModal() {
+    transferOwnershipPendingUserId = null;
+    var m = document.getElementById('transferOwnershipModal');
+    if (m) { m.classList.remove('open'); m.style.display = ''; m.style.visibility = ''; }
+}
+document.querySelectorAll('.transfer-ownership-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        var uid = parseInt(this.dataset.userId, 10);
+        var name = this.dataset.characterName || 'этому участнику';
+        openTransferOwnershipModal(uid, name);
+    });
+});
+(function() {
+    var confirmBtn = document.getElementById('transferOwnershipConfirmBtn');
+    if (confirmBtn) confirmBtn.addEventListener('click', function() {
+        if (transferOwnershipPendingUserId == null) return;
+        var uid = transferOwnershipPendingUserId;
+        closeTransferOwnershipModal();
+        fetch('{{ url_for("api_clan_transfer_ownership", clan_id=clan_data.clan.id) }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: uid })
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) location.reload();
+                else alert(data.error || 'Ошибка');
+            });
+    });
+})();
 {% endif %}
 
 function openLeaveModal() {
     var m = document.getElementById('leaveModal');
-    if (m) { m.style.display = 'flex'; m.style.visibility = 'visible'; m.classList.add('open'); document.body.appendChild(m); }
+    if (!m) return;
+    var btn = document.getElementById('leaveClanBtn');
+    var isOwner = btn && btn.getAttribute('data-is-owner') === '1';
+    var title = document.getElementById('leaveModalTitle');
+    var text = document.getElementById('leaveModalText');
+    var confirmBtn = document.getElementById('leaveModalConfirmBtn');
+    if (isOwner && title && text && confirmBtn) {
+        title.textContent = 'Распустить клан?';
+        text.textContent = 'Вы создатель клана. При выходе все участники будут автоматически исключены из клана, затем клан будет распущен и вся информация о нём удалена (заявки, чат, владение областями). Продолжить?';
+        confirmBtn.textContent = 'Да, распустить клан';
+    } else if (title && text && confirmBtn) {
+        title.textContent = 'Выйти из клана?';
+        text.textContent = 'Вы уверены, что хотите покинуть клан?';
+        confirmBtn.textContent = 'Выйти';
+    }
+    m.style.display = 'flex';
+    m.style.visibility = 'visible';
+    m.classList.add('open');
+    document.body.appendChild(m);
 }
 function closeLeaveModal() {
     var m = document.getElementById('leaveModal');
@@ -1984,9 +2262,11 @@ var CURRENT_USER_ID = {{ user.id }};
     if (window.location.hash !== '#clan-join-requests') return;
     var el = document.getElementById('clan-join-requests');
     if (!el) return;
+    var section = el.closest('.cabinet-section');
+    if (section && section.classList.contains('collapsed')) section.classList.remove('collapsed');
     setTimeout(function() {
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 100);
+    }, 150);
 })();
 
 (function() {
@@ -2004,9 +2284,55 @@ var CURRENT_USER_ID = {{ user.id }};
             shopGridWrap.classList.toggle('open');
         });
     }
+    var numsTransferBlock = document.getElementById('numsTransferBlock');
+    var numsTransferHeader = document.getElementById('numsTransferHeader');
+    if (numsTransferBlock && numsTransferHeader) {
+        numsTransferHeader.addEventListener('click', function() {
+            numsTransferBlock.classList.toggle('collapsed');
+        });
+    }
     var balanceDisplay = document.getElementById('numsBalanceDisplay');
     function getBalance() { return parseInt(balanceDisplay ? balanceDisplay.textContent : 0, 10) || 0; }
     function setBalance(v) { if (balanceDisplay) balanceDisplay.textContent = v; }
+
+    var numsTransferForm = document.getElementById('numsTransferForm');
+    var numsTransferError = document.getElementById('numsTransferError');
+    if (numsTransferForm) {
+        numsTransferForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (numsTransferError) { numsTransferError.style.display = 'none'; numsTransferError.textContent = ''; }
+            var usernameInput = document.getElementById('numsTransferUsername');
+            var amountInput = document.getElementById('numsTransferAmount');
+            var username = usernameInput && usernameInput.value ? usernameInput.value.trim() : '';
+            var amount = amountInput ? parseInt(amountInput.value, 10) : 0;
+            if (!username || amount <= 0) {
+                if (numsTransferError) { numsTransferError.textContent = 'Укажите логин получателя и сумму больше нуля.'; numsTransferError.style.display = 'block'; }
+                return;
+            }
+            if (amount > getBalance()) {
+                if (numsTransferError) { numsTransferError.textContent = 'Недостаточно Нумов.'; numsTransferError.style.display = 'block'; }
+                return;
+            }
+            fetch('{{ url_for("api_nums_transfer") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: username, amount: amount })
+            })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        setBalance(data.balance);
+                        numsTransferForm.reset();
+                        if (numsTransferError) numsTransferError.style.display = 'none';
+                    } else {
+                        if (numsTransferError) { numsTransferError.textContent = data.error || 'Ошибка перевода'; numsTransferError.style.display = 'block'; }
+                    }
+                })
+                .catch(function() {
+                    if (numsTransferError) { numsTransferError.textContent = 'Ошибка соединения'; numsTransferError.style.display = 'block'; }
+                });
+        });
+    }
 
     function renderShopTiles(items) {
         var enh = document.getElementById('shopTilesEnhancement');

@@ -49,6 +49,27 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     margin-bottom: 28px;
     font-size: 1rem;
 }
+.rules-intro-updates-wrap {
+    margin-top: 24px;
+    margin-bottom: 28px;
+}
+.rules-intro-updates-link {
+    color: #d4a84b;
+    text-decoration: none;
+    font-weight: bold;
+    padding: 10px 18px;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.9rem;
+    display: inline-block;
+    transition: color 0.2s, border-color 0.2s;
+}
+.rules-intro-updates-link:hover {
+    color: #e8c86a;
+    border-color: #8b6914;
+}
 
 .rules-nav {
     margin-bottom: 24px;
@@ -66,7 +87,55 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     display: inline-block;
     transition: color 0.2s, border-color 0.2s;
 }
-.rules-nav a:hover {
+.rules-nav a:hover,
+.rules-nav-links a:hover {
+    color: #e8c86a;
+    border-color: #8b6914;
+}
+.rules-nav-links a {
+    color: #d4a84b;
+    text-decoration: none;
+    font-weight: bold;
+    padding: 10px 18px;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.9rem;
+    display: inline-block;
+    transition: color 0.2s, border-color 0.2s;
+}
+
+.rules-nav-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 24px;
+}
+.rules-nav-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.rules-burger-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    color: #d4a84b;
+    font-size: 1.4rem;
+    cursor: pointer;
+    font-family: inherit;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.rules-burger-btn:hover {
     color: #e8c86a;
     border-color: #8b6914;
 }
@@ -121,6 +190,31 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 @media (max-width: 600px) {
     .rules-page { padding: 12px; }
     .rules-page h1 { font-size: 1.4rem; }
+    .rules-nav-wrap {
+        justify-content: flex-end;
+        position: relative;
+        z-index: 100000;
+    }
+    .rules-burger-btn { display: flex; }
+    .rules-nav-links {
+        display: none;
+        position: absolute;
+        top: 100%;
+        right: 0;
+        margin-top: 8px;
+        flex-direction: column;
+        min-width: 200px;
+        background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+        border: 2px solid #5c4033;
+        border-radius: 8px;
+        padding: 8px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        z-index: 100001;
+        gap: 4px;
+    }
+    .rules-nav-wrap.open .rules-nav-links {
+        display: flex;
+    }
     .rules-block {
         flex-direction: column !important;
         padding: 18px;
@@ -141,11 +235,20 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 {% block content %}
 <div class="rules-page">
     <div class="rules-inner">
-        <nav class="rules-nav">
-            <a href="{{ url_for('territory_battle_page') }}">← Битва за территорию</a>
+        <nav class="rules-nav rules-nav-wrap" id="rulesNavWrap">
+            <button type="button" class="rules-burger-btn" id="rulesBurgerBtn" aria-label="Меню">☰</button>
+            <div class="rules-nav-links">
+                <a href="{{ url_for('territory_battle_page') }}">← Битва за территорию</a>
+                <a href="{{ url_for('game_rating_page', tab='clans') }}">Рейтинг</a>
+                <a href="{{ url_for('pvp_arena_page') }}">PvP Арена</a>
+                <a href="{{ url_for('cabinet') }}">Личный кабинет</a>
+            </div>
         </nav>
 
         <h1>Битва за территорию</h1>
+        <p class="rules-intro rules-intro-updates-wrap">
+            <a href="{{ url_for('game_updates_page') }}" class="rules-intro-updates-link">Список обновлений</a>
+        </p>
         <p class="rules-intro">Обучение и правила игры</p>
 
         <div class="rules-block">
@@ -210,6 +313,36 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 
         <div class="rules-block">
             <div class="rules-block-img">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+            </div>
+            <div class="rules-block-content">
+                <h3>Внутриигровая валюта — Нумы</h3>
+                <p><strong>Нумы</strong> — это валюта битвы за территорию. Вы получаете Нумы за каждое правильное решение задачи при захвате или защите областей на карте. Чем выше ваш уровень, тем больше диапазон награды за задание. Нумы отображаются в личном кабинете в блоке «Баланс и Лавка предметов». Их можно тратить на покупку усилений и других предметов в лавке.</p>
+            </div>
+        </div>
+
+        <div class="rules-block">
+            <div class="rules-block-img">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM9 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm11 15H4v-2h16v2zm0-5H4V8h5.08L7 10.83 8.62 12 11 8.76l1-1.36 1 1.36L15.94 12 18 9.01 20.08 12H20v6z"/></svg>
+            </div>
+            <div class="rules-block-content">
+                <h3>Лавка: улучшения и предметы</h3>
+                <p>В <strong>личном кабинете</strong> в разделе «Баланс и Лавка предметов» вы можете тратить Нумы на покупку товаров. Есть два типа: <strong>усиления</strong> (улучшают вашу атаку, защиту, энергию, опыт или награду в Нумах) и <strong>проклятия</strong> (накладываются на вражеский клан или область и ухудшают их показатели). Эффекты могут действовать лично на вас, на весь ваш клан или на выбранную область. Купленные предметы хранятся в инвентаре — используйте их в нужный момент перед боем или для ослабления противника.</p>
+            </div>
+        </div>
+
+        <div class="rules-block">
+            <div class="rules-block-img">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6.92 5.5L2 15h2.02l1.12-3h5.72l1.12 3h2.02L9.08 5.5H6.92zM6.5 10l1.5-4 1.5 4H6.5zm12.58 4.5L17 10h-2.02l-1.12 3H8.24L7.12 10H5.1l4.92 9.5h2.06l2.5-6 2.5 6h2.06zm.5-4.5h-1.5l-1-3-1 3h-1.5l2.5-6 2.5 6z"/></svg>
+            </div>
+            <div class="rules-block-content">
+                <h3>Дуэли на PvP Арене</h3>
+                <p>На <strong>PvP Арене</strong> вы можете сражаться с другими игроками один на один в <strong>дуэлях</strong>. Зайдите на арену, выберите соперника из списка и отправьте вызов на дуэль. Если противник примет вызов, начнётся бой: по очереди решаются математические задачи, от правильных ответов зависит урон по «здоровью» противника. Учитываются ваши атака и защита (в том числе от усилений из лавки). За участие в дуэли начисляются Нумы. Управление дуэлью и кнопка сдачи — на странице боя.</p>
+            </div>
+        </div>
+
+        <div class="rules-block">
+            <div class="rules-block-img">
                 <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
             </div>
             <div class="rules-block-content">
@@ -223,4 +356,18 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         </nav>
     </div>
 </div>
+<script>
+(function() {
+    var wrap = document.getElementById('rulesNavWrap');
+    var btn = document.getElementById('rulesBurgerBtn');
+    if (!wrap || !btn) return;
+    function closeMenu() { wrap.classList.remove('open'); }
+    function toggleMenu() { wrap.classList.toggle('open'); }
+    btn.addEventListener('click', function(e) { e.stopPropagation(); toggleMenu(); });
+    var linksWrap = wrap.querySelector('.rules-nav-links');
+    if (linksWrap) linksWrap.addEventListener('click', function(e) { e.stopPropagation(); });
+    wrap.querySelectorAll('.rules-nav-links a').forEach(function(a) { a.addEventListener('click', closeMenu); });
+    document.addEventListener('click', closeMenu);
+})();
+</script>
 {% endblock %}

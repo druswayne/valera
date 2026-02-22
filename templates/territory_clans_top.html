@@ -66,6 +66,43 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     border-color: #8b6914;
 }
 
+.clans-top-nav-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    gap: 10px;
+    margin-bottom: 24px;
+}
+.clans-top-nav-links {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 8px;
+}
+.clans-top-nav-links a {
+    white-space: nowrap;
+}
+.clans-top-burger-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    color: #d4a84b;
+    font-size: 1.4rem;
+    cursor: pointer;
+    font-family: inherit;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.clans-top-burger-btn:hover {
+    color: #e8c86a;
+    border-color: #8b6914;
+}
+
 .clans-table-wrap {
     background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
     border: 2px solid #5c4033;
@@ -198,8 +235,41 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 }
 
 @media (max-width: 600px) {
-    .clans-top-page { padding: 12px; }
+    .clans-top-page {
+        width: 100%;
+        padding: 12px 0;
+        box-sizing: border-box;
+    }
+    .clans-top-inner {
+        padding: 0 12px;
+        max-width: none;
+    }
     .clans-top-page h1 { font-size: 1.4rem; }
+    .clans-top-nav-wrap {
+        justify-content: flex-end;
+        position: relative;
+        z-index: 100000;
+    }
+    .clans-top-burger-btn { display: flex; }
+    .clans-top-nav-links {
+        display: none;
+        position: absolute;
+        top: 100%;
+        right: 0;
+        margin-top: 8px;
+        flex-direction: column;
+        min-width: 200px;
+        background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+        border: 2px solid #5c4033;
+        border-radius: 8px;
+        padding: 8px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        z-index: 100001;
+        gap: 4px;
+    }
+    .clans-top-nav-wrap.open .clans-top-nav-links {
+        display: flex;
+    }
     .clan-members-row { padding-left: 18px; }
     .clan-row { padding: 12px 14px; }
 }
@@ -210,9 +280,14 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 <div class="clans-top-page">
 <div class="clans-top-inner">
     <h1>Топ кланов</h1>
-    <nav class="clans-top-nav">
-        <a href="{{ url_for('territory_battle_page') }}">← Битва за территорию</a>
-        <a href="{{ url_for('cabinet') }}">Личный кабинет</a>
+    <nav class="clans-top-nav clans-top-nav-wrap" id="clansTopNavWrap">
+        <button type="button" class="clans-top-burger-btn" id="clansTopBurgerBtn" aria-label="Меню">☰</button>
+        <div class="clans-top-nav-links">
+            <a href="{{ url_for('territory_battle_page') }}">← Битва за территорию</a>
+            <a href="{{ url_for('territory_battle_rules') }}">Как начать?</a>
+            <a href="{{ url_for('pvp_arena_page') }}">PvP Арена</a>
+            <a href="{{ url_for('cabinet') }}">Личный кабинет</a>
+        </div>
     </nav>
 
     <div class="clans-table-wrap">
@@ -255,6 +330,18 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 </div>
 
 <script>
+(function() {
+    var wrap = document.getElementById('clansTopNavWrap');
+    var btn = document.getElementById('clansTopBurgerBtn');
+    if (!wrap || !btn) return;
+    function closeMenu() { wrap.classList.remove('open'); }
+    function toggleMenu() { wrap.classList.toggle('open'); }
+    btn.addEventListener('click', function(e) { e.stopPropagation(); toggleMenu(); });
+    var linksWrap = wrap.querySelector('.clans-top-nav-links');
+    if (linksWrap) linksWrap.addEventListener('click', function(e) { e.stopPropagation(); });
+    wrap.querySelectorAll('.clans-top-nav-links a').forEach(function(a) { a.addEventListener('click', closeMenu); });
+    document.addEventListener('click', closeMenu);
+})();
 function toggleClan(rowEl) {
     rowEl.classList.toggle('expanded');
 }

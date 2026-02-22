@@ -38,10 +38,11 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     letter-spacing: 0.08em;
 }
 
-/* Лидер — класс, контролирующий больше всего областей */
+/* Лидер — класс, контролирующий больше всего областей; таймер и блок «Лидирует» на всю ширину */
 .global-progress {
-    max-width: 500px;
-    margin: 0 auto 24px;
+    width: 100%;
+    max-width: 100%;
+    margin: 0 0 24px;
     background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
     border-radius: 4px;
     padding: 14px 20px;
@@ -174,6 +175,32 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     border-color: #8b6914;
     box-shadow: 0 0 12px rgba(212,168,75,0.25);
 }
+.territory-burger-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    color: #d4a84b;
+    font-size: 1.4rem;
+    cursor: pointer;
+    font-family: inherit;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.territory-burger-btn:hover {
+    color: #e8c86a;
+    border-color: #8b6914;
+}
+.territory-top-nav-links {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
 .territory-login-btn {
     padding: 10px 20px;
     background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
@@ -273,7 +300,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
 }
 .territory-buff-icon {
     width: 24px;
@@ -306,6 +333,46 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 .territory-buff-icons-clan {
     margin-top: 4px;
 }
+/* Карусель иконок предметов (при более чем 3) */
+.territory-buff-carousel {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.territory-buff-carousel-track {
+    overflow: hidden;
+    display: inline-flex;
+    width: calc(3 * 24px + 2 * 4px);
+    flex-shrink: 0;
+}
+.territory-buff-carousel-inner {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: nowrap;
+    transition: transform 0.2s ease;
+}
+.territory-buff-carousel-btn {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 2px solid #8b6914;
+    border-radius: 4px;
+    background: rgba(244,228,188,0.92);
+    color: #3d2914;
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    box-sizing: border-box;
+}
+.territory-buff-carousel-btn:hover:not(:disabled) { color: #2c1810; border-color: #d4a84b; background: rgba(232,212,170,0.98); }
+.territory-buff-carousel-has-many .territory-buff-carousel-btn { display: inline-flex; }
+.territory-buff-carousel-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .territory-player-stats {
     display: flex;
     gap: 14px;
@@ -640,6 +707,18 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 .territory-map .region-buff-icons .territory-buff-icon-placeholder {
     filter: drop-shadow(0 1px 3px rgba(0,0,0,0.9));
 }
+.region-buff-carousel-arrow { cursor: pointer; }
+.region-buff-carousel-arrow rect {
+    fill: rgba(244,228,188,0.95);
+    stroke: #8b6914;
+}
+.region-buff-carousel-arrow text {
+    fill: #3d2914;
+    text-anchor: middle;
+    dominant-baseline: central;
+}
+.region-buff-carousel-arrow:hover rect { fill: rgba(232,212,170,0.98); stroke: #d4a84b; }
+.region-buff-carousel-arrow:hover text { fill: #2c1810; }
 
 /* Запрет копирования/выделения текста условия задачи */
 .territory-task-content.no-copy {
@@ -1125,7 +1204,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     border-radius: 50%;
     border: none;
     background: linear-gradient(145deg, #6b5344 0%, #5c4033 50%, #4a3520 100%);
-    color: #e8dcc4;
+    color: #fff;
     font-size: 1.5rem;
     cursor: pointer;
     box-shadow: 0 4px 14px rgba(0,0,0,0.35), 0 0 0 1px rgba(212,168,75,0.2), inset 0 1px 0 rgba(255,255,255,0.08);
@@ -1199,6 +1278,8 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 .clan-chat-modal .clan-chat-msg-own { align-self: flex-end; border-left: none; border-right: 3px solid #d4a84b; text-align: right; background: rgba(90,60,30,0.25); }
 .clan-chat-modal .clan-chat-msg .chat-author { font-weight: bold; color: #5c4033; margin-right: 8px; }
 .clan-chat-modal .clan-chat-msg .chat-time { font-size: 0.8rem; color: #8b7355; margin-left: 6px; }
+.clan-chat-modal .clan-chat-msg,
+.clan-chat-modal .clan-chat-msg .chat-text { overflow-wrap: break-word; word-break: break-word; min-width: 0; }
 .clan-chat-modal .clan-chat-form { display: flex; gap: 10px; margin-top: 0; flex-shrink: 0; }
 .clan-chat-modal .clan-chat-form input[type="text"] {
     flex: 1; min-width: 0; padding: 10px 14px; border: 2px solid #5c4033; border-radius: 6px; background: #fff; color: #2c1810; font-family: inherit;
@@ -1219,9 +1300,34 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     .territory-page { padding: 12px; }
     .territory-page h1 { font-size: 1.4rem; letter-spacing: 0.04em; }
     .territory-top-nav {
-        flex-direction: column;
+        flex-wrap: nowrap;
+        justify-content: flex-end;
         margin-bottom: 12px;
-        gap: 8px;
+        gap: 0;
+        position: relative;
+        z-index: 100000;
+    }
+    .territory-burger-btn {
+        display: flex;
+    }
+    .territory-top-nav-links {
+        display: none;
+        position: absolute;
+        top: 100%;
+        right: 0;
+        margin-top: 8px;
+        flex-direction: column;
+        min-width: 200px;
+        background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+        border: 2px solid #5c4033;
+        border-radius: 8px;
+        padding: 8px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        z-index: 100001;
+        gap: 4px;
+    }
+    .territory-top-nav.open .territory-top-nav-links {
+        display: flex;
     }
     .territory-top-nav a {
         width: 100%;
@@ -1289,15 +1395,18 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 
 {% block content %}
 <div class="territory-page">
-    <nav class="territory-top-nav">
-        <a href="{{ url_for('territory_battle_rules') }}">Как начать?</a>
-        <a href="{{ url_for('territory_clans_top') }}">Топ кланов</a>
-        <a href="{{ url_for('pvp_arena_page') }}">PvP Арена</a>
-        {% if user_logged_in %}
-        <a href="{{ url_for('cabinet') }}">Личный кабинет</a>
-        {% else %}
-        <a href="{{ url_for('login') }}?next={{ url_for('territory_battle_page') | urlencode }}" class="territory-login-btn">Войти</a>
-        {% endif %}
+    <nav class="territory-top-nav" id="territoryTopNav">
+        <button type="button" class="territory-burger-btn" id="territoryBurgerBtn" aria-label="Меню">☰</button>
+        <div class="territory-top-nav-links">
+            <a href="{{ url_for('territory_battle_rules') }}">Как начать?</a>
+            <a href="{{ url_for('game_rating_page', tab='clans') }}">Рейтинг</a>
+            <a href="{{ url_for('pvp_arena_page') }}">PvP Арена</a>
+            {% if user_logged_in %}
+            <a href="{{ url_for('cabinet') }}">Личный кабинет</a>
+            {% else %}
+            <a href="{{ url_for('login') }}?next={{ url_for('territory_battle_page') | urlencode }}" class="territory-login-btn">Войти</a>
+            {% endif %}
+        </div>
     </nav>
 
     <h1>Битва за территорию</h1>
@@ -1334,6 +1443,23 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
             <p class="territory-player-name-row">
                 <span class="territory-player-name">{{ current_user.character_name or current_user.username }}</span>
                 {% if user_active_buffs %}
+                {% if user_active_buffs|length > 3 %}
+                <div class="territory-buff-carousel territory-buff-carousel-has-many territory-buff-carousel-user" data-max-visible="3" title="Активные улучшения">
+                    <button type="button" class="territory-buff-carousel-btn territory-buff-carousel-prev" aria-label="Предыдущие">‹</button>
+                    <div class="territory-buff-carousel-track">
+                        <span class="territory-buff-icons territory-buff-icons-user territory-buff-carousel-inner">
+                            {% for b in user_active_buffs %}
+                            {% if b.image_url %}
+                            <img class="territory-buff-icon" src="{{ b.image_url }}" alt="{{ b.name }}" title="{{ b.name }}{% if b.expires_at_display %} — до {{ b.expires_at_display }}{% endif %}" data-buff-name="{{ b.name }}" data-buff-desc="{{ b.description }}" data-buff-image="{{ b.image_url }}" data-buff-used="{{ b.used_at or '' }}" data-buff-expires="{{ b.expires_at or '' }}">
+                            {% else %}
+                            <span class="territory-buff-icon territory-buff-icon-placeholder" title="{{ b.name }}{% if b.expires_at_display %} — до {{ b.expires_at_display }}{% endif %}" data-buff-name="{{ b.name }}" data-buff-desc="{{ b.description }}" data-buff-image="" data-buff-used="{{ b.used_at or '' }}" data-buff-expires="{{ b.expires_at or '' }}">📦</span>
+                            {% endif %}
+                            {% endfor %}
+                        </span>
+                    </div>
+                    <button type="button" class="territory-buff-carousel-btn territory-buff-carousel-next" aria-label="Следующие">›</button>
+                </div>
+                {% else %}
                 <span class="territory-buff-icons territory-buff-icons-user" title="Активные улучшения">
                     {% for b in user_active_buffs %}
                     {% if b.image_url %}
@@ -1343,6 +1469,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                     {% endif %}
                     {% endfor %}
                 </span>
+                {% endif %}
                 {% endif %}
             </p>
             <div class="territory-player-level-row">
@@ -1368,6 +1495,23 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
             {% endif %}
             <span id="playerClanName" class="territory-player-clan-name">{{ current_user.clan_obj.name }}</span>
             {% if clan_active_buffs %}
+            {% if clan_active_buffs|length > 3 %}
+            <div class="territory-buff-carousel territory-buff-carousel-has-many territory-buff-carousel-clan" data-max-visible="3">
+                <button type="button" class="territory-buff-carousel-btn territory-buff-carousel-prev" aria-label="Предыдущие">‹</button>
+                <div class="territory-buff-carousel-track">
+                    <span class="territory-buff-icons territory-buff-icons-clan territory-buff-carousel-inner">
+                        {% for b in clan_active_buffs %}
+                        {% if b.image_url %}
+                        <img class="territory-buff-icon" src="{{ b.image_url }}" alt="{{ b.name }}" title="{{ b.name }}{% if b.expires_at_display %} — до {{ b.expires_at_display }}{% endif %}" data-buff-name="{{ b.name }}" data-buff-desc="{{ b.description }}" data-buff-image="{{ b.image_url }}" data-buff-used="{{ b.used_at or '' }}" data-buff-expires="{{ b.expires_at or '' }}">
+                        {% else %}
+                        <span class="territory-buff-icon territory-buff-icon-placeholder" title="{{ b.name }}{% if b.expires_at_display %} — до {{ b.expires_at_display }}{% endif %}" data-buff-name="{{ b.name }}" data-buff-desc="{{ b.description }}" data-buff-image="" data-buff-used="{{ b.used_at or '' }}" data-buff-expires="{{ b.expires_at or '' }}">📦</span>
+                        {% endif %}
+                        {% endfor %}
+                    </span>
+                </div>
+                <button type="button" class="territory-buff-carousel-btn territory-buff-carousel-next" aria-label="Следующие">›</button>
+            </div>
+            {% else %}
             <div class="territory-buff-icons territory-buff-icons-clan">
                 {% for b in clan_active_buffs %}
                 {% if b.image_url %}
@@ -1377,6 +1521,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                 {% endif %}
                 {% endfor %}
             </div>
+            {% endif %}
             {% endif %}
             {% if clan_pending_join_count and clan_pending_join_count > 0 %}
             <a href="{{ url_for('cabinet') }}#clan-join-requests" class="territory-clan-pending-badge" title="Есть новые заявки на вступление в клан ({{ clan_pending_join_count }})">📩 {{ clan_pending_join_count }}</a>
@@ -1655,6 +1800,22 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 </div>
 
 <script>
+// Бургер-меню на мобильной версии
+(function() {
+    var nav = document.getElementById('territoryTopNav');
+    var btn = document.getElementById('territoryBurgerBtn');
+    if (!nav || !btn) return;
+    function closeMenu() { nav.classList.remove('open'); }
+    function toggleMenu() { nav.classList.toggle('open'); }
+    btn.addEventListener('click', function(e) { e.stopPropagation(); toggleMenu(); });
+    var linksWrap = nav.querySelector('.territory-top-nav-links');
+    if (linksWrap) linksWrap.addEventListener('click', function(e) { e.stopPropagation(); });
+    nav.querySelectorAll('.territory-top-nav-links a').forEach(function(a) {
+        a.addEventListener('click', closeMenu);
+    });
+    document.addEventListener('click', closeMenu);
+})();
+
 // Запрет копирования текста условия задачи (в блоке модалки задания)
 (function() {
     const territoryTaskContent = document.getElementById('territoryTaskContent');
@@ -1950,67 +2111,204 @@ window.territoryFocusProtection = (function() {
             }
             var regionBuffs = (typeof TERRITORY_REGION_ACTIVE_BUFFS !== 'undefined' && TERRITORY_REGION_ACTIVE_BUFFS[String(index)]) ? TERRITORY_REGION_ACTIVE_BUFFS[String(index)] : [];
             if (regionBuffs.length > 0) {
-                var buffG = document.createElementNS(svg.namespaceURI, 'g');
-                buffG.classList.add('region-buff-icons');
-                buffG.setAttribute('pointer-events', 'auto');
-                var buffY = cy + 35.64;
-                buffG.setAttribute('transform', 'translate(' + cx + ',' + buffY + ')');
                 var w = 14, gap = 2;
                 var n = regionBuffs.length;
                 var startX = n <= 1 ? 0 : -(n - 1) * (w + gap) / 2;
-                regionBuffs.forEach(function(b, i) {
-                    var href = b.image_url || '';
-                    var x = startX + i * (w + gap) - w / 2;
-                    var y = -w / 2;
-                    if (href) {
-                        var img = document.createElementNS(svg.namespaceURI, 'image');
-                        img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', href);
-                        img.setAttribute('x', x);
-                        img.setAttribute('y', y);
-                        img.setAttribute('width', w);
-                        img.setAttribute('height', w);
-                        img.classList.add('territory-buff-icon');
-                        img.setAttribute('data-buff-name', b.name || '');
-                        img.setAttribute('data-buff-desc', b.description || '');
-                        img.setAttribute('data-buff-image', href);
-                        img.setAttribute('data-buff-used', b.used_at || '');
-                        img.setAttribute('data-buff-expires', b.expires_at || '');
-                        buffG.appendChild(img);
-                    } else {
-                        var place = document.createElementNS(svg.namespaceURI, 'g');
-                        place.classList.add('territory-buff-icon');
-                        place.classList.add('territory-buff-icon-placeholder');
-                        place.setAttribute('data-buff-name', b.name || '');
-                        place.setAttribute('data-buff-desc', b.description || '');
-                        place.setAttribute('data-buff-image', '');
-                        place.setAttribute('data-buff-used', b.used_at || '');
-                        place.setAttribute('data-buff-expires', b.expires_at || '');
+                var buffY = cy + 35.64;
+                var visibleCount = 3;
+                var isCarousel = n > visibleCount;
+                var buffGx = cx;
+                if (isCarousel) {
+                    var arrowSize = 10;
+                    var carouselCenterLocal = startX + 12;
+                    buffGx = cx - carouselCenterLocal;
+                }
+                var buffG = document.createElementNS(svg.namespaceURI, 'g');
+                buffG.classList.add('region-buff-icons');
+                buffG.setAttribute('pointer-events', 'auto');
+                buffG.setAttribute('transform', 'translate(' + buffGx + ',' + buffY + ')');
+                var clipId = 'region-buff-clip-' + index;
+                if (isCarousel) {
+                    var defs = svg.querySelector('defs') || (function() { var d = document.createElementNS(svg.namespaceURI, 'defs'); svg.insertBefore(d, svg.firstChild); return d; })();
+                    var clipPath = document.createElementNS(svg.namespaceURI, 'clipPath');
+                    clipPath.setAttribute('id', clipId);
+                    var clipRect = document.createElementNS(svg.namespaceURI, 'rect');
+                    clipRect.setAttribute('x', startX - w / 2);
+                    clipRect.setAttribute('y', -w / 2 - 1);
+                    clipRect.setAttribute('width', visibleCount * (w + gap));
+                    clipRect.setAttribute('height', w + 2);
+                    clipPath.appendChild(clipRect);
+                    defs.appendChild(clipPath);
+                    var innerClip = document.createElementNS(svg.namespaceURI, 'g');
+                    innerClip.setAttribute('clip-path', 'url(#' + clipId + ')');
+                    var iconsGroup = document.createElementNS(svg.namespaceURI, 'g');
+                    iconsGroup.setAttribute('class', 'region-buff-icons-inner');
+                    var page = 0;
+                    var maxPage = Math.max(0, Math.ceil(n / visibleCount) - 1);
+                    function setRegionCarouselPage(p) {
+                        page = Math.max(0, Math.min(maxPage, p));
+                        iconsGroup.setAttribute('transform', 'translate(' + (-page * visibleCount * (w + gap)) + ', 0)');
+                    }
+                    innerClip.appendChild(iconsGroup);
+                    buffG.appendChild(innerClip);
+                    var arrowSize = 10;
+                    var arrowY = 0;
+                    var leftX = startX - w / 2 - arrowSize + 3;
+                    var rightX = startX - w / 2 + visibleCount * (w + gap) + 7;
+                    function makeArrow(dir) {
+                        var btn = document.createElementNS(svg.namespaceURI, 'g');
+                        btn.setAttribute('class', 'region-buff-carousel-arrow');
+                        btn.setAttribute('cursor', 'pointer');
+                        var rx = dir === 'l' ? leftX : rightX;
                         var rect = document.createElementNS(svg.namespaceURI, 'rect');
-                        rect.setAttribute('x', x);
-                        rect.setAttribute('y', y);
-                        rect.setAttribute('width', w);
-                        rect.setAttribute('height', w);
+                        rect.setAttribute('x', rx - arrowSize / 2);
+                        rect.setAttribute('y', arrowY - arrowSize / 2);
+                        rect.setAttribute('width', arrowSize);
+                        rect.setAttribute('height', arrowSize);
                         rect.setAttribute('rx', 2);
-                        rect.setAttribute('fill', '#5c4033');
+                        rect.setAttribute('fill', '#3d2914');
+                        rect.setAttribute('stroke', '#5c4033');
                         var txt = document.createElementNS(svg.namespaceURI, 'text');
-                        txt.setAttribute('x', x + w / 2);
-                        txt.setAttribute('y', y + w / 2);
+                        txt.setAttribute('x', rx);
+                        txt.setAttribute('y', arrowY);
                         txt.setAttribute('text-anchor', 'middle');
                         txt.setAttribute('dominant-baseline', 'central');
                         txt.setAttribute('font-size', '10');
-                        txt.setAttribute('fill', '#c4b098');
-                        txt.textContent = '\uD83D\uDCE6';
-                        place.appendChild(rect);
-                        place.appendChild(txt);
-                        buffG.appendChild(place);
+                        txt.setAttribute('fill', '#d4a84b');
+                        txt.textContent = dir === 'l' ? '\u2039' : '\u203A';
+                        btn.appendChild(rect);
+                        btn.appendChild(txt);
+                        btn.addEventListener('click', function(e) { e.stopPropagation(); if (dir === 'l' && page > 0) setRegionCarouselPage(page - 1); if (dir === 'r' && page < maxPage) setRegionCarouselPage(page + 1); });
+                        return btn;
                     }
-                });
+                    buffG.appendChild(makeArrow('l'));
+                    buffG.appendChild(makeArrow('r'));
+                    regionBuffs.forEach(function(b, i) {
+                        var href = b.image_url || '';
+                        var x = startX + i * (w + gap) - w / 2;
+                        var y = -w / 2;
+                        if (href) {
+                            var img = document.createElementNS(svg.namespaceURI, 'image');
+                            img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', href);
+                            img.setAttribute('x', x);
+                            img.setAttribute('y', y);
+                            img.setAttribute('width', w);
+                            img.setAttribute('height', w);
+                            img.classList.add('territory-buff-icon');
+                            img.setAttribute('data-buff-name', b.name || '');
+                            img.setAttribute('data-buff-desc', b.description || '');
+                            img.setAttribute('data-buff-image', href);
+                            img.setAttribute('data-buff-used', b.used_at || '');
+                            img.setAttribute('data-buff-expires', b.expires_at || '');
+                            iconsGroup.appendChild(img);
+                        } else {
+                            var place = document.createElementNS(svg.namespaceURI, 'g');
+                            place.classList.add('territory-buff-icon');
+                            place.classList.add('territory-buff-icon-placeholder');
+                            place.setAttribute('data-buff-name', b.name || '');
+                            place.setAttribute('data-buff-desc', b.description || '');
+                            place.setAttribute('data-buff-image', '');
+                            place.setAttribute('data-buff-used', b.used_at || '');
+                            place.setAttribute('data-buff-expires', b.expires_at || '');
+                            var rect = document.createElementNS(svg.namespaceURI, 'rect');
+                            rect.setAttribute('x', x);
+                            rect.setAttribute('y', y);
+                            rect.setAttribute('width', w);
+                            rect.setAttribute('height', w);
+                            rect.setAttribute('rx', 2);
+                            rect.setAttribute('fill', '#5c4033');
+                            var txt = document.createElementNS(svg.namespaceURI, 'text');
+                            txt.setAttribute('x', x + w / 2);
+                            txt.setAttribute('y', y + w / 2);
+                            txt.setAttribute('text-anchor', 'middle');
+                            txt.setAttribute('dominant-baseline', 'central');
+                            txt.setAttribute('font-size', '10');
+                            txt.setAttribute('fill', '#c4b098');
+                            txt.textContent = '\uD83D\uDCE6';
+                            place.appendChild(rect);
+                            place.appendChild(txt);
+                            iconsGroup.appendChild(place);
+                        }
+                    });
+                    setRegionCarouselPage(0);
+                } else {
+                    regionBuffs.forEach(function(b, i) {
+                        var href = b.image_url || '';
+                        var x = startX + i * (w + gap) - w / 2;
+                        var y = -w / 2;
+                        if (href) {
+                            var img = document.createElementNS(svg.namespaceURI, 'image');
+                            img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', href);
+                            img.setAttribute('x', x);
+                            img.setAttribute('y', y);
+                            img.setAttribute('width', w);
+                            img.setAttribute('height', w);
+                            img.classList.add('territory-buff-icon');
+                            img.setAttribute('data-buff-name', b.name || '');
+                            img.setAttribute('data-buff-desc', b.description || '');
+                            img.setAttribute('data-buff-image', href);
+                            img.setAttribute('data-buff-used', b.used_at || '');
+                            img.setAttribute('data-buff-expires', b.expires_at || '');
+                            buffG.appendChild(img);
+                        } else {
+                            var place = document.createElementNS(svg.namespaceURI, 'g');
+                            place.classList.add('territory-buff-icon');
+                            place.classList.add('territory-buff-icon-placeholder');
+                            place.setAttribute('data-buff-name', b.name || '');
+                            place.setAttribute('data-buff-desc', b.description || '');
+                            place.setAttribute('data-buff-image', '');
+                            place.setAttribute('data-buff-used', b.used_at || '');
+                            place.setAttribute('data-buff-expires', b.expires_at || '');
+                            var rect = document.createElementNS(svg.namespaceURI, 'rect');
+                            rect.setAttribute('x', x);
+                            rect.setAttribute('y', y);
+                            rect.setAttribute('width', w);
+                            rect.setAttribute('height', w);
+                            rect.setAttribute('rx', 2);
+                            rect.setAttribute('fill', '#5c4033');
+                            var txt = document.createElementNS(svg.namespaceURI, 'text');
+                            txt.setAttribute('x', x + w / 2);
+                            txt.setAttribute('y', y + w / 2);
+                            txt.setAttribute('text-anchor', 'middle');
+                            txt.setAttribute('dominant-baseline', 'central');
+                            txt.setAttribute('font-size', '10');
+                            txt.setAttribute('fill', '#c4b098');
+                            txt.textContent = '\uD83D\uDCE6';
+                            place.appendChild(rect);
+                            place.appendChild(txt);
+                            buffG.appendChild(place);
+                        }
+                    });
+                }
                 overlay.appendChild(buffG);
             }
         });
     }
 
     initRegionOverlays();
+
+    (function initBuffCarousels() {
+        var iconW = 24, gap = 4, step = iconW + gap, visibleCount = 3;
+        var stepPx = step * visibleCount;
+        document.querySelectorAll('.territory-buff-carousel-has-many').forEach(function(carousel) {
+            var track = carousel.querySelector('.territory-buff-carousel-track');
+            var inner = carousel.querySelector('.territory-buff-carousel-inner');
+            var prevBtn = carousel.querySelector('.territory-buff-carousel-prev');
+            var nextBtn = carousel.querySelector('.territory-buff-carousel-next');
+            if (!track || !inner || !prevBtn || !nextBtn) return;
+            var total = inner.children.length;
+            var maxPage = Math.max(0, Math.ceil(total / visibleCount) - 1);
+            var page = 0;
+            function update() {
+                inner.style.transform = 'translateX(' + (-page * stepPx) + 'px)';
+                prevBtn.disabled = page <= 0;
+                nextBtn.disabled = page >= maxPage;
+            }
+            prevBtn.addEventListener('click', function() { if (page > 0) { page--; update(); } });
+            nextBtn.addEventListener('click', function() { if (page < maxPage) { page++; update(); } });
+            update();
+        });
+    })();
 
     (function initDescriptionPopover() {
         var overlay = document.getElementById('territoryDescriptionPopover');

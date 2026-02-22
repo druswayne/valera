@@ -923,6 +923,15 @@ class TerritoryBattleSetting(db.Model):
     capture_end_time = db.Column(db.DateTime, nullable=True)
 
 
+class GameUpdate(db.Model):
+    """Запись об обновлении игры (добавляет администратор в разделе битвы за территорию)."""
+    __tablename__ = 'game_update'
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(300), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+
 def get_territory_registration_enabled():
     """Проверить, включена ли регистрация участников в битве за территорию."""
     s = TerritoryBattleSetting.query.first()
@@ -1498,6 +1507,18 @@ with app.app_context():
         print(f"Ошибка при миграции битвы за территорию: {e}")
         db.create_all()
 
+    # Таблица записей об обновлениях игры
+    try:
+        from sqlalchemy import inspect as _insp
+        inspector = _insp(db.engine)
+        tables = inspector.get_table_names()
+        if 'game_update' not in tables:
+            db.create_all()
+            print("Создана таблица game_update")
+    except Exception as e:
+        print(f"Ошибка при создании таблицы game_update: {e}")
+        db.create_all()
+
     # Лавка предметов (shop_item, shop_item_effect, user_shop_purchase)
     try:
         from sqlalchemy import inspect as _inspect
@@ -2053,6 +2074,40 @@ def api_shop_purchase():
     })
 
 
+@app.route('/api/nums/transfer', methods=['POST'])
+@login_required
+def api_nums_transfer():
+    """Перевести Нумы другому пользователю по логину (username)."""
+    if current_user.is_admin:
+        return jsonify({'success': False, 'error': 'Администратор не участвует'}), 403
+    data = request.get_json() or {}
+    username_raw = (data.get('username') or data.get('recipient_username') or '').strip()
+    if not username_raw:
+        return jsonify({'success': False, 'error': 'Укажите логин получателя (username)'}), 400
+    try:
+        amount = int(data.get('amount') or 0)
+    except (TypeError, ValueError):
+        amount = 0
+    if amount <= 0:
+        return jsonify({'success': False, 'error': 'Укажите сумму больше нуля'}), 400
+    recipient = User.query.filter(func.lower(User.username) == username_raw.lower()).first()
+    if not recipient:
+        return jsonify({'success': False, 'error': 'Пользователь с таким логином не найден'}), 404
+    if recipient.id == current_user.id:
+        return jsonify({'success': False, 'error': 'Нельзя перевести Нумы себе'}), 400
+    balance = current_user.nums_balance or 0
+    if balance < amount:
+        return jsonify({'success': False, 'error': 'Недостаточно Нумов', 'balance': balance}), 400
+    current_user.nums_balance = balance - amount
+    recipient.nums_balance = (recipient.nums_balance or 0) + amount
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'balance': current_user.nums_balance,
+        'recipient_name': recipient.character_name or recipient.username,
+    })
+
+
 @app.route('/api/cabinet/inventory')
 @login_required
 def api_cabinet_inventory():
@@ -2231,15 +2286,21 @@ def api_clan_update(clan_id):
 @app.route('/api/clan/leave', methods=['POST'])
 @login_required
 def api_clan_leave():
-    """Выйти из клана"""
+    """Выйти из клана. Если выходит создатель — все участники исключаются, затем клан распускается и вся информация удаляется."""
     if not current_user.clan_id:
         return jsonify({'success': False, 'error': 'Вы не в клане'}), 400
     clan = current_user.clan_obj
+    clan_id = clan.id
     if clan.owner_id == current_user.id:
-        if len(clan.members_rel) > 1:
-            return jsonify({'success': False, 'error': 'Владелец не может выйти, пока в клане есть другие участники. Передайте владение или исключите их.'}), 400
+        # Создатель выходит: исключаем всех участников, затем распускаем клан
+        User.query.filter_by(clan_id=clan_id).update({'clan_id': None})
+        TerritoryRegionState.query.filter_by(owner_clan_id=clan_id).update({'owner_clan_id': None, 'strength': 0})
+        ClanJoinRequest.query.filter_by(clan_id=clan_id).delete()
+        ClanChatMessage.query.filter_by(clan_id=clan_id).delete()
+        ActiveItemBuff.query.filter_by(clan_id=clan_id).update({'clan_id': None})
         db.session.delete(clan)
-    current_user.clan_id = None
+    else:
+        current_user.clan_id = None
     db.session.commit()
     return jsonify({'success': True})
 
@@ -2326,6 +2387,30 @@ def api_clan_kick(clan_id, user_id):
     if target.id == clan.owner_id:
         return jsonify({'success': False, 'error': 'Нельзя исключить владельца'}), 400
     target.clan_id = None
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@app.route('/api/clan/<int:clan_id>/transfer-ownership', methods=['POST'])
+@login_required
+def api_clan_transfer_ownership(clan_id):
+    """Передать владение кланом другому участнику (только текущий владелец)."""
+    clan = Clan.query.get_or_404(clan_id)
+    if clan.owner_id != current_user.id:
+        return jsonify({'success': False, 'error': 'Только владелец может передать владение'}), 403
+    data = request.get_json() or {}
+    try:
+        new_owner_id = int(data.get('user_id') or 0)
+    except (TypeError, ValueError):
+        new_owner_id = 0
+    if not new_owner_id:
+        return jsonify({'success': False, 'error': 'Укажите user_id нового владельца'}), 400
+    if new_owner_id == current_user.id:
+        return jsonify({'success': False, 'error': 'Вы уже владелец'}), 400
+    new_owner = User.query.get(new_owner_id)
+    if not new_owner or new_owner.clan_id != clan_id:
+        return jsonify({'success': False, 'error': 'Пользователь не состоит в вашем клане'}), 400
+    clan.owner_id = new_owner_id
     db.session.commit()
     return jsonify({'success': True})
 
@@ -3247,7 +3332,8 @@ def admin_territory_battle():
     capture_start_time_iso = capture_start_time.strftime('%Y-%m-%dT%H:%M') if capture_start_time else ''
     capture_end_time_iso = capture_end_time.strftime('%Y-%m-%dT%H:%M') if capture_end_time else ''
     shop_items = ShopItem.query.filter_by(shop_context=SHOP_CONTEXT_TERRITORY).order_by(ShopItem.category, ShopItem.sort_order, ShopItem.id).all()
-    return render_template('admin/territory_battle.html', regions=regions, clans=clans, generators=generators, registration_enabled=registration_enabled, capture_enabled=capture_enabled, capture_start_time_iso=capture_start_time_iso, capture_end_time_iso=capture_end_time_iso, shop_items=shop_items)
+    game_updates = GameUpdate.query.order_by(GameUpdate.created_at.desc()).limit(100).all()
+    return render_template('admin/territory_battle.html', regions=regions, clans=clans, generators=generators, registration_enabled=registration_enabled, capture_enabled=capture_enabled, capture_start_time_iso=capture_start_time_iso, capture_end_time_iso=capture_end_time_iso, shop_items=shop_items, game_updates=game_updates)
 
 
 @app.route('/admin/territory-battle/generators', methods=['POST'])
@@ -3327,6 +3413,50 @@ def admin_territory_region_save(region_index):
     if 'task_generator_id' in data:
         gen_id = data.get('task_generator_id')
         cfg.task_generator_id = int(gen_id) if gen_id else None
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@app.route('/admin/territory-battle/updates', methods=['POST'])
+@admin_required
+def admin_territory_updates_create():
+    """Добавить запись об обновлении игры."""
+    data = request.get_json() or {}
+    title = (data.get('title') or '').strip()
+    content = (data.get('content') or '').strip()
+    if not title:
+        return jsonify({'success': False, 'error': 'Укажите заголовок'}), 400
+    u = GameUpdate(title=title, content=content)
+    db.session.add(u)
+    db.session.commit()
+    return jsonify({'success': True, 'id': u.id, 'title': u.title, 'content': u.content, 'created_at': u.created_at.isoformat() if u.created_at else None})
+
+
+@app.route('/admin/territory-battle/updates/<int:update_id>', methods=['GET', 'POST'])
+@admin_required
+def admin_territory_updates_get_or_update(update_id):
+    """GET: получить запись. POST: редактировать запись."""
+    u = GameUpdate.query.get_or_404(update_id)
+    if request.method == 'GET':
+        return jsonify({'id': u.id, 'title': u.title, 'content': u.content or '', 'created_at': u.created_at.isoformat() if u.created_at else None})
+    data = request.get_json() or {}
+    if 'title' in data:
+        title = (data.get('title') or '').strip()
+        if not title:
+            return jsonify({'success': False, 'error': 'Заголовок не может быть пустым'}), 400
+        u.title = title
+    if 'content' in data:
+        u.content = (data.get('content') or '').strip()
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@app.route('/admin/territory-battle/updates/<int:update_id>/delete', methods=['POST'])
+@admin_required
+def admin_territory_updates_delete(update_id):
+    """Удалить запись об обновлении."""
+    u = GameUpdate.query.get_or_404(update_id)
+    db.session.delete(u)
     db.session.commit()
     return jsonify({'success': True})
 
@@ -3957,6 +4087,20 @@ def raid_boss_page():
     )
 
 
+# Страница записей об обновлениях игры (публичная, с пагинацией)
+UPDATES_PER_PAGE = 10
+
+@app.route('/updates')
+def game_updates_page():
+    page = request.args.get('page', 1, type=int)
+    if page < 1:
+        page = 1
+    pagination = GameUpdate.query.order_by(GameUpdate.created_at.desc()).paginate(
+        page=page, per_page=UPDATES_PER_PAGE, error_out=False
+    )
+    return render_template('game_updates.html', pagination=pagination)
+
+
 # Битва за территорию
 TERRITORY_MAX_STRENGTH = 1000
 TERRITORY_STRENGTH_STEP_SAME = 25
@@ -4063,82 +4207,184 @@ def territory_battle_rules():
     return render_template('territory_battle_rules.html')
 
 
-@app.route('/territory-battle/clans-top')
-def territory_clans_top():
-    """Топ-10 кланов: сначала по числу контролируемых областей (убыв.), затем по урону+защите (убыв.).
-    Если кланов с областями меньше 10, добиваем до 10 кланами с 0 областей (ранжируем их по урону+защите)."""
-    # Число областей по каждому клану (включая кланы с 0 областей)
-    all_clans_territory = db.session.query(
-        Clan.id,
-        func.coalesce(func.count(TerritoryRegionState.region_index), 0).label('territory_count')
-    ).outerjoin(TerritoryRegionState, Clan.id == TerritoryRegionState.owner_clan_id).group_by(Clan.id).all()
+RATING_PAGE_SIZE = 20
 
-    if not all_clans_territory:
-        return render_template('territory_clans_top.html', clans_data=[])
 
-    # Сумма (урон + очки защиты) по каждому клану (кланы без участников/статистики дают 0)
-    score_expr = func.coalesce(UserTerritoryStats.total_damage_dealt, 0) + func.coalesce(UserTerritoryStats.total_influence_points, 0)
-    clan_scores_rows = db.session.query(
-        User.clan_id,
-        func.coalesce(func.sum(score_expr), 0).label('clan_score')
-    ).outerjoin(UserTerritoryStats, User.id == UserTerritoryStats.user_id).filter(
-        User.clan_id.isnot(None)
-    ).group_by(User.clan_id).all()
-    clan_score_by_id = {row[0]: int(row[1] or 0) for row in clan_scores_rows}
+@app.route('/game-rating')
+def game_rating_page():
+    """Рейтинг: выбор вкладки (топ кланов / топ PvE / топ PvP) с пагинацией по 20 записей."""
+    tab = request.args.get('tab', 'clans')
+    if tab not in ('clans', 'pve', 'pvp'):
+        tab = 'clans'
+    page = max(1, request.args.get('page', 1, type=int))
 
-    # Сортировка: сначала по числу областей (убыв.), затем по урон+защита (убыв.); берём топ-10
-    sorted_clans = sorted(
-        all_clans_territory,
-        key=lambda r: (r[1], clan_score_by_id.get(r[0], 0)),
-        reverse=True
-    )[:10]
-    clan_ids = [r[0] for r in sorted_clans]
+    if tab == 'clans':
+        # Все кланы: территория (убыв.), при равенстве — сумма урона+защиты участников (убыв.)
+        all_clans_territory = db.session.query(
+            Clan.id,
+            func.coalesce(func.count(TerritoryRegionState.region_index), 0).label('territory_count')
+        ).outerjoin(TerritoryRegionState, Clan.id == TerritoryRegionState.owner_clan_id).group_by(Clan.id).all()
 
-    # Все кланы топ-10 одним запросом
-    clans = Clan.query.filter(Clan.id.in_(clan_ids)).all()
-    clan_by_id = {c.id: c for c in clans}
+        score_expr = func.coalesce(UserTerritoryStats.total_damage_dealt, 0) + func.coalesce(UserTerritoryStats.total_influence_points, 0)
+        clan_scores_rows = db.session.query(
+            User.clan_id,
+            func.coalesce(func.sum(score_expr), 0).label('clan_score')
+        ).outerjoin(UserTerritoryStats, User.id == UserTerritoryStats.user_id).filter(
+            User.clan_id.isnot(None)
+        ).group_by(User.clan_id).all()
+        clan_score_by_id = {row[0]: int(row[1] or 0) for row in clan_scores_rows}
 
-    # Топ участников по (урон + очки защиты) для этих кланов; в Python берём по 10 на клан
-    all_members = db.session.query(User, UserTerritoryStats).outerjoin(
-        UserTerritoryStats, User.id == UserTerritoryStats.user_id
-    ).filter(User.clan_id.in_(clan_ids)).order_by(User.clan_id, score_expr.desc()).all()
+        sorted_clans = sorted(
+            all_clans_territory,
+            key=lambda r: (r[1], clan_score_by_id.get(r[0], 0)),
+            reverse=True
+        )
+        total_items = len(sorted_clans)
+        total_pages = max(1, (total_items + RATING_PAGE_SIZE - 1) // RATING_PAGE_SIZE)
+        page = min(page, total_pages)
+        start = (page - 1) * RATING_PAGE_SIZE
+        page_clans = sorted_clans[start:start + RATING_PAGE_SIZE]
+        clan_ids = [r[0] for r in page_clans]
 
-    # Группируем: для каждого клана — не более 10 участников (уже отсортированы по score)
-    top_per_clan = {}
-    for u, stats in all_members:
-        cid = u.clan_id
-        if cid not in top_per_clan:
-            top_per_clan[cid] = []
-        if len(top_per_clan[cid]) < 10:
-            top_per_clan[cid].append((u, stats))
+        clans = Clan.query.filter(Clan.id.in_(clan_ids)).all() if clan_ids else []
+        clan_by_id = {c.id: c for c in clans}
 
-    clans_data = []
-    for clan_id, territory_count in sorted_clans:
-        clan = clan_by_id.get(clan_id)
-        if not clan:
-            continue
-        flag_url = url_for('static', filename=_avatar_static_filename(clan.flag_filename)) if clan.flag_filename else None
-        members_data = []
-        for u, stats in top_per_clan.get(clan_id, []):
-            avatar_url = url_for('static', filename=_avatar_static_filename(u.avatar_filename)) if getattr(u, 'avatar_filename', None) else None
+        score_expr = func.coalesce(UserTerritoryStats.total_damage_dealt, 0) + func.coalesce(UserTerritoryStats.total_influence_points, 0)
+        all_members = db.session.query(User, UserTerritoryStats).outerjoin(
+            UserTerritoryStats, User.id == UserTerritoryStats.user_id
+        ).filter(User.clan_id.in_(clan_ids)).order_by(User.clan_id, score_expr.desc()).all() if clan_ids else []
+
+        top_per_clan = {}
+        for u, stats in all_members:
+            cid = u.clan_id
+            if cid not in top_per_clan:
+                top_per_clan[cid] = []
+            if len(top_per_clan[cid]) < 10:
+                top_per_clan[cid].append((u, stats))
+
+        clans_data = []
+        for clan_id, territory_count in page_clans:
+            clan = clan_by_id.get(clan_id)
+            if not clan:
+                continue
+            flag_url = url_for('static', filename=_avatar_static_filename(clan.flag_filename)) if clan.flag_filename else None
+            members_data = []
+            for u, stats in top_per_clan.get(clan_id, []):
+                avatar_url = url_for('static', filename=_avatar_static_filename(u.avatar_filename)) if getattr(u, 'avatar_filename', None) else None
+                dmg = (stats.total_damage_dealt or 0) if stats else 0
+                inf = (stats.total_influence_points or 0) if stats else 0
+                members_data.append({
+                    'id': u.id,
+                    'character_name': u.character_name or u.username,
+                    'level': u.level or 1,
+                    'avatar_url': avatar_url,
+                    'total_damage_dealt': dmg,
+                    'total_influence_points': inf,
+                })
+            clans_data.append({
+                'id': clan.id,
+                'name': clan.name,
+                'flag_url': flag_url,
+                'territory_count': territory_count,
+                'members': members_data,
+            })
+
+        return render_template(
+            'game_rating.html',
+            tab=tab,
+            clans_data=clans_data,
+            page=page,
+            total_pages=total_pages,
+            total_items=total_items,
+            pve_items=None,
+            pvp_items=None,
+        )
+
+    if tab == 'pve':
+        # Все пользователи по (total_damage_dealt + total_influence_points) убыв.
+        score_expr = func.coalesce(UserTerritoryStats.total_damage_dealt, 0) + func.coalesce(UserTerritoryStats.total_influence_points, 0)
+        q = db.session.query(User, UserTerritoryStats).outerjoin(
+            UserTerritoryStats, User.id == UserTerritoryStats.user_id
+        ).order_by(score_expr.desc())
+        total_items = q.count()
+        total_pages = max(1, (total_items + RATING_PAGE_SIZE - 1) // RATING_PAGE_SIZE)
+        page = min(page, total_pages)
+        offset = (page - 1) * RATING_PAGE_SIZE
+        rows = q.offset(offset).limit(RATING_PAGE_SIZE).all()
+
+        pve_items = []
+        for idx, (u, stats) in enumerate(rows):
             dmg = (stats.total_damage_dealt or 0) if stats else 0
             inf = (stats.total_influence_points or 0) if stats else 0
-            members_data.append({
+            avatar_url = url_for('static', filename=_avatar_static_filename(u.avatar_filename)) if getattr(u, 'avatar_filename', None) else None
+            pve_items.append({
+                'rank': offset + idx + 1,
                 'id': u.id,
                 'character_name': u.character_name or u.username,
                 'level': u.level or 1,
                 'avatar_url': avatar_url,
                 'total_damage_dealt': dmg,
                 'total_influence_points': inf,
+                'total_score': dmg + inf,
             })
-        clans_data.append({
-            'id': clan.id,
-            'name': clan.name,
-            'flag_url': flag_url,
-            'territory_count': territory_count,
-            'members': members_data,
+
+        return render_template(
+            'game_rating.html',
+            tab=tab,
+            clans_data=[],
+            page=page,
+            total_pages=total_pages,
+            total_items=total_items,
+            pve_items=pve_items,
+            pvp_items=None,
+        )
+
+    # tab == 'pvp': по числу выигранных дуэлей
+    wins_subq = db.session.query(
+        PvPDuel.winner_id,
+        func.count(PvPDuel.id).label('wins')
+    ).filter(
+        PvPDuel.status == 'finished',
+        PvPDuel.winner_id.isnot(None)
+    ).group_by(PvPDuel.winner_id).subquery()
+
+    q = db.session.query(User, func.coalesce(wins_subq.c.wins, 0).label('wins')).outerjoin(
+        wins_subq, User.id == wins_subq.c.winner_id
+    ).order_by(func.coalesce(wins_subq.c.wins, 0).desc(), User.id.asc())
+    total_items = q.count()
+    total_pages = max(1, (total_items + RATING_PAGE_SIZE - 1) // RATING_PAGE_SIZE)
+    page = min(page, total_pages)
+    offset = (page - 1) * RATING_PAGE_SIZE
+    rows = q.offset(offset).limit(RATING_PAGE_SIZE).all()
+
+    pvp_items = []
+    for idx, (u, wins) in enumerate(rows):
+        avatar_url = url_for('static', filename=_avatar_static_filename(u.avatar_filename)) if getattr(u, 'avatar_filename', None) else None
+        pvp_items.append({
+            'rank': offset + idx + 1,
+            'id': u.id,
+            'character_name': u.character_name or u.username,
+            'level': u.level or 1,
+            'avatar_url': avatar_url,
+            'wins': int(wins or 0),
         })
-    return render_template('territory_clans_top.html', clans_data=clans_data)
+
+    return render_template(
+        'game_rating.html',
+        tab=tab,
+        clans_data=[],
+        page=page,
+        total_pages=total_pages,
+        total_items=total_items,
+        pve_items=None,
+        pvp_items=pvp_items,
+    )
+
+
+@app.route('/territory-battle/clans-top')
+def territory_clans_top():
+    """Редирект на страницу рейтинга, вкладка «Топ кланов»."""
+    return redirect(url_for('game_rating_page', tab='clans', page=1))
 
 
 def _normalize_answer(s):

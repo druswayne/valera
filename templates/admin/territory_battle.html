@@ -703,6 +703,36 @@ body {
             {% endif %}
         </div>
     </section>
+
+    <section class="admin-section">
+        <h2>Записи об обновлениях игры</h2>
+        <p>Записи отображаются на странице «Обновления игры» (ссылка в футере). Здесь можно добавлять, редактировать и удалять записи.</p>
+        <a href="{{ url_for('game_updates_page') }}" class="back-link" target="_blank" style="margin-bottom: 12px;">Открыть страницу обновлений</a>
+        <button type="button" class="edit-btn" id="gameUpdateAddBtn">Добавить запись</button>
+        <div class="admin-table-wrap" style="margin-top: 12px;">
+            <table class="admin-table" id="gameUpdatesTable">
+                <thead>
+                    <tr>
+                        <th>Дата</th>
+                        <th>Заголовок</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="gameUpdatesTbody">
+                    {% for u in game_updates or [] %}
+                    <tr data-update-id="{{ u.id }}">
+                        <td>{{ u.created_at.strftime('%d.%m.%Y %H:%M') if u.created_at else '—' }}</td>
+                        <td>{{ u.title }}</td>
+                        <td>
+                            <button type="button" class="edit-btn game-update-edit-btn" data-update-id="{{ u.id }}">Изменить</button>
+                            <button type="button" class="territory-reset-btn game-update-delete-btn" data-update-id="{{ u.id }}" data-title="{{ u.title|e }}">Удалить</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
 </div>
 
 <div class="clan-members-modal-overlay" id="clanMembersModal">
@@ -761,6 +791,38 @@ body {
         <div class="modal-buttons" style="margin-top: 16px;">
             <button type="button" class="btn-cancel" id="shopItemEditorCancel">Отмена</button>
             <button type="button" class="btn-confirm" id="shopItemEditorSave">Сохранить</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="gameUpdateModal">
+    <div class="modal-box" style="max-width: 560px;">
+        <h3 id="gameUpdateModalTitle">Добавить запись об обновлении</h3>
+        <form id="gameUpdateForm">
+            <input type="hidden" id="gameUpdateId" name="id">
+            <div class="form-group">
+                <label for="gameUpdateTitle">Заголовок</label>
+                <input type="text" id="gameUpdateTitle" name="title" required maxlength="300" style="width:100%; padding:10px 12px; border-radius:12px; border:2px solid #a8b8d0;">
+            </div>
+            <div class="form-group">
+                <label for="gameUpdateContent">Текст</label>
+                <textarea id="gameUpdateContent" name="content" rows="6" style="width:100%; padding:10px 12px; border-radius:12px; border:2px solid #a8b8d0; resize:vertical;"></textarea>
+            </div>
+        </form>
+        <div style="margin-top: 16px; display: flex; gap: 12px;">
+            <button type="button" class="territory-reset-cancel" id="gameUpdateModalCancel">Отмена</button>
+            <button type="button" class="edit-btn" id="gameUpdateModalSave">Сохранить</button>
+        </div>
+    </div>
+</div>
+
+<div class="clan-delete-modal-overlay" id="gameUpdateDeleteModal">
+    <div class="clan-delete-modal">
+        <h3>Удалить запись</h3>
+        <p>Удалить запись «<span id="gameUpdateDeleteTitle"></span>»?</p>
+        <div class="clan-delete-modal-buttons">
+            <button type="button" class="clan-delete-cancel" id="gameUpdateDeleteCancel">Отмена</button>
+            <button type="button" class="clan-delete-confirm" id="gameUpdateDeleteConfirm">Удалить</button>
         </div>
     </div>
 </div>
@@ -1259,6 +1321,120 @@ document.getElementById('clanDeleteConfirm').addEventListener('click', function(
                 })
                 .catch(function() { alert('Ошибка соединения.'); });
         });
+    });
+})();
+
+(function() {
+    var gameUpdateModal = document.getElementById('gameUpdateModal');
+    var gameUpdateModalTitle = document.getElementById('gameUpdateModalTitle');
+    var gameUpdateId = document.getElementById('gameUpdateId');
+    var gameUpdateTitle = document.getElementById('gameUpdateTitle');
+    var gameUpdateContent = document.getElementById('gameUpdateContent');
+    var gameUpdateDeleteModal = document.getElementById('gameUpdateDeleteModal');
+    var gameUpdateDeleteTitle = document.getElementById('gameUpdateDeleteTitle');
+    var gameUpdateDeleteTargetId = null;
+
+    document.getElementById('gameUpdateAddBtn').addEventListener('click', function() {
+        gameUpdateModalTitle.textContent = 'Добавить запись об обновлении';
+        gameUpdateId.value = '';
+        gameUpdateTitle.value = '';
+        gameUpdateContent.value = '';
+        gameUpdateModal.classList.add('show');
+    });
+
+    document.querySelectorAll('.game-update-edit-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var id = this.getAttribute('data-update-id');
+            gameUpdateModalTitle.textContent = 'Редактировать запись';
+            gameUpdateId.value = id;
+            gameUpdateTitle.value = '';
+            gameUpdateContent.value = '';
+            gameUpdateModal.classList.add('show');
+            fetch('{{ url_for("admin_territory_updates_get_or_update", update_id=0) }}'.replace(/\/0$/, '') + '/' + id)
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    gameUpdateTitle.value = data.title || '';
+                    gameUpdateContent.value = data.content || '';
+                })
+                .catch(function() { alert('Ошибка загрузки.'); });
+        });
+    });
+
+    document.getElementById('gameUpdateModalCancel').addEventListener('click', function() {
+        gameUpdateModal.classList.remove('show');
+    });
+    gameUpdateModal.addEventListener('click', function(e) {
+        if (e.target === gameUpdateModal) gameUpdateModal.classList.remove('show');
+    });
+
+    document.getElementById('gameUpdateModalSave').addEventListener('click', function() {
+        var id = gameUpdateId.value;
+        var title = gameUpdateTitle.value.trim();
+        var content = gameUpdateContent.value.trim();
+        if (!title) {
+            alert('Введите заголовок.');
+            return;
+        }
+        var saveBtn = this;
+        saveBtn.disabled = true;
+        var baseUrl = '{{ url_for("admin_territory_updates_create") }}';
+        var url = id ? baseUrl + '/' + id : baseUrl;
+        var payload = { title: title, content: content };
+        if (id) {
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify(payload)
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.success) window.location.reload();
+                else alert(data.error || 'Ошибка сохранения.');
+            }).catch(function() { alert('Ошибка соединения.'); }).finally(function() { saveBtn.disabled = false; });
+        } else {
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify(payload)
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.success) window.location.reload();
+                else alert(data.error || 'Ошибка сохранения.');
+            }).catch(function() { alert('Ошибка соединения.'); }).finally(function() { saveBtn.disabled = false; });
+        }
+    });
+
+    document.querySelectorAll('.game-update-delete-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            gameUpdateDeleteTargetId = parseInt(this.getAttribute('data-update-id'), 10);
+            gameUpdateDeleteTitle.textContent = this.getAttribute('data-title') || '';
+            gameUpdateDeleteModal.classList.add('show');
+        });
+    });
+    document.getElementById('gameUpdateDeleteCancel').addEventListener('click', function() {
+        gameUpdateDeleteModal.classList.remove('show');
+        gameUpdateDeleteTargetId = null;
+    });
+    gameUpdateDeleteModal.addEventListener('click', function(e) {
+        if (e.target === gameUpdateDeleteModal) {
+            gameUpdateDeleteModal.classList.remove('show');
+            gameUpdateDeleteTargetId = null;
+        }
+    });
+    document.getElementById('gameUpdateDeleteConfirm').addEventListener('click', function() {
+        if (!gameUpdateDeleteTargetId) return;
+        var btn = this;
+        btn.disabled = true;
+        var url = '{{ url_for("admin_territory_updates_delete", update_id=0) }}'.replace(/\/0\/delete$/, '') + '/' + gameUpdateDeleteTargetId + '/delete';
+        fetch(url, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(function(r) { return r.json(); }).then(function(data) {
+            if (data.success) {
+                gameUpdateDeleteModal.classList.remove('show');
+                gameUpdateDeleteTargetId = null;
+                window.location.reload();
+            } else {
+                alert(data.error || 'Ошибка удаления.');
+            }
+        }).catch(function() { alert('Ошибка соединения.'); }).finally(function() { btn.disabled = false; });
     });
 })();
 </script>

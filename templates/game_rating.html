@@ -1,0 +1,461 @@
+{% extends "base.html" %}
+
+{% block title %}Рейтинг - Битва за территорию{% endblock %}
+
+{% block extra_head %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Cinzel+Decorative:wght@700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; }
+body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Roman', serif; }
+
+.rating-page {
+    min-height: 100vh;
+    background: #3d2914 linear-gradient(180deg, rgba(61,41,20,0.97) 0%, #2c1810 50%, #1a0f08 100%);
+    padding: 20px;
+    color: #e8dcc4;
+    position: relative;
+}
+.rating-page::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+}
+.rating-page > * { position: relative; z-index: 1; }
+
+.rating-inner { max-width: 700px; margin: 0 auto; }
+
+.rating-page h1 {
+    font-family: 'Cinzel Decorative', 'Cinzel', Georgia, serif;
+    text-align: center;
+    margin: 0 0 20px;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #d4a84b;
+    text-shadow: 0 0 20px rgba(212,168,75,0.3), 0 2px 4px rgba(0,0,0,0.5);
+    letter-spacing: 0.08em;
+}
+
+.rating-nav-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+.rating-nav-links { display: flex; flex-wrap: nowrap; gap: 8px; }
+.rating-nav-links a { white-space: nowrap; }
+.rating-burger-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    color: #d4a84b;
+    font-size: 1.4rem;
+    cursor: pointer;
+    font-family: inherit;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.rating-burger-btn:hover { color: #e8c86a; border-color: #8b6914; }
+
+.rating-nav-wrap a, .rating-nav-links a {
+    color: #d4a84b;
+    text-decoration: none;
+    font-weight: bold;
+    padding: 10px 18px;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.9rem;
+    letter-spacing: 0.04em;
+    transition: color 0.2s, border-color 0.2s;
+}
+.rating-nav-wrap a:hover, .rating-nav-links a:hover {
+    color: #e8c86a;
+    border-color: #8b6914;
+}
+
+/* Вкладки рейтинга */
+.rating-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+.rating-tabs a {
+    color: #d4a84b;
+    text-decoration: none;
+    padding: 10px 16px;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.9rem;
+    transition: color 0.2s, border-color 0.2s;
+}
+.rating-tabs a:hover { color: #e8c86a; border-color: #8b6914; }
+.rating-tabs a.active {
+    color: #e8c86a;
+    border-color: #8b6914;
+    box-shadow: 0 0 12px rgba(212,168,75,0.25);
+}
+
+/* Общие стили таблиц */
+.rating-table-wrap {
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    border: 2px solid #5c4033;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: inset 0 1px 0 rgba(212,168,75,0.12), 0 4px 12px rgba(0,0,0,0.35);
+}
+
+.clan-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 18px;
+    border-bottom: 1px solid rgba(92,64,51,0.6);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.clan-row:last-child { border-bottom: none; }
+.clan-row:hover { background: rgba(61,41,20,0.6); }
+.clan-row.expanded { background: rgba(44,24,16,0.8); }
+.clan-row.expanded + .clan-members-row { display: block; }
+
+.clan-flag, .rating-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #5c4033;
+    flex-shrink: 0;
+    background: #2c1810;
+}
+.clan-flag-placeholder, .rating-avatar-placeholder {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #2c1810;
+    border: 2px solid #5c4033;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+.clan-main { flex: 1; min-width: 0; }
+.clan-name {
+    font-family: 'Cinzel', Georgia, serif;
+    font-weight: bold;
+    font-size: 1.1rem;
+    color: #e8dcc4;
+}
+.clan-territories { font-size: 0.9rem; color: #d4a84b; margin-top: 2px; }
+.clan-expand-icon { color: #d4a84b; font-size: 1.2rem; transition: transform 0.2s; }
+.clan-row.expanded .clan-expand-icon { transform: rotate(180deg); }
+
+.clan-members-row {
+    display: none;
+    background: rgba(28,18,10,0.9);
+    border-bottom: 1px solid rgba(92,64,51,0.6);
+    padding: 16px 18px 20px 78px;
+}
+.clan-members-row:last-of-type { border-bottom: none; }
+.clan-members-title {
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.85rem;
+    color: #d4a84b;
+    margin-bottom: 12px;
+    letter-spacing: 0.05em;
+}
+.clan-member {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(92,64,51,0.3);
+}
+.clan-member:last-child { border-bottom: none; }
+.clan-member-avatar, .rating-row-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #5c4033;
+    flex-shrink: 0;
+    background: #2c1810;
+}
+.clan-member-avatar-placeholder, .rating-row-avatar-placeholder {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #2c1810;
+    border: 2px solid #5c4033;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+.clan-member-info { flex: 1; min-width: 0; }
+.clan-member-name { font-weight: bold; color: #e8dcc4; }
+.clan-member-level { font-size: 0.85rem; color: #b8a088; }
+
+/* Строки PvE / PvP */
+.rating-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 18px;
+    border-bottom: 1px solid rgba(92,64,51,0.6);
+}
+.rating-row:last-child { border-bottom: none; }
+.rating-row:hover { background: rgba(61,41,20,0.4); }
+.rating-rank {
+    min-width: 36px;
+    font-weight: bold;
+    color: #d4a84b;
+    font-size: 1rem;
+}
+.rating-row-name { font-weight: bold; color: #e8dcc4; }
+.rating-row-level { font-size: 0.9rem; color: #b8a088; }
+.rating-row-value { font-size: 1rem; color: #d4a84b; font-weight: bold; }
+
+.rating-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: #b8a088;
+    font-style: italic;
+}
+
+/* Пагинация */
+.rating-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 24px;
+    padding: 12px 0;
+}
+.rating-pagination a, .rating-pagination span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    height: 40px;
+    padding: 0 12px;
+    color: #d4a84b;
+    text-decoration: none;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.9rem;
+    transition: color 0.2s, border-color 0.2s;
+}
+.rating-pagination a:hover { color: #e8c86a; border-color: #8b6914; }
+.rating-pagination .current {
+    color: #e8c86a;
+    border-color: #8b6914;
+    cursor: default;
+}
+.rating-pagination .disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+.rating-pagination-info {
+    width: 100%;
+    text-align: center;
+    font-size: 0.9rem;
+    color: #b8a088;
+    margin-bottom: 8px;
+}
+
+@media (max-width: 600px) {
+    .rating-page { padding: 12px; }
+    .rating-page h1 { font-size: 1.4rem; }
+    .rating-nav-wrap {
+        justify-content: flex-end;
+        position: relative;
+        z-index: 100000;
+    }
+    .rating-burger-btn { display: flex; }
+    .rating-nav-links {
+        display: none;
+        position: absolute;
+        top: 100%;
+        right: 0;
+        margin-top: 8px;
+        flex-direction: column;
+        min-width: 200px;
+        background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+        border: 2px solid #5c4033;
+        border-radius: 8px;
+        padding: 8px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        z-index: 100001;
+        gap: 4px;
+    }
+    .rating-nav-wrap.open .rating-nav-links { display: flex; }
+    .rating-tabs { justify-content: center; }
+    .rating-tabs a { flex: 1; min-width: 100px; text-align: center; }
+    .clan-members-row { padding-left: 18px; }
+    .clan-row { padding: 12px 14px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="rating-page">
+<div class="rating-inner">
+    <nav class="rating-nav-wrap" id="ratingNavWrap">
+        <button type="button" class="rating-burger-btn" id="ratingBurgerBtn" aria-label="Меню">☰</button>
+        <div class="rating-nav-links">
+            <a href="{{ url_for('territory_battle_page') }}">← Битва за территорию</a>
+            <a href="{{ url_for('territory_battle_rules') }}">Как начать?</a>
+            <a href="{{ url_for('pvp_arena_page') }}">PvP Арена</a>
+            <a href="{{ url_for('cabinet') }}">Личный кабинет</a>
+        </div>
+    </nav>
+
+    <h1>Рейтинг</h1>
+
+    <div class="rating-tabs">
+        <a href="{{ url_for('game_rating_page', tab='clans', page=1) }}" class="{{ 'active' if tab == 'clans' else '' }}">Топ кланов</a>
+        <a href="{{ url_for('game_rating_page', tab='pve', page=1) }}" class="{{ 'active' if tab == 'pve' else '' }}">Топ игроков PvE</a>
+        <a href="{{ url_for('game_rating_page', tab='pvp', page=1) }}" class="{{ 'active' if tab == 'pvp' else '' }}">Топ игроков PvP</a>
+    </div>
+
+    {% if tab == 'clans' %}
+    <div class="rating-table-wrap">
+        {% if clans_data %}
+        {% for clan in clans_data %}
+        <div class="clan-row" data-clan-id="{{ clan.id }}" onclick="toggleClan(this)">
+            {% if clan.flag_url %}
+            <img src="{{ clan.flag_url }}" alt="" class="clan-flag">
+            {% else %}
+            <div class="clan-flag-placeholder">🏴</div>
+            {% endif %}
+            <div class="clan-main">
+                <div class="clan-name">{{ clan.name }}</div>
+                <div class="clan-territories">Областей: {{ clan.territory_count }}</div>
+            </div>
+            <span class="clan-expand-icon">▼</span>
+        </div>
+        <div class="clan-members-row" data-clan-id="{{ clan.id }}">
+            <div class="clan-members-title">Топ-10 участников</div>
+            {% for m in clan.members %}
+            <div class="clan-member">
+                {% if m.avatar_url %}
+                <img src="{{ m.avatar_url }}" alt="" class="clan-member-avatar">
+                {% else %}
+                <div class="clan-member-avatar-placeholder">👤</div>
+                {% endif %}
+                <div class="clan-member-info">
+                    <div class="clan-member-name">{{ m.character_name }}</div>
+                    <div class="clan-member-level">Ур. {{ m.level }}</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="rating-empty">Пока нет кланов.</div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if tab == 'pve' %}
+    <div class="rating-table-wrap">
+        {% if pve_items %}
+        {% for item in pve_items %}
+        <div class="rating-row">
+            <span class="rating-rank">{{ item.rank }}</span>
+            {% if item.avatar_url %}
+            <img src="{{ item.avatar_url }}" alt="" class="rating-row-avatar">
+            {% else %}
+            <div class="rating-row-avatar-placeholder">👤</div>
+            {% endif %}
+            <div style="flex:1;min-width:0;">
+                <div class="rating-row-name">{{ item.character_name }}</div>
+                <div class="rating-row-level">Ур. {{ item.level }}</div>
+            </div>
+            <span class="rating-row-value">{{ item.total_score }}</span>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="rating-empty">Нет данных.</div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if tab == 'pvp' %}
+    <div class="rating-table-wrap">
+        {% if pvp_items %}
+        {% for item in pvp_items %}
+        <div class="rating-row">
+            <span class="rating-rank">{{ item.rank }}</span>
+            {% if item.avatar_url %}
+            <img src="{{ item.avatar_url }}" alt="" class="rating-row-avatar">
+            {% else %}
+            <div class="rating-row-avatar-placeholder">👤</div>
+            {% endif %}
+            <div style="flex:1;min-width:0;">
+                <div class="rating-row-name">{{ item.character_name }}</div>
+                <div class="rating-row-level">Ур. {{ item.level }}</div>
+            </div>
+            <span class="rating-row-value">{{ item.wins }} побед</span>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="rating-empty">Нет данных.</div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if total_pages > 1 %}
+    <div class="rating-pagination">
+        <p class="rating-pagination-info">Страница {{ page }} из {{ total_pages }} (всего записей: {{ total_items }})</p>
+        <a href="{{ url_for('game_rating_page', tab=tab, page=page-1) }}" class="{{ 'disabled' if page <= 1 else '' }}">Пред.</a>
+        {% if page > 2 %}<a href="{{ url_for('game_rating_page', tab=tab, page=1) }}">1</a>{% if page > 3 %}<span>…</span>{% endif %}{% endif %}
+        {% for p in range([1, page - 1]|max, [total_pages, page + 2]|min + 1) %}
+        <a href="{{ url_for('game_rating_page', tab=tab, page=p) }}" class="{{ 'current' if p == page else '' }}">{{ p }}</a>
+        {% endfor %}
+        {% if page < total_pages - 1 %}{% if page < total_pages - 2 %}<span>…</span>{% endif %}<a href="{{ url_for('game_rating_page', tab=tab, page=total_pages) }}">{{ total_pages }}</a>{% endif %}
+        <a href="{{ url_for('game_rating_page', tab=tab, page=page+1) }}" class="{{ 'disabled' if page >= total_pages else '' }}">След.</a>
+    </div>
+    {% endif %}
+</div>
+</div>
+
+<script>
+(function() {
+    var wrap = document.getElementById('ratingNavWrap');
+    var btn = document.getElementById('ratingBurgerBtn');
+    if (!wrap || !btn) return;
+    function closeMenu() { wrap.classList.remove('open'); }
+    function toggleMenu() { wrap.classList.toggle('open'); }
+    btn.addEventListener('click', function(e) { e.stopPropagation(); toggleMenu(); });
+    var linksWrap = wrap.querySelector('.rating-nav-links');
+    if (linksWrap) linksWrap.addEventListener('click', function(e) { e.stopPropagation(); });
+    wrap.querySelectorAll('.rating-nav-links a').forEach(function(a) { a.addEventListener('click', closeMenu); });
+    document.addEventListener('click', closeMenu);
+})();
+function toggleClan(rowEl) {
+    if (rowEl && rowEl.classList) rowEl.classList.toggle('expanded');
+}
+</script>
+{% endblock %}

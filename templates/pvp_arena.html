@@ -208,6 +208,8 @@
 .pvp-chat-msg-own { background: rgba(139,105,20,0.25); border-color: rgba(212,168,75,0.3); }
 .pvp-chat-msg .chat-author { font-weight: bold; color: #d4a84b; margin-right: 8px; }
 .pvp-chat-msg .chat-time { color: #b8a088; font-size: 0.8rem; }
+.pvp-chat-msg,
+.pvp-chat-msg .chat-text { overflow-wrap: break-word; word-break: break-word; min-width: 0; }
 .pvp-chat-form {
     display: flex;
     gap: 8px;
@@ -236,7 +238,7 @@
     border-radius: 50%;
     border: none;
     background: linear-gradient(145deg, #6b5344 0%, #5c4033 50%, #4a3520 100%);
-    color: #e8dcc4;
+    color: #fff;
     font-size: 1.5rem;
     cursor: pointer;
     box-shadow: 0 4px 14px rgba(0,0,0,0.35), 0 0 0 1px rgba(212,168,75,0.2), inset 0 1px 0 rgba(255,255,255,0.08);
@@ -301,6 +303,8 @@
 .clan-chat-modal .clan-chat-msg-own { align-self: flex-end; border-left: none; border-right: 3px solid #d4a84b; text-align: right; background: rgba(90,60,30,0.25); }
 .clan-chat-modal .clan-chat-msg .chat-author { font-weight: bold; color: #5c4033; margin-right: 8px; }
 .clan-chat-modal .clan-chat-msg .chat-time { font-size: 0.8rem; color: #8b7355; margin-left: 6px; }
+.clan-chat-modal .clan-chat-msg,
+.clan-chat-modal .clan-chat-msg .chat-text { overflow-wrap: break-word; word-break: break-word; min-width: 0; }
 .clan-chat-modal .clan-chat-form { display: flex; gap: 10px; margin-top: 0; flex-shrink: 0; }
 .clan-chat-modal .clan-chat-form input[type="text"] {
     flex: 1; min-width: 0; padding: 10px 14px; border: 2px solid #5c4033; border-radius: 6px; background: #fff; color: #2c1810; font-family: inherit;
