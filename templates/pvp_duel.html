@@ -143,8 +143,18 @@
     color: #e8dcc4;
     font-size: 1rem;
     font-family: inherit;
-    width: 100%;
-    max-width: 300px;
+}
+.pvp-duel-task-answer input[type="text"] {
+    min-width: 12ch;
+    width: 12ch;
+    max-width: 100%;
+    box-sizing: content-box;
+}
+.pvp-duel-task-answer input[type="number"] {
+    min-width: 3ch;
+    width: 3ch;
+    max-width: 200px;
+    box-sizing: content-box;
 }
 .pvp-duel-task-answer input:focus { outline: none; border-color: #8b6914; }
 .pvp-duel-task-answer .submit-btn {
@@ -295,6 +305,20 @@
     background: rgba(255,255,255,0.6);
     color: #2c1810;
 }
+.pvp-duel-task-inner .task-answer-wrap #duelTaskAnswerInput {
+    min-width: 12ch;
+    width: 12ch;
+    max-width: 100%;
+    box-sizing: content-box;
+}
+.pvp-duel-task-inner .task-answer-fraction-visual .answer-frac-wrap input,
+.pvp-duel-task-inner .task-common-denom-visual .answer-frac-wrap input,
+.pvp-duel-task-inner .task-mixed-fraction-fields .answer-frac-wrap input,
+.pvp-duel-task-inner .task-mixed-fraction-fields .answer-int-wrap input {
+    min-width: 3ch;
+    width: 3ch;
+    box-sizing: content-box;
+}
 .pvp-duel-task-inner .task-answer-wrap input:focus { outline: none; border-color: #8b6914; }
 /* Дроби в условии */
 .pvp-duel-task-inner .task-text .mixed-frac,
@@ -308,7 +332,7 @@
 /* Ответ-дробь: числитель/знаменатель */
 .pvp-duel-task-inner .task-answer-fraction-visual { display: inline-flex; align-items: center; gap: 8px; margin-top: 8px; }
 .pvp-duel-task-inner .task-answer-fraction-visual .answer-frac-wrap { display: inline-flex; flex-direction: column; align-items: center; }
-.pvp-duel-task-inner .task-answer-fraction-visual .answer-frac-wrap input { width: 3em; text-align: center; padding: 4px 6px; }
+.pvp-duel-task-inner .task-answer-fraction-visual .answer-frac-wrap input { text-align: center; padding: 4px 6px; }
 .pvp-duel-task-inner .task-answer-fraction-visual .answer-frac-line { width: 100%; height: 0; border-top: 2px solid #3d2914; margin: 2px 0; }
 .pvp-duel-task-inner input[type="number"]::-webkit-inner-spin-button,
 .pvp-duel-task-inner input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
@@ -320,7 +344,7 @@
 .pvp-duel-task-inner .task-common-denom-original { min-height: 2em; display: inline-flex; align-items: center; }
 .pvp-duel-task-inner .task-common-denom-eq { font-size: 1.4em; font-weight: bold; color: #3d2914; }
 .pvp-duel-task-inner .task-common-denom-visual .answer-frac-wrap { display: inline-flex; flex-direction: column; align-items: center; }
-.pvp-duel-task-inner .task-common-denom-visual .answer-frac-wrap input { width: 3em; text-align: center; padding: 4px 6px; }
+.pvp-duel-task-inner .task-common-denom-visual .answer-frac-wrap input { text-align: center; padding: 4px 6px; }
 .pvp-duel-task-inner .task-common-denom-visual .answer-frac-line { width: 100%; height: 0; border-top: 2px solid #3d2914; margin: 2px 0; }
 /* Смешанные числа / сложение-вычитание дробей */
 .pvp-duel-task-inner .task-mixed-fraction-display { margin-bottom: 10px; }
@@ -329,9 +353,9 @@
 .pvp-duel-task-inner .task-mixed-fraction-display .mixed-frac { display: inline-flex; align-items: center; vertical-align: middle; }
 .pvp-duel-task-inner .task-mixed-fraction-display .frac { flex-direction: column; }
 .pvp-duel-task-inner .task-mixed-fraction-fields { display: inline-flex; align-items: center; gap: 8px; margin-top: 8px; }
-.pvp-duel-task-inner .task-mixed-fraction-fields .answer-int-wrap input { width: 3em; text-align: center; }
+.pvp-duel-task-inner .task-mixed-fraction-fields .answer-int-wrap input { text-align: center; }
 .pvp-duel-task-inner .task-mixed-fraction-fields .answer-int-wrap input.task-int-part-disabled { background: #e8e0d4; color: #6b5b4a; cursor: not-allowed; }
-.pvp-duel-task-inner .task-mixed-fraction-fields .answer-frac-wrap input { width: 3em; text-align: center; padding: 4px 6px; }
+.pvp-duel-task-inner .task-mixed-fraction-fields .answer-frac-wrap input { text-align: center; padding: 4px 6px; }
 .pvp-duel-task-inner .task-mixed-fraction-fields .answer-frac-line { width: 100%; height: 0; border-top: 2px solid #3d2914; margin: 2px 0; }
 
 /* Защита от списывания: запрет копирования текста задачи */
@@ -1109,6 +1133,7 @@ window.pvpDuelFocusProtection = (function() {
         document.getElementById('duelTaskAnswerIntPart').value = '';
         document.getElementById('duelTaskAnswerNumMixed').value = '';
         document.getElementById('duelTaskAnswerDenMixed').value = '';
+        resizeDuelAnswerInputs();
         if (isCommonDenom) {
             document.getElementById('duelCommonDenomFrac1').innerHTML = t.display_frac1 || '';
             document.getElementById('duelCommonDenomFrac2').innerHTML = t.display_frac2 || '';
@@ -1223,6 +1248,27 @@ window.pvpDuelFocusProtection = (function() {
     function duelAnswerKeydown(e) {
         if (e.key === 'Enter') document.getElementById('duelSubmitAnswer').click();
     }
+    function resizeDuelAnswerInput(inp, minCh) {
+        if (!inp) return;
+        var len = (inp.value || '').length;
+        var ch = Math.max(minCh, len + 1);
+        inp.style.width = ch + 'ch';
+    }
+    var duelAnswerNumIds = ['duelTaskAnswerNum', 'duelTaskAnswerDen', 'duelTaskAnswerNum1', 'duelTaskAnswerDenCommon', 'duelTaskAnswerNum2', 'duelTaskAnswerDenCommon2', 'duelTaskAnswerIntPart', 'duelTaskAnswerNumMixed', 'duelTaskAnswerDenMixed'];
+    function resizeDuelAnswerInputs() {
+        var main = document.getElementById('duelTaskAnswerInput');
+        resizeDuelAnswerInput(main, 12);
+        duelAnswerNumIds.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) resizeDuelAnswerInput(el, 3);
+        });
+    }
+    var duelAnswerMain = document.getElementById('duelTaskAnswerInput');
+    if (duelAnswerMain) duelAnswerMain.addEventListener('input', function() { resizeDuelAnswerInput(duelAnswerMain, 12); });
+    duelAnswerNumIds.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('input', function() { resizeDuelAnswerInput(el, 3); });
+    });
     document.getElementById('duelTaskAnswerInput').addEventListener('keydown', duelAnswerKeydown);
     document.getElementById('duelTaskAnswerNum').addEventListener('keydown', duelAnswerKeydown);
     document.getElementById('duelTaskAnswerDen').addEventListener('keydown', duelAnswerKeydown);

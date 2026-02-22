@@ -192,12 +192,16 @@ class ClanChatMessage(db.Model):
 
 
 # PvP Арена
+PVP_ARENA_INACTIVITY_MINUTES = 5  # после скольких минут неактивности считать вышедшим с арены
+
+
 class PvPArenaPresence(db.Model):
     """Кто сейчас на PvP арене (вошёл в арену)."""
     __tablename__ = 'pvp_arena_presence'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, unique=True)
     entered_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_seen_at = db.Column(db.DateTime, default=datetime.utcnow)  # обновляется при любом запросе с арены
 
     user = db.relationship('User', backref=db.backref('pvp_arena_presence', uselist=False, lazy=True, cascade='all, delete-orphan'))
 
@@ -4796,14 +4800,48 @@ PVP_REWARD_SPREAD = 0.3
 PVP_DUEL_DURATION_MINUTES = 5
 
 
+def _pvp_arena_cleanup_stale():
+    """Удалить присутствия на арене, у которых last_seen_at старше PVP_ARENA_INACTIVITY_MINUTES или не задан."""
+    limit = datetime.utcnow() - timedelta(minutes=PVP_ARENA_INACTIVITY_MINUTES)
+    stale = PvPArenaPresence.query.filter(
+        db.or_(PvPArenaPresence.last_seen_at.is_(None), PvPArenaPresence.last_seen_at < limit)
+    ).all()
+    for p in stale:
+        db.session.delete(p)
+    if stale:
+        db.session.commit()
+
+
+def _pvp_arena_touch_presence():
+    """Обновить last_seen_at у текущего пользователя на арене. Возвращает presence или None."""
+    presence = PvPArenaPresence.query.filter_by(user_id=current_user.id).first()
+    if presence:
+        presence.last_seen_at = datetime.utcnow()
+        db.session.commit()
+    return presence
+
+
+def _pvp_arena_presence_valid(presence):
+    """Проверить, что присутствие ещё «активно» (не просрочено по last_seen_at)."""
+    if not presence or not getattr(presence, 'last_seen_at', None):
+        return True
+    limit = datetime.utcnow() - timedelta(minutes=PVP_ARENA_INACTIVITY_MINUTES)
+    return presence.last_seen_at >= limit
+
+
 @app.route('/pvp-arena')
 @login_required
 def pvp_arena_page():
     """Страница PvP арены: кнопка входа (5+ ур.), после входа — список участников и чат."""
     level = current_user.level or 1
     can_enter = level >= PVP_MIN_LEVEL
+    _pvp_arena_cleanup_stale()
     presence = PvPArenaPresence.query.filter_by(user_id=current_user.id).first()
-    on_arena = presence is not None
+    on_arena = presence is not None and _pvp_arena_presence_valid(presence)
+    if presence and not on_arena:
+        db.session.delete(presence)
+        db.session.commit()
+        on_arena = False
     # Если пользователь в активной дуэли — перенаправить на страницу дуэли
     active_duel = PvPDuel.query.filter(
         db.or_(
@@ -4829,10 +4867,14 @@ def pvp_arena_page():
 def api_pvp_enter():
     if (current_user.level or 1) < PVP_MIN_LEVEL:
         return jsonify({'success': False, 'error': f'Вход на арену доступен с {PVP_MIN_LEVEL} уровня'}), 403
+    _pvp_arena_cleanup_stale()
     presence = PvPArenaPresence.query.filter_by(user_id=current_user.id).first()
     if not presence:
         presence = PvPArenaPresence(user_id=current_user.id)
         db.session.add(presence)
+        db.session.commit()
+    else:
+        presence.last_seen_at = datetime.utcnow()
         db.session.commit()
     return jsonify({'success': True})
 
@@ -4856,6 +4898,8 @@ def api_pvp_leave():
 @login_required
 def api_pvp_participants():
     """Список всех пользователей на арене. can_challenge — можно ли вызвать (диапазон уровней ±PVP_LEVEL_RANGE)."""
+    _pvp_arena_touch_presence()
+    _pvp_arena_cleanup_stale()
     presences = PvPArenaPresence.query.all()
     my_level = current_user.level or 1
     low, high = my_level - PVP_LEVEL_RANGE, my_level + PVP_LEVEL_RANGE
@@ -4886,7 +4930,7 @@ def api_pvp_participants():
 @login_required
 def api_pvp_chat_get():
     """Сообщения чата арены. Без before_id — последние limit сообщений (по умолчанию 20). С before_id — более старые сообщения (для подгрузки при скролле)."""
-    presence = PvPArenaPresence.query.filter_by(user_id=current_user.id).first()
+    presence = _pvp_arena_touch_presence()
     if not presence:
         return jsonify({'success': False, 'error': 'Вы не на арене'}), 403
     limit = min(100, request.args.get('limit', 20, type=int))
@@ -4919,7 +4963,7 @@ def api_pvp_chat_get():
 @app.route('/api/pvp/chat', methods=['POST'])
 @login_required
 def api_pvp_chat_post():
-    presence = PvPArenaPresence.query.filter_by(user_id=current_user.id).first()
+    presence = _pvp_arena_touch_presence()
     if not presence:
         return jsonify({'success': False, 'error': 'Вы не на арене'}), 403
     data = request.get_json() or {}
@@ -4936,7 +4980,7 @@ def api_pvp_chat_post():
 @login_required
 def api_pvp_challenge():
     """Вызвать на дуэль (проверка уровня ±5)."""
-    presence = PvPArenaPresence.query.filter_by(user_id=current_user.id).first()
+    presence = _pvp_arena_touch_presence()
     if not presence:
         return jsonify({'success': False, 'error': 'Вы не на арене'}), 403
     data = request.get_json() or {}
@@ -4948,8 +4992,9 @@ def api_pvp_challenge():
         return jsonify({'success': False, 'error': 'Соперник не найден'}), 404
     if defender.id == current_user.id:
         return jsonify({'success': False, 'error': 'Нельзя вызвать самого себя'}), 400
+    _pvp_arena_cleanup_stale()
     def_presence = PvPArenaPresence.query.filter_by(user_id=defender.id).first()
-    if not def_presence:
+    if not def_presence or not _pvp_arena_presence_valid(def_presence):
         return jsonify({'success': False, 'error': 'Соперник не на арене'}), 400
     my_level = current_user.level or 1
     def_level = defender.level or 1
@@ -4971,6 +5016,8 @@ def api_pvp_challenge():
 @login_required
 def api_pvp_challenges():
     """Входящие вызовы на дуэль (для отображения кнопки «Принять»)."""
+    _pvp_arena_touch_presence()
+    _pvp_arena_cleanup_stale()
     incoming = PvPDuelChallenge.query.filter_by(defender_id=current_user.id, status='pending').order_by(PvPDuelChallenge.created_at.desc()).all()
     out = []
     for c in incoming:
@@ -5024,6 +5071,7 @@ def api_pvp_accept_challenge():
 @login_required
 def api_pvp_my_active_duel():
     """Есть ли у текущего пользователя активная дуэль (чтобы перенаправить инициатора вызова на страницу боя)."""
+    _pvp_arena_touch_presence()
     duel = PvPDuel.query.filter(
         db.or_(
             PvPDuel.challenger_id == current_user.id,

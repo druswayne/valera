@@ -35,14 +35,43 @@
     text-shadow: 0 0 20px rgba(212,168,75,0.3), 0 2px 4px rgba(0,0,0,0.5);
     letter-spacing: 0.08em;
 }
-.pvp-nav {
+.pvp-top-nav {
+    max-width: 800px;
+    margin: 0 auto 20px;
     display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.pvp-burger-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    color: #d4a84b;
+    font-size: 1.4rem;
+    cursor: pointer;
+    font-family: inherit;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.pvp-burger-btn:hover {
+    color: #e8c86a;
+    border-color: #8b6914;
+}
+.pvp-top-nav-links {
+    display: flex;
+    align-items: center;
     flex-wrap: wrap;
     gap: 10px;
     justify-content: center;
-    margin-bottom: 20px;
 }
-.pvp-nav a {
+.pvp-top-nav a {
     color: #d4a84b;
     text-decoration: none;
     padding: 10px 18px;
@@ -56,7 +85,7 @@
     box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     transition: color 0.2s, border-color 0.2s, box-shadow 0.2s;
 }
-.pvp-nav a:hover {
+.pvp-top-nav a:hover {
     color: #e8c86a;
     border-color: #8b6914;
     box-shadow: 0 0 12px rgba(212,168,75,0.25);
@@ -361,13 +390,45 @@
 @media (max-width: 768px) {
     .pvp-page { padding: 12px; }
     .pvp-page h1 { font-size: 1.5rem; margin-bottom: 16px; }
-    .pvp-nav { gap: 8px; margin-bottom: 16px; }
-    .pvp-nav a {
-        padding: 10px 14px;
+    .pvp-top-nav {
+        flex-wrap: nowrap;
+        justify-content: flex-end;
+        margin-bottom: 12px;
+        gap: 0;
+        position: relative;
+        z-index: 100000;
+    }
+    .pvp-burger-btn {
+        display: flex;
+    }
+    .pvp-top-nav-links {
+        display: none;
+        position: absolute;
+        top: 100%;
+        right: 0;
+        margin-top: 8px;
+        flex-direction: column;
+        min-width: 200px;
+        background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+        border: 2px solid #5c4033;
+        border-radius: 8px;
+        padding: 8px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        z-index: 100001;
+        gap: 4px;
+    }
+    .pvp-top-nav.open .pvp-top-nav-links {
+        display: flex;
+    }
+    .pvp-top-nav a {
+        width: 100%;
+        padding: 12px 16px;
         min-height: 44px;
-        display: inline-flex;
+        display: flex;
         align-items: center;
         justify-content: center;
+        font-size: 0.85rem;
+        box-sizing: border-box;
     }
     .pvp-card {
         padding: 14px;
@@ -408,9 +469,13 @@
 
 {% block content %}
 <div class="pvp-page">
-    <nav class="pvp-nav">
-        <a href="{{ url_for('cabinet') }}">Личный кабинет</a>
-        <a href="{{ url_for('territory_battle_page') }}">Битва за территорию</a>
+    <nav class="pvp-top-nav" id="pvpTopNav">
+        <button type="button" class="pvp-burger-btn" id="pvpBurgerBtn" aria-label="Меню">☰</button>
+        <div class="pvp-top-nav-links">
+            <a href="{{ url_for('territory_battle_page') }}">Битва за территорию</a>
+            <a href="{{ url_for('game_rating_page', tab='clans') }}">Рейтинг</a>
+            <a href="{{ url_for('cabinet') }}">Личный кабинет</a>
+        </div>
     </nav>
     <h1>⚔️ PvP Арена</h1>
 
@@ -495,6 +560,23 @@
 {% endblock %}
 
 {% block scripts %}
+<script>
+// Бургер-меню на мобильной версии (как на странице «Битва за территорию»)
+(function() {
+    var nav = document.getElementById('pvpTopNav');
+    var btn = document.getElementById('pvpBurgerBtn');
+    if (!nav || !btn) return;
+    function closeMenu() { nav.classList.remove('open'); }
+    function toggleMenu() { nav.classList.toggle('open'); }
+    btn.addEventListener('click', function(e) { e.stopPropagation(); toggleMenu(); });
+    var linksWrap = nav.querySelector('.pvp-top-nav-links');
+    if (linksWrap) linksWrap.addEventListener('click', function(e) { e.stopPropagation(); });
+    nav.querySelectorAll('.pvp-top-nav-links a').forEach(function(a) {
+        a.addEventListener('click', closeMenu);
+    });
+    document.addEventListener('click', closeMenu);
+})();
+</script>
 {% if can_enter %}
 <script>
 (function() {
@@ -547,6 +629,35 @@
         window.addEventListener('beforeunload', function() {
             navigator.sendBeacon(leaveUrl, new Blob([], { type: 'application/json' }));
         });
+
+        // Выброс с арены, если страница не в фокусе больше 5 минут
+        var ARENA_FOCUS_TIMEOUT_MS = 5 * 60 * 1000;
+        var arenaFocusTimer = null;
+        function clearArenaFocusTimer() {
+            if (arenaFocusTimer) {
+                clearTimeout(arenaFocusTimer);
+                arenaFocusTimer = null;
+            }
+        }
+        function leaveArenaAndReload() {
+            clearArenaFocusTimer();
+            document.removeEventListener('visibilitychange', onArenaVisibilityChange);
+            fetch(leaveUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+                .then(function() { location.reload(); })
+                .catch(function() { location.reload(); });
+        }
+        function onArenaVisibilityChange() {
+            if (document.hidden) {
+                clearArenaFocusTimer();
+                arenaFocusTimer = setTimeout(leaveArenaAndReload, ARENA_FOCUS_TIMEOUT_MS);
+            } else {
+                clearArenaFocusTimer();
+            }
+        }
+        document.addEventListener('visibilitychange', onArenaVisibilityChange);
+        if (document.hidden) {
+            arenaFocusTimer = setTimeout(leaveArenaAndReload, ARENA_FOCUS_TIMEOUT_MS);
+        }
     }
 
     function loadChallenges() {

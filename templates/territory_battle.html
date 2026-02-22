@@ -807,7 +807,6 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 }
 
 .task-modal-body .task-answer-wrap input {
-    width: 100%;
     padding: 12px 16px;
     border: 2px solid #5c4033;
     border-radius: 4px;
@@ -815,6 +814,12 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     background: rgba(255,255,255,0.6);
     color: #2c1810;
     font-family: inherit;
+}
+.task-modal-body #taskAnswerInput {
+    min-width: 12ch;
+    width: 12ch;
+    max-width: 100%;
+    box-sizing: content-box;
 }
 
 .task-modal-body .task-answer-wrap input:focus {
@@ -892,9 +897,11 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     align-items: center;
 }
 .task-answer-fraction-visual .answer-frac-wrap input {
-    width: 3em;
+    min-width: 3ch;
+    width: 3ch;
     text-align: center;
     padding: 4px 6px;
+    box-sizing: content-box;
 }
 .task-answer-fraction-visual .answer-frac-line {
     width: 100%;
@@ -939,9 +946,11 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     align-items: center;
 }
 .task-common-denom-visual .answer-frac-wrap input {
-    width: 3em;
+    min-width: 3ch;
+    width: 3ch;
     text-align: center;
     padding: 4px 6px;
+    box-sizing: content-box;
 }
 .task-common-denom-visual .answer-frac-line {
     width: 100%;
@@ -990,13 +999,24 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     gap: 8px;
     margin-top: 8px;
 }
-.task-mixed-fraction-fields .answer-int-wrap input { width: 3em; text-align: center; }
+.task-mixed-fraction-fields .answer-int-wrap input {
+    min-width: 3ch;
+    width: 3ch;
+    text-align: center;
+    box-sizing: content-box;
+}
 .task-mixed-fraction-fields .answer-int-wrap input.task-int-part-disabled {
     background: #e8e0d4;
     color: #6b5b4a;
     cursor: not-allowed;
 }
-.task-mixed-fraction-fields .answer-frac-wrap input { width: 3em; text-align: center; padding: 4px 6px; }
+.task-mixed-fraction-fields .answer-frac-wrap input {
+    min-width: 3ch;
+    width: 3ch;
+    text-align: center;
+    padding: 4px 6px;
+    box-sizing: content-box;
+}
 .task-mixed-fraction-fields .answer-frac-line {
     width: 100%;
     height: 0;
@@ -2750,6 +2770,7 @@ window.territoryFocusProtection = (function() {
                     document.getElementById('taskAnswerIntPart').value = '';
                     document.getElementById('taskAnswerNumMixed').value = '';
                     document.getElementById('taskAnswerDenMixed').value = '';
+                    resizeAllTaskAnswerInputs();
                     if (isCommonDenom) {
                         document.getElementById('taskCommonDenomFrac1').innerHTML = t.display_frac1 || '';
                         document.getElementById('taskCommonDenomFrac2').innerHTML = t.display_frac2 || '';
@@ -2980,6 +3001,27 @@ window.territoryFocusProtection = (function() {
     function onTaskAnswerKeydown(e) {
         if (e.key === 'Enter') document.getElementById('submitTaskBtn').click();
     }
+    function resizeAnswerInput(inp, minCh) {
+        if (!inp) return;
+        var len = (inp.value || '').length;
+        var ch = Math.max(minCh, len + 1);
+        inp.style.width = ch + 'ch';
+    }
+    var taskAnswerNumIds = ['taskAnswerNum', 'taskAnswerDen', 'taskAnswerNum1', 'taskAnswerDenCommon', 'taskAnswerNum2', 'taskAnswerDenCommon2', 'taskAnswerIntPart', 'taskAnswerNumMixed', 'taskAnswerDenMixed'];
+    function resizeAllTaskAnswerInputs() {
+        var main = document.getElementById('taskAnswerInput');
+        resizeAnswerInput(main, 12);
+        taskAnswerNumIds.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) resizeAnswerInput(el, 3);
+        });
+    }
+    var taskAnswerMain = document.getElementById('taskAnswerInput');
+    if (taskAnswerMain) taskAnswerMain.addEventListener('input', function() { resizeAnswerInput(taskAnswerMain, 12); });
+    taskAnswerNumIds.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('input', function() { resizeAnswerInput(el, 3); });
+    });
     document.getElementById('taskAnswerInput').addEventListener('keydown', onTaskAnswerKeydown);
     document.getElementById('taskAnswerNum').addEventListener('keydown', onTaskAnswerKeydown);
     document.getElementById('taskAnswerDen').addEventListener('keydown', onTaskAnswerKeydown);
