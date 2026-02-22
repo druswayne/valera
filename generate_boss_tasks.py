@@ -175,10 +175,38 @@ SIMPLIFY_X_TITLES = [
     "Алгебра: упрощение"
 ]
 
+GEOMETRY_TITLES = [
+    "Периметр и площадь",
+    "Геометрический расчёт",
+    "Фигуры и числа",
+    "Площадь и стороны",
+    "Геометрия на практике",
+    "Прямоугольники и треугольники",
+    "Размеры фигур",
+    "Площадь многоугольника",
+    "Периметр фигуры",
+    "Геометрическая задача",
+]
+
+QUANTITIES_TITLES = [
+    "Единицы измерения",
+    "Перевод величин",
+    "Время и длина",
+    "Величины в действии",
+    "Единицы длины и веса",
+    "Площадь и время",
+    "Размерности",
+    "Перевод единиц",
+    "Действия с величинами",
+    "Величины",
+]
+
 # Сводка тем по типам заданий (для вывода в генераторе)
 TASK_THEMES = {
     "Вычисление выражений": EXPRESSION_TITLES,
     "Решение уравнений": EQUATION_TITLES,
+    "Геометрия (территория)": GEOMETRY_TITLES,
+    "Величины (территория)": QUANTITIES_TITLES,
     "НОД и НОК": GCD_LCM_TITLES,
     "Приведение дробей к знаменателю": FRACTION_TITLES,
     "Сокращение дробей": REDUCE_FRACTION_TITLES,
@@ -2682,6 +2710,336 @@ def generate_joint_work_task(difficulty: int) -> Dict[str, Any]:
         "points": points,
         "_meta": {"num_workers": num_workers, "ask_part": ask_part},
     }
+
+
+def generate_territory_geometry_task(difficulty: int) -> Dict[str, Any]:
+    """Генератор «Геометрия» для битвы за территорию.
+
+    Задачи: периметр многоугольников; площадь прямоугольника, квадрата, прямоугольного треугольника.
+    - Прямые: найти площадь/периметр по данным сторонам.
+    - Обратные: по площади/периметру найти неизвестную сторону.
+    - Со связанными неизвестными: несколько величин, одну нужно найти (ответ — одно число).
+
+    difficulty 1: простые прямые (P, S по данным).
+    difficulty 2: обратные (найти сторону по S или P), два шага.
+    difficulty 3: связанные неизвестные (например, прямоугольник — одна сторона в k раз другой, найти сторону/периметр/площадь).
+    Ответ всегда — одно натуральное число.
+    """
+    difficulty = max(1, min(3, difficulty))
+    task_kind = random.choice([
+        "perimeter_direct",
+        "area_rect_direct",
+        "area_square_direct",
+        "area_triangle_direct",
+        "perimeter_inverse",
+        "area_inverse",
+        "linked_unknowns",
+    ])
+    # На сложности 1 не даём обратные и связанные
+    if difficulty == 1 and task_kind in ("perimeter_inverse", "area_inverse", "linked_unknowns"):
+        task_kind = random.choice(["perimeter_direct", "area_rect_direct", "area_square_direct", "area_triangle_direct"])
+    # На сложности 3 чаще связанные
+    if difficulty == 3 and random.random() < 0.4:
+        task_kind = "linked_unknowns"
+
+    points = 10 + difficulty * 4
+    title = random.choice(GEOMETRY_TITLES) + f" #{random.randint(1, 1000)}"
+
+    # --- Периметр: прямые задачи ---
+    if task_kind == "perimeter_direct":
+        shape = random.choice(["square", "rectangle", "triangle"])
+        if shape == "square":
+            a = random.randint(2, 30)
+            P = 4 * a
+            desc = f"Сторона квадрата равна {a} см. Найдите его периметр (в см). В ответ укажите одно число."
+            return {"title": title, "description": desc, "correct_answer": str(P), "points": points}
+        if shape == "rectangle":
+            a = random.randint(2, 25)
+            b = random.randint(2, 25)
+            if a == b:
+                b = a + random.randint(1, 5)
+            P = 2 * (a + b)
+            desc = f"Стороны прямоугольника равны {a} см и {b} см. Найдите периметр (в см). В ответ укажите одно число."
+            return {"title": title, "description": desc, "correct_answer": str(P), "points": points}
+        # triangle
+        a = random.randint(3, 20)
+        b = random.randint(3, 20)
+        c = random.randint(max(abs(a - b), 1) + 1, a + b - 1)
+        P = a + b + c
+        desc = f"Стороны треугольника равны {a} см, {b} см и {c} см. Найдите периметр (в см). В ответ укажите одно число."
+        return {"title": title, "description": desc, "correct_answer": str(P), "points": points}
+
+    # --- Площадь: прямые ---
+    if task_kind == "area_rect_direct":
+        a = random.randint(2, 25)
+        b = random.randint(2, 25)
+        S = a * b
+        desc = f"Стороны прямоугольника равны {a} см и {b} см. Найдите площадь (в см²). В ответ укажите одно число."
+        return {"title": title, "description": desc, "correct_answer": str(S), "points": points}
+    if task_kind == "area_square_direct":
+        a = random.randint(2, 30)
+        S = a * a
+        desc = f"Сторона квадрата равна {a} см. Найдите площадь (в см²). В ответ укажите одно число."
+        return {"title": title, "description": desc, "correct_answer": str(S), "points": points}
+    if task_kind == "area_triangle_direct":
+        leg1 = random.randint(2, 20)
+        leg2 = random.randint(2, 20)
+        S = (leg1 * leg2) // 2
+        desc = f"Катеты прямоугольного треугольника равны {leg1} см и {leg2} см. Найдите площадь (в см²). В ответ укажите одно число."
+        return {"title": title, "description": desc, "correct_answer": str(S), "points": points}
+
+    # --- Обратные: по периметру/площади найти сторону ---
+    if task_kind == "perimeter_inverse":
+        variant = random.choice(["square_side", "rectangle_side"])
+        if variant == "square_side":
+            a = random.randint(3, 40)
+            P = 4 * a
+            desc = f"Периметр квадрата равен {P} см. Найдите длину его стороны (в см). В ответ укажите одно число."
+            return {"title": title, "description": desc, "correct_answer": str(a), "points": points}
+        # rectangle: дана одна сторона и P
+        a = random.randint(2, 20)
+        b = random.randint(2, 20)
+        if a == b:
+            b = a + random.randint(1, 8)
+        P = 2 * (a + b)
+        desc = f"Периметр прямоугольника равен {P} см, одна из сторон равна {a} см. Найдите другую сторону (в см). В ответ укажите одно число."
+        return {"title": title, "description": desc, "correct_answer": str(b), "points": points}
+
+    if task_kind == "area_inverse":
+        variant = random.choice(["square_side", "rect_side"])
+        if variant == "square_side":
+            a = random.randint(2, 25)
+            S = a * a
+            desc = f"Площадь квадрата равна {S} см². Найдите длину стороны (в см). В ответ укажите одно число."
+            return {"title": title, "description": desc, "correct_answer": str(a), "points": points}
+        # rect: S и одна сторона
+        a = random.randint(2, 20)
+        b = random.randint(2, 20)
+        S = a * b
+        desc = f"Площадь прямоугольника равна {S} см², одна из сторон равна {a} см. Найдите другую сторону (в см). В ответ укажите одно число."
+        return {"title": title, "description": desc, "correct_answer": str(b), "points": points}
+
+    # --- Связанные неизвестные (несколько величин, найти одну) ---
+    # Примеры: прямоугольник — ширина в 2 раза меньше длины, периметр 60 → найти длину/ширину/площадь;
+    #          квадрат и прямоугольник с общей стороной; площадь прямоугольного тр-ка, катеты отличаются на k.
+    for _ in range(80):
+        sub = random.choice(["rect_length_width_ratio", "rect_perimeter_one_side", "square_perimeter_then_area", "rect_area_width_half"])
+        if sub == "rect_length_width_ratio":
+            # Длина в k раз больше ширины, периметр P. Найти длину или ширину или площадь.
+            k = random.randint(2, 5)
+            w = random.randint(3, 15)
+            length = k * w
+            P = 2 * (length + w)
+            ask = random.choice(["width", "length", "area"])
+            if ask == "width":
+                desc = f"Прямоугольник имеет периметр {P} см. Длина в {k} раза больше ширины. Найдите ширину (в см). В ответ укажите одно число."
+                ans = w
+            elif ask == "length":
+                desc = f"Прямоугольник имеет периметр {P} см. Длина в {k} раза больше ширины. Найдите длину (в см). В ответ укажите одно число."
+                ans = length
+            else:
+                desc = f"Прямоугольник имеет периметр {P} см. Длина в {k} раза больше ширины. Найдите площадь (в см²). В ответ укажите одно число."
+                ans = length * w
+            return {"title": title, "description": desc, "correct_answer": str(ans), "points": points}
+        if sub == "rect_perimeter_one_side":
+            # Периметр P, одна сторона a. Найти другую.
+            a = random.randint(2, 25)
+            b = random.randint(2, 25)
+            if a == b:
+                b = a + random.randint(1, 10)
+            P = 2 * (a + b)
+            desc = f"Периметр прямоугольника равен {P} см, одна из сторон равна {a} см. Найдите вторую сторону (в см). В ответ укажите одно число."
+            return {"title": title, "description": desc, "correct_answer": str(b), "points": points}
+        if sub == "square_perimeter_then_area":
+            # Периметр квадрата P. Найти площадь.
+            a = random.randint(3, 30)
+            P = 4 * a
+            S = a * a
+            desc = f"Периметр квадрата равен {P} см. Найдите его площадь (в см²). В ответ укажите одно число."
+            return {"title": title, "description": desc, "correct_answer": str(S), "points": points}
+        if sub == "rect_area_width_half":
+            # Площадь S, ширина в 2 раза меньше длины. Найти длину или ширину.
+            w = random.randint(2, 15)
+            length = 2 * w
+            S = length * w
+            ask = random.choice(["width", "length"])
+            if ask == "width":
+                desc = f"Площадь прямоугольника равна {S} см². Длина в 2 раза больше ширины. Найдите ширину (в см). В ответ укажите одно число."
+                ans = w
+            else:
+                desc = f"Площадь прямоугольника равна {S} см². Длина в 2 раза больше ширины. Найдите длину (в см). В ответ укажите одно число."
+                ans = length
+            return {"title": title, "description": desc, "correct_answer": str(ans), "points": points}
+    # fallback
+    a = random.randint(4, 20)
+    P = 4 * a
+    desc = f"Периметр квадрата равен {P} см. Найдите его площадь (в см²). В ответ укажите одно число."
+    return {"title": title, "description": desc, "correct_answer": str(a * a), "points": points}
+
+
+def _year_to_century(year: int) -> int:
+    """Номер века по году: 856 -> 9, 1900 -> 19, 1901 -> 20."""
+    return (year - 1) // 100 + 1
+
+
+def generate_territory_quantities_task(difficulty: int) -> Dict[str, Any]:
+    """Генератор «Величины» для битвы за территорию.
+
+    Задачи: перевод единиц (длина, вес, площадь, время); действия с составными величинами
+    (например 3 ч 5 мин : 5 + 2 ч 56 мин); определение века по году (856 год — какой век?).
+    Ответ — одно натуральное число в указанных единицах.
+
+    difficulty 1: простой перевод в одну единицу (м→см, кг→г, ч мин→мин, м²→см² и т.д.).
+    difficulty 2: перевод с большими числами или сложение двух величин (ответ в базовой единице).
+    difficulty 3: действия с делением/сложением (3ч5мин:5+2ч56мин), определение века по году.
+    """
+    difficulty = max(1, min(3, difficulty))
+    points = 10 + difficulty * 4
+    title = random.choice(QUANTITIES_TITLES) + f" #{random.randint(1, 1000)}"
+
+    # Собираем допустимые типы по сложности
+    task_types = ["convert_time", "convert_length", "convert_weight", "convert_area"]
+    if difficulty >= 2:
+        task_types += ["ops_time_sum", "ops_length", "ops_weight"]
+    if difficulty >= 3:
+        task_types += ["ops_time_div_add", "century"]
+    task_kind = random.choice(task_types)
+
+    # --- Перевод времени: X ч Y мин в минутах ---
+    if task_kind == "convert_time":
+        h = random.randint(1, 5 if difficulty == 1 else 12)
+        m = random.randint(0, 59) if difficulty >= 2 else random.choice([0, 15, 30, 45])
+        total_min = h * 60 + m
+        if m == 0:
+            desc = f"Выразите {h} ч в минутах. В ответ укажите одно число."
+        else:
+            desc = f"Выразите {h} ч {m} мин в минутах. В ответ укажите одно число."
+        return {"title": title, "description": desc, "correct_answer": str(total_min), "points": points}
+
+    # --- Перевод длины: м и см в см; км и м в м ---
+    if task_kind == "convert_length":
+        variant = random.choice(["m_cm_to_cm", "km_m_to_m", "dm_cm_to_cm"])
+        if variant == "m_cm_to_cm":
+            metr = random.randint(1, 20)
+            cm = random.randint(0, 99)
+            total = metr * 100 + cm
+            desc = f"Выразите {metr} м {cm} см в сантиметрах. В ответ укажите одно число."
+        elif variant == "km_m_to_m":
+            km = random.randint(1, 10)
+            metr = random.randint(0, 999)
+            total = km * 1000 + metr
+            desc = f"Выразите {km} км {metr} м в метрах. В ответ укажите одно число."
+        else:
+            dm = random.randint(1, 50)
+            cm = random.randint(0, 9)
+            total = dm * 10 + cm
+            desc = f"Выразите {dm} дм {cm} см в сантиметрах. В ответ укажите одно число."
+        return {"title": title, "description": desc, "correct_answer": str(total), "points": points}
+
+    # --- Перевод веса: кг и г в г; т и кг в кг ---
+    if task_kind == "convert_weight":
+        if random.random() < 0.6:
+            kg = random.randint(1, 15)
+            g = random.randint(0, 999)
+            total = kg * 1000 + g
+            desc = f"Выразите {kg} кг {g} г в граммах. В ответ укажите одно число."
+        else:
+            t = random.randint(1, 5)
+            kg = random.randint(0, 999)
+            total = t * 1000 + kg
+            desc = f"Выразите {t} т {kg} кг в килограммах. В ответ укажите одно число."
+        return {"title": title, "description": desc, "correct_answer": str(total), "points": points}
+
+    # --- Перевод площади: м² в см²; дм² в см²; а в м²; га в м² ---
+    if task_kind == "convert_area":
+        variant = random.choice(["m2_to_cm2", "dm2_to_cm2", "a_to_m2", "ha_to_m2"])
+        if variant == "m2_to_cm2":
+            m2 = random.randint(1, 10)
+            total = m2 * 10000
+            desc = f"Выразите {m2} м² в см². В ответ укажите одно число."
+        elif variant == "dm2_to_cm2":
+            dm2 = random.randint(1, 50)
+            total = dm2 * 100
+            desc = f"Выразите {dm2} дм² в см². В ответ укажите одно число."
+        elif variant == "a_to_m2":
+            a = random.randint(1, 20)
+            total = a * 100
+            desc = f"Выразите {a} а (ар) в м². В ответ укажите одно число."
+        else:
+            ha = random.randint(1, 10)
+            total = ha * 10000
+            desc = f"Выразите {ha} га в м². В ответ укажите одно число."
+        return {"title": title, "description": desc, "correct_answer": str(total), "points": points}
+
+    # --- Сложение времени: A ч B мин + C ч D мин, ответ в минутах ---
+    if task_kind == "ops_time_sum":
+        h1 = random.randint(0, 3)
+        m1 = random.randint(0, 59)
+        h2 = random.randint(0, 3)
+        m2 = random.randint(0, 59)
+        total = (h1 * 60 + m1) + (h2 * 60 + m2)
+        desc = f"Найдите сумму: {h1} ч {m1} мин + {h2} ч {m2} мин. Ответ дайте в минутах (одно число)."
+        return {"title": title, "description": desc, "correct_answer": str(total), "points": points}
+
+    # --- Сложение длин: A м B см + C м D см, ответ в см ---
+    if task_kind == "ops_length":
+        a_m = random.randint(0, 5)
+        a_cm = random.randint(0, 99)
+        b_m = random.randint(0, 5)
+        b_cm = random.randint(0, 99)
+        total = (a_m * 100 + a_cm) + (b_m * 100 + b_cm)
+        desc = f"Найдите сумму: {a_m} м {a_cm} см + {b_m} м {b_cm} см. Ответ дайте в сантиметрах (одно число)."
+        return {"title": title, "description": desc, "correct_answer": str(total), "points": points}
+
+    # --- Сложение весов: A кг B г + C г или A кг B г + D кг E г, ответ в г ---
+    if task_kind == "ops_weight":
+        kg1 = random.randint(0, 4)
+        g1 = random.randint(0, 999)
+        kg2 = random.randint(0, 4)
+        g2 = random.randint(0, 999)
+        total = (kg1 * 1000 + g1) + (kg2 * 1000 + g2)
+        desc = f"Найдите сумму: {kg1} кг {g1} г + {kg2} кг {g2} г. Ответ дайте в граммах (одно число)."
+        return {"title": title, "description": desc, "correct_answer": str(total), "points": points}
+
+    # --- Действие с делением: (A ч B мин) : k + C ч D мин, ответ в минутах ---
+    if task_kind == "ops_time_div_add":
+        for _ in range(50):
+            div = random.choice([2, 3, 5, 6, 10])
+            total_min1 = random.randint(20, 180)  # минимум 20 мин чтобы было что делить
+            total_min1 = (total_min1 // div) * div  # делится нацело
+            h1 = total_min1 // 60
+            m1 = total_min1 % 60
+            h2 = random.randint(0, 4)
+            m2 = random.randint(0, 59)
+            part2 = h2 * 60 + m2
+            result = (total_min1 // div) + part2
+            if result <= 0 or result > 600:
+                continue
+            part1_str = f"{h1} ч {m1} мин" if m1 else f"{h1} ч"
+            part2_str = f"{h2} ч {m2} мин" if m2 else f"{h2} ч"
+            desc = f"Найдите значение: ({part1_str}) : {div} + {part2_str}. Ответ дайте в минутах (одно число)."
+            return {"title": title, "description": desc, "correct_answer": str(result), "points": points}
+        # fallback
+        desc = "Найдите значение: (2 ч 30 мин) : 2 + 1 ч. Ответ дайте в минутах (одно число)."
+        return {"title": title, "description": desc, "correct_answer": "135", "points": points}
+
+    # --- Век по году ---
+    if task_kind == "century":
+        # Год: желательно не круглый 1900/2000 чтобы не путать век
+        year = random.randint(100, 2100)
+        # Избегаем границ столетий для однозначности
+        if year % 100 == 0:
+            year += random.choice([-1, 1])
+        cent = _year_to_century(year)
+        desc = f"{year} год — какой это век? В ответ укажите номер века (одно число)."
+        return {"title": title, "description": desc, "correct_answer": str(cent), "points": points}
+
+    # fallback: простая конвертация времени
+    h = random.randint(1, 5)
+    m = random.randint(0, 59)
+    total = h * 60 + m
+    desc = f"Выразите {h} ч {m} мин в минутах. В ответ укажите одно число."
+    return {"title": title, "description": desc, "correct_answer": str(total), "points": points}
 
 
 def generate_territory_two_unknowns_task(difficulty: int) -> Dict[str, Any]:

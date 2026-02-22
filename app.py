@@ -29,6 +29,8 @@ try:
         generate_territory_motion_task,
         generate_territory_fraction_word_task,
         generate_territory_two_unknowns_task,
+        generate_territory_geometry_task,
+        generate_territory_quantities_task,
         generate_mixed_numbers_task,
         generate_joint_work_task,
     )
@@ -45,6 +47,8 @@ except ImportError:
     generate_territory_motion_task = None
     generate_territory_fraction_word_task = None
     generate_territory_two_unknowns_task = None
+    generate_territory_geometry_task = None
+    generate_territory_quantities_task = None
     generate_mixed_numbers_task = None
     generate_joint_work_task = None
 import re
@@ -4513,6 +4517,8 @@ TERRITORY_GENERATOR_BY_NAME = {
     'Задачи на движение': lambda d: generate_territory_motion_task(difficulty=d) if generate_territory_motion_task else None,
     'Задачи на дроби': lambda d: generate_territory_fraction_word_task(difficulty=d) if generate_territory_fraction_word_task else None,
     'сумма/разность и части': lambda d: generate_territory_two_unknowns_task(difficulty=d) if generate_territory_two_unknowns_task else None,
+    'Геометрия': lambda d: generate_territory_geometry_task(difficulty=d) if generate_territory_geometry_task else None,
+    'Величины': lambda d: generate_territory_quantities_task(difficulty=d) if generate_territory_quantities_task else None,
     'Смешанные числа': lambda d: generate_mixed_numbers_task(difficulty=d) if generate_mixed_numbers_task else None,
     'Совместная работа': lambda d: generate_joint_work_task(difficulty=d) if generate_joint_work_task else None,
 }
