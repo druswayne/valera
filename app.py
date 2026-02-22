@@ -8,7 +8,7 @@ from functools import wraps
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.executors.pool import ThreadPoolExecutor
-from sqlalchemy import case, cast, Float, Index, and_, func
+from sqlalchemy import case, cast, Float, Index, and_, func, text
 from sqlalchemy.exc import IntegrityError
 import json
 import random
@@ -4799,9 +4799,32 @@ PVP_REWARD_BASE_MULT = 50
 PVP_REWARD_SPREAD = 0.3
 PVP_DUEL_DURATION_MINUTES = 5
 
+_pvp_last_seen_column_ensured = False
+
+
+def _pvp_arena_ensure_last_seen_column():
+    """При первом обращении к арене: добавить колонку last_seen_at в pvp_arena_presence, если её нет (без отдельной миграции)."""
+    global _pvp_last_seen_column_ensured
+    if _pvp_last_seen_column_ensured:
+        return
+    try:
+        with db.engine.connect() as conn:
+            r = conn.execute(text("PRAGMA table_info(pvp_arena_presence)"))
+            columns = [row[1] for row in r]
+        if 'last_seen_at' in columns:
+            _pvp_last_seen_column_ensured = True
+            return
+        with db.engine.begin() as conn:
+            conn.execute(text("ALTER TABLE pvp_arena_presence ADD COLUMN last_seen_at DATETIME"))
+            conn.execute(text("UPDATE pvp_arena_presence SET last_seen_at = entered_at"))
+    except Exception:
+        pass
+    _pvp_last_seen_column_ensured = True
+
 
 def _pvp_arena_cleanup_stale():
     """Удалить присутствия на арене, у которых last_seen_at старше PVP_ARENA_INACTIVITY_MINUTES или не задан."""
+    _pvp_arena_ensure_last_seen_column()
     limit = datetime.utcnow() - timedelta(minutes=PVP_ARENA_INACTIVITY_MINUTES)
     stale = PvPArenaPresence.query.filter(
         db.or_(PvPArenaPresence.last_seen_at.is_(None), PvPArenaPresence.last_seen_at < limit)
