@@ -1756,11 +1756,17 @@ def register():
         if not username or len(username) < 3:
             flash('Логин должен быть не менее 3 символов', 'error')
             return render_template('register.html', clans=clans)
+        if ' ' in username:
+            flash('Логин не может содержать пробелы', 'error')
+            return render_template('register.html', clans=clans)
         if User.query.filter(func.lower(User.username) == username.lower()).first():
             flash('Такой логин уже занят', 'error')
             return render_template('register.html', clans=clans)
         if not password or len(password) < 6:
             flash('Пароль должен быть не менее 6 символов', 'error')
+            return render_template('register.html', clans=clans)
+        if ' ' in password:
+            flash('Пароль не может содержать пробелы', 'error')
             return render_template('register.html', clans=clans)
         if password != password_confirm:
             flash('Пароли не совпадают', 'error')

@@ -9,12 +9,12 @@
         <form method="POST" action="{{ url_for('register') }}" class="register-form">
             <div class="form-group">
                 <label for="username">Логин *</label>
-                <input type="text" id="username" name="username" required minlength="3" autofocus value="{{ request.form.username or '' }}">
+                <input type="text" id="username" name="username" required minlength="3" pattern="[^\s]+" title="Логин не может содержать пробелы" autofocus value="{{ request.form.username or '' }}">
             </div>
             <div class="form-group">
                 <label for="password">Пароль *</label>
                 <div class="password-input-wrap">
-                    <input type="password" id="password" name="password" required minlength="6">
+                    <input type="password" id="password" name="password" required minlength="6" pattern="[^\s]+" title="Пароль не может содержать пробелы">
                     <button type="button" class="password-toggle" aria-label="Показать пароль" title="Показать пароль">
                         <span class="icon-show" aria-hidden="true">👁</span>
                         <span class="icon-hide" aria-hidden="true" style="display:none;">🙈</span>
@@ -24,7 +24,7 @@
             <div class="form-group">
                 <label for="password_confirm">Подтверждение пароля *</label>
                 <div class="password-input-wrap">
-                    <input type="password" id="password_confirm" name="password_confirm" required minlength="6">
+                    <input type="password" id="password_confirm" name="password_confirm" required minlength="6" pattern="[^\s]+" title="Пароль не может содержать пробелы">
                     <button type="button" class="password-toggle" aria-label="Показать пароль" title="Показать пароль">
                         <span class="icon-show" aria-hidden="true">👁</span>
                         <span class="icon-hide" aria-hidden="true" style="display:none;">🙈</span>
@@ -147,6 +147,23 @@
 </style>
 <script>
 (function() {
+    var form = document.querySelector('.register-form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            var username = document.getElementById('username');
+            var password = document.getElementById('password');
+            if (username && /\s/.test(username.value)) {
+                e.preventDefault();
+                alert('Логин не может содержать пробелы.');
+                return false;
+            }
+            if (password && /\s/.test(password.value)) {
+                e.preventDefault();
+                alert('Пароль не может содержать пробелы.');
+                return false;
+            }
+        });
+    }
     document.querySelectorAll('.password-input-wrap').forEach(function(wrap) {
         var input = wrap.querySelector('input[type="password"]');
         var btn = wrap.querySelector('.password-toggle');

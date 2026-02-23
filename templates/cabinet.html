@@ -107,6 +107,50 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     border-color: #8b5a3c;
 }
 
+/* Кнопка «Поддержать проект» внизу слева (только личный кабинет) */
+.cabinet-support-float {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 9990;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+.cabinet-support-float-label {
+    font-size: 0.75rem;
+    color: #e8dcc4;
+    text-align: center;
+    white-space: nowrap;
+    padding: 4px 8px;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    border: 1px solid #5c4033;
+    border-radius: 6px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+.cabinet-support-float-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #229ED9 0%, #1a8bc7 100%);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    text-decoration: none;
+    border: 2px solid rgba(255,255,255,0.25);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+    transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+}
+.cabinet-support-float-btn:hover {
+    background: linear-gradient(145deg, #2eb0ed 0%, #229ED9 100%);
+    transform: scale(1.08);
+    box-shadow: 0 4px 14px rgba(34,158,217,0.45);
+    color: #fff;
+}
+
 .cabinet-section {
     background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
     border-radius: 8px;
@@ -1446,6 +1490,10 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 {% if clan_data %}
 <button type="button" class="floating-chat-btn" id="floatingChatBtn" aria-label="Открыть чат с кланом" title="Чат с кланом" data-clan-id="{{ clan_data.clan.id if clan_data and clan_data.clan else '' }}">💬<span class="chat-unread-badge" id="clanChatUnreadBadge" aria-hidden="true" title="Есть новые сообщения"></span></button>
 {% endif %}
+<div class="cabinet-support-float">
+    <span class="cabinet-support-float-label">Поддержать проект</span>
+    <a href="https://t.me/+iUHoo75SQMFlMmIy" class="cabinet-support-float-btn" target="_blank" rel="noopener noreferrer" aria-label="Поддержать проект — Telegram" title="Перейти в Telegram: Битва за территорию">🎁</a>
+</div>
 {% endblock %}
 
 {% block modals %}
