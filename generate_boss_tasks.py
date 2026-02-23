@@ -20,6 +20,7 @@
 import json
 import random
 import math
+from fractions import Fraction
 from typing import List, Dict, Tuple, Any, Optional
 
 # Забавные названия для заданий
@@ -201,12 +202,26 @@ QUANTITIES_TITLES = [
     "Величины",
 ]
 
+MULTI_FRAC_TITLES = [
+    "Несколько действий с дробями",
+    "Дроби и смешанные числа",
+    "Вычисления с дробями",
+    "Цепочка дробей",
+    "Сложение и вычитание дробей",
+    "Дроби: несколько шагов",
+    "Смешанные числа в действии",
+    "Вычислите выражение",
+    "Дроби с умножением и делением",
+    "Многошаговые дроби",
+]
+
 # Сводка тем по типам заданий (для вывода в генераторе)
 TASK_THEMES = {
     "Вычисление выражений": EXPRESSION_TITLES,
     "Решение уравнений": EQUATION_TITLES,
     "Геометрия (территория)": GEOMETRY_TITLES,
     "Величины (территория)": QUANTITIES_TITLES,
+    "Несколько действий с дробями (территория)": MULTI_FRAC_TITLES,
     "НОД и НОК": GCD_LCM_TITLES,
     "Приведение дробей к знаменателю": FRACTION_TITLES,
     "Сокращение дробей": REDUCE_FRACTION_TITLES,
@@ -3040,6 +3055,253 @@ def generate_territory_quantities_task(difficulty: int) -> Dict[str, Any]:
     total = h * 60 + m
     desc = f"Выразите {h} ч {m} мин в минутах. В ответ укажите одно число."
     return {"title": title, "description": desc, "correct_answer": str(total), "points": points}
+
+
+def _mixed_to_fraction(int_part: int, num: int, den: int) -> Fraction:
+    """Смешанное число (целая часть, числитель, знаменатель) в Fraction."""
+    return Fraction(int_part * den + num, den)
+
+
+def _mixed_display(int_part: int, num: int, den: int) -> str:
+    """Строка для отображения смешанного числа: 1 1/2 или 2/3."""
+    if int_part != 0 and num != 0:
+        return f"{int_part} {num}/{den}"
+    if int_part != 0:
+        return str(int_part)
+    return f"{num}/{den}"
+
+
+def _eval_chain(operands: List[Fraction], ops: List[str]) -> Fraction:
+    """Вычисление цепочки с приоритетом: сначала * и :, затем + и - (слева направо)."""
+    if not operands:
+        return Fraction(0)
+    if len(operands) == 1:
+        return operands[0]
+    # Разбиваем на "слагаемые": каждое слагаемое — произведение/частное
+    terms: List[Fraction] = []
+    term_ops: List[str] = []
+    i = 0
+    current = operands[0]
+    while i < len(ops):
+        op = ops[i]
+        if op in ("*", ":"):
+            next_val = operands[i + 1]
+            if op == "*":
+                current = current * next_val
+            else:
+                if next_val == 0:
+                    raise ZeroDivisionError
+                current = current / next_val
+            i += 1
+        else:
+            terms.append(current)
+            term_ops.append(op)
+            current = operands[i + 1]
+            i += 1
+    terms.append(current)
+    # Суммируем: terms[0] + terms[1] - terms[2] + ...
+    result = terms[0]
+    for j, op in enumerate(term_ops):
+        if op == "+":
+            result += terms[j + 1]
+        else:
+            result -= terms[j + 1]
+    return result
+
+
+def _build_multi_frac_expr_display(operands_display: List[str], ops: List[str]) -> str:
+    """Собирает строку выражения. Для смешанных +/− и ×/: оборачивает блоки ×/: в скобки."""
+    op_symbols = {"+": "+", "-": "−", "*": "×", ":": ":"}
+    has_mul_div = "*" in ops or ":" in ops
+    has_add_sub = "+" in ops or "-" in ops
+    if has_mul_div and has_add_sub:
+        # Разбиваем на «слагаемые»: каждое — одно число или цепочка ×/:
+        terms_display: List[str] = []
+        term_ops: List[str] = []
+        i = 0
+        seg = [operands_display[0]]
+        while i < len(ops):
+            if ops[i] in ("*", ":"):
+                seg.append(op_symbols[ops[i]])
+                seg.append(operands_display[i + 1])
+                i += 1
+            else:
+                term_ops.append(ops[i])
+                terms_display.append(("(" + " ".join(seg) + ")") if len(seg) > 1 else seg[0])
+                seg = [operands_display[i + 1]]
+                i += 1
+        terms_display.append(("(" + " ".join(seg) + ")") if len(seg) > 1 else seg[0])
+        out = [terms_display[0]]
+        for j, o in enumerate(term_ops):
+            out.append(" " + op_symbols.get(o, o) + " ")
+            out.append(terms_display[j + 1])
+        return "".join(out)
+    parts = [operands_display[0]]
+    for i, op in enumerate(ops):
+        parts.append(" " + op_symbols.get(op, op) + " ")
+        parts.append(operands_display[i + 1])
+    return "".join(parts)
+
+
+def _build_multi_frac_expr_html(operands_mixed: List[Tuple[int, int, int]], ops: List[str]) -> str:
+    """Собирает HTML выражения: дроби через _format_fraction_html (числитель над чертой, знаменатель под чертой)."""
+    op_symbols = {"+": "+", "-": "−", "*": "×", ":": ":"}
+    op_span = '<span class="task-add-sub-op">{}</span>'
+    operands_html = [_format_fraction_html(i, n, d) for i, n, d in operands_mixed]
+    has_mul_div = "*" in ops or ":" in ops
+    has_add_sub = "+" in ops or "-" in ops
+    if has_mul_div and has_add_sub:
+        terms_html: List[str] = []
+        term_ops: List[str] = []
+        idx = 0
+        seg_html = [operands_html[0]]
+        seg_ops: List[str] = []
+        while idx < len(ops):
+            if ops[idx] in ("*", ":"):
+                seg_ops.append(op_symbols[ops[idx]])
+                seg_html.append(operands_html[idx + 1])
+                idx += 1
+            else:
+                term_ops.append(ops[idx])
+                if len(seg_html) > 1:
+                    inner = seg_html[0]
+                    for s in range(len(seg_ops)):
+                        inner += " " + op_span.format(seg_ops[s]) + " " + seg_html[s + 1]
+                    terms_html.append('<span class="task-multi-frac-group">(' + inner + ')</span>')
+                else:
+                    terms_html.append(seg_html[0])
+                seg_html = [operands_html[idx + 1]]
+                seg_ops = []
+                idx += 1
+        if len(seg_html) > 1:
+            inner = seg_html[0]
+            for s in range(len(seg_ops)):
+                inner += " " + op_span.format(seg_ops[s]) + " " + seg_html[s + 1]
+            terms_html.append('<span class="task-multi-frac-group">(' + inner + ')</span>')
+        else:
+            terms_html.append(seg_html[0])
+        out = [terms_html[0]]
+        for j, o in enumerate(term_ops):
+            out.append(" " + op_span.format(op_symbols.get(o, o)) + " ")
+            out.append(terms_html[j + 1])
+        return "".join(out)
+    parts = [operands_html[0]]
+    for i, op in enumerate(ops):
+        parts.append(" " + op_span.format(op_symbols.get(op, op)) + " ")
+        parts.append(operands_html[i + 1])
+    return "".join(parts)
+
+
+def generate_territory_multi_frac_task(difficulty: int) -> Dict[str, Any]:
+    """Генератор «Несколько действий с дробями» для битвы за территорию.
+
+    Выражения из дробей/смешанных чисел с операциями +, −, ×, : и скобками.
+    Все результаты положительные. Ответ: несократимая дробь с целой частью (int|num|den).
+
+    Уровень 1: только + и −, 3–4 действия, знаменатели 2–10, смешанные числа.
+    Уровень 2: +, −, × и скобки, 3–5 действий, знаменатели 2–10.
+    Уровень 3: +, −, ×, : и скобки, 4–6 действий, знаменатели 2–20.
+    """
+    difficulty = max(1, min(3, difficulty))
+    points = 12 + difficulty * 4
+    title = random.choice(MULTI_FRAC_TITLES) + f" #{random.randint(1, 1000)}"
+    instruction = "Вычислите выражение ниже. В ответе укажите несократимую дробь и выделите целую часть, если это возможно."
+
+    if difficulty == 1:
+        den_lo, den_hi = 2, 10
+        ops_min, ops_max = 3, 4
+        allowed_ops = ["+", "-"]
+        int_max = 3
+    elif difficulty == 2:
+        den_lo, den_hi = 2, 10
+        ops_min, ops_max = 3, 5
+        allowed_ops = ["+", "-", "*"]
+        int_max = 4
+    else:
+        den_lo, den_hi = 2, 20
+        ops_min, ops_max = 4, 6
+        allowed_ops = ["+", "-", "*", ":"]
+        int_max = 5
+
+    def one_mixed() -> Tuple[int, int, int]:
+        den = random.randint(den_lo, den_hi)
+        num = random.randint(1, den - 1)
+        g = gcd(num, den)
+        while g != 1 and den > 1:
+            num = random.randint(1, den - 1)
+            g = gcd(num, den)
+        int_p = random.randint(0, int_max)
+        return int_p, num, den
+
+    max_attempts = 250
+    for _ in range(max_attempts):
+        n_ops = random.randint(ops_min, ops_max)
+        n_operands = n_ops + 1
+        operands_mixed = [one_mixed() for _ in range(n_operands)]
+        ops = [random.choice(allowed_ops) for _ in range(n_ops)]
+
+        # Для уровня 1: стараемся, чтобы сумма положительных слагаемых была больше суммы отрицательных
+        if difficulty == 1:
+            plus_count = sum(1 for o in ops if o == "+")
+            minus_count = sum(1 for o in ops if o == "-")
+            if minus_count > plus_count and random.random() < 0.7:
+                ops = [random.choice(["+", "-"]) for _ in range(n_ops)]
+                if all(o == "-" for o in ops):
+                    ops[0] = "+"
+
+        operands_frac = [_mixed_to_fraction(i, n, d) for i, n, d in operands_mixed]
+        try:
+            result = _eval_chain(operands_frac, ops)
+        except ZeroDivisionError:
+            continue
+        if result <= 0 or result.denominator > 10000:
+            continue
+
+        # Приводим к смешанному несократимому виду
+        num_val = result.numerator
+        den_val = result.denominator
+        if den_val <= 0:
+            continue
+        int_part, rem_num, rem_den = _to_mixed_irreducible(num_val, den_val)
+        correct_answer = f"{int_part}|{rem_num}|{rem_den}"
+
+        expr_html = _build_multi_frac_expr_html(operands_mixed, ops)
+
+        return {
+            "title": title,
+            "description": instruction,
+            "correct_answer": correct_answer,
+            "points": points,
+            "answer_type": "add_sub_fractions",
+            "display_frac1": expr_html,
+            "display_frac2": "",
+            "display_operator": "",
+            "int_part_zero": (int_part == 0),
+            "multi_frac_expression": True,
+            "_meta": {"difficulty": difficulty, "n_ops": n_ops},
+        }
+
+    # Fallback: простое сложение двух дробей
+    i1, n1, d1 = one_mixed() if difficulty >= 1 else (1, 1, 2)
+    i2, n2, d2 = one_mixed() if difficulty >= 1 else (0, 1, 3)
+    v1 = _mixed_to_fraction(i1, n1, d1)
+    v2 = _mixed_to_fraction(i2, n2, d2)
+    result = v1 + v2
+    int_part, rem_num, rem_den = _to_mixed_irreducible(result.numerator, result.denominator)
+    expr_html = _build_multi_frac_expr_html([(i1, n1, d1), (i2, n2, d2)], ["+"])
+    return {
+        "title": title,
+        "description": instruction,
+        "correct_answer": f"{int_part}|{rem_num}|{rem_den}",
+        "points": points,
+        "answer_type": "add_sub_fractions",
+        "display_frac1": expr_html,
+        "display_frac2": "",
+        "display_operator": "",
+        "int_part_zero": (int_part == 0),
+        "multi_frac_expression": True,
+        "_meta": {"difficulty": difficulty},
+    }
 
 
 def generate_territory_two_unknowns_task(difficulty: int) -> Dict[str, Any]:

@@ -31,6 +31,7 @@ try:
         generate_territory_two_unknowns_task,
         generate_territory_geometry_task,
         generate_territory_quantities_task,
+        generate_territory_multi_frac_task,
         generate_mixed_numbers_task,
         generate_joint_work_task,
     )
@@ -49,6 +50,7 @@ except ImportError:
     generate_territory_two_unknowns_task = None
     generate_territory_geometry_task = None
     generate_territory_quantities_task = None
+    generate_territory_multi_frac_task = None
     generate_mixed_numbers_task = None
     generate_joint_work_task = None
 import re
@@ -4453,11 +4455,18 @@ def _check_task_answer(task, answer):
             return False
         except Exception:
             return False
-    if task.title in ('Сложение и вычитание дробей', 'Умножение и деление дробей', 'Смешанные числа') and task.correct_answer and task.correct_answer.count('|') >= 2:
+    if (task.title in ('Сложение и вычитание дробей', 'Умножение и деление дробей', 'Смешанные числа') or
+            (task.correct_answer and task.correct_answer.count('|') == 2 and len(task.correct_answer.split('|')) == 3)):
+        if not task.correct_answer or task.correct_answer.count('|') < 2:
+            return _normalize_answer(answer) == _normalize_answer(task.correct_answer)
         try:
             correct_parts = [p.strip() for p in task.correct_answer.split('|')]
+            if len(correct_parts) < 3:
+                return _normalize_answer(answer) == _normalize_answer(task.correct_answer)
             user_parts = [p.strip() for p in (answer or '').split('|')]
-            if len(correct_parts) >= 3 and len(user_parts) >= 3:
+            if len(user_parts) == 2:
+                user_parts = ['0', user_parts[0], user_parts[1]]
+            if len(user_parts) >= 3:
                 try:
                     return (
                         int(user_parts[0] or 0) == int(correct_parts[0] or 0)
@@ -4527,6 +4536,7 @@ TERRITORY_GENERATOR_BY_NAME = {
     'сумма/разность и части': lambda d: generate_territory_two_unknowns_task(difficulty=d) if generate_territory_two_unknowns_task else None,
     'Геометрия': lambda d: generate_territory_geometry_task(difficulty=d) if generate_territory_geometry_task else None,
     'Величины': lambda d: generate_territory_quantities_task(difficulty=d) if generate_territory_quantities_task else None,
+    'Несколько действий с дробями': lambda d: generate_territory_multi_frac_task(difficulty=d) if generate_territory_multi_frac_task else None,
     'Смешанные числа': lambda d: generate_mixed_numbers_task(difficulty=d) if generate_mixed_numbers_task else None,
     'Совместная работа': lambda d: generate_joint_work_task(difficulty=d) if generate_joint_work_task else None,
 }
@@ -4581,6 +4591,8 @@ def api_territory_task():
                             db.session.add(task)
                             db.session.commit()
                             task_dict = task.to_dict_public()
+                            if gen_task.get('answer_type'):
+                                task_dict['answer_type'] = gen_task['answer_type']
                             if gen_task.get('display_frac1'):
                                 task_dict['display_frac1'] = gen_task['display_frac1']
                             if gen_task.get('display_frac2'):
@@ -4591,6 +4603,8 @@ def api_territory_task():
                                 task_dict['display_operator'] = gen_task['display_operator']
                             if 'int_part_zero' in gen_task:
                                 task_dict['int_part_zero'] = gen_task['int_part_zero']
+                            if gen_task.get('multi_frac_expression'):
+                                task_dict['multi_frac_expression'] = True
                             return jsonify({
                                 'success': True,
                                 'task': task_dict,
@@ -4685,23 +4699,32 @@ def api_territory_apply_action():
                 correct = False
         except Exception:
             correct = False
-    elif task.title in ('Сложение и вычитание дробей', 'Умножение и деление дробей', 'Смешанные числа') and task.correct_answer and task.correct_answer.count('|') >= 2:
-        try:
-            correct_parts = [p.strip() for p in task.correct_answer.split('|')]
-            user_parts = [p.strip() for p in (answer or '').split('|')]
-            if len(correct_parts) >= 3 and len(user_parts) >= 3:
-                try:
-                    correct = (
-                        int(user_parts[0] or 0) == int(correct_parts[0] or 0)
-                        and int(user_parts[1] or 0) == int(correct_parts[1] or 0)
-                        and int(user_parts[2] or 0) == int(correct_parts[2] or 0)
-                    )
-                except (ValueError, TypeError, IndexError):
-                    correct = False
-            else:
+    elif (task.title in ('Сложение и вычитание дробей', 'Умножение и деление дробей', 'Смешанные числа') or
+          (task.correct_answer and task.correct_answer.count('|') == 2 and len(task.correct_answer.split('|')) == 3)):
+        if not task.correct_answer or task.correct_answer.count('|') < 2:
+            correct = _normalize_answer(answer) == _normalize_answer(task.correct_answer)
+        else:
+            try:
+                correct_parts = [p.strip() for p in task.correct_answer.split('|')]
+                user_parts = [p.strip() for p in (answer or '').split('|')]
+                if len(correct_parts) >= 3:
+                    if len(user_parts) == 2:
+                        user_parts = ['0', user_parts[0], user_parts[1]]
+                    if len(user_parts) >= 3:
+                        try:
+                            correct = (
+                                int(user_parts[0] or 0) == int(correct_parts[0] or 0)
+                                and int(user_parts[1] or 0) == int(correct_parts[1] or 0)
+                                and int(user_parts[2] or 0) == int(correct_parts[2] or 0)
+                            )
+                        except (ValueError, TypeError, IndexError):
+                            correct = False
+                    else:
+                        correct = False
+                else:
+                    correct = _normalize_answer(answer) == _normalize_answer(task.correct_answer)
+            except Exception:
                 correct = False
-        except Exception:
-            correct = False
     elif task.title == 'Правильные/неправильные дроби' and task.correct_answer and '|' in task.correct_answer:
         try:
             correct_parts = [p.strip() for p in task.correct_answer.split('|')]
@@ -5256,6 +5279,8 @@ def _pvp_random_task(difficulty):
                     db.session.add(task)
                     db.session.flush()
                     d = task.to_dict_public()
+                    if t.get('answer_type'):
+                        d['answer_type'] = t['answer_type']
                     if t.get('display_frac1'):
                         d['display_frac1'] = t['display_frac1']
                     if t.get('display_frac2'):
@@ -5266,6 +5291,8 @@ def _pvp_random_task(difficulty):
                         d['display_operator'] = t['display_operator']
                     if 'int_part_zero' in t:
                         d['int_part_zero'] = t['int_part_zero']
+                    if t.get('multi_frac_expression'):
+                        d['multi_frac_expression'] = True
                     return task, d
             except Exception as e:
                 logger.exception('PvP task gen error: %s', e)

@@ -349,6 +349,27 @@
 /* Смешанные числа / сложение-вычитание дробей */
 .pvp-duel-task-inner .task-mixed-fraction-display { margin-bottom: 10px; }
 .pvp-duel-task-inner .task-add-sub-op { margin: 0 6px; font-size: 1.2em; font-weight: bold; color: #3d2914; }
+.pvp-duel-task-inner .task-expression-display {
+    margin-top: 10px;
+    margin-bottom: 12px;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    max-width: 100%;
+    line-height: 1.5;
+}
+.pvp-duel-task-inner .task-expression-display .mixed-frac,
+.pvp-duel-task-inner .task-expression-display .frac,
+.pvp-duel-task-inner .task-expression-display .frac-int-only { display: inline-flex; align-items: center; vertical-align: middle; }
+.pvp-duel-task-inner .task-expression-display .frac-int { font-size: 1.1em; margin-right: 2px; }
+.pvp-duel-task-inner .task-expression-display .frac { flex-direction: column; }
+.pvp-duel-task-inner .task-expression-display .frac-num,
+.pvp-duel-task-inner .task-expression-display .frac-den { padding: 0 4px; line-height: 1.2; }
+.pvp-duel-task-inner .task-expression-display .frac-line {
+    display: block; width: 100%; min-width: 1.2em; height: 0;
+    border-top: 1.5px solid #3d2914; margin: 1px 0;
+}
+.pvp-duel-task-inner .task-expression-display .task-add-sub-op { margin: 0 6px; font-size: 1.2em; font-weight: bold; color: #3d2914; vertical-align: middle; }
+.pvp-duel-task-inner .task-expression-display .task-multi-frac-group { margin: 0 2px; vertical-align: middle; }
 .pvp-duel-task-inner .task-mixed-fraction-display .frac,
 .pvp-duel-task-inner .task-mixed-fraction-display .mixed-frac { display: inline-flex; align-items: center; vertical-align: middle; }
 .pvp-duel-task-inner .task-mixed-fraction-display .frac { flex-direction: column; }
@@ -727,6 +748,7 @@
             <div class="pvp-duel-task-inner no-copy" id="duelTaskContentNoCopy">
                 <div class="task-title" id="duelTaskTitle"></div>
                 <div class="task-text" id="duelTaskText"></div>
+                <div class="task-expression-display" id="duelTaskExpressionDisplay" style="display: none;"></div>
                 <img class="task-image" id="duelTaskImage" alt="" style="display: none;">
                 <div class="task-answer-wrap" id="duelAnswerWrapDefault">
                     <label for="duelTaskAnswerInput">Ваш ответ:</label>
@@ -1103,10 +1125,20 @@ window.pvpDuelFocusProtection = (function() {
     function fillDuelTask(t) {
         document.getElementById('duelTaskTitle').textContent = t.title || 'Задача';
         var textEl = document.getElementById('duelTaskText');
-        if ((t.answer_type === 'fraction' || t.answer_type === 'common_denominator' || t.title === 'Правильные/неправильные дроби') && t.text && t.text.indexOf('<span') !== -1) {
-            textEl.innerHTML = t.text;
+        var exprDispEl = document.getElementById('duelTaskExpressionDisplay');
+        var isMultiFracExpr = t.multi_frac_expression && t.display_frac1;
+        if (isMultiFracExpr) {
+            textEl.textContent = t.text || 'Вычислите выражение ниже. В ответе укажите несократимую дробь и выделите целую часть, если это возможно.';
+            exprDispEl.innerHTML = t.display_frac1;
+            exprDispEl.style.display = 'block';
         } else {
-            textEl.textContent = t.text || '';
+            exprDispEl.style.display = 'none';
+            exprDispEl.innerHTML = '';
+            if ((t.answer_type === 'fraction' || t.answer_type === 'common_denominator' || t.title === 'Правильные/неправильные дроби') && t.text && t.text.indexOf('<span') !== -1) {
+                textEl.innerHTML = t.text;
+            } else {
+                textEl.textContent = t.text || '';
+            }
         }
         var img = document.getElementById('duelTaskImage');
         if (t.image_url) {
@@ -1143,8 +1175,13 @@ window.pvpDuelFocusProtection = (function() {
             var addSubDisp = document.getElementById('duelAddSubFracDisplay');
             var mixedLabel = document.getElementById('duelMixedFractionLabel');
             if (t.answer_type === 'add_sub_fractions') {
-                addSubDisp.style.display = '';
-                addSubDisp.innerHTML = (t.display_frac1 || '') + ' <span class="task-add-sub-op">' + (t.display_operator || '+') + '</span> ' + (t.display_frac2 || '');
+                if (isMultiFracExpr) {
+                    addSubDisp.style.display = 'none';
+                    addSubDisp.innerHTML = '';
+                } else {
+                    addSubDisp.style.display = '';
+                    addSubDisp.innerHTML = (t.display_frac1 || '') + ' <span class="task-add-sub-op">' + (t.display_operator || '+') + '</span> ' + (t.display_frac2 || '');
+                }
                 mixedDisp.style.display = 'none';
                 mixedDisp.innerHTML = '';
                 if (mixedLabel) mixedLabel.textContent = 'Ваш ответ (несократимая дробь, целая часть если есть):';
@@ -1194,6 +1231,7 @@ window.pvpDuelFocusProtection = (function() {
             var nMix = document.getElementById('duelTaskAnswerNumMixed').value.trim();
             var dMix = document.getElementById('duelTaskAnswerDenMixed').value.trim();
             if (dMix === '' || dMix === '0') dMix = '1';
+            if (iPart === '') iPart = '0';
             return iPart + '|' + nMix + '|' + dMix;
         }
         return document.getElementById('duelTaskAnswerInput').value;
