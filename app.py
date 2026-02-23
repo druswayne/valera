@@ -177,6 +177,7 @@ class ClanJoinRequest(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     clan_id = db.Column(db.Integer, db.ForeignKey('clan.id'), nullable=False)
     status = db.Column(db.String(20), default='pending', nullable=False)  # pending, accepted, rejected
+    message = db.Column(db.String(100), nullable=True)  # сообщение владельцу клана (до 100 символов)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     user = db.relationship('User', backref='clan_join_requests', lazy=True)
@@ -1601,6 +1602,12 @@ with app.app_context():
                 if 'nums_balance' not in columns:
                     conn.execute(text('ALTER TABLE user ADD COLUMN nums_balance INTEGER DEFAULT 0 NOT NULL'))
                     print("Добавлена колонка nums_balance в user")
+        if 'clan_join_request' in tables:
+            req_columns = [col['name'] for col in inspector.get_columns('clan_join_request')]
+            if 'message' not in req_columns:
+                with db.engine.begin() as conn:
+                    conn.execute(text('ALTER TABLE clan_join_request ADD COLUMN message VARCHAR(100)'))
+                    print("Добавлена колонка message в clan_join_request")
         if 'territory_task' not in tables:
             db.create_all()
             print("Создана таблица territory_task")
@@ -1746,49 +1753,41 @@ def register():
         return redirect(url_for('index'))
     if current_user.is_authenticated:
         return redirect(url_for('cabinet'))
-    clans = Clan.query.order_by(Clan.name).all()
     if request.method == 'POST':
         username = (request.form.get('username') or '').strip()
         password = request.form.get('password')
         password_confirm = request.form.get('password_confirm')
         character_name = (request.form.get('character_name') or '').strip()
-        clan_id = request.form.get('clan_id', type=int)
         if not username or len(username) < 3:
             flash('Логин должен быть не менее 3 символов', 'error')
-            return render_template('register.html', clans=clans)
+            return render_template('register.html')
         if ' ' in username:
             flash('Логин не может содержать пробелы', 'error')
-            return render_template('register.html', clans=clans)
+            return render_template('register.html')
         if User.query.filter(func.lower(User.username) == username.lower()).first():
             flash('Такой логин уже занят', 'error')
-            return render_template('register.html', clans=clans)
+            return render_template('register.html')
         if not password or len(password) < 6:
             flash('Пароль должен быть не менее 6 символов', 'error')
-            return render_template('register.html', clans=clans)
+            return render_template('register.html')
         if ' ' in password:
             flash('Пароль не может содержать пробелы', 'error')
-            return render_template('register.html', clans=clans)
+            return render_template('register.html')
         if password != password_confirm:
             flash('Пароли не совпадают', 'error')
-            return render_template('register.html', clans=clans)
+            return render_template('register.html')
         is_valid, err = validate_user_name(character_name if character_name else 'A')
         if character_name and not is_valid:
             flash(err or 'Некорректное имя персонажа', 'error')
-            return render_template('register.html', clans=clans)
+            return render_template('register.html')
         user = User(username=username, character_name=character_name or username)
         user.set_password(password)
         db.session.add(user)
-        db.session.flush()
-        if clan_id:
-            clan = Clan.query.get(clan_id)
-            if clan:
-                req = ClanJoinRequest(user_id=user.id, clan_id=clan.id, status='pending')
-                db.session.add(req)
         db.session.commit()
         login_user(user)
         flash('Регистрация успешна! Добро пожаловать.', 'info')
         return redirect(url_for('cabinet'))
-    return render_template('register.html', clans=clans)
+    return render_template('register.html')
 
 
 @app.route('/cabinet')
@@ -1818,7 +1817,7 @@ def cabinet():
                         'avatar_url': url_for('static', filename=_avatar_static_filename(u.avatar_filename)) if u.avatar_filename else None,
                         'level': u.level or 1, 'is_owner': u.id == clan.owner_id} for u in clan.members_rel],
             'territories': [{'region_index': t.region_index, 'display_name': regions_cfg.get(t.region_index, f'Зона {t.region_index+1}'), 'strength': t.strength} for t in territories],
-            'pending_requests': [{'id': r.id, 'user_id': r.user_id, 'username': r.user.username, 'character_name': r.user.character_name or r.user.username} for r in clan.join_requests if r.status == 'pending'] if user.id == clan.owner_id else []
+            'pending_requests': [{'id': r.id, 'user_id': r.user_id, 'username': r.user.username, 'character_name': r.user.character_name or r.user.username, 'message': r.message} for r in clan.join_requests if r.status == 'pending'] if user.id == clan.owner_id else []
         }
     return render_template(
         'cabinet.html',
@@ -2339,7 +2338,10 @@ def api_clan_join_request():
     existing = ClanJoinRequest.query.filter_by(user_id=current_user.id, status='pending').first()
     if existing:
         return jsonify({'success': False, 'error': 'У вас уже есть активная заявка. Отмените её перед подачей новой.'}), 400
-    req = ClanJoinRequest(user_id=current_user.id, clan_id=clan_id, status='pending')
+    message = (data.get('message') or '').strip()
+    if len(message) > 100:
+        return jsonify({'success': False, 'error': 'Сообщение не должно превышать 100 символов'}), 400
+    req = ClanJoinRequest(user_id=current_user.id, clan_id=clan_id, status='pending', message=message or None)
     db.session.add(req)
     db.session.commit()
     return jsonify({'success': True})

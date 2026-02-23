@@ -133,7 +133,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     width: 44px;
     height: 44px;
     border-radius: 50%;
-    background: linear-gradient(145deg, #229ED9 0%, #1a8bc7 100%);
+    background: linear-gradient(145deg, #c45c6a 0%, #a84a58 100%);
     color: #fff;
     display: flex;
     align-items: center;
@@ -145,9 +145,9 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
 }
 .cabinet-support-float-btn:hover {
-    background: linear-gradient(145deg, #2eb0ed 0%, #229ED9 100%);
+    background: linear-gradient(145deg, #d4737e 0%, #c45c6a 100%);
     transform: scale(1.08);
-    box-shadow: 0 4px 14px rgba(34,158,217,0.45);
+    box-shadow: 0 4px 14px rgba(196,92,106,0.45);
     color: #fff;
 }
 
@@ -1439,6 +1439,9 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                 {% for r in clan_data.pending_requests %}
                 <div class="pending-item" data-request-id="{{ r.id }}">
                     <span>{{ r.character_name }} ({{ r.username }})</span>
+                    {% if r.message %}
+                    <p class="pending-request-message" style="margin:6px 0 4px; font-size:0.9rem; color:#8a7355;">«{{ r.message }}»</p>
+                    {% endif %}
                     <span>
                         <button class="accept-btn" onclick="handleAccept({{ r.id }})">Принять</button>
                         <button class="reject-btn" onclick="handleReject({{ r.id }})">Отклонить</button>
@@ -1493,7 +1496,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 {% endif %}
 <div class="cabinet-support-float">
     <span class="cabinet-support-float-label">Поддержать проект</span>
-    <a href="https://t.me/+iUHoo75SQMFlMmIy" class="cabinet-support-float-btn" target="_blank" rel="noopener noreferrer" aria-label="Поддержать проект — Telegram" title="Перейти в Telegram: Битва за территорию">🎁</a>
+    <a href="https://t.me/+iUHoo75SQMFlMmIy" class="cabinet-support-float-btn" target="_blank" rel="noopener noreferrer" aria-label="Поддержать проект — Telegram" title="Перейти в Telegram: Битва за территорию">❤</a>
 </div>
 {% endblock %}
 
@@ -1537,6 +1540,9 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     <div class="modal-box">
         <h3>Вступить в клан</h3>
         <select id="joinClanSelect"></select>
+        <label for="joinClanMessage" style="display:block; margin-top:10px;">Сообщение владельцу клана (необязательно, до 100 символов)</label>
+        <textarea id="joinClanMessage" maxlength="100" rows="2" placeholder="Напишите, почему хотите вступить в клан…" style="width:100%; margin-top:4px; resize:vertical; box-sizing:border-box;"></textarea>
+        <span id="joinClanMessageCount" style="font-size:0.85rem; color:#888;">0 / 100</span>
         <div class="modal-buttons">
             <button type="button" class="btn-cancel" onclick="closeJoinModal()">Отмена</button>
             <button type="button" class="btn-confirm" onclick="confirmJoin()">Подать заявку</button>
@@ -1980,6 +1986,10 @@ function openJoinModal() {
     if (!modal) return;
     sel = modal.querySelector('select') || document.getElementById('joinClanSelect');
     if (sel) sel.innerHTML = '<option value="">— Загрузка... —</option>';
+    var msgEl = document.getElementById('joinClanMessage');
+    var countEl = document.getElementById('joinClanMessageCount');
+    if (msgEl) { msgEl.value = ''; }
+    if (countEl) { countEl.textContent = '0 / 100'; }
     modal.style.display = 'flex';
     modal.style.visibility = 'visible';
     modal.classList.add('open');
@@ -2006,13 +2016,21 @@ function closeJoinModal() {
     var m = document.getElementById('joinModal');
     if (m) { m.classList.remove('open'); m.style.display = ''; m.style.visibility = ''; }
 }
+(function() {
+    var el = document.getElementById('joinClanMessage');
+    var count = document.getElementById('joinClanMessageCount');
+    if (el && count) el.addEventListener('input', function() { count.textContent = el.value.length + ' / 100'; });
+})();
 function confirmJoin() {
     const cid = document.getElementById('joinClanSelect').value;
     if (!cid) { alert('Выберите клан'); return; }
+    var msgEl = document.getElementById('joinClanMessage');
+    var message = (msgEl && msgEl.value) ? msgEl.value.trim() : '';
+    if (message.length > 100) { alert('Сообщение не должно превышать 100 символов'); return; }
     fetch('{{ url_for("api_clan_join_request") }}', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clan_id: parseInt(cid) })
+        body: JSON.stringify({ clan_id: parseInt(cid), message: message || null })
     }).then(r => r.json())
       .then(data => {
           if (data.success) location.reload();
