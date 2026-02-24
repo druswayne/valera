@@ -713,7 +713,24 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 }
 .member-item .member-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .member-item .member-level { font-size: 0.8rem; color: #d4a84b; font-weight: bold; }
+.member-item .member-rank-line { display: flex; align-items: center; gap: 6px; }
+.member-item .rank-icon { font-size: 0.9rem; }
 .member-item .member-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.member-item .member-rank-select {
+    padding: 8px 10px;
+    border-radius: 4px;
+    border: 2px solid #5c4033;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    color: #d4a84b;
+    font-weight: bold;
+    font-family: 'Cinzel', Georgia, serif;
+    cursor: pointer;
+    min-width: 140px;
+}
+.member-item .member-rank-select:focus {
+    outline: none;
+    border-color: #8b6914;
+}
 .member-item .kick-btn, .member-item .transfer-ownership-btn, .pending-item .accept-btn, .pending-item .reject-btn {
     padding: 8px 14px;
     border-radius: 4px;
@@ -1205,6 +1222,27 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                     <button type="button" id="nameEditSave">Сохранить</button>
                     <button type="button" class="name-edit-cancel" id="nameEditCancel">Отмена</button>
                 </div>
+                <p><strong>Звание:</strong>
+                    {% if user.clan_title == 'Бродяга' %}
+                        <span title="Бродяга">🥾 {{ user.clan_title }}</span>
+                    {% elif user.clan_title == 'Вассал' %}
+                        <span title="Вассал">🪶 {{ user.clan_title }}</span>
+                    {% elif user.clan_title == 'Рыцарь' %}
+                        <span title="Рыцарь">⚔️ {{ user.clan_title }}</span>
+                    {% elif user.clan_title == 'Барон' %}
+                        <span title="Барон">🛡️ {{ user.clan_title }}</span>
+                    {% elif user.clan_title == 'Граф' %}
+                        <span title="Граф">🎖️ {{ user.clan_title }}</span>
+                    {% elif user.clan_title == 'Маркиз' %}
+                        <span title="Маркиз">🦁 {{ user.clan_title }}</span>
+                    {% elif user.clan_title == 'Герцог' %}
+                        <span title="Герцог">👑 {{ user.clan_title }}</span>
+                    {% elif user.clan_title == 'Великий князь' %}
+                        <span title="Великий князь">👑✶ {{ user.clan_title }}</span>
+                    {% else %}
+                        {{ user.clan_title }}
+                    {% endif %}
+                </p>
                 <div class="level-block">
                     <p><strong>Уровень:</strong> {{ user.level }}</p>
                     <p class="level-xp-text">Опыт до следующего уровня: {{ user.xp_in_current_level }} / {{ user.xp_needed_for_next_level }}</p>
@@ -1382,15 +1420,41 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                     <div class="member-avatar-placeholder">👤</div>
                     {% endif %}
                     <div class="member-info">
-                        <span>{{ m.character_name }}{% if m.is_owner %} ★{% endif %}</span>
+                        <span>
+                            {% if m.rank == 'vassal' or (not m.rank and not m.is_owner) %}
+                                <span class="rank-icon" title="Вассал">🪶</span>
+                            {% elif m.rank == 'knight' %}
+                                <span class="rank-icon" title="Рыцарь">⚔️</span>
+                            {% elif m.rank == 'baron' %}
+                                <span class="rank-icon" title="Барон">🛡️</span>
+                            {% elif m.rank == 'count' %}
+                                <span class="rank-icon" title="Граф">🎖️</span>
+                            {% elif m.rank == 'marquis' %}
+                                <span class="rank-icon" title="Маркиз">🦁</span>
+                            {% elif m.rank == 'duke' %}
+                                <span class="rank-icon" title="Герцог">👑</span>
+                            {% endif %}
+                            {{ m.character_name }}{% if m.is_owner %} ★{% endif %}
+                        </span>
+                        <span class="member-level">Звание: {{ m.title or 'Вассал' }}</span>
                         <span class="member-level">Ур. {{ m.level }}</span>
                     </div>
-                    {% if user.id == clan_data.clan.owner_id and not m.is_owner %}
                     <span class="member-actions">
+                        {% if user.id == clan_data.clan.owner_id and not m.is_owner %}
+                        <select class="member-rank-select" data-user-id="{{ m.id }}">
+                            <option value="vassal" {% if m.rank == 'vassal' or not m.rank %}selected{% endif %}>Вассал</option>
+                            <option value="knight" {% if m.rank == 'knight' %}selected{% endif %}>Рыцарь</option>
+                            <option value="baron" {% if m.rank == 'baron' %}selected{% endif %}>Барон</option>
+                            <option value="count" {% if m.rank == 'count' %}selected{% endif %}>Граф</option>
+                            <option value="marquis" {% if m.rank == 'marquis' %}selected{% endif %}>Маркиз</option>
+                            <option value="duke" {% if m.rank == 'duke' %}selected{% endif %}>Герцог</option>
+                        </select>
                         <button type="button" class="transfer-ownership-btn" data-user-id="{{ m.id }}" data-character-name="{{ (m.character_name or m.username) | e }}">Передать владение</button>
+                        {% endif %}
+                        {% if clan_data.can_kick_members and not m.is_owner %}
                         <button class="kick-btn" data-user-id="{{ m.id }}">Исключить</button>
+                        {% endif %}
                     </span>
-                    {% endif %}
                 </div>
                 {% endfor %}
             </div>
@@ -1431,7 +1495,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
             </div>
         </div>
 
-        {% if user.id == clan_data.clan.owner_id and clan_data.pending_requests %}
+        {% if clan_data.can_manage_requests and clan_data.pending_requests %}
         <!-- Заявки на вступление -->
         <div class="clan-block" id="clan-join-requests">
             <h3>Заявки на вступление</h3>
@@ -1905,6 +1969,35 @@ document.querySelectorAll('.kick-btn').forEach(btn => {
     });
 });
 var transferOwnershipPendingUserId = null;
+
+document.querySelectorAll('.member-rank-select').forEach(sel => {
+    sel.addEventListener('change', function() {
+        var uid = this.getAttribute('data-user-id');
+        var rank = this.value;
+        if (!uid || !rank) return;
+        fetch('/api/clan/{{ clan_data.clan.id }}/rank/' + uid, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rank: rank })
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    // Обновим текст звания рядом с участником без полной перезагрузки
+                    var item = sel.closest('.member-item');
+                    if (item) {
+                        var titleEl = item.querySelector('.member-level');
+                        if (titleEl) {
+                            titleEl.textContent = 'Звание: ' + (data.title || '');
+                        }
+                    }
+                } else {
+                    alert(data.error || 'Ошибка');
+                }
+            })
+            .catch(function() { alert('Ошибка соединения'); });
+    });
+});
 function openTransferOwnershipModal(userId, characterName) {
     transferOwnershipPendingUserId = userId;
     var textEl = document.getElementById('transferOwnershipModalText');
