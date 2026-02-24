@@ -731,6 +731,24 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     outline: none;
     border-color: #8b6914;
 }
+.rank-help-btn {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1px solid #5c4033;
+    background: #3d2914;
+    color: #d4a84b;
+    font-size: 0.85rem;
+    font-weight: bold;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-left: 6px;
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+.rank-help-btn:hover { color: #e8c86a; border-color: #8b6914; background: #4a3520; }
 .member-item .kick-btn, .member-item .transfer-ownership-btn, .pending-item .accept-btn, .pending-item .reject-btn {
     padding: 8px 14px;
     border-radius: 4px;
@@ -1242,6 +1260,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                     {% else %}
                         {{ user.clan_title }}
                     {% endif %}
+                    <button type="button" class="rank-help-btn" id="openRankHelpBtn" aria-label="Описание званий">?</button>
                 </p>
                 <div class="level-block">
                     <p><strong>Уровень:</strong> {{ user.level }}</p>
@@ -1558,10 +1577,6 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 {% if clan_data %}
 <button type="button" class="floating-chat-btn" id="floatingChatBtn" aria-label="Открыть чат с кланом" title="Чат с кланом" data-clan-id="{{ clan_data.clan.id if clan_data and clan_data.clan else '' }}">💬<span class="chat-unread-badge" id="clanChatUnreadBadge" aria-hidden="true" title="Есть новые сообщения"></span></button>
 {% endif %}
-<div class="cabinet-support-float">
-    <span class="cabinet-support-float-label">Поддержать проект</span>
-    <a href="https://t.me/+iUHoo75SQMFlMmIy" class="cabinet-support-float-btn" target="_blank" rel="noopener noreferrer" aria-label="Поддержать проект — Telegram" title="Перейти в Telegram: Битва за территорию">❤</a>
-</div>
 {% endblock %}
 
 {% block modals %}
@@ -1575,6 +1590,23 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     </div>
 </div>
 {% endif %}
+<!-- Модальное окно подсказок по званиям -->
+<div class="modal-overlay" id="rankHelpModal">
+    <div class="modal-box">
+        <h3>Звания клана</h3>
+        <p><strong>Бродяга</strong> — нет клана, без клановых привилегий.</p>
+        <p><strong>Вассал</strong> — базовый участник клана.</p>
+        <p><strong>Рыцарь</strong> — почётный боец клана (косметический ранг).</p>
+        <p><strong>Барон</strong> — уважаемый ветеран клана (косметический ранг).</p>
+        <p><strong>Граф</strong> — старший член клана (косметический ранг).</p>
+        <p><strong>Маркиз</strong> — может принимать и отклонять заявки во вступление в клан.</p>
+        <p><strong>Герцог</strong> — может принимать/отклонять заявки и исключать участников клана.</p>
+        <p><strong>Великий князь</strong> — создатель клана, имеет все права, включая изменение званий.</p>
+        <div class="modal-buttons">
+            <button type="button" class="btn-confirm" onclick="closeRankHelpModal()">Понятно</button>
+        </div>
+    </div>
+</div>
 <!-- Модальное окно выхода из клана -->
 <div class="modal-overlay" id="leaveModal">
     <div class="modal-box">
@@ -1695,6 +1727,34 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         nav.querySelectorAll('.cabinet-top-nav-links a').forEach(function(a) { a.addEventListener('click', closeMenu); });
         document.addEventListener('click', closeMenu);
     }
+})();
+
+// Подсказка по званиям (модальное окно)
+(function() {
+    var btn = document.getElementById('openRankHelpBtn');
+    var modal = document.getElementById('rankHelpModal');
+    if (!btn || !modal) return;
+    function open() {
+        modal.style.display = 'flex';
+        modal.style.visibility = 'visible';
+        modal.classList.add('open');
+        document.body.appendChild(modal);
+    }
+    function close() {
+        modal.classList.remove('open');
+        modal.style.display = '';
+        modal.style.visibility = '';
+    }
+    window.closeRankHelpModal = close;
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        open();
+    });
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            close();
+        }
+    });
 })();
 (function() {
     var totalSkillPoints = {{ user.skill_points_total }};
