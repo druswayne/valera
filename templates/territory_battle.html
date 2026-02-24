@@ -1527,6 +1527,27 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                 {% endif %}
                 {% endif %}
             </p>
+            <p class="territory-player-rank">
+                {% if current_user.clan_title == 'Бродяга' %}
+                    🥾 {{ current_user.clan_title }}
+                {% elif current_user.clan_title == 'Вассал' %}
+                    🪶 {{ current_user.clan_title }}
+                {% elif current_user.clan_title == 'Рыцарь' %}
+                    ⚔️ {{ current_user.clan_title }}
+                {% elif current_user.clan_title == 'Барон' %}
+                    🛡️ {{ current_user.clan_title }}
+                {% elif current_user.clan_title == 'Граф' %}
+                    🎖️ {{ current_user.clan_title }}
+                {% elif current_user.clan_title == 'Маркиз' %}
+                    🦁 {{ current_user.clan_title }}
+                {% elif current_user.clan_title == 'Герцог' %}
+                    👑 {{ current_user.clan_title }}
+                {% elif current_user.clan_title == 'Великий князь' %}
+                    👑✶ {{ current_user.clan_title }}
+                {% else %}
+                    {{ current_user.clan_title }}
+                {% endif %}
+            </p>
             <div class="territory-player-level-row">
                 <span id="playerCardLevel" class="territory-player-level">Ур. {{ current_user.level or 1 }}</span>
                 <div id="playerCardXpWrap" class="territory-player-xp-wrap" title="Опыт: {{ current_user.xp_in_current_level }} / {{ current_user.xp_needed_for_next_level }}">
