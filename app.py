@@ -31,6 +31,7 @@ try:
         generate_territory_two_unknowns_task,
         generate_territory_geometry_task,
         generate_territory_quantities_task,
+        generate_territory_percent_task,
         generate_territory_multi_frac_task,
         generate_mixed_numbers_task,
         generate_joint_work_task,
@@ -50,6 +51,7 @@ except ImportError:
     generate_territory_two_unknowns_task = None
     generate_territory_geometry_task = None
     generate_territory_quantities_task = None
+    generate_territory_percent_task = None
     generate_territory_multi_frac_task = None
     generate_mixed_numbers_task = None
     generate_joint_work_task = None
@@ -4536,6 +4538,7 @@ TERRITORY_GENERATOR_BY_NAME = {
     'сумма/разность и части': lambda d: generate_territory_two_unknowns_task(difficulty=d) if generate_territory_two_unknowns_task else None,
     'Геометрия': lambda d: generate_territory_geometry_task(difficulty=d) if generate_territory_geometry_task else None,
     'Величины': lambda d: generate_territory_quantities_task(difficulty=d) if generate_territory_quantities_task else None,
+    'Проценты': lambda d: generate_territory_percent_task(difficulty=d) if generate_territory_percent_task else None,
     'Несколько действий с дробями': lambda d: generate_territory_multi_frac_task(difficulty=d) if generate_territory_multi_frac_task else None,
     'Смешанные числа': lambda d: generate_mixed_numbers_task(difficulty=d) if generate_mixed_numbers_task else None,
     'Совместная работа': lambda d: generate_joint_work_task(difficulty=d) if generate_joint_work_task else None,

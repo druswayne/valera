@@ -215,6 +215,19 @@ MULTI_FRAC_TITLES = [
     "Многошаговые дроби",
 ]
 
+PERCENT_TITLES = [
+    "Проценты",
+    "Процент от числа",
+    "Число по проценту",
+    "Задачи на проценты",
+    "Процентные задачи",
+    "Сколько процентов?",
+    "Текстовые задачи: проценты",
+    "Проценты в жизни",
+    "Вычисления с процентами",
+    "Процентные расчёты",
+]
+
 # Сводка тем по типам заданий (для вывода в генераторе)
 TASK_THEMES = {
     "Вычисление выражений": EXPRESSION_TITLES,
@@ -222,6 +235,7 @@ TASK_THEMES = {
     "Геометрия (территория)": GEOMETRY_TITLES,
     "Величины (территория)": QUANTITIES_TITLES,
     "Несколько действий с дробями (территория)": MULTI_FRAC_TITLES,
+    "Проценты (территория)": PERCENT_TITLES,
     "НОД и НОК": GCD_LCM_TITLES,
     "Приведение дробей к знаменателю": FRACTION_TITLES,
     "Сокращение дробей": REDUCE_FRACTION_TITLES,
@@ -1209,7 +1223,7 @@ def generate_fraction_property_task(difficulty: int) -> Dict[str, Any]:
         if difficulty == 1:
             # Исходная: знаменатель однозначный (2–9), новый — двузначный (10–99)
             b = random.randint(2, 9)
-            # new_den = b * k, двузначный: 10..99
+            # new_den = b * k, двузначный: 10..99, причём new_den > b
             k_min = max(2, (10 + b - 1) // b)
             k_max = 99 // b
             if k_max < k_min:
@@ -1224,12 +1238,16 @@ def generate_fraction_property_task(difficulty: int) -> Dict[str, Any]:
             k = random.randint(k_min, max(k_min, k_max))
             new_den = b * k
         else:
-            # difficulty 3: знаменатель исходной трёхзначный (100–999), новый — двузначный (10–99). b = new_den * k
-            new_den = random.randint(10, 99)
-            k_min = max(2, (100 + new_den - 1) // new_den)
-            k_max = min(9, 999 // new_den)
-            k = random.randint(k_min, max(k_min, k_max))
-            b = new_den * k
+            # difficulty 3: исходный знаменатель двузначный (10–99), новый — больше исходного (до 999)
+            b = random.randint(10, 99)
+            # Требуем new_den >= 100 и new_den > b
+            k_min = max(2, (100 + b - 1) // b)
+            k_max = 999 // b
+            if k_max < k_min:
+                k_min = 2
+                k_max = max(2, 999 // b)
+            k = random.randint(k_min, k_max)
+            new_den = b * k
 
         a = random.randint(1, b - 1)
         attempts = 0
@@ -3055,6 +3073,190 @@ def generate_territory_quantities_task(difficulty: int) -> Dict[str, Any]:
     total = h * 60 + m
     desc = f"Выразите {h} ч {m} мин в минутах. В ответ укажите одно число."
     return {"title": title, "description": desc, "correct_answer": str(total), "points": points}
+
+
+# Проценты: только 10, 20, 25, 50 — все условия и ответы только целые числа
+PERCENT_VALUES = [10, 20, 25, 50]
+
+
+def _percent_int_multipliers(p: int):
+    """Для p in {10,20,25,50} возвращает список допустимых N, чтобы N*p/100 было целым."""
+    if p == 10:
+        return list(range(20, 201, 10))
+    if p == 20:
+        return list(range(10, 101, 5))
+    if p == 25:
+        return list(range(8, 121, 4))
+    if p == 50:
+        return list(range(4, 101, 2))
+    return list(range(20, 101, 10))
+
+
+def generate_territory_percent_task(difficulty: int) -> Dict[str, Any]:
+    """Генератор «Проценты» для битвы за территорию (и PvP дуэли).
+
+    Уровень 1: найти процент от числа; найти число по его проценту.
+    Уровень 2: текстовые задачи (процент от числа, число по проценту, несколько действий);
+               какой процент одна величина составляет от другой.
+    Уровень 3: задачи повышенной сложности (несколько шагов, изменение на %).
+    Используются только 10%, 20%, 25%, 50%. Все числа в условиях и ответах — целые.
+    """
+    difficulty = max(1, min(3, difficulty))
+    points = 10 + difficulty * 4
+    title = random.choice(PERCENT_TITLES) + f" #{random.randint(1, 1000)}"
+
+    # --- Уровень 1: процент от числа; число по проценту ---
+    if difficulty == 1:
+        kind = random.choice(["pct_of_number", "number_by_pct"])
+        p = random.choice(PERCENT_VALUES)
+        if kind == "pct_of_number":
+            allowed_N = _percent_int_multipliers(p)
+            allowed_N = [n for n in allowed_N if n * p // 100 >= 2]
+            N = random.choice(allowed_N) if allowed_N else 40
+            ans = N * p // 100
+            desc = f"Найдите {p}% от числа {N}. В ответ укажите одно число."
+            return {"title": title, "description": desc, "correct_answer": str(ans), "points": points}
+        else:
+            # p% от ? = R  =>  ? = R*100/p (уже целое при p in {10,20,25,50})
+            R = random.randint(2, 50)
+            whole = R * 100 // p
+            if whole <= 0:
+                whole = 20
+                R = p * whole // 100
+            desc = f"{p}% от неизвестного числа равны {R}. Найдите это число. В ответ укажите одно число."
+            return {"title": title, "description": desc, "correct_answer": str(whole), "points": points}
+
+    # --- Уровень 2: текстовые задачи и «какой процент» ---
+    if difficulty == 2:
+        templates = []
+        # Текстовые: процент от числа (один шаг), N — только такие, что p% от N целое
+        for _ in range(3):
+            p = random.choice(PERCENT_VALUES)
+            allowed_N = _percent_int_multipliers(p)
+            allowed_N = [n for n in allowed_N if 4 <= n <= 100 and n * p // 100 >= 1]
+            if not allowed_N:
+                allowed_N = [20, 40, 60, 80, 100]
+            N = random.choice(allowed_N)
+            ans = N * p // 100
+            templates.append({
+                "desc": random.choice([
+                    f"В классе {N} учеников. {p}% из них участвовали в олимпиаде. Сколько учеников участвовали? В ответ укажите одно число.",
+                    f"В корзине {N} яблок. {p}% из них зелёные. Сколько зелёных яблок? В ответ укажите одно число.",
+                    f"Цена товара {N} рублей. Скидка {p}%. Сколько рублей скидка? В ответ укажите одно число.",
+                ]),
+                "ans": str(ans),
+            })
+        # Текстовые: число по проценту (R и whole уже целые)
+        for _ in range(2):
+            p = random.choice(PERCENT_VALUES)
+            R = random.randint(2, 40)
+            whole = R * 100 // p
+            if whole > 0 and whole <= 500:
+                templates.append({
+                    "desc": random.choice([
+                        f"{R} учеников — это {p}% класса. Сколько всего учеников в классе? В ответ укажите одно число.",
+                        f"{p}% от числа равны {R}. Найдите это число. В ответ укажите одно число.",
+                    ]),
+                    "ans": str(whole),
+                })
+        # Два действия: остаток после процента; N только такие, что p% от N целое
+        p = random.choice(PERCENT_VALUES)
+        allowed_N = _percent_int_multipliers(p)
+        allowed_N = [n for n in allowed_N if 20 <= n <= 120]
+        N = random.choice(allowed_N) if allowed_N else 40
+        sold = N * p // 100
+        rest = N - sold
+        if rest > 0:
+            templates.append({
+                "desc": random.choice([
+                    f"В магазине было {N} кг яблок. Продали {p}% от этого количества. Сколько килограммов яблок осталось? В ответ укажите одно число.",
+                    f"Было {N} страниц. Прочитали {p}%. Сколько страниц осталось прочитать? В ответ укажите одно число.",
+                ]),
+                "ans": str(rest),
+            })
+        # Какой процент A составляет от B
+        what_pct_pairs = [(5, 50), (10, 100), (8, 40), (15, 60), (25, 100), (12, 48), (20, 80), (6, 30), (9, 36), (14, 70), (18, 90)]
+        for (A, B) in what_pct_pairs:
+            if A <= B and B > 0:
+                pct = round(100 * A / B)
+                if pct in PERCENT_VALUES and pct > 0:
+                    templates.append({
+                        "desc": random.choice([
+                            f"Сколько процентов составляет число {A} от числа {B}? В ответ укажите только число (без знака %).",
+                            f"Какой процент от {B} составляет {A}? В ответ укажите одно число.",
+                        ]),
+                        "ans": str(pct),
+                    })
+        if not templates:
+            templates = [{"desc": "Найдите 25% от 40. В ответ укажите одно число.", "ans": "10"}]
+        choice = random.choice(templates)
+        return {"title": title, "description": choice["desc"], "correct_answer": choice["ans"], "points": points}
+
+    # --- Уровень 3: повышенная сложность (все результаты целые) ---
+    templates_l3 = []
+    # Увеличили на p%, потом уменьшили на q% — только (N,p,q), при которых first и second целые
+    for (N, p, q) in [(20, 20, 25), (40, 20, 25), (60, 20, 25), (80, 20, 25), (100, 20, 25),
+                      (100, 10, 20), (200, 10, 20), (50, 50, 20), (100, 50, 20)]:
+        first = N * (100 + p) // 100
+        second = first * (100 - q) // 100
+        if second > 0:
+            templates_l3.append({
+                "desc": f"Число {N} увеличили на {p}%, затем полученный результат уменьшили на {q}%. Какое число получилось? В ответ укажите одно число.",
+                "ans": str(second),
+            })
+    # Сначала уменьшили, потом увеличили
+    for (N, p, q) in [(40, 25, 20), (80, 25, 20), (60, 20, 25), (80, 20, 25), (100, 20, 25)]:
+        first = N * (100 - p) // 100
+        second = first * (100 + q) // 100
+        if second > 0:
+            templates_l3.append({
+                "desc": f"Число {N} уменьшили на {p}%, затем результат увеличили на {q}%. Какое число получилось? В ответ укажите одно число.",
+                "ans": str(second),
+            })
+    # Мука: N кратно 40 чтобы 25% целое и остаток (3N/4) был кратен 10
+    for N in [40, 80, 120, 160]:
+        a = N * 25 // 100
+        rest = N - a
+        b = rest * 10 // 100
+        total_taken = a + b
+        if total_taken > 0:
+            templates_l3.append({
+                "desc": f"В магазине было {N} кг муки. Продали 25% от всей муки, затем 10% от остатка. Сколько всего килограммов муки продали? В ответ укажите одно число.",
+                "ans": str(total_taken),
+            })
+    # Какой процент (сложнее числа)
+    for (A, B) in [(18, 90), (15, 75), (30, 150), (12, 60), (9, 45)]:
+        pct = round(100 * A / B)
+        if pct in PERCENT_VALUES:
+            templates_l3.append({
+                "desc": f"Сколько процентов составляет {A} от {B}? В ответ укажите только число.",
+                "ans": str(pct),
+            })
+            break
+    # «На сколько процентов изменилось»
+    N = random.randint(50, 100)
+    p = random.choice([10, 20, 25])
+    new_val = N * (100 + p) // 100
+    if new_val > N:
+        templates_l3.append({
+            "desc": f"Число {N} увеличили на {p}%. На сколько процентов получившееся число больше исходного? В ответ укажите одно число (процент).",
+            "ans": str(p),
+        })
+    # Процент от числа (крупные), только целые результаты
+    p = random.choice(PERCENT_VALUES)
+    allowed_N = [n for n in _percent_int_multipliers(p) if 100 <= n <= 300]
+    if allowed_N:
+        N = random.choice(allowed_N)
+        ans = N * p // 100
+        if ans > 0:
+            templates_l3.append({
+                "desc": f"Найдите {p}% от числа {N}. В ответ укажите одно число.",
+                "ans": str(ans),
+            })
+    if not templates_l3:
+        templates_l3 = [{"desc": "Найдите 20% от 100. В ответ укажите одно число.", "ans": "20"}]
+    choice = random.choice(templates_l3)
+    return {"title": title, "description": choice["desc"], "correct_answer": choice["ans"], "points": points}
 
 
 def _mixed_to_fraction(int_part: int, num: int, den: int) -> Fraction:
