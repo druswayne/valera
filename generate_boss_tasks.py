@@ -228,6 +228,15 @@ PERCENT_TITLES = [
     "Процентные расчёты",
 ]
 
+VARIABLE_EXPR_TITLES = [
+    "Выражения с переменными",
+    "Значение выражения",
+    "Подстановка в выражение",
+    "Вычислите значение",
+    "Числовое значение выражения",
+    "Выражение с буквами",
+]
+
 # Сводка тем по типам заданий (для вывода в генераторе)
 TASK_THEMES = {
     "Вычисление выражений": EXPRESSION_TITLES,
@@ -236,6 +245,7 @@ TASK_THEMES = {
     "Величины (территория)": QUANTITIES_TITLES,
     "Несколько действий с дробями (территория)": MULTI_FRAC_TITLES,
     "Проценты (территория)": PERCENT_TITLES,
+    "Выражения с переменными (территория)": VARIABLE_EXPR_TITLES,
     "НОД и НОК": GCD_LCM_TITLES,
     "Приведение дробей к знаменателю": FRACTION_TITLES,
     "Сокращение дробей": REDUCE_FRACTION_TITLES,
@@ -3437,6 +3447,127 @@ def _build_multi_frac_expr_html(operands_mixed: List[Tuple[int, int, int]], ops:
         parts.append(" " + op_span.format(op_symbols.get(op, op)) + " ")
         parts.append(operands_html[i + 1])
     return "".join(parts)
+
+
+def generate_territory_variable_expr_task(difficulty: int) -> Dict[str, Any]:
+    """Генератор «Выражения с переменными» для битвы за территорию и PvP дуэлей.
+
+    Найти значение выражения при заданных значениях переменных.
+    Уровень 1: одна переменная, 2–3 действия, числа до 50.
+    Уровень 2: две переменные, 4–6 действий, числа до 50.
+    Уровень 3: 3–4 переменные, 6–8 действий, числа больше 50.
+    Каждое действие при решении даёт натуральный результат (промежуточные суммы положительные).
+    """
+    difficulty = max(1, min(3, difficulty))
+    points = 10 + difficulty * 4
+    title = random.choice(VARIABLE_EXPR_TITLES) + f" #{random.randint(1, 1000)}"
+    VAR_NAMES = ["x", "y", "z", "w"]
+
+    if difficulty == 1:
+        n_vars = 1
+        n_terms = random.randint(3, 4)  # 2–3 действия
+        coef_min, coef_max = 1, 50
+        value_min, value_max = 1, 50
+    elif difficulty == 2:
+        n_vars = 2
+        n_terms = random.randint(5, 7)  # 4–6 действий
+        coef_min, coef_max = 1, 50
+        value_min, value_max = 1, 50
+    else:
+        n_vars = random.randint(3, 4)
+        n_terms = random.randint(7, 9)  # 6–8 действий
+        coef_min, coef_max = 51, 120
+        value_min, value_max = 1, 50
+
+    var_names = VAR_NAMES[:n_vars]
+    max_attempts = 100
+    for _ in range(max_attempts):
+        # Слагаемые: (коэффициент, имя переменной или None для константы)
+        terms = []
+        for v in var_names:
+            c = random.randint(coef_min, coef_max)
+            if random.random() < 0.5:
+                c = -c
+            terms.append((c, v))
+        for _ in range(n_terms - n_vars):
+            if random.random() < 0.3:
+                terms.append((random.randint(coef_min, coef_max) * (1 if random.random() < 0.7 else -1), None))
+            else:
+                v = random.choice(var_names)
+                c = random.randint(coef_min, coef_max) * (1 if random.random() < 0.7 else -1)
+                terms.append((c, v))
+
+        # Случайные значения переменных
+        values = {v: random.randint(value_min, value_max) for v in var_names}
+
+        def term_value(t):
+            c, v = t
+            return c * (values[v] if v else 1)
+
+        term_values = [term_value(t) for t in terms]
+        total = sum(term_values)
+        if total <= 0:
+            continue
+
+        # Упорядочиваем слагаемые так, чтобы при вычислении слева направо промежуточная сумма была натуральной
+        positive = [(i, term_values[i]) for i in range(len(terms)) if term_values[i] > 0]
+        negative = [(i, term_values[i]) for i in range(len(terms)) if term_values[i] < 0]
+        positive.sort(key=lambda x: -x[1])
+        negative.sort(key=lambda x: x[1])  # наименее отрицательные первые
+        order = [x[0] for x in positive] + [x[0] for x in negative]
+        running = 0
+        ok = True
+        for i in order:
+            running += term_values[i]
+            if running < 1:
+                ok = False
+                break
+        if not ok:
+            continue
+
+        # Собираем выражение в нужном порядке (слева направо — натуральные промежуточные суммы)
+        ordered_terms = [terms[i] for i in order]
+        parts = []
+        for i, (c, v) in enumerate(ordered_terms):
+            var_str = v if v else ""
+            if i == 0:
+                if c < 0:
+                    parts.append("-" + str(abs(c)) + var_str)
+                else:
+                    parts.append(str(c) + var_str)
+            else:
+                if c >= 0:
+                    parts.append("+" + str(c) + var_str)
+                else:
+                    parts.append("-" + str(abs(c)) + var_str)
+        expr = "".join(parts)
+        cond = ", ".join(f"{v}={values[v]}" for v in var_names)
+        desc = f"Найдите значение выражения при заданных значениях переменных.\n\n{expr}\n\nпри {cond}"
+        return {
+            "title": title,
+            "description": desc,
+            "correct_answer": str(total),
+            "points": points,
+        }
+
+    # запасной вариант: только положительные коэффициенты
+    terms = []
+    for v in var_names:
+        terms.append((random.randint(1, coef_max), v))
+    for _ in range(n_terms - n_vars):
+        if random.random() < 0.4:
+            terms.append((random.randint(1, coef_max), None))
+        else:
+            terms.append((random.randint(1, coef_max), random.choice(var_names)))
+    values = {v: random.randint(value_min, value_max) for v in var_names}
+    total = sum((c * (values[v] if v else 1) for c, v in terms))
+    parts = [str(terms[0][0]) + (terms[0][1] or "")]
+    for (c, v) in terms[1:]:
+        parts.append("+" + str(c) + (v or ""))
+    expr = "".join(parts)
+    cond = ", ".join(f"{v}={values[v]}" for v in var_names)
+    desc = f"Найдите значение выражения при заданных значениях переменных.\n\n{expr}\n\nпри {cond}"
+    return {"title": title, "description": desc, "correct_answer": str(total), "points": points}
 
 
 def generate_territory_multi_frac_task(difficulty: int) -> Dict[str, Any]:

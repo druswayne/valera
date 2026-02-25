@@ -32,6 +32,7 @@ try:
         generate_territory_geometry_task,
         generate_territory_quantities_task,
         generate_territory_percent_task,
+        generate_territory_variable_expr_task,
         generate_territory_multi_frac_task,
         generate_mixed_numbers_task,
         generate_joint_work_task,
@@ -52,6 +53,7 @@ except ImportError:
     generate_territory_geometry_task = None
     generate_territory_quantities_task = None
     generate_territory_percent_task = None
+    generate_territory_variable_expr_task = None
     generate_territory_multi_frac_task = None
     generate_mixed_numbers_task = None
     generate_joint_work_task = None
@@ -1803,6 +1805,9 @@ def register():
             return render_template('register.html')
         if ' ' in username:
             flash('Логин не может содержать пробелы', 'error')
+            return render_template('register.html')
+        if not re.match(r'^[a-zA-Z0-9_]+$', username):
+            flash('Логин может содержать только латинские буквы, цифры и символ _', 'error')
             return render_template('register.html')
         if User.query.filter(func.lower(User.username) == username.lower()).first():
             flash('Такой логин уже занят', 'error')
@@ -4660,6 +4665,7 @@ TERRITORY_GENERATOR_BY_NAME = {
     'Геометрия': lambda d: generate_territory_geometry_task(difficulty=d) if generate_territory_geometry_task else None,
     'Величины': lambda d: generate_territory_quantities_task(difficulty=d) if generate_territory_quantities_task else None,
     'Проценты': lambda d: generate_territory_percent_task(difficulty=d) if generate_territory_percent_task else None,
+    'Выражения с переменными': lambda d: generate_territory_variable_expr_task(difficulty=d) if generate_territory_variable_expr_task else None,
     'Несколько действий с дробями': lambda d: generate_territory_multi_frac_task(difficulty=d) if generate_territory_multi_frac_task else None,
     'Смешанные числа': lambda d: generate_mixed_numbers_task(difficulty=d) if generate_mixed_numbers_task else None,
     'Совместная работа': lambda d: generate_joint_work_task(difficulty=d) if generate_joint_work_task else None,
