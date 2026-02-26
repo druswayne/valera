@@ -213,6 +213,11 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 .clan-member-name { font-weight: bold; color: #e8dcc4; }
 .clan-member-level { font-size: 0.85rem; color: #b8a088; }
 
+/* Звание в рейтинге PvE/PvP */
+.rating-row-name-wrap { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.rating-row-rank-icon { font-size: 1rem; line-height: 1; }
+.rating-row-rank-title { font-size: 0.8rem; color: #d4a84b; font-weight: normal; }
+
 /* Строки PvE / PvP */
 .rating-row {
     display: flex;
@@ -490,7 +495,31 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
             <div class="rating-row-avatar-placeholder">👤</div>
             {% endif %}
             <div style="flex:1;min-width:0;">
-                <div class="rating-row-name">{{ item.character_name }}</div>
+                <div class="rating-row-name-wrap">
+                    <span class="rating-row-name">{{ item.character_name }}</span>
+                    {% if item.clan_title %}
+                    <span class="rating-row-rank-icon" title="{{ item.clan_title }}">
+                        {% if item.clan_title == 'Великий князь' %}
+                        👑
+                        {% elif item.clan_rank == 'vassal' or not item.clan_rank %}
+                        🪶
+                        {% elif item.clan_rank == 'knight' %}
+                        ⚔️
+                        {% elif item.clan_rank == 'baron' %}
+                        🛡️
+                        {% elif item.clan_rank == 'count' %}
+                        🎖️
+                        {% elif item.clan_rank == 'marquis' %}
+                        🦁
+                        {% elif item.clan_rank == 'duke' %}
+                        👑
+                        {% else %}
+                        🪶
+                        {% endif %}
+                    </span>
+                    <span class="rating-row-rank-title">{{ item.clan_title }}</span>
+                    {% endif %}
+                </div>
                 <div class="rating-row-level">Ур. {{ item.level }}</div>
             </div>
             <span class="rating-row-value">{{ item.total_score }}</span>
@@ -514,7 +543,31 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
             <div class="rating-row-avatar-placeholder">👤</div>
             {% endif %}
             <div style="flex:1;min-width:0;">
-                <div class="rating-row-name">{{ item.character_name }}</div>
+                <div class="rating-row-name-wrap">
+                    <span class="rating-row-name">{{ item.character_name }}</span>
+                    {% if item.clan_title %}
+                    <span class="rating-row-rank-icon" title="{{ item.clan_title }}">
+                        {% if item.clan_title == 'Великий князь' %}
+                        👑
+                        {% elif item.clan_rank == 'vassal' or not item.clan_rank %}
+                        🪶
+                        {% elif item.clan_rank == 'knight' %}
+                        ⚔️
+                        {% elif item.clan_rank == 'baron' %}
+                        🛡️
+                        {% elif item.clan_rank == 'count' %}
+                        🎖️
+                        {% elif item.clan_rank == 'marquis' %}
+                        🦁
+                        {% elif item.clan_rank == 'duke' %}
+                        👑
+                        {% else %}
+                        🪶
+                        {% endif %}
+                    </span>
+                    <span class="rating-row-rank-title">{{ item.clan_title }}</span>
+                    {% endif %}
+                </div>
                 <div class="rating-row-level">Ур. {{ item.level }}</div>
             </div>
             <span class="rating-row-value">{{ item.wins }} побед</span>

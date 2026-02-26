@@ -472,7 +472,12 @@
     color: #2c1810;
 }
 .pvp-duel-surrender-modal-box h3 { margin: 0 0 16px; font-family: 'Cinzel', Georgia, serif; font-size: 1.2rem; color: #3d2914; }
-.pvp-duel-surrender-modal-box .surrender-msg { margin-bottom: 20px; font-size: 1rem; line-height: 1.4; }
+.pvp-duel-surrender-modal-box .surrender-msg { margin-bottom: 12px; font-size: 1rem; line-height: 1.4; }
+.pvp-duel-surrender-modal-box .surrender-penalty-msg { margin: 0 0 8px; font-size: 0.95rem; color: #5c3020; text-align: left; }
+.pvp-duel-surrender-modal-box .surrender-penalty-list {
+    margin: 0 0 16px; padding-left: 1.4em; text-align: left; font-size: 0.95rem; line-height: 1.5; color: #3d2914;
+}
+.pvp-duel-surrender-modal-box .surrender-confirm-msg { margin: 0 0 20px; font-size: 1rem; }
 .pvp-duel-surrender-modal-box .surrender-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 .pvp-duel-surrender-modal-box .surrender-cancel-btn,
 .pvp-duel-surrender-modal-box .surrender-confirm-btn {
@@ -703,7 +708,7 @@
             {% if winner %}
                 Победитель: <strong>{{ winner.character_name or winner.username }}</strong>
             {% else %}
-                Время вышло. Ничья (у обоих одинаковое здоровье).
+                Ничья (дуэль закончилась при равенстве здоровья).
             {% endif %}
         </p>
         <p style="color:#c4b098;">Награда за участие: 100 Нумов.</p>
@@ -854,9 +859,15 @@
         <div class="pvp-duel-surrender-modal-box">
             <h3>Сдаться?</h3>
             <p class="surrender-msg">Вы проиграете дуэль.</p>
+            <p class="surrender-penalty-msg"><strong>Штраф за сдачу:</strong></p>
+            <ul class="surrender-penalty-list">
+                <li>−5% опыта (возможно понижение уровня);</li>
+                <li>−1 к атаке и −1 к защите.</li>
+            </ul>
+            <p class="surrender-confirm-msg">Всё равно сдаться?</p>
             <div class="surrender-btns">
                 <button type="button" class="surrender-cancel-btn" id="pvpDuelSurrenderCancelBtn">Отмена</button>
-                <button type="button" class="surrender-confirm-btn" id="pvpDuelSurrenderConfirmBtn">Сдаться</button>
+                <button type="button" class="surrender-confirm-btn" id="pvpDuelSurrenderConfirmBtn">Да, сдаться</button>
             </div>
         </div>
     </div>

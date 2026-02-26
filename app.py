@@ -316,6 +316,16 @@ def xp_to_next_level(current_level):
         return 0
     return xp_required_for_level(current_level + 1) - xp_required_for_level(current_level)
 
+def level_from_experience(experience):
+    """Уровень персонажа по суммарному опыту (обратная к xp_required_for_level)."""
+    exp = max(0, int(experience or 0))
+    if exp <= 0:
+        return 1
+    for n in range(100, 0, -1):
+        if xp_required_for_level(n) <= exp:
+            return n
+    return 1
+
 def user_damage_by_level(level):
     """Урон персонажа (legacy). Используйте user.damage."""
     return USER_BASE_DAMAGE
@@ -4479,6 +4489,8 @@ def game_rating_page():
                 'total_damage_dealt': dmg,
                 'total_influence_points': inf,
                 'total_score': dmg + inf,
+                'clan_rank': u.clan_rank,
+                'clan_title': u.clan_title,
             })
 
         return render_template(
@@ -4520,6 +4532,8 @@ def game_rating_page():
             'level': u.level or 1,
             'avatar_url': avatar_url,
             'wins': int(wins or 0),
+            'clan_rank': u.clan_rank,
+            'clan_title': u.clan_title,
         })
 
     return render_template(
@@ -5485,7 +5499,11 @@ def api_pvp_duel_answer(duel_id):
             duel.challenger_health = max(0, duel.challenger_health - dmg)
         if duel.challenger_health <= 0 or duel.defender_health <= 0:
             duel.status = 'finished'
-            duel.winner_id = attacker.id
+            # При равенстве здоровья (в т.ч. оба 0) — ничья
+            if duel.challenger_health <= 0 and duel.defender_health <= 0:
+                duel.winner_id = None
+            else:
+                duel.winner_id = attacker.id
             duel.finished_at = datetime.utcnow()
             avg_level = ((duel.challenger.level or 1) + (duel.defender.level or 1)) / 2.0
             base_reward = avg_level * PVP_REWARD_BASE_MULT
@@ -5512,16 +5530,35 @@ def api_pvp_duel_answer(duel_id):
     })
 
 
+# Штраф за сдачу в дуэли: -5% опыта (с возможным понижением уровня), -1 к атаке и защите
+PVP_SURRENDER_XP_PENALTY_PERCENT = 5
+PVP_SURRENDER_SKILL_PENALTY = 1
+
+
+def _apply_surrender_penalty(user):
+    """Применить штраф за сдачу: -5% опыта (пересчёт уровня), -1 к атаке и защите."""
+    # −5% опыта
+    exp = user.experience or 0
+    penalty_xp = max(0, int(exp * PVP_SURRENDER_XP_PENALTY_PERCENT / 100))
+    user.experience = max(0, exp - penalty_xp)
+    user.level = level_from_experience(user.experience)
+    # −1 к атаке и защите (не ниже 0)
+    user.damage_skill = max(0, (user.damage_skill or 0) - PVP_SURRENDER_SKILL_PENALTY)
+    user.defense_skill = max(0, (user.defense_skill or 0) - PVP_SURRENDER_SKILL_PENALTY)
+
+
 @app.route('/api/pvp/duel/<int:duel_id>/surrender', methods=['POST'])
 @login_required
 def api_pvp_duel_surrender(duel_id):
-    """Сдаться и выйти из дуэли. Игрок проигрывает, победителем становится соперник."""
+    """Сдаться и выйти из дуэли. Игрок проигрывает, победителем становится соперник. За сдачу — штраф."""
     duel = PvPDuel.query.get(duel_id)
     if not duel or current_user.id not in (duel.challenger_id, duel.defender_id):
         return jsonify({'success': False, 'error': 'Дуэль не найдена'}), 404
     if duel.status != 'active':
         return jsonify({'success': False, 'error': 'Дуэль уже завершена'}), 400
     winner = duel.defender if current_user.id == duel.challenger_id else duel.challenger
+    loser = current_user
+    _apply_surrender_penalty(loser)
     duel.status = 'finished'
     duel.winner_id = winner.id
     duel.finished_at = datetime.utcnow()
