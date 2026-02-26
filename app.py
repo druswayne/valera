@@ -290,7 +290,7 @@ INITIAL_SKILL_POINTS = 10
 SKILL_POINTS_PER_LEVEL = 3
 
 # Базовый XP за уровень после 10-го
-XP_BASE_PER_LEVEL = 80  # было 100; прокачка ускорена на 20%
+XP_BASE_PER_LEVEL = 64  # после 10 ур.: на 20% быстрее (было 80)
 # Ускоренная прокачка до 10 уровня (примерно в 2 раза быстрее)
 XP_BASE_PER_LEVEL_BELOW_10 = 40
 
