@@ -305,9 +305,16 @@ def xp_required_for_level(level):
     return base * level * (level - 1) // 2
 
 def xp_to_next_level(current_level):
-    """Опыт, нужный для перехода с current_level на current_level+1."""
-    base = XP_BASE_PER_LEVEL_BELOW_10 if current_level < 10 else XP_BASE_PER_LEVEL
-    return base * current_level
+    """Опыт, нужный для перехода с current_level на current_level+1.
+
+    Считается как разница суммарного опыта между следующим и текущим уровнем,
+    чтобы совпадать с логикой xp_required_for_level и корректно работать
+    на границе 10+ уровней.
+    """
+    current_level = max(1, int(current_level or 1))
+    if current_level >= 100:
+        return 0
+    return xp_required_for_level(current_level + 1) - xp_required_for_level(current_level)
 
 def user_damage_by_level(level):
     """Урон персонажа (legacy). Используйте user.damage."""
