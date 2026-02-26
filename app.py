@@ -285,7 +285,7 @@ class PvPDuel(db.Model):
 # Базовые характеристики (без вложенных очков навыков)
 USER_BASE_DAMAGE = 5
 USER_BASE_DEFENSE = 5
-USER_BASE_ENERGY = 10
+USER_BASE_ENERGY = 15
 INITIAL_SKILL_POINTS = 10
 SKILL_POINTS_PER_LEVEL = 3
 
