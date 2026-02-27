@@ -1411,15 +1411,38 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                         {% else %}
                         <div id="clanFlagPreview" class="clan-view-emblem-placeholder" style="margin-bottom:6px;">🏴</div>
                         {% endif %}
-                        <input type="file" name="flag" accept="image/*" id="clanFlagInput">
+                        <input
+                            type="file"
+                            name="flag"
+                            id="clanFlagInput"
+                            accept="{% if clan_data.clan.can_use_gif_flag %}image/png,image/jpeg,image/gif{% else %}image/png,image/jpeg{% endif %}"
+                            style="display:none;">
+                        <button type="button" id="clanFlagChooseBtn" class="clan-btn">Выбрать эмблему</button>
+                        <p style="margin:4px 0 0; font-size:0.8rem; color:#b8a088;">
+                            {% if clan_data.clan.can_use_gif_flag %}
+                                Допустимые форматы эмблемы: JPG, PNG, GIF.
+                            {% else %}
+                                Допустимые форматы эмблемы: JPG, PNG.
+                            {% endif %}
+                        </p>
+                        {% if not clan_data.clan.can_use_gif_flag %}
+                        <div style="margin-top:8px;">
+                            <button type="button" id="buyClanGifFlagBtn" class="clan-btn">
+                                Анимированая эмблема
+                            </button>
+                            <p id="buyClanGifFlagStatus" style="margin-top:4px; font-size:0.85rem; color:#b8a088;"></p>
+                        </div>
+                        {% endif %}
                     </div>
                     <div style="flex:1; min-width:180px;">
                         <label>Название клана</label>
-                        <input type="text" value="{{ clan_data.clan.name }}" readonly disabled style="opacity:0.9; cursor:not-allowed;" title="Создатель клана не может изменить название">
-                        <p style="margin:4px 0 0; font-size:0.8rem; color:#b8a088;">Изменить название может только администратор.</p>
+                        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                            <input type="text" value="{{ clan_data.clan.name }}" readonly disabled style="opacity:0.9; cursor:not-allowed; max-width:180px;" title="Название клана">
+                            <button type="button" id="clanNameChangeBtn" class="clan-btn" style="padding:6px 10px; font-size:0.85rem;">Изменить название</button>
+                        </div>
+                        <p style="margin:4px 0 0; font-size:0.8rem; color:#b8a088;">Изменение названия клана доступно создателю за Нумы.</p>
                     </div>
                 </div>
-                <button type="submit" class="clan-btn">Сохранить</button>
             </form>
         </div>
         {% endif %}
@@ -1494,6 +1517,54 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                         <input type="text" id="clanChatInput" placeholder="Введите сообщение…" maxlength="2000" autocomplete="off">
                         <button type="button" id="clanChatSendBtn">Отправить</button>
                     </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-overlay" id="buyClanGifFlagModal" style="display:none; visibility:hidden; align-items:center; justify-content:center;">
+            <div class="modal-box">
+                <h3>Анимированая эмблема</h3>
+                <p id="buyClanGifFlagModalText" style="margin-bottom:12px;">
+                    Вы можете навсегда разблокировать возможность загружать GIF-флаг для этого клана за 100000 Нумов (списывается с баланса создателя клана).
+                </p>
+                <div class="modal-buttons">
+                    <button type="button" id="buyClanGifFlagCancel" class="btn-cancel">Отмена</button>
+                    <button type="button" id="buyClanGifFlagConfirm" class="btn-confirm">Подтвердить</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-overlay" id="clanNameChangeModal" style="display:none; visibility:hidden; align-items:center; justify-content:center;">
+            <div class="modal-box">
+                <h3>Изменить название клана</h3>
+                <p id="clanNameChangeModalText" style="margin-bottom:12px;">
+                    Изменить название клана можно за 20000 Нумов (списывается с баланса создателя клана). Продолжить?
+                </p>
+                <div class="modal-buttons">
+                    <button type="button" id="clanNameChangeCancel" class="btn-cancel">Отмена</button>
+                    <button type="button" id="clanNameChangeConfirm" class="btn-confirm">Изменить</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-overlay" id="clanNameInputModal" style="display:none; visibility:hidden; align-items:center; justify-content:center;">
+            <div class="modal-box">
+                <h3>Новое название клана</h3>
+                <p style="margin-bottom:8px;">Введите новое название клана (до 20 символов).</p>
+                <input type="text" id="clanNameInput" maxlength="20" style="width:100%; padding:10px 14px; margin-bottom:8px; border:2px solid #5c4033; border-radius:4px;">
+                <p id="clanNameInputStatus" style="margin:0 0 8px; font-size:0.85rem; color:#5c4033;"></p>
+                <div class="modal-buttons">
+                    <button type="button" id="clanNameInputCancel" class="btn-cancel">Отмена</button>
+                    <button type="button" id="clanNameInputSave" class="btn-confirm">Сохранить</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-overlay" id="insufficientFundsModal" style="display:none; visibility:hidden; align-items:center; justify-content:center;">
+            <div class="modal-box">
+                <h3>Недостаточно средств</h3>
+                <p id="insufficientFundsText" style="margin-bottom:12px;">Недостаточно средств.</p>
+                <div class="modal-buttons">
+                    <button type="button" id="insufficientFundsClose" class="btn-confirm">Понятно</button>
                 </div>
             </div>
         </div>
@@ -1600,7 +1671,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         <p><strong>Барон</strong> — уважаемый ветеран клана (косметический ранг).</p>
         <p><strong>Граф</strong> — старший член клана (косметический ранг).</p>
         <p><strong>Маркиз</strong> — может принимать и отклонять заявки во вступление в клан.</p>
-        <p><strong>Герцог</strong> — может принимать/отклонять заявки и исключать участников клана.</p>
+        <p><strong>Герцог</strong> — может принимать/отклонять заявки, исключать участников клана и выставлять метки нападения/защиты на карте битвы за территорию.</p>
         <p><strong>Великий князь</strong> — создатель клана, имеет все права, включая изменение званий.</p>
         <div class="modal-buttons">
             <button type="button" class="btn-confirm" onclick="closeRankHelpModal()">Понятно</button>
@@ -1663,7 +1734,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         <h3>Создать клан</h3>
         <form id="createClanForm" class="create-clan-form">
             <label>Название клана</label>
-            <input type="text" name="name" required minlength="2" placeholder="Название">
+            <input type="text" name="name" required minlength="2" maxlength="20" placeholder="Название (до 20 символов)">
             <label>Цвет</label>
             <input type="color" name="color" value="#6b7280">
             <label>Флаг (изображение)</label>
@@ -1995,6 +2066,9 @@ document.getElementById('clanEditForm')?.addEventListener('submit', function(e) 
     var fd = new FormData();
     var flagInput = form.querySelector('[name=flag]');
     if (flagInput && flagInput.files[0]) fd.append('flag', flagInput.files[0]);
+    if (!flagInput || !flagInput.files[0]) {
+        return;
+    }
     fetch('/api/clan/' + clanId + '/update', { method: 'POST', body: fd })
         .then(function(r) { return r.json(); })
         .then(function(data) {
@@ -2014,6 +2088,262 @@ document.getElementById('clanEditForm')?.addEventListener('submit', function(e) 
         })
         .catch(function() { alert('Ошибка соединения'); });
 });
+
+{% if clan_data and user.id == clan_data.clan.owner_id %}
+(function() {
+    var btn = document.getElementById('buyClanGifFlagBtn');
+    if (!btn) return;
+    var statusEl = document.getElementById('buyClanGifFlagStatus');
+    var modal = document.getElementById('buyClanGifFlagModal');
+    var modalConfirm = document.getElementById('buyClanGifFlagConfirm');
+    var modalCancel = document.getElementById('buyClanGifFlagCancel');
+
+    function openModal() {
+        if (!modal) return;
+        modal.style.display = 'flex';
+        modal.style.visibility = 'visible';
+        modal.classList.add('open');
+    }
+
+    function closeModal() {
+        if (!modal) return;
+        modal.classList.remove('open');
+        modal.style.display = '';
+        modal.style.visibility = '';
+    }
+
+    btn.addEventListener('click', function() {
+        openModal();
+    });
+
+    if (modalCancel) {
+        modalCancel.addEventListener('click', function() {
+            closeModal();
+        });
+    }
+
+    if (modalConfirm) {
+        modalConfirm.addEventListener('click', function() {
+            closeModal();
+            btn.disabled = true;
+            fetch('/api/clan/{{ clan_data.clan.id }}/unlock-gif-flag', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        if (statusEl) {
+                            statusEl.textContent = 'Возможность GIF-эмблемы успешно куплена. Теперь вы можете загружать GIF-флаг.';
+                            statusEl.style.display = 'block';
+                        }
+                        btn.style.display = 'none';
+                    } else {
+                        if (data.error && data.error.indexOf('Недостаточно Нумов') !== -1) {
+                            var insufficientModal = document.getElementById('insufficientFundsModal');
+                            var insufficientText = document.getElementById('insufficientFundsText');
+                            var insufficientClose = document.getElementById('insufficientFundsClose');
+                            if (insufficientText) insufficientText.textContent = 'Недостаточно средств.';
+                            if (insufficientModal) {
+                                insufficientModal.style.display = 'flex';
+                                insufficientModal.style.visibility = 'visible';
+                                insufficientModal.classList.add('open');
+                                if (insufficientClose) {
+                                    insufficientClose.addEventListener('click', function() {
+                                        insufficientModal.classList.remove('open');
+                                        insufficientModal.style.display = '';
+                                        insufficientModal.style.visibility = '';
+                                    }, { once: true });
+                                }
+                            }
+                        } else if (statusEl) {
+                            statusEl.textContent = data.error || 'Ошибка';
+                            statusEl.style.display = 'block';
+                        }
+                        btn.disabled = false;
+                    }
+                })
+                .catch(function() {
+                    if (statusEl) {
+                        statusEl.textContent = 'Ошибка соединения';
+                        statusEl.style.display = 'block';
+                    }
+                    btn.disabled = false;
+                });
+        });
+    }
+})();
+{% endif %}
+
+{% if clan_data and user.id == clan_data.clan.owner_id %}
+(function() {
+    var chooseBtn = document.getElementById('clanFlagChooseBtn');
+    var fileInput = document.getElementById('clanFlagInput');
+    var clanId = {{ clan_data.clan.id if clan_data and clan_data.clan else 'null' }};
+    if (chooseBtn && fileInput) {
+        chooseBtn.addEventListener('click', function() {
+            fileInput.click();
+        });
+        fileInput.addEventListener('change', function() {
+            if (!fileInput.files || !fileInput.files[0]) return;
+            var file = fileInput.files[0];
+            var preview = document.getElementById('clanFlagPreview');
+            if (preview && file && file.type.startsWith('image/')) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    if (preview.tagName === 'IMG') {
+                        preview.src = e.target.result;
+                    } else {
+                        var img = document.createElement('img');
+                        img.id = 'clanFlagPreview';
+                        img.src = e.target.result;
+                        img.className = 'clan-view-emblem';
+                        img.style.cssText = 'display:block;margin-bottom:6px;';
+                        preview.parentNode.replaceChild(img, preview);
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+
+            // Автоматическое сохранение флага на сервере
+            if (!clanId) return;
+            var fd = new FormData();
+            fd.append('flag', file);
+            fetch('/api/clan/' + clanId + '/update', { method: 'POST', body: fd })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (!data || !data.success) {
+                        alert((data && data.error) || 'Ошибка при сохранении эмблемы');
+                        return;
+                    }
+                    var flagUrl = data.clan && data.clan.flag_url;
+                    if (flagUrl) {
+                        var infoEmblem = document.querySelector('.clan-block .clan-view .clan-view-emblem, .clan-block .clan-view .clan-view-emblem-placeholder');
+                        if (infoEmblem) {
+                            var disp = document.createElement('img');
+                            disp.className = 'clan-view-emblem';
+                            disp.src = flagUrl;
+                            disp.alt = 'Эмблема';
+                            infoEmblem.parentNode.replaceChild(disp, infoEmblem);
+                        }
+                    }
+                })
+                .catch(function() {
+                    alert('Ошибка соединения при сохранении эмблемы');
+                });
+        });
+    }
+})();
+{% endif %}
+
+{% if clan_data and user.id == clan_data.clan.owner_id %}
+(function() {
+    var changeBtn = document.getElementById('clanNameChangeBtn');
+    var input = document.getElementById('clanNameInput');
+    var inputStatus = document.getElementById('clanNameInputStatus');
+    var displayEl = document.getElementById('clanNameDisplay');
+    var modal = document.getElementById('clanNameChangeModal');
+    var modal = document.getElementById('clanNameChangeModal');
+    var modalCancel = document.getElementById('clanNameChangeCancel');
+    var modalConfirm = document.getElementById('clanNameChangeConfirm');
+    var inputModal = document.getElementById('clanNameInputModal');
+    var inputCancel = document.getElementById('clanNameInputCancel');
+    var inputSave = document.getElementById('clanNameInputSave');
+    var insufficientModal = document.getElementById('insufficientFundsModal');
+    var insufficientText = document.getElementById('insufficientFundsText');
+    var insufficientClose = document.getElementById('insufficientFundsClose');
+
+    if (!changeBtn || !modal || !inputModal || !input || !inputSave || !inputCancel) return;
+
+    function openModal(m) {
+        if (!m) return;
+        m.style.display = 'flex';
+        m.style.visibility = 'visible';
+        m.classList.add('open');
+    }
+
+    function closeModal(m) {
+        if (!m) return;
+        m.classList.remove('open');
+        m.style.display = '';
+        m.style.visibility = '';
+    }
+
+    changeBtn.addEventListener('click', function() {
+        if (inputStatus) { inputStatus.textContent = ''; }
+        openModal(modal);
+    });
+
+    if (modalCancel) {
+        modalCancel.addEventListener('click', function() {
+            closeModal(modal);
+        });
+    }
+
+    if (modalConfirm) {
+        modalConfirm.addEventListener('click', function() {
+            closeModal(modal);
+            if (displayEl && input) {
+                input.value = displayEl.textContent.trim();
+            }
+            openModal(inputModal);
+            input.focus();
+        });
+    }
+
+    if (inputCancel) {
+        inputCancel.addEventListener('click', function() {
+            closeModal(inputModal);
+            if (inputStatus) inputStatus.textContent = '';
+        });
+    }
+
+    function sendRename() {
+        var newName = (input.value || '').trim();
+        if (!newName) {
+            if (inputStatus) inputStatus.textContent = 'Введите новое название клана.';
+            return;
+        }
+        inputSave.disabled = true;
+        fetch('/api/clan/{{ clan_data.clan.id }}/rename', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: newName })
+        })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    closeModal(inputModal);
+                    location.reload();
+                    return;
+                } else {
+                    if (data.error && data.error.indexOf('Недостаточно Нумов') !== -1 && insufficientModal) {
+                        if (insufficientText) insufficientText.textContent = 'Недостаточно средств.';
+                        openModal(insufficientModal);
+                    } else if (inputStatus) {
+                        inputStatus.textContent = data.error || 'Ошибка';
+                    }
+                }
+                inputSave.disabled = false;
+            })
+            .catch(function() {
+                if (inputStatus) inputStatus.textContent = 'Ошибка соединения';
+                inputSave.disabled = false;
+            });
+    }
+
+    inputSave.addEventListener('click', function() {
+        sendRename();
+    });
+
+    if (insufficientClose && insufficientModal) {
+        insufficientClose.addEventListener('click', function() {
+            closeModal(insufficientModal);
+        });
+    }
+})();
+{% endif %}
 
 {% if clan_data %}
 document.querySelectorAll('.kick-btn').forEach(btn => {

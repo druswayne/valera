@@ -1157,6 +1157,57 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     transform: translateY(-1px);
 }
 
+.territory-clan-marker-block {
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(92,64,51,0.4);
+    text-align: center;
+}
+.territory-clan-marker-label {
+    display: block;
+    font-size: 0.85rem;
+    color: #5c4033;
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+.territory-clan-marker-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+}
+.territory-clan-marker-btn {
+    padding: 8px 14px;
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    font-family: 'Cinzel', Georgia, serif;
+    background: linear-gradient(180deg, #e8dcc4 0%, #d4c4a0 100%);
+    color: #2c1810;
+    transition: transform 0.1s, box-shadow 0.2s;
+}
+.territory-clan-marker-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+.territory-clan-marker-attack:hover { border-color: #8b2914; background: linear-gradient(180deg, #f0d8d0 0%, #e0c0b0 100%); }
+.territory-clan-marker-defend:hover { border-color: #1a4a6e; background: linear-gradient(180deg, #d0e0f0 0%, #b8d0e8 100%); }
+
+/* Пульсация символа атаки/защиты на карте (масштаб от центра, логотип на месте) */
+.clan-marker-pulse {
+    transform-box: fill-box;
+    transform-origin: 50% 50%;
+    animation: clan-marker-pulse 1.6s ease-in-out infinite;
+}
+@keyframes clan-marker-pulse {
+    0%, 100% { transform: scale(0.92); }
+    50% { transform: scale(1.15); }
+}
+.clan-marker-hover-copy .clan-marker-pulse {
+    animation: clan-marker-pulse 1.6s ease-in-out infinite;
+}
+
 .task-result-toast {
     position: fixed;
     bottom: 28px;
@@ -1733,6 +1784,16 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                 <button type="button" class="territory-confirm-btn territory-confirm-yes" id="territoryConfirmYes">Да</button>
                 <button type="button" class="territory-confirm-btn territory-confirm-no" id="territoryConfirmNo">Нет</button>
             </div>
+            {% if is_clan_owner %}
+            <div class="territory-clan-marker-block" id="territoryClanMarkerBlock">
+                <span class="territory-clan-marker-label">Метка для клана:</span>
+                <div class="territory-clan-marker-btns">
+                    <button type="button" class="territory-clan-marker-btn territory-clan-marker-attack" id="territoryClanMarkerAttack" title="Нападаем на эту область">⚔ Нападение</button>
+                    <button type="button" class="territory-clan-marker-btn territory-clan-marker-defend" id="territoryClanMarkerDefend" title="Защищаем эту область">🛡 Защита</button>
+                    <button type="button" class="territory-clan-marker-btn territory-clan-marker-clear" id="territoryClanMarkerClear" title="Убрать метку">Убрать метку</button>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
     </div>
@@ -2000,6 +2061,8 @@ window.territoryFocusProtection = (function() {
     const clansData = {{ clans_json | tojson | safe }};
     const playerClanId = {{ current_user_clan_id | tojson }};
     const isAuthenticated = {{ is_authenticated | tojson }};
+    const isClanOwner = {{ is_clan_owner | tojson }};
+    const initialClanMarker = {{ clan_marker | tojson if clan_marker else 'null' }};
     const captureEnabled = {{ capture_enabled | tojson }};
     const captureStartTimeIso = {{ capture_start_time_iso | tojson }};
     const captureStartTimeMs = {{ capture_start_time_ms | tojson }};
@@ -2013,8 +2076,11 @@ window.territoryFocusProtection = (function() {
 
     const state = {
         regions: [],
-        currentRegionId: null
+        currentRegionId: null,
+        clanMarker: initialClanMarker ? { region_index: initialClanMarker.region_index, marker_type: initialClanMarker.marker_type } : null
     };
+
+    const regionCenters = {};
 
     const regionElements = document.querySelectorAll('.region');
     const REGION_COUNT = regionElements.length;
@@ -2067,6 +2133,7 @@ window.territoryFocusProtection = (function() {
             let cy = bbox.y + bbox.height / 2;
             if (index === 9) cy += 0.1 * 396;
             if (index === 21) cx += 0.05 * 615;
+            regionCenters[index] = { cx: cx, cy: cy };
 
             const overlay = document.createElementNS(svg.namespaceURI, 'g');
             overlay.classList.add('region-overlay');
@@ -2362,7 +2429,40 @@ window.territoryFocusProtection = (function() {
         });
     }
 
+    function renderClanMarker() {
+        var layer = document.getElementById('regionOverlaysLayer');
+        if (!layer) return;
+        var old = layer.querySelector('.clan-marker-overlay');
+        if (old) old.remove();
+        if (!state.clanMarker || !playerClanId) return;
+        var rc = regionCenters[state.clanMarker.region_index];
+        if (!rc) return;
+        var svg = document.getElementById('territoryMap');
+        if (!svg) return;
+        var g = document.createElementNS(svg.namespaceURI, 'g');
+        g.setAttribute('class', 'clan-marker-overlay');
+        g.setAttribute('transform', 'translate(' + rc.cx + ',' + rc.cy + ')');
+        g.setAttribute('pointer-events', 'none');
+        var inner = document.createElementNS(svg.namespaceURI, 'g');
+        inner.setAttribute('class', 'clan-marker-pulse');
+        var bg = document.createElementNS(svg.namespaceURI, 'circle');
+        bg.setAttribute('r', 14);
+        bg.setAttribute('fill', 'rgba(255,255,255,0.85)');
+        bg.setAttribute('stroke', '#3d2914');
+        bg.setAttribute('stroke-width', '1.5');
+        inner.appendChild(bg);
+        var icon = document.createElementNS(svg.namespaceURI, 'text');
+        icon.setAttribute('text-anchor', 'middle');
+        icon.setAttribute('dominant-baseline', 'central');
+        icon.setAttribute('font-size', '22');
+        icon.textContent = state.clanMarker.marker_type === 'attack' ? '\u2694\uFE0F' : '\uD83D\uDEE1\uFE0F';
+        inner.appendChild(icon);
+        g.appendChild(inner);
+        layer.appendChild(g);
+    }
+
     initRegionOverlays();
+    renderClanMarker();
 
     (function initBuffCarousels() {
         var iconW = 24, gap = 4, step = iconW + gap, visibleCount = 3;
@@ -2442,9 +2542,40 @@ window.territoryFocusProtection = (function() {
 
     (function initHoverLabelLayer() {
         const layer = document.getElementById('hoverLabelLayer');
-        if (!layer) return;
+        const svg = document.getElementById('territoryMap');
+        if (!layer || !svg) return;
         var hoverClone = null;
         var hoveredOverlay = null;
+        var hoverClanMarkerEl = null;
+
+        function addClanMarkerOnHover(regionId) {
+            if (!state.clanMarker || !playerClanId) return;
+            var rid = parseInt(regionId, 10);
+            if (state.clanMarker.region_index !== rid) return;
+            var rc = regionCenters[rid];
+            if (!rc) return;
+            var g = document.createElementNS(svg.namespaceURI, 'g');
+            g.setAttribute('class', 'clan-marker-overlay clan-marker-hover-copy');
+            g.setAttribute('transform', 'translate(' + rc.cx + ',' + rc.cy + ')');
+            g.setAttribute('pointer-events', 'none');
+            var inner = document.createElementNS(svg.namespaceURI, 'g');
+            inner.setAttribute('class', 'clan-marker-pulse');
+            var bg = document.createElementNS(svg.namespaceURI, 'circle');
+            bg.setAttribute('r', 14);
+            bg.setAttribute('fill', 'rgba(255,255,255,0.85)');
+            bg.setAttribute('stroke', '#3d2914');
+            bg.setAttribute('stroke-width', '1.5');
+            inner.appendChild(bg);
+            var icon = document.createElementNS(svg.namespaceURI, 'text');
+            icon.setAttribute('text-anchor', 'middle');
+            icon.setAttribute('dominant-baseline', 'central');
+            icon.setAttribute('font-size', '22');
+            icon.textContent = state.clanMarker.marker_type === 'attack' ? '\u2694\uFE0F' : '\uD83D\uDEE1\uFE0F';
+            inner.appendChild(icon);
+            g.appendChild(inner);
+            layer.appendChild(g);
+            hoverClanMarkerEl = g;
+        }
 
         document.querySelectorAll('.territory-map .region:not(.region-inactive)').forEach(function(g) {
             g.addEventListener('mouseenter', function() {
@@ -2453,10 +2584,14 @@ window.territoryFocusProtection = (function() {
                 const overlay = regionId && mapEl ? mapEl.querySelector('.region-overlay[data-region-id="' + regionId + '"]') : null;
                 if (!overlay) return;
                 if (hoverClone && hoverClone.parentNode) hoverClone.parentNode.removeChild(hoverClone);
+                hoverClone = null;
+                if (hoverClanMarkerEl && hoverClanMarkerEl.parentNode) hoverClanMarkerEl.parentNode.removeChild(hoverClanMarkerEl);
+                hoverClanMarkerEl = null;
                 if (hoveredOverlay) hoveredOverlay.removeAttribute('visibility');
                 hoverClone = overlay.cloneNode(true);
                 hoverClone.classList.add('region-overlay-hover-clone');
                 layer.appendChild(hoverClone);
+                addClanMarkerOnHover(regionId);
                 overlay.setAttribute('visibility', 'hidden');
                 hoveredOverlay = overlay;
                 layer.setAttribute('visibility', 'visible');
@@ -2465,6 +2600,10 @@ window.territoryFocusProtection = (function() {
                 if (hoverClone && hoverClone.parentNode) {
                     hoverClone.parentNode.removeChild(hoverClone);
                     hoverClone = null;
+                }
+                if (hoverClanMarkerEl && hoverClanMarkerEl.parentNode) {
+                    hoverClanMarkerEl.parentNode.removeChild(hoverClanMarkerEl);
+                    hoverClanMarkerEl = null;
                 }
                 if (hoveredOverlay) {
                     hoveredOverlay.removeAttribute('visibility');
@@ -2769,6 +2908,10 @@ window.territoryFocusProtection = (function() {
             ? 'Усилить влияние на территории «' + regionName + '»?'
             : 'Напасть на территорию «' + regionName + '»?';
         _pendingConfirmRegionId = regionId;
+        var attackBtn = document.getElementById('territoryClanMarkerAttack');
+        var defendBtn = document.getElementById('territoryClanMarkerDefend');
+        if (attackBtn) attackBtn.style.display = isOwn ? 'none' : '';
+        if (defendBtn) defendBtn.style.display = isOwn ? '' : 'none';
         document.getElementById('territoryConfirmWrap').classList.add('open');
     }
 
@@ -3029,6 +3172,48 @@ window.territoryFocusProtection = (function() {
     document.getElementById('territoryConfirmNo').addEventListener('click', function() {
         closeConfirmModal();
     });
+
+    function setClanMarkerAndRefresh(regionId, markerTypeOrClear) {
+        var url = '{{ url_for("api_territory_battle_clan_marker") }}';
+        var body = markerTypeOrClear === null
+            ? { clear: true }
+            : { region_index: regionId, marker_type: markerTypeOrClear };
+        fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        }).then(function(r) { return r.json(); }).then(function(data) {
+            if (data.success) {
+                state.clanMarker = data.clan_marker || null;
+                renderClanMarker();
+                closeConfirmModal();
+                showToast(markerTypeOrClear === null ? 'Метка снята' : (markerTypeOrClear === 'attack' ? 'Метка «Нападение» установлена' : 'Метка «Защита» установлена'), true);
+            } else {
+                showToast(data.error || 'Ошибка', false);
+            }
+        }).catch(function() { showToast('Ошибка сети', false); });
+    }
+
+    var clanMarkerAttackBtn = document.getElementById('territoryClanMarkerAttack');
+    var clanMarkerDefendBtn = document.getElementById('territoryClanMarkerDefend');
+    var clanMarkerClearBtn = document.getElementById('territoryClanMarkerClear');
+    if (clanMarkerAttackBtn) {
+        clanMarkerAttackBtn.addEventListener('click', function() {
+            var regionId = _pendingConfirmRegionId;
+            if (regionId !== null && regionId !== undefined) setClanMarkerAndRefresh(regionId, 'attack');
+        });
+    }
+    if (clanMarkerDefendBtn) {
+        clanMarkerDefendBtn.addEventListener('click', function() {
+            var regionId = _pendingConfirmRegionId;
+            if (regionId !== null && regionId !== undefined) setClanMarkerAndRefresh(regionId, 'defend');
+        });
+    }
+    if (clanMarkerClearBtn) {
+        clanMarkerClearBtn.addEventListener('click', function() {
+            setClanMarkerAndRefresh(_pendingConfirmRegionId, null);
+        });
+    }
 
     document.getElementById('submitTaskBtn').addEventListener('click', function() {
         const regionId = state.currentRegionId;

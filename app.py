@@ -114,6 +114,18 @@ app.config['SHOP_IMAGE_FOLDER'] = 'static/uploads/shop'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
+# Константа стоимости разблокировки GIF-флага клана (в Нумах)
+CLAN_GIF_FLAG_PRICE = 100_000
+
+# Константа стоимости изменения названия клана (в Нумах)
+CLAN_RENAME_PRICE = 20_000
+
+# Разрешённые расширения для загрузки флага клана по умолчанию (без GIF)
+CLAN_FLAG_BASE_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+
+# Максимальная длина названия клана (для создания и переименования)
+MAX_CLAN_NAME_LENGTH = 20
+
 
 def _avatar_static_filename(avatar_filename):
     """Путь для url_for('static', filename=...): убирает лишний 'static/' если есть."""
@@ -178,6 +190,7 @@ class Clan(db.Model):
     color = db.Column(db.String(20), default='#6b7280', nullable=False)
     flag_filename = db.Column(db.String(255), nullable=True)
     owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    can_use_gif_flag = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     owner = db.relationship('User', foreign_keys=[owner_id], backref=db.backref('owned_clan', uselist=False), lazy=True)
@@ -191,7 +204,8 @@ class Clan(db.Model):
             'color': self.color,
             'flag_url': url_for('static', filename=_avatar_static_filename(self.flag_filename)) if self.flag_filename else None,
             'owner_id': self.owner_id,
-            'member_count': User.query.filter_by(clan_id=self.id).count()
+            'member_count': User.query.filter_by(clan_id=self.id).count(),
+            'can_use_gif_flag': self.can_use_gif_flag,
         }
 
 
@@ -289,20 +303,25 @@ USER_BASE_ENERGY = 15
 INITIAL_SKILL_POINTS = 10
 SKILL_POINTS_PER_LEVEL = 3
 
-# Базовый XP за уровень после 10-го
-XP_BASE_PER_LEVEL = 64  # после 10 ур.: на 20% быстрее (было 80)
-# Ускоренная прокачка до 10 уровня (примерно в 2 раза быстрее)
-XP_BASE_PER_LEVEL_BELOW_10 = 40
+# Базовый XP за уровень после 10-го (удвоено от базовых 64/40)
+XP_BASE_PER_LEVEL = 128
+# Ускоренная прокачка до 10 уровня
+XP_BASE_PER_LEVEL_BELOW_10 = 80
 
 def xp_required_for_level(level):
     """Суммарный опыт для достижения уровня level.
 
-    Для уровней 2–10 используется уменьшенная база XP, чтобы ускорить раннюю прокачку.
+    Уровни 2–10: база 40 (ускоренная ранняя прокачка).
+    Уровни 11+: база 64 за уровень, при этом переход 10→11 равен 64*11 (704),
+    чтобы не было скачка по сравнению с 11→12 и далее.
     """
     if level <= 1:
         return 0
-    base = XP_BASE_PER_LEVEL_BELOW_10 if level <= 10 else XP_BASE_PER_LEVEL
-    return base * level * (level - 1) // 2
+    if level <= 10:
+        return XP_BASE_PER_LEVEL_BELOW_10 * level * (level - 1) // 2
+    # Суммарный XP на 10-м уровне + сумма 128*i для i=11..level
+    total_at_10 = XP_BASE_PER_LEVEL_BELOW_10 * 10 * 9 // 2
+    return total_at_10 + 64 * (level * (level + 1) - 110)
 
 def xp_to_next_level(current_level):
     """Опыт, нужный для перехода с current_level на current_level+1.
@@ -978,6 +997,16 @@ class TerritoryRegionState(db.Model):
     )
 
 
+# Битва за территорию: метка клана на карте (нападение/защита) — только одна на клан, выставляет создатель
+class ClanTerritoryMarker(db.Model):
+    __tablename__ = 'clan_territory_marker'
+    id = db.Column(db.Integer, primary_key=True)
+    clan_id = db.Column(db.Integer, db.ForeignKey('clan.id'), nullable=False, unique=True)
+    region_index = db.Column(db.Integer, nullable=False)
+    marker_type = db.Column(db.String(20), nullable=False)  # 'attack' | 'defend'
+    clan = db.relationship('Clan', foreign_keys=[clan_id], backref=db.backref('territory_marker', uselist=False))
+
+
 # Битва за территорию: общие настройки (регистрация участников, захват областей)
 class TerritoryBattleSetting(db.Model):
     __tablename__ = 'territory_battle_setting'
@@ -1568,6 +1597,9 @@ with app.app_context():
             db.session.add(s)
             db.session.commit()
             print("Создана запись настроек битвы за территорию")
+        if 'clan_territory_marker' not in tables:
+            db.create_all()
+            print("Создана таблица clan_territory_marker")
     except Exception as e:
         print(f"Ошибка при миграции битвы за территорию: {e}")
         db.create_all()
@@ -1661,6 +1693,12 @@ with app.app_context():
                 if 'clan_rank' not in columns:
                     conn.execute(text('ALTER TABLE user ADD COLUMN clan_rank VARCHAR(20)'))
                     print("Добавлена колонка clan_rank в user")
+        if 'clan' in tables:
+            clan_columns = [col['name'] for col in inspector.get_columns('clan')]
+            if 'can_use_gif_flag' not in clan_columns:
+                with db.engine.begin() as conn:
+                    conn.execute(text('ALTER TABLE clan ADD COLUMN can_use_gif_flag BOOLEAN DEFAULT 0 NOT NULL'))
+                    print("Добавлена колонка can_use_gif_flag в clan")
         if 'clan_join_request' in tables:
             req_columns = [col['name'] for col in inspector.get_columns('clan_join_request')]
             if 'message' not in req_columns:
@@ -1924,7 +1962,8 @@ def cabinet():
         user=user,
         clan_data=clan_data,
         pending_request=pending_request,
-        avatar_url=url_for('static', filename=_avatar_static_filename(user.avatar_filename)) if user.avatar_filename else None
+        avatar_url=url_for('static', filename=_avatar_static_filename(user.avatar_filename)) if user.avatar_filename else None,
+        clan_gif_flag_price=CLAN_GIF_FLAG_PRICE,
     )
 
 
@@ -2358,6 +2397,8 @@ def api_clan_create():
     color = (data.get('color') or '#6b7280').strip()
     if not name or len(name) < 2:
         return jsonify({'success': False, 'error': 'Название клана должно быть не менее 2 символов'}), 400
+    if len(name) > MAX_CLAN_NAME_LENGTH:
+        return jsonify({'success': False, 'error': f'Название клана не должно превышать {MAX_CLAN_NAME_LENGTH} символов'}), 400
     if Clan.query.filter_by(name=name).first():
         return jsonify({'success': False, 'error': 'Клан с таким названием уже существует'}), 400
     clan = Clan(name=name, color=color, owner_id=current_user.id)
@@ -2365,11 +2406,14 @@ def api_clan_create():
     db.session.flush()
     if 'flag' in request.files:
         f = request.files['flag']
-        if f and f.filename and f.filename.rsplit('.', 1)[-1].lower() in ALLOWED_EXTENSIONS:
-            folder = os.path.join(app.root_path, app.config['CLAN_FLAG_FOLDER'])
-            filename = f'clan_{clan.id}_{secure_filename(f.filename)}'
-            f.save(os.path.join(folder, filename))
-            clan.flag_filename = f'uploads/clan_flags/{filename}'
+        if f and f.filename:
+            ext = f.filename.rsplit('.', 1)[-1].lower()
+            # При создании клана допускаем только базовые форматы (JPG/PNG), GIF недоступен
+            if ext in CLAN_FLAG_BASE_EXTENSIONS:
+                folder = os.path.join(app.root_path, app.config['CLAN_FLAG_FOLDER'])
+                filename = f'clan_{clan.id}_{secure_filename(f.filename)}'
+                f.save(os.path.join(folder, filename))
+                clan.flag_filename = f'uploads/clan_flags/{filename}'
     current_user.clan_id = clan.id
     db.session.commit()
     return jsonify({'success': True, 'clan': clan.to_dict()})
@@ -2386,12 +2430,19 @@ def api_clan_update(clan_id):
     # Имя клана владелец (создатель) менять не может — не обновляем name
     if 'flag' in request.files:
         f = request.files['flag']
-        if f and f.filename and f.filename.rsplit('.', 1)[-1].lower() in ALLOWED_EXTENSIONS:
-            folder = os.path.join(app.root_path, app.config['CLAN_FLAG_FOLDER'])
-            os.makedirs(folder, exist_ok=True)
-            filename = f'clan_{clan.id}_{secure_filename(f.filename)}'
-            f.save(os.path.join(folder, filename))
-            clan.flag_filename = f'uploads/clan_flags/{filename}'
+        if f and f.filename:
+            ext = f.filename.rsplit('.', 1)[-1].lower()
+            allowed = False
+            if ext in CLAN_FLAG_BASE_EXTENSIONS:
+                allowed = True
+            elif ext == 'gif' and clan.can_use_gif_flag:
+                allowed = True
+            if allowed:
+                folder = os.path.join(app.root_path, app.config['CLAN_FLAG_FOLDER'])
+                os.makedirs(folder, exist_ok=True)
+                filename = f'clan_{clan.id}_{secure_filename(f.filename)}'
+                f.save(os.path.join(folder, filename))
+                clan.flag_filename = f'uploads/clan_flags/{filename}'
     db.session.commit()
     return jsonify({'success': True, 'clan': clan.to_dict()})
 
@@ -2547,6 +2598,76 @@ def api_clan_transfer_ownership(clan_id):
     clan.owner_id = new_owner_id
     db.session.commit()
     return jsonify({'success': True})
+
+
+@app.route('/api/clan/<int:clan_id>/unlock-gif-flag', methods=['POST'])
+@login_required
+def api_clan_unlock_gif_flag(clan_id):
+    """Покупка возможности загружать GIF-флаг клана (только владелец клана)."""
+    if current_user.is_admin:
+        return jsonify({'success': False, 'error': 'Администратор не участвует'}), 403
+    clan = Clan.query.get_or_404(clan_id)
+    if current_user.clan_id != clan.id:
+        return jsonify({'success': False, 'error': 'Вы не состоите в этом клане'}), 403
+    if clan.owner_id != current_user.id:
+        return jsonify({'success': False, 'error': 'Только владелец клана может купить эту возможность'}), 403
+    if clan.can_use_gif_flag:
+        return jsonify({'success': True, 'already_unlocked': True, 'can_use_gif_flag': True,
+                        'balance': current_user.nums_balance or 0})
+    balance = current_user.nums_balance or 0
+    if balance < CLAN_GIF_FLAG_PRICE:
+        return jsonify({
+            'success': False,
+            'error': 'Недостаточно Нумов',
+            'balance': balance,
+            'price': CLAN_GIF_FLAG_PRICE,
+        }), 400
+    current_user.nums_balance = balance - CLAN_GIF_FLAG_PRICE
+    clan.can_use_gif_flag = True
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'can_use_gif_flag': True,
+        'balance': current_user.nums_balance,
+    })
+
+
+@app.route('/api/clan/<int:clan_id>/rename', methods=['POST'])
+@login_required
+def api_clan_rename(clan_id):
+    """Платное изменение названия клана (только создатель клана)."""
+    if current_user.is_admin:
+        return jsonify({'success': False, 'error': 'Администратор не участвует'}), 403
+    clan = Clan.query.get_or_404(clan_id)
+    if current_user.clan_id != clan.id:
+        return jsonify({'success': False, 'error': 'Вы не состоите в этом клане'}), 403
+    if clan.owner_id != current_user.id:
+        return jsonify({'success': False, 'error': 'Только создатель клана может менять название'}, ), 403
+    data = request.get_json() or {}
+    new_name = (data.get('name') or '').strip()
+    if not new_name or len(new_name) < 2:
+        return jsonify({'success': False, 'error': 'Название клана должно быть не менее 2 символов'}), 400
+    if len(new_name) > MAX_CLAN_NAME_LENGTH:
+        return jsonify({'success': False, 'error': f'Название клана не должно превышать {MAX_CLAN_NAME_LENGTH} символов'}), 400
+    existing = Clan.query.filter(Clan.name == new_name, Clan.id != clan.id).first()
+    if existing:
+        return jsonify({'success': False, 'error': 'Клан с таким названием уже существует'}), 400
+    balance = current_user.nums_balance or 0
+    if balance < CLAN_RENAME_PRICE:
+        return jsonify({
+            'success': False,
+            'error': 'Недостаточно Нумов',
+            'balance': balance,
+            'price': CLAN_RENAME_PRICE,
+        }), 400
+    current_user.nums_balance = balance - CLAN_RENAME_PRICE
+    clan.name = new_name
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'clan_name': clan.name,
+        'balance': current_user.nums_balance,
+    })
 
 
 @app.route('/api/clan/<int:clan_id>/rank/<int:user_id>', methods=['POST'])
@@ -3688,12 +3809,20 @@ def admin_territory_clan_save(clan_id):
             existing = Clan.query.filter(Clan.name == name, Clan.id != clan_id).first()
             if existing:
                 return jsonify({'success': False, 'error': 'Клан с таким названием уже существует'}), 400
+            if len(name) > MAX_CLAN_NAME_LENGTH:
+                return jsonify({'success': False, 'error': f'Название клана не должно превышать {MAX_CLAN_NAME_LENGTH} символов'}), 400
             clan.name = name
         clan.color = request.form.get('territory_fill_color') or clan.color
         f = request.files.get('territory_heraldry')
         if f and f.filename and secure_filename(f.filename):
             ext = os.path.splitext(f.filename)[1].lower()
-            if ext in {'.png', '.jpg', '.jpeg', '.gif', '.webp'}:
+            base_ext = ext.lstrip('.')
+            allowed = False
+            if base_ext in CLAN_FLAG_BASE_EXTENSIONS:
+                allowed = True
+            elif base_ext == 'gif' and clan.can_use_gif_flag:
+                allowed = True
+            if allowed:
                 folder = os.path.join(app.root_path, app.config['CLAN_FLAG_FOLDER'])
                 filename = f'clan_{clan_id}_{secure_filename(f.filename)}'
                 path = os.path.join(folder, filename)
@@ -3708,6 +3837,8 @@ def admin_territory_clan_save(clan_id):
             existing = Clan.query.filter(Clan.name == name, Clan.id != clan_id).first()
             if existing:
                 return jsonify({'success': False, 'error': 'Клан с таким названием уже существует'}), 400
+            if len(name) > MAX_CLAN_NAME_LENGTH:
+                return jsonify({'success': False, 'error': f'Название клана не должно превышать {MAX_CLAN_NAME_LENGTH} символов'}), 400
             clan.name = name
     db.session.commit()
     return jsonify({'success': True, 'territory_fill_color': clan.color, 'territory_heraldry_filename': clan.flag_filename, 'clan_name': clan.name})
@@ -3753,6 +3884,7 @@ def admin_territory_reset():
             st.strength = 0
         else:
             db.session.add(TerritoryRegionState(region_index=i, owner_class_id=None, owner_clan_id=None, strength=0))
+    ClanTerritoryMarker.query.delete()
     db.session.commit()
     return jsonify({'success': True})
 
@@ -4312,8 +4444,13 @@ def territory_battle_page():
     capture_start_time_ms = int(capture_start_time.timestamp() * 1000) if capture_start_time else None
     capture_end_time_ms = int(capture_end_time.timestamp() * 1000) if capture_end_time else None
     clan_pending_join_count = 0
-    if user_logged_in and not is_admin and getattr(current_user, 'clan_obj', None) and current_user.clan_obj.owner_id == current_user.id:
-        clan_pending_join_count = ClanJoinRequest.query.filter_by(clan_id=current_user.clan_obj.id, status='pending').count()
+    if user_logged_in and not is_admin and getattr(current_user, 'clan_obj', None):
+        can_see_join_requests = (
+            current_user.clan_obj.owner_id == current_user.id
+            or (current_user.clan_rank or CLAN_RANK_VASSAL) in (CLAN_RANK_DUKE, CLAN_RANK_MARQUIS)
+        )
+        if can_see_join_requests:
+            clan_pending_join_count = ClanJoinRequest.query.filter_by(clan_id=current_user.clan_obj.id, status='pending').count()
     # Активные баффы для отображения иконок (только с длительностью; разовые не показываем в списке)
     user_active_buffs = []
     clan_active_buffs = []
@@ -4325,6 +4462,16 @@ def territory_battle_page():
         user_active_buffs = get_active_buffs_for_display(user_id=current_user.id)
         if clan_id:
             clan_active_buffs = get_active_buffs_for_display(clan_id=clan_id)
+    is_clan_owner = False
+    clan_marker = None
+    if user_logged_in and not is_admin and clan_id and getattr(current_user, 'clan_obj', None):
+        is_clan_owner = (
+            current_user.clan_obj.owner_id == current_user.id
+            or (current_user.clan_rank or CLAN_RANK_VASSAL) == CLAN_RANK_DUKE
+        )
+        marker_row = ClanTerritoryMarker.query.filter_by(clan_id=clan_id).first()
+        if marker_row:
+            clan_marker = {'region_index': marker_row.region_index, 'marker_type': marker_row.marker_type}
     return render_template(
         'territory_battle.html',
         clans=clans,
@@ -4347,6 +4494,8 @@ def territory_battle_page():
         user_active_buffs=user_active_buffs,
         clan_active_buffs=clan_active_buffs,
         region_active_buffs=region_active_buffs,
+        is_clan_owner=is_clan_owner,
+        clan_marker=clan_marker,
     )
 
 
@@ -4355,6 +4504,57 @@ def api_territory_regions():
     """Список областей для выбора (например, при использовании предмета «на область»)."""
     regions = TerritoryRegionConfig.query.order_by(TerritoryRegionConfig.region_index).all()
     return jsonify([{'region_index': r.region_index, 'display_name': r.display_name or f'Область {r.region_index + 1}'} for r in regions])
+
+
+@app.route('/api/territory-battle/clan-marker', methods=['POST'])
+@login_required
+def api_territory_battle_clan_marker():
+    """Установить или снять метку клана на области (нападение/защита). Создатель клана или Герцог. Одна метка на клан."""
+    if not current_user.clan_id:
+        return jsonify({'success': False, 'error': 'Нужен клан'}), 403
+    clan = Clan.query.get(current_user.clan_id)
+    if not clan:
+        return jsonify({'success': False, 'error': 'Клан не найден'}), 403
+    can_set_marker = (
+        clan.owner_id == current_user.id
+        or (current_user.clan_rank or CLAN_RANK_VASSAL) == CLAN_RANK_DUKE
+    )
+    if not can_set_marker:
+        return jsonify({'success': False, 'error': 'Только создатель клана или Герцог может выставлять метку'}), 403
+    data = request.get_json() or {}
+    clear = data.get('clear') is True
+    if clear:
+        ClanTerritoryMarker.query.filter_by(clan_id=clan.id).delete()
+        db.session.commit()
+        return jsonify({'success': True, 'clan_marker': None})
+    region_index = data.get('region_index')
+    marker_type = (data.get('marker_type') or '').strip().lower()
+    if marker_type not in ('attack', 'defend'):
+        return jsonify({'success': False, 'error': 'Укажите marker_type: attack или defend'}), 400
+    try:
+        region_index = int(region_index)
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'error': 'Некорректный region_index'}), 400
+    config = TerritoryRegionConfig.query.filter_by(region_index=region_index).first()
+    if not config or config.is_locked:
+        return jsonify({'success': False, 'error': 'Область недоступна'}), 400
+    region_state = TerritoryRegionState.query.filter_by(region_index=region_index).first()
+    region_owned_by_clan = region_state and region_state.owner_clan_id == clan.id
+    if region_owned_by_clan and marker_type != 'defend':
+        return jsonify({'success': False, 'error': 'На своей области можно выставить только метку «Защита»'}), 400
+    if not region_owned_by_clan and marker_type != 'attack':
+        return jsonify({'success': False, 'error': 'На чужой или нейтральной области можно выставить только метку «Нападение»'}), 400
+    existing = ClanTerritoryMarker.query.filter_by(clan_id=clan.id).first()
+    if existing:
+        existing.region_index = region_index
+        existing.marker_type = marker_type
+    else:
+        db.session.add(ClanTerritoryMarker(clan_id=clan.id, region_index=region_index, marker_type=marker_type))
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'clan_marker': {'region_index': region_index, 'marker_type': marker_type}
+    })
 
 
 @app.route('/api/territory-battle/server-time')
