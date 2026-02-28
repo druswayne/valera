@@ -1813,7 +1813,7 @@ with app.app_context():
     if not admin:
         admin = User(username='admin', is_admin=True)
         admin.set_password('admin')  # Пароль по умолчанию - измените его!
-        db.session.add(admin)
+        db.session.add()
         db.session.commit()
     
     # Проверяем, есть ли активная задача, если нет - создаем из нерешенных
