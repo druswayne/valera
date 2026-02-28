@@ -60,6 +60,9 @@ except ImportError:
 import re
 import shutil
 import tempfile
+from dotenv import load_dotenv
+
+load_dotenv()
 current_path = os.path.dirname(__file__)
 os.chdir(current_path)
 
@@ -104,15 +107,43 @@ def list_animation_frame_urls(animation_name: str):
     return [url_for('static', filename=f'animation/{animation_name}/{fn}') for fn in filenames]
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key-here'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///valera.db'
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
+# Подключение к БД из .env (PostgreSQL 15)
+_db_uri = os.getenv('SQLALCHEMY_DATABASE_URI', '').strip().strip("'").strip('"')
+if not _db_uri:
+    raise ValueError("В файле .env должна быть задана переменная SQLALCHEMY_DATABASE_URI (например: postgresql://postgres:1@localhost:5432/data)")
+app.config['SQLALCHEMY_DATABASE_URI'] = _db_uri
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# Настройки пула для оптимальной работы с PostgreSQL
+# Настройки пула и соединения для PostgreSQL (в т.ч. при высокой нагрузке)
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_size': 20,
+    'max_overflow': 30,
+    'pool_timeout': 30,
+    'pool_recycle': 1800,
+    'pool_pre_ping': True,
+    'echo': False,
+    'pool_use_lifo': True,
+    'connect_args': {
+        'connect_timeout': 10,
+        'application_name': 'valera_app',
+        'options': '-c statement_timeout=30000 -c lock_timeout=10000',
+    }
+}
 app.config['UPLOAD_FOLDER'] = 'static/uploads/tasks'
 app.config['AVATAR_FOLDER'] = 'static/uploads/avatars'
 app.config['CLAN_FLAG_FOLDER'] = 'static/uploads/clan_flags'
 app.config['SHOP_IMAGE_FOLDER'] = 'static/uploads/shop'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
+# --- Настройки производительности (битва за территорию и общие) ---
+# Кэш настроек битвы (registration_enabled, capture_*) в секундах — меньше обращений к БД при пиковой нагрузке
+app.config['TERRITORY_SETTINGS_CACHE_SECONDS'] = int(os.getenv('TERRITORY_SETTINGS_CACHE_SECONDS', '60'))
+# Отключить красивый JSON (меньше размер ответов API)
+app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
+# Кэширование статики в браузере (секунды); для карты/картинок битвы за территорию
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = int(os.getenv('SEND_FILE_MAX_AGE_DEFAULT', '3600'))
 
 # Константа стоимости разблокировки GIF-флага клана (в Нумах)
 CLAN_GIF_FLAG_PRICE = 100_000
@@ -137,12 +168,12 @@ def _avatar_static_filename(avatar_filename):
     return s
 
 # Константы валидации
-MAX_USER_NAME_LENGTH = 200
+MAX_USER_NAME_LENGTH = 20   # максимум символов для имени персонажа (регистрация, кабинет)
 MIN_USER_NAME_LENGTH = 2
 
-# Настройка планировщика задач
+# Настройка планировщика задач (используем ту же БД PostgreSQL)
 jobstores = {
-    'default': SQLAlchemyJobStore(url='sqlite:///jobs.sqlite')
+    'default': SQLAlchemyJobStore(url=_db_uri)
 }
 executors = {
     'default': ThreadPoolExecutor(20)
@@ -1028,28 +1059,58 @@ class GameUpdate(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
 
+# Кэш настроек битвы за территорию (снижает нагрузку на БД при пиковой посещаемости)
+_territory_registration_cache = None  # (value, timestamp)
+_territory_capture_cache = None      # ((capture_enabled, start, end), timestamp)
+
+
+def _invalidate_territory_settings_cache():
+    """Сбросить кэш настроек битвы (вызывать при сохранении настроек в админке)."""
+    global _territory_registration_cache, _territory_capture_cache
+    _territory_registration_cache = None
+    _territory_capture_cache = None
+
+
 def get_territory_registration_enabled():
     """Проверить, включена ли регистрация участников в битве за территорию."""
+    cache_ttl = app.config.get('TERRITORY_SETTINGS_CACHE_SECONDS', 60)
+    now = datetime.utcnow().timestamp()
+    global _territory_registration_cache
+    if _territory_registration_cache is not None:
+        val, ts = _territory_registration_cache
+        if now - ts < cache_ttl:
+            return val
     s = TerritoryBattleSetting.query.first()
     if not s:
         s = TerritoryBattleSetting(registration_enabled=True)
         db.session.add(s)
         db.session.commit()
-    return s.registration_enabled
+    result = s.registration_enabled
+    _territory_registration_cache = (result, now)
+    return result
 
 
 def get_territory_capture_settings():
     """Вернуть (capture_enabled, capture_start_time, capture_end_time). datetime — или None."""
+    cache_ttl = app.config.get('TERRITORY_SETTINGS_CACHE_SECONDS', 60)
+    now = datetime.utcnow().timestamp()
+    global _territory_capture_cache
+    if _territory_capture_cache is not None:
+        val, ts = _territory_capture_cache
+        if now - ts < cache_ttl:
+            return val
     s = TerritoryBattleSetting.query.first()
     if not s:
         s = TerritoryBattleSetting(registration_enabled=True)
         db.session.add(s)
         db.session.commit()
-    return (
+    result = (
         getattr(s, 'capture_enabled', True),
         getattr(s, 'capture_start_time', None),
         getattr(s, 'capture_end_time', None)
     )
+    _territory_capture_cache = (result, now)
+    return result
 
 
 # Декоратор для проверки прав администратора
@@ -1321,14 +1382,18 @@ def get_next_sunday_9am():
     next_sunday = now.replace(hour=9, minute=0, second=0, microsecond=0) + timedelta(days=days_until_sunday)
     return next_sunday
 
-# Создание таблиц
+# Создание таблиц и инициализация при первом старте
 with app.app_context():
     db.create_all()
-    
+    is_pg = db.engine.dialect.name == 'postgresql'
+    _datetime_type = 'TIMESTAMP' if is_pg else 'DATETIME'
+    _bool_true = 'TRUE' if is_pg else '1'
+    _bool_false = 'FALSE' if is_pg else '0'
+
     # Миграция: добавление новых колонок в таблицу Prize, если их нет
     try:
         from sqlalchemy import inspect, text
-        
+
         inspector = inspect(db.engine)
         
         # Проверяем, существует ли таблица prize
@@ -1380,7 +1445,7 @@ with app.app_context():
                 columns = [col['name'] for col in inspector.get_columns('weekly_task')]
                 if 'last_updated' not in columns:
                     with db.engine.begin() as conn:
-                        conn.execute(text('ALTER TABLE weekly_task ADD COLUMN last_updated DATETIME'))
+                        conn.execute(text(f'ALTER TABLE weekly_task ADD COLUMN last_updated {_datetime_type}'))
                         print("Добавлена колонка last_updated в таблицу weekly_task")
     except Exception as e:
         print(f"Ошибка при создании таблиц для задач: {e}")
@@ -1465,11 +1530,11 @@ with app.app_context():
                             print(f"Создан индекс {idx_name}")
 
                 # Уникальный индекс: только ОДНО правильное решение на задачу (защита от race condition)
-                # SQLite поддерживает partial indexes (WHERE ...) в современных версиях.
+                # SQLite: WHERE is_correct = 1; PostgreSQL: WHERE is_correct = TRUE
                 with db.engine.begin() as conn:
                     conn.execute(text(
                         'CREATE UNIQUE INDEX IF NOT EXISTS uq_boss_task_solution_one_correct_per_task '
-                        'ON boss_task_solution(boss_id, task_id) WHERE is_correct = 1'
+                        f'ON boss_task_solution(boss_id, task_id) WHERE is_correct = {_bool_true}'
                     ))
                     print("Проверен/создан уникальный индекс uq_boss_task_solution_one_correct_per_task")
             
@@ -1586,13 +1651,13 @@ with app.app_context():
             columns = [col['name'] for col in inspector.get_columns('territory_battle_setting')]
             with db.engine.begin() as conn:
                 if 'capture_enabled' not in columns:
-                    conn.execute(text('ALTER TABLE territory_battle_setting ADD COLUMN capture_enabled BOOLEAN DEFAULT 1 NOT NULL'))
+                    conn.execute(text(f'ALTER TABLE territory_battle_setting ADD COLUMN capture_enabled BOOLEAN DEFAULT {_bool_true} NOT NULL'))
                     print("Добавлена колонка capture_enabled в territory_battle_setting")
                 if 'capture_start_time' not in columns:
-                    conn.execute(text('ALTER TABLE territory_battle_setting ADD COLUMN capture_start_time DATETIME'))
+                    conn.execute(text(f'ALTER TABLE territory_battle_setting ADD COLUMN capture_start_time {_datetime_type}'))
                     print("Добавлена колонка capture_start_time в territory_battle_setting")
                 if 'capture_end_time' not in columns:
-                    conn.execute(text('ALTER TABLE territory_battle_setting ADD COLUMN capture_end_time DATETIME'))
+                    conn.execute(text(f'ALTER TABLE territory_battle_setting ADD COLUMN capture_end_time {_datetime_type}'))
                     print("Добавлена колонка capture_end_time в territory_battle_setting")
         if 'territory_battle_setting' in tables and TerritoryBattleSetting.query.count() == 0:
             s = TerritoryBattleSetting(registration_enabled=True)
@@ -1699,7 +1764,7 @@ with app.app_context():
             clan_columns = [col['name'] for col in inspector.get_columns('clan')]
             if 'can_use_gif_flag' not in clan_columns:
                 with db.engine.begin() as conn:
-                    conn.execute(text('ALTER TABLE clan ADD COLUMN can_use_gif_flag BOOLEAN DEFAULT 0 NOT NULL'))
+                    conn.execute(text(f'ALTER TABLE clan ADD COLUMN can_use_gif_flag BOOLEAN DEFAULT {_bool_false} NOT NULL'))
                     print("Добавлена колонка can_use_gif_flag в clan")
         if 'clan_join_request' in tables:
             req_columns = [col['name'] for col in inspector.get_columns('clan_join_request')]
@@ -2072,50 +2137,71 @@ def _is_buff_effect_active(effect, used_at, one_shot, now):
     return now <= expires
 
 
+def _single_buff_to_display(b, now):
+    """Один активный бафф в формат для отображения или None (если не подходит по длительности)."""
+    from datetime import timedelta
+    item = b.shop_item
+    if not item:
+        return None
+    max_end = None
+    has_duration = False
+    for e in item.effects:
+        if e.duration_minutes is not None:
+            has_duration = True
+            end = b.used_at + timedelta(minutes=e.duration_minutes)
+            if max_end is None or end > max_end:
+                max_end = end
+    if b.one_shot and not has_duration:
+        max_end = None
+    if max_end is None or now > max_end:
+        return None
+    static_path = _avatar_static_filename(item.image_filename) if item.image_filename else None
+    image_url = url_for('static', filename=static_path, _external=True) if static_path else None
+    used_iso = b.used_at.isoformat() if b.used_at else None
+    expires_iso = max_end.isoformat() if max_end else None
+    used_display = b.used_at.strftime('%d.%m.%Y %H:%M') if b.used_at else None
+    expires_display = max_end.strftime('%d.%m.%Y %H:%M') if max_end else None
+    return {
+        'id': b.id,
+        'shop_item_id': item.id,
+        'name': item.name,
+        'description': item.description or '',
+        'image_url': image_url,
+        'used_at': used_iso,
+        'expires_at': expires_iso,
+        'used_at_display': used_display,
+        'expires_at_display': expires_display,
+        'one_shot': b.one_shot,
+    }
+
+
 def get_active_buffs_for_display(user_id=None, clan_id=None, region_index=None):
     """Список активных баффов для отображения (название, иконка, время использования, макс. время окончания).
     Возвращаются только баффы с длительностью действия (для отображения иконок на странице битвы)."""
     now = datetime.utcnow()
-    from datetime import timedelta
     rows = _active_buffs_query(user_id=user_id, clan_id=clan_id, region_index=region_index).all()
     out = []
     for b in rows:
-        item = b.shop_item
-        if not item:
-            continue
-        max_end = None
-        has_duration = False
-        for e in item.effects:
-            if e.duration_minutes is not None:
-                has_duration = True
-                end = b.used_at + timedelta(minutes=e.duration_minutes)
-                if max_end is None or end > max_end:
-                    max_end = end
-        if b.one_shot and not has_duration:
-            max_end = None
-        if max_end is None:
-            continue
-        if now > max_end:
-            continue
-        static_path = _avatar_static_filename(item.image_filename) if item.image_filename else None
-        image_url = url_for('static', filename=static_path, _external=True) if static_path else None
-        used_iso = b.used_at.isoformat() if b.used_at else None
-        expires_iso = max_end.isoformat() if max_end else None
-        used_display = b.used_at.strftime('%d.%m.%Y %H:%M') if b.used_at else None
-        expires_display = max_end.strftime('%d.%m.%Y %H:%M') if max_end else None
-        out.append({
-            'id': b.id,
-            'shop_item_id': item.id,
-            'name': item.name,
-            'description': item.description or '',
-            'image_url': image_url,
-            'used_at': used_iso,
-            'expires_at': expires_iso,
-            'used_at_display': used_display,
-            'expires_at_display': expires_display,
-            'one_shot': b.one_shot,
-        })
+        d = _single_buff_to_display(b, now)
+        if d:
+            out.append(d)
     return out
+
+
+def get_active_buffs_for_display_by_regions(region_indices):
+    """Загрузить баффы по областям одним запросом. Возвращает dict: region_index -> список баффов для отображения."""
+    if not region_indices:
+        return {}
+    now = datetime.utcnow()
+    rows = ActiveItemBuff.query.filter(
+        ActiveItemBuff.region_index.in_(region_indices)
+    ).all()
+    by_region = {i: [] for i in region_indices}
+    for b in rows:
+        d = _single_buff_to_display(b, now)
+        if d and b.region_index is not None:
+            by_region.setdefault(b.region_index, []).append(d)
+    return by_region
 
 
 def _get_multipliers_for_action(user_id, clan_id, region_index, is_attack):
@@ -2790,22 +2876,10 @@ def api_clan_chat_send():
     })
 
 
-# Главная страница - рейтинг классов
+# Главная страница — сразу открывается битва за территорию
 @app.route('/')
 def index():
-    # Сортируем по отношению баллов учащихся к баллам Валеры
-    # Если valera_balance = 0 и students_balance > 0, то отношение = очень большое число (класс выше)
-    # Если valera_balance = 0 и students_balance = 0, то отношение = 0 (класс ниже)
-    # Иначе: students_balance / valera_balance
-    ratio = case(
-        (Class.valera_balance == 0, case(
-            (Class.students_balance > 0, 999999.0),  # Очень большое число для классов с баллами учащихся, но без баллов Валеры
-            else_=0.0  # Если оба баланса = 0, то отношение = 0
-        )),
-        else_=cast(Class.students_balance, Float) / cast(Class.valera_balance, Float)
-    )
-    classes = Class.query.order_by(ratio.desc()).all()
-    return render_template('rating.html', classes=classes, registration_enabled=get_territory_registration_enabled())
+    return redirect(url_for('territory_battle_page'))
 
 # Страница игры для класса
 @app.route('/class/<int:class_id>')
@@ -2868,6 +2942,20 @@ def update_balance(class_id):
         class_obj.valera_balance = data['valera_balance']
     db.session.commit()
     return jsonify({'success': True})
+
+# Админка: бывшая стартовая страница — рейтинг классов
+@app.route('/admin/')
+@admin_required
+def admin_index():
+    ratio = case(
+        (Class.valera_balance == 0, case(
+            (Class.students_balance > 0, 999999.0),
+            else_=0.0
+        )),
+        else_=cast(Class.students_balance, Float) / cast(Class.valera_balance, Float)
+    )
+    classes = Class.query.order_by(ratio.desc()).all()
+    return render_template('rating.html', classes=classes, registration_enabled=get_territory_registration_enabled())
 
 # Панель администратора - классы
 @app.route('/admin/classes')
@@ -3675,6 +3763,7 @@ def admin_territory_settings():
             except (ValueError, TypeError):
                 s.capture_end_time = None
     db.session.commit()
+    _invalidate_territory_settings_cache()
     return jsonify({
         'success': True,
         'registration_enabled': s.registration_enabled,
@@ -4456,10 +4545,9 @@ def territory_battle_page():
     # Активные баффы для отображения иконок (только с длительностью; разовые не показываем в списке)
     user_active_buffs = []
     clan_active_buffs = []
-    region_active_buffs = {}
-    # Баффы областей показываем всем (на карте видно, какие области под эффектами)
-    for r in regions_config:
-        region_active_buffs[r.region_index] = get_active_buffs_for_display(region_index=r.region_index)
+    # Баффы областей — один запрос по всем регионам вместо N
+    region_indices = [r.region_index for r in regions_config]
+    region_active_buffs = get_active_buffs_for_display_by_regions(region_indices)
     if user_logged_in and not is_admin and current_user.is_authenticated:
         user_active_buffs = get_active_buffs_for_display(user_id=current_user.id)
         if clan_id:
@@ -5199,13 +5287,15 @@ def _pvp_ensure_wager_columns():
     if _pvp_wager_columns_ensured:
         return
     try:
-        with db.engine.connect() as conn:
-            for table in ('pvp_duel_challenge', 'pvp_duel'):
-                r = conn.execute(text("PRAGMA table_info({})".format(table)))
-                columns = [row[1] for row in r]
-                if 'wager' not in columns:
-                    with db.engine.begin() as c2:
-                        c2.execute(text("ALTER TABLE {} ADD COLUMN wager INTEGER DEFAULT 0 NOT NULL".format(table)))
+        from sqlalchemy import inspect as _inspect
+        inspector = _inspect(db.engine)
+        for table in ('pvp_duel_challenge', 'pvp_duel'):
+            if table not in inspector.get_table_names():
+                continue
+            columns = [col['name'] for col in inspector.get_columns(table)]
+            if 'wager' not in columns:
+                with db.engine.begin() as c2:
+                    c2.execute(text("ALTER TABLE {} ADD COLUMN wager INTEGER DEFAULT 0 NOT NULL".format(table)))
     except Exception:
         pass
     _pvp_wager_columns_ensured = True
@@ -5217,14 +5307,18 @@ def _pvp_arena_ensure_last_seen_column():
     if _pvp_last_seen_column_ensured:
         return
     try:
-        with db.engine.connect() as conn:
-            r = conn.execute(text("PRAGMA table_info(pvp_arena_presence)"))
-            columns = [row[1] for row in r]
+        from sqlalchemy import inspect as _inspect
+        inspector = _inspect(db.engine)
+        if 'pvp_arena_presence' not in inspector.get_table_names():
+            _pvp_last_seen_column_ensured = True
+            return
+        columns = [col['name'] for col in inspector.get_columns('pvp_arena_presence')]
         if 'last_seen_at' in columns:
             _pvp_last_seen_column_ensured = True
             return
+        _dt = 'TIMESTAMP' if db.engine.dialect.name == 'postgresql' else 'DATETIME'
         with db.engine.begin() as conn:
-            conn.execute(text("ALTER TABLE pvp_arena_presence ADD COLUMN last_seen_at DATETIME"))
+            conn.execute(text(f"ALTER TABLE pvp_arena_presence ADD COLUMN last_seen_at {_dt}"))
             conn.execute(text("UPDATE pvp_arena_presence SET last_seen_at = entered_at"))
     except Exception:
         pass

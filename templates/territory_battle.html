@@ -2623,7 +2623,7 @@ window.territoryFocusProtection = (function() {
         let isPanning = false, startX, startY, startTx, startTy;
         let touchStartDist, touchStartScale, touchStartTx, touchStartTy, touchStartCenterX, touchStartCenterY;
         const MIN_SCALE = 0.4, MAX_SCALE = 4;
-        const INITIAL_SCALE = 1.85;
+        const INITIAL_SCALE = 2.775; /* на 50% больше прежнего (1.85 * 1.5) */
 
         function applyTransform() {
             panZoom.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + scale + ')';

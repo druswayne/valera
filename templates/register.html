@@ -33,7 +33,7 @@
             </div>
             <div class="form-group">
                 <label for="character_name">Имя персонажа</label>
-                <input type="text" id="character_name" name="character_name" value="{{ request.form.character_name or '' }}" placeholder="Как вас будут звать в игре">
+                <input type="text" id="character_name" name="character_name" value="{{ request.form.character_name or '' }}" placeholder="Как вас будут звать в игре" maxlength="20" title="Не более 20 символов">
             </div>
             <button type="submit" class="register-btn">Зарегистрироваться</button>
         </form>
@@ -150,6 +150,12 @@
             if (password && /\s/.test(password.value)) {
                 e.preventDefault();
                 alert('Пароль не может содержать пробелы.');
+                return false;
+            }
+            var charName = document.getElementById('character_name');
+            if (charName && charName.value.trim().length > 20) {
+                e.preventDefault();
+                alert('Имя персонажа не может быть длиннее 20 символов.');
                 return false;
             }
         });
