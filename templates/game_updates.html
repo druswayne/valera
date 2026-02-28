@@ -183,7 +183,8 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 }
 
 @media (max-width: 600px) {
-    .updates-page { padding: 12px; }
+    .updates-page { padding: 12px; width: 100%; max-width: 100vw; box-sizing: border-box; overflow-x: hidden; }
+    .updates-inner { max-width: 100%; width: 100%; box-sizing: border-box; }
     .updates-page h1 { font-size: 1.4rem; }
     .update-block { padding: 18px; }
     .rules-nav-wrap {

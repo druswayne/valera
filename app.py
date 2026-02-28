@@ -268,6 +268,7 @@ class PvPDuelChallenge(db.Model):
     challenger_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     defender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     status = db.Column(db.String(20), default='pending', nullable=False)  # pending, accepted, declined
+    wager = db.Column(db.Integer, default=0, nullable=False)  # ставка в нумах (0 = без ставки, для старых записей)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     challenger = db.relationship('User', foreign_keys=[challenger_id], lazy=True)
@@ -287,6 +288,7 @@ class PvPDuel(db.Model):
     current_turn_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # чей ход отвечать на задачу
     status = db.Column(db.String(20), default='active', nullable=False)  # active, finished
     winner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    wager = db.Column(db.Integer, default=0, nullable=False)  # ставка в нумах (списана с обоих при старте)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     finished_at = db.Column(db.DateTime, nullable=True)
 
@@ -5188,6 +5190,25 @@ PVP_REWARD_SPREAD = 0.3
 PVP_DUEL_DURATION_MINUTES = 5
 
 _pvp_last_seen_column_ensured = False
+_pvp_wager_columns_ensured = False
+
+
+def _pvp_ensure_wager_columns():
+    """Добавить колонку wager в pvp_duel_challenge и pvp_duel, если её нет."""
+    global _pvp_wager_columns_ensured
+    if _pvp_wager_columns_ensured:
+        return
+    try:
+        with db.engine.connect() as conn:
+            for table in ('pvp_duel_challenge', 'pvp_duel'):
+                r = conn.execute(text("PRAGMA table_info({})".format(table)))
+                columns = [row[1] for row in r]
+                if 'wager' not in columns:
+                    with db.engine.begin() as c2:
+                        c2.execute(text("ALTER TABLE {} ADD COLUMN wager INTEGER DEFAULT 0 NOT NULL".format(table)))
+    except Exception:
+        pass
+    _pvp_wager_columns_ensured = True
 
 
 def _pvp_arena_ensure_last_seen_column():
@@ -5246,6 +5267,7 @@ def pvp_arena_page():
     """Страница PvP арены: кнопка входа (5+ ур.), после входа — список участников и чат."""
     level = current_user.level or 1
     can_enter = level >= PVP_MIN_LEVEL
+    _pvp_ensure_wager_columns()
     _pvp_arena_cleanup_stale()
     presence = PvPArenaPresence.query.filter_by(user_id=current_user.id).first()
     on_arena = presence is not None and _pvp_arena_presence_valid(presence)
@@ -5387,17 +5409,56 @@ def api_pvp_chat_post():
     return jsonify({'success': True, 'id': msg.id})
 
 
+def _pvp_max_wager_for_challenge(challenger_balance, defender_balance):
+    """Максимальная ставка при вызове: не больше 20% от баланса каждого из участников."""
+    max_ch = max(0, int((challenger_balance or 0) * 20 / 100))
+    max_def = max(0, int((defender_balance or 0) * 20 / 100))
+    return min(max_ch, max_def)
+
+
+@app.route('/api/pvp/max-wager')
+@login_required
+def api_pvp_max_wager():
+    """Максимальная допустимая ставка при вызове указанного игрока (min из 20% баланса вызывающего и 20% вызываемого). Баланс соперника не раскрывается."""
+    _pvp_ensure_wager_columns()
+    presence = _pvp_arena_touch_presence()
+    if not presence:
+        return jsonify({'success': False, 'error': 'Вы не на арене'}), 403
+    defender_id = request.args.get('defender_id', type=int)
+    if not defender_id:
+        return jsonify({'success': False, 'error': 'Укажите defender_id'}), 400
+    defender = User.query.get(defender_id)
+    if not defender or defender.id == current_user.id:
+        return jsonify({'success': False, 'error': 'Соперник не найден'}), 404
+    _pvp_arena_cleanup_stale()
+    def_presence = PvPArenaPresence.query.filter_by(user_id=defender.id).first()
+    if not def_presence or not _pvp_arena_presence_valid(def_presence):
+        return jsonify({'success': False, 'error': 'Соперник не на арене'}), 400
+    my_level = current_user.level or 1
+    def_level = defender.level or 1
+    if abs(my_level - def_level) > PVP_LEVEL_RANGE:
+        return jsonify({'success': False, 'error': 'Вне диапазона уровней'}), 400
+    max_wager = _pvp_max_wager_for_challenge(current_user.nums_balance or 0, defender.nums_balance or 0)
+    return jsonify({'success': True, 'max_wager': max_wager})
+
+
 @app.route('/api/pvp/challenge', methods=['POST'])
 @login_required
 def api_pvp_challenge():
-    """Вызвать на дуэль (проверка уровня ±5)."""
+    """Вызвать на дуэль (проверка уровня ±5). Ставка: от 1 до min(20% баланса вызывающего, 20% баланса вызываемого)."""
+    _pvp_ensure_wager_columns()
     presence = _pvp_arena_touch_presence()
     if not presence:
         return jsonify({'success': False, 'error': 'Вы не на арене'}), 403
     data = request.get_json() or {}
     defender_id = data.get('defender_id')
+    wager = data.get('wager')
     if not defender_id:
         return jsonify({'success': False, 'error': 'Укажите соперника'}), 400
+    try:
+        wager = int(wager) if wager is not None else 0
+    except (TypeError, ValueError):
+        wager = 0
     defender = User.query.get(defender_id)
     if not defender:
         return jsonify({'success': False, 'error': 'Соперник не найден'}), 404
@@ -5411,13 +5472,18 @@ def api_pvp_challenge():
     def_level = defender.level or 1
     if abs(my_level - def_level) > PVP_LEVEL_RANGE:
         return jsonify({'success': False, 'error': f'Можно вызывать только игроков с уровнем в диапазоне ±{PVP_LEVEL_RANGE}'}), 400
+    max_wager = _pvp_max_wager_for_challenge(current_user.nums_balance or 0, defender.nums_balance or 0)
+    if wager <= 0:
+        return jsonify({'success': False, 'error': 'Ставка должна быть больше нуля'}), 400
+    if wager > max_wager:
+        return jsonify({'success': False, 'error': f'Максимальная ставка для этого вызова: {max_wager} нумов'}), 400
     # Проверить, нет ли уже ожидающего вызова от меня к этому игроку
     existing = PvPDuelChallenge.query.filter_by(
         challenger_id=current_user.id, defender_id=defender.id, status='pending'
     ).first()
     if existing:
         return jsonify({'success': False, 'error': 'Вы уже отправили вызов этому игроку'}), 400
-    challenge = PvPDuelChallenge(challenger_id=current_user.id, defender_id=defender.id, status='pending')
+    challenge = PvPDuelChallenge(challenger_id=current_user.id, defender_id=defender.id, status='pending', wager=wager)
     db.session.add(challenge)
     db.session.commit()
     return jsonify({'success': True, 'challenge_id': challenge.id})
@@ -5436,12 +5502,14 @@ def api_pvp_challenges():
         if not u:
             continue
         avatar_url = url_for('static', filename=_avatar_static_filename(u.avatar_filename)) if getattr(u, 'avatar_filename', None) else None
+        wager = getattr(c, 'wager', 0) or 0
         out.append({
             'id': c.id,
             'challenger_id': u.id,
             'challenger_name': u.character_name or u.username,
             'challenger_level': u.level or 1,
             'avatar_url': avatar_url,
+            'wager': wager,
         })
     return jsonify({'success': True, 'challenges': out})
 
@@ -5449,6 +5517,7 @@ def api_pvp_challenges():
 @app.route('/api/pvp/accept-challenge', methods=['POST'])
 @login_required
 def api_pvp_accept_challenge():
+    _pvp_ensure_wager_columns()
     data = request.get_json() or {}
     challenge_id = data.get('challenge_id')
     if not challenge_id:
@@ -5456,6 +5525,16 @@ def api_pvp_accept_challenge():
     challenge = PvPDuelChallenge.query.get(challenge_id)
     if not challenge or challenge.defender_id != current_user.id or challenge.status != 'pending':
         return jsonify({'success': False, 'error': 'Вызов не найден или уже обработан'}), 404
+    wager = getattr(challenge, 'wager', 0) or 0
+    if wager > 0:
+        bal_ch = challenge.challenger.nums_balance or 0
+        bal_de = challenge.defender.nums_balance or 0
+        if bal_ch < wager:
+            return jsonify({'success': False, 'error': 'У инициатора вызова недостаточно нумов для ставки'}), 400
+        if bal_de < wager:
+            return jsonify({'success': False, 'error': 'У вас недостаточно нумов для ставки (нужно {} нумов)'.format(wager)}), 400
+        challenge.challenger.nums_balance = bal_ch - wager
+        challenge.defender.nums_balance = bal_de - wager
     challenge.status = 'accepted'
     db.session.commit()
     # Создать дуэль
@@ -5472,6 +5551,7 @@ def api_pvp_accept_challenge():
         defender_max_health=max_hp_de,
         current_turn_user_id=ch.id,
         status='active',
+        wager=wager,
     )
     db.session.add(duel)
     db.session.commit()
@@ -5508,6 +5588,22 @@ def api_pvp_decline_challenge():
     return jsonify({'success': True})
 
 
+def _pvp_duel_apply_stake_result(duel):
+    """После завершения дуэли: выдать награду по ставке. Победитель получает 2*wager, при ничьей — обоим возврат по wager."""
+    wager = getattr(duel, 'wager', 0) or 0
+    if wager <= 0:
+        return
+    if duel.winner_id:
+        winner = duel.winner
+        if winner:
+            winner.nums_balance = (winner.nums_balance or 0) + 2 * wager
+    else:
+        # Ничья — возврат ставки обоим
+        for u in (duel.challenger, duel.defender):
+            if u:
+                u.nums_balance = (u.nums_balance or 0) + wager
+
+
 def _pvp_duel_check_time_limit(duel):
     """Если дуэль активна и время вышло (5 мин) — завершить по оставшемуся здоровью. Победитель тот, у кого больше HP; при равенстве — ничья."""
     if duel.status != 'active' or not duel.created_at:
@@ -5523,12 +5619,7 @@ def _pvp_duel_check_time_limit(duel):
         duel.winner_id = None
     duel.status = 'finished'
     duel.finished_at = datetime.utcnow()
-    avg_level = ((duel.challenger.level or 1) + (duel.defender.level or 1)) / 2.0
-    base_reward = avg_level * PVP_REWARD_BASE_MULT
-    spread = base_reward * PVP_REWARD_SPREAD
-    for u in (duel.challenger, duel.defender):
-        reward = max(0, int(round(base_reward + random.uniform(-spread, spread))))
-        u.nums_balance = (u.nums_balance or 0) + reward
+    _pvp_duel_apply_stake_result(duel)
     db.session.commit()
 
 
@@ -5551,7 +5642,8 @@ def pvp_duel_page(duel_id):
         flash('Вы не участник этой дуэли.', 'error')
         return redirect(url_for('pvp_arena_page'))
     if duel.status == 'finished':
-        return render_template('pvp_duel.html', duel_id=duel_id, duel=duel, finished=True, winner=duel.winner)
+        duel_wager = getattr(duel, 'wager', 0) or 0
+        return render_template('pvp_duel.html', duel_id=duel_id, duel=duel, finished=True, winner=duel.winner, duel_wager=duel_wager)
     opponent = duel.defender if current_user.id == duel.challenger_id else duel.challenger
     me_is_challenger = current_user.id == duel.challenger_id
     my_health = duel.challenger_health if me_is_challenger else duel.defender_health
@@ -5705,12 +5797,7 @@ def api_pvp_duel_answer(duel_id):
             else:
                 duel.winner_id = attacker.id
             duel.finished_at = datetime.utcnow()
-            avg_level = ((duel.challenger.level or 1) + (duel.defender.level or 1)) / 2.0
-            base_reward = avg_level * PVP_REWARD_BASE_MULT
-            spread = base_reward * PVP_REWARD_SPREAD
-            for u in (duel.challenger, duel.defender):
-                reward = max(0, int(round(base_reward + random.uniform(-spread, spread))))
-                u.nums_balance = (u.nums_balance or 0) + reward
+            _pvp_duel_apply_stake_result(duel)
     db.session.commit()
     me_is_challenger = current_user.id == duel.challenger_id
     return jsonify({
@@ -5762,12 +5849,7 @@ def api_pvp_duel_surrender(duel_id):
     duel.status = 'finished'
     duel.winner_id = winner.id
     duel.finished_at = datetime.utcnow()
-    avg_level = ((duel.challenger.level or 1) + (duel.defender.level or 1)) / 2.0
-    base_reward = avg_level * PVP_REWARD_BASE_MULT
-    spread = base_reward * PVP_REWARD_SPREAD
-    for u in (duel.challenger, duel.defender):
-        reward = max(0, int(round(base_reward + random.uniform(-spread, spread))))
-        u.nums_balance = (u.nums_balance or 0) + reward
+    _pvp_duel_apply_stake_result(duel)
     db.session.commit()
     return jsonify({'success': True})
 

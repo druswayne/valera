@@ -624,7 +624,7 @@
 .clan-chat-modal .modal-chat-close:hover { background: rgba(92,64,51,0.3); color: #3d2914; }
 
 @media (max-width: 768px) {
-    .pvp-duel-page { padding: 12px; }
+    .pvp-duel-page { padding: 12px; width: 100%; max-width: 100vw; box-sizing: border-box; overflow-x: hidden; }
     .pvp-duel-page h1 { font-size: 1.4rem; margin-bottom: 14px; }
     .pvp-duel-page nav {
         flex-direction: column;
@@ -669,7 +669,7 @@
     .pvp-duel-me .avatar,
     .pvp-duel-me .avatar-placeholder { width: 44px; height: 44px; font-size: 20px; }
     .pvp-duel-me .name, .pvp-duel-me .stats { font-size: 0.9rem; }
-    .pvp-duel-finished { padding: 24px 16px; margin-bottom: 24px; }
+    .pvp-duel-finished { padding: 24px 16px; margin-bottom: 24px; max-width: 100%; width: 100%; box-sizing: border-box; }
     .pvp-duel-finished .winner-msg { font-size: 1rem; }
     .pvp-duel-finished a.pvp-btn { min-height: 44px; padding: 14px 24px; display: inline-flex; align-items: center; justify-content: center; }
     .pvp-duel-focus-warning-box { margin: 16px; padding: 20px; }
@@ -711,7 +711,15 @@
                 Ничья (дуэль закончилась при равенстве здоровья).
             {% endif %}
         </p>
-        <p style="color:#c4b098;">Награда за участие: 100 Нумов.</p>
+        {% if duel_wager and duel_wager > 0 %}
+            {% if winner and winner.id == current_user.id %}
+                <p class="winner-msg" style="color:#d4a84b;">Вы победили! Вы заработали <strong>{{ duel_wager * 2 }}</strong> нумов (ваша ставка возвращена + ставка соперника).</p>
+            {% elif winner %}
+                <p class="winner-msg" style="color:#c4b098;">Вы проиграли. Ставка ({{ duel_wager }} нумов) перешла победителю.</p>
+            {% else %}
+                <p class="winner-msg" style="color:#c4b098;">Ничья. Ваша ставка возвращена ({{ duel_wager }} нумов).</p>
+            {% endif %}
+        {% endif %}
         <a href="{{ url_for('pvp_arena_page') }}" class="pvp-btn">На арену</a>
     </div>
     {% else %}

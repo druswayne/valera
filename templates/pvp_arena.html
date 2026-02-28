@@ -217,6 +217,7 @@
     margin-bottom: 8px;
 }
 .pvp-challenge-item .pvp-btn { padding: 8px 16px; font-size: 0.9rem; }
+.pvp-challenge-item .pvp-challenge-wager { color: #d4a84b; font-size: 0.9rem; margin: 4px 0; }
 .pvp-chat-messages {
     height: 280px;
     overflow-y: auto;
@@ -387,6 +388,22 @@
 }
 .pvp-arena-msg-modal-box .pvp-arena-msg-close:hover { color: #e8c86a; border-color: #8b6914; }
 
+.pvp-wager-modal { text-align: left; }
+.pvp-wager-modal .pvp-wager-balance { margin: 8px 0 12px; font-size: 0.95rem; color: #5c4033; }
+.pvp-wager-label { display: block; margin-bottom: 4px; font-weight: bold; color: #3d2914; }
+.pvp-wager-input {
+    width: 100%;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    border: 2px solid #5c4033;
+    border-radius: 6px;
+    font-size: 1rem;
+    box-sizing: border-box;
+}
+.pvp-wager-hint { margin: 0 0 12px; font-size: 0.9rem; color: #8b6914; min-height: 1.2em; }
+.pvp-wager-hint.error { color: #c0392b; }
+.pvp-wager-buttons { display: flex; gap: 12px; justify-content: flex-end; margin-top: 16px; }
+
 @media (max-width: 768px) {
     .pvp-page { padding: 12px; }
     .pvp-page h1 { font-size: 1.5rem; margin-bottom: 16px; }
@@ -533,6 +550,20 @@
         <button type="button" class="pvp-arena-msg-close" id="pvpArenaMsgCloseBtn">Понятно</button>
     </div>
 </div>
+<div class="pvp-arena-msg-modal-overlay" id="pvpChallengeWagerModal">
+    <div class="pvp-arena-msg-modal-box pvp-wager-modal">
+        <h3 id="pvpChallengeWagerTitle">Ставка на дуэль</h3>
+        <p class="pvp-arena-msg-text" id="pvpChallengeWagerOpponent"></p>
+        <p class="pvp-wager-balance">Максимальная ставка: <strong id="pvpWagerMax">—</strong> нумов.</p>
+        <label for="pvpWagerInput" class="pvp-wager-label">Ставка (нумы):</label>
+        <input type="number" id="pvpWagerInput" min="1" value="1" class="pvp-wager-input" placeholder="Число">
+        <p class="pvp-wager-hint" id="pvpWagerError"></p>
+        <div class="pvp-wager-buttons">
+            <button type="button" class="pvp-btn pvp-btn-secondary" id="pvpWagerCancelBtn">Отмена</button>
+            <button type="button" class="pvp-btn" id="pvpWagerSubmitBtn">Вызвать</button>
+        </div>
+    </div>
+</div>
 {% endif %}
 
 {% if current_user.clan_id %}
@@ -603,6 +634,77 @@
             if (e.target === this) this.classList.remove('open');
         });
     }
+
+    var challengeWagerModal = document.getElementById('pvpChallengeWagerModal');
+    var challengeWagerDefenderId = null;
+    var challengeWagerMax = 0;
+    function openChallengeWagerModal(defenderId, defenderName) {
+        challengeWagerDefenderId = defenderId;
+        challengeWagerMax = 0;
+        document.getElementById('pvpChallengeWagerTitle').textContent = 'Ставка на дуэль';
+        document.getElementById('pvpChallengeWagerOpponent').textContent = 'Соперник: ' + (defenderName || 'Игрок');
+        document.getElementById('pvpWagerMax').textContent = '…';
+        document.getElementById('pvpWagerError').textContent = '';
+        document.getElementById('pvpWagerError').classList.remove('error');
+        if (challengeWagerModal) challengeWagerModal.classList.add('open');
+        fetch('{{ url_for("api_pvp_max_wager") }}?defender_id=' + encodeURIComponent(defenderId))
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                var maxWager = d.success ? (d.max_wager || 0) : 0;
+                challengeWagerMax = maxWager;
+                document.getElementById('pvpWagerMax').textContent = maxWager;
+                var input = document.getElementById('pvpWagerInput');
+                input.min = 1;
+                input.max = maxWager;
+                input.value = maxWager > 0 ? Math.min(1, maxWager) : 0;
+                if (!d.success) {
+                    document.getElementById('pvpWagerError').textContent = d.error || 'Не удалось получить лимит ставки';
+                    document.getElementById('pvpWagerError').classList.add('error');
+                }
+            });
+    }
+    function closeChallengeWagerModal() {
+        challengeWagerDefenderId = null;
+        if (challengeWagerModal) challengeWagerModal.classList.remove('open');
+    }
+    document.getElementById('pvpWagerCancelBtn').addEventListener('click', closeChallengeWagerModal);
+    if (challengeWagerModal) {
+        challengeWagerModal.addEventListener('click', function(e) {
+            if (e.target === this) closeChallengeWagerModal();
+        });
+    }
+    document.getElementById('pvpWagerSubmitBtn').addEventListener('click', function() {
+        if (challengeWagerDefenderId == null) return;
+        var input = document.getElementById('pvpWagerInput');
+        var wager = parseInt(input.value, 10);
+        var maxWager = challengeWagerMax;
+        var errEl = document.getElementById('pvpWagerError');
+        if (isNaN(wager) || wager < 1) {
+            errEl.textContent = 'Введите ставку больше нуля.';
+            errEl.classList.add('error');
+            return;
+        }
+        if (maxWager > 0 && wager > maxWager) {
+            errEl.textContent = 'Максимальная ставка: ' + maxWager + ' нумов.';
+            errEl.classList.add('error');
+            return;
+        }
+        errEl.textContent = '';
+        errEl.classList.remove('error');
+        fetch('{{ url_for("api_pvp_challenge") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ defender_id: challengeWagerDefenderId, wager: wager })
+        }).then(function(r) { return r.json(); }).then(function(d) {
+            if (d.success) {
+                closeChallengeWagerModal();
+                showPvpArenaModal('Вызов отправлен!', 'Ожидайте ответа соперника.');
+            } else {
+                errEl.textContent = d.error || 'Ошибка';
+                errEl.classList.add('error');
+            }
+        });
+    });
 
     var enterBtn = document.getElementById('pvpEnterBtn');
     var leaveBtn = document.getElementById('pvpLeaveBtn');
@@ -676,7 +778,9 @@
                 d.challenges.forEach(function(c) {
                     var div = document.createElement('div');
                     div.className = 'pvp-challenge-item';
+                    var wagerLine = (c.wager && c.wager > 0) ? '<div class="pvp-challenge-wager">Ставка: ' + escapeHtml(String(c.wager)) + ' нумов</div>' : '';
                     div.innerHTML = '<div><strong>' + escapeHtml(c.challenger_name) + '</strong> (ур. ' + c.challenger_level + ')</div>' +
+                        wagerLine +
                         '<div><button type="button" class="pvp-btn pvp-btn-secondary decline-challenge" data-id="' + c.id + '">Отклонить</button> ' +
                         '<button type="button" class="pvp-btn accept-challenge" data-id="' + c.id + '">Принять</button></div>';
                     list.appendChild(div);
@@ -690,7 +794,7 @@
                             body: JSON.stringify({ challenge_id: id })
                         }).then(function(r) { return r.json(); }).then(function(d) {
                             if (d.success && d.duel_id) window.location.href = '{{ url_for("pvp_duel_page", duel_id=0) }}'.replace('0', d.duel_id);
-                            else alert(d.error || 'Ошибка');
+                            else showPvpArenaModal('Ошибка', d.error || 'Ошибка');
                         });
                     });
                 });
@@ -731,18 +835,11 @@
                         '<div class="pvp-participant-info"><span class="pvp-participant-name">' + escapeHtml(p.character_name) + '</span><br><span class="pvp-participant-level">Ур. ' + p.level + ' | Атака: ' + p.damage + ' | Защита: ' + p.defense + '</span></div>' +
                         hint;
                     if (p.can_challenge) {
-                        (function(defenderId) {
+                        (function(defenderId, defenderName) {
                             btn.addEventListener('click', function() {
-                                fetch('{{ url_for("api_pvp_challenge") }}', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ defender_id: defenderId })
-                                }).then(function(r) { return r.json(); }).then(function(d) {
-                                    if (d.success) showPvpArenaModal('Вызов отправлен!', 'Ожидайте ответа соперника.');
-                                    else showPvpArenaModal('Ошибка', d.error || 'Ошибка');
-                                });
+                                openChallengeWagerModal(defenderId, defenderName);
                             });
-                        })(p.id);
+                        })(p.id, p.character_name || p.username || '');
                     }
                     list.appendChild(btn);
                 });
