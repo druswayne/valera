@@ -42,7 +42,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 
 .cabinet-top-nav {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 10px;
     margin-bottom: 20px;
     align-items: center;
@@ -69,7 +69,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 }
 .cabinet-top-nav-links {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
     gap: 10px;
     flex: 1;
@@ -80,7 +80,9 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     justify-content: center;
     color: #d4a84b;
     text-decoration: none;
-    padding: 10px 18px;
+    padding: 0 18px;
+    height: 44px;
+    box-sizing: border-box;
     background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
     border: 2px solid #5c4033;
     border-radius: 4px;
@@ -88,8 +90,9 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     font-size: 0.9rem;
     font-weight: bold;
     letter-spacing: 0.04em;
+    text-align: center;
+    white-space: nowrap;
     transition: color 0.2s, border-color 0.2s, box-shadow 0.2s;
-    min-height: 44px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
 .cabinet-top-nav .back-link:hover {
@@ -1210,6 +1213,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         <button type="button" class="cabinet-burger-btn" id="cabinetBurgerBtn" aria-label="Меню">☰</button>
         <div class="cabinet-top-nav-links">
             <a href="{{ url_for('territory_battle_page') }}" class="back-link">Битва за территорию</a>
+            <a href="{{ url_for('territory_clan_search_page') }}" class="back-link">Поиск клана</a>
             <a href="{{ url_for('pvp_arena_page') }}" class="back-link">PvP Арена</a>
             <a href="{{ url_for('game_rating_page', tab='clans') }}" class="back-link">Рейтинг</a>
             <a href="{{ url_for('logout') }}" class="back-link logout-link">Выйти из аккаунта</a>
@@ -1235,11 +1239,6 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
             <div class="profile-info">
                 <p><strong>Логин:</strong> {{ user.username }}</p>
                 <p><strong>Имя персонажа:</strong> <span id="characterNameDisplay">{{ user.character_name or user.username }}</span> <button type="button" class="name-edit-btn" id="nameEditBtn" aria-label="Изменить имя">✏️</button></p>
-                <div class="name-edit-inline" id="nameEditInline">
-                    <input type="text" id="characterNameInput" placeholder="Имя персонажа" maxlength="200">
-                    <button type="button" id="nameEditSave">Сохранить</button>
-                    <button type="button" class="name-edit-cancel" id="nameEditCancel">Отмена</button>
-                </div>
                 <p><strong>Звание:</strong>
                     {% if user.clan_title == 'Бродяга' %}
                         <span title="Бродяга">🥾 {{ user.clan_title }}</span>
@@ -1306,6 +1305,40 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                         <p id="skillPointsHint" class="skill-points-hint">Очков навыков: <span id="skillPointsAvail">{{ user.skill_points_available }}</span></p>
                         <button type="button" class="skill-save-btn" id="skillSaveBtn" title="Сохранить">✓ Сохранить</button>
                     </div>
+                </div>
+            </div>
+        </div>
+        <!-- Модальные окна смены имени персонажа -->
+        <div class="modal-overlay" id="characterNameChangeModal" style="display:none; visibility:hidden; align-items:center; justify-content:center;">
+            <div class="modal-box">
+                <h3>Изменить имя персонажа</h3>
+                <p id="characterNameChangeModalText" style="margin-bottom:12px;">
+                    Изменить имя можно за {{ character_rename_price|int }} Нумов (списывается с вашего баланса). Продолжить?
+                </p>
+                <div class="modal-buttons">
+                    <button type="button" id="characterNameChangeCancel" class="btn-cancel">Отмена</button>
+                    <button type="button" id="characterNameChangeConfirm" class="btn-confirm">Продолжить</button>
+                </div>
+            </div>
+        </div>
+        <div class="modal-overlay" id="characterNameInputModal" style="display:none; visibility:hidden; align-items:center; justify-content:center;">
+            <div class="modal-box">
+                <h3>Новое имя персонажа</h3>
+                <p style="margin-bottom:8px;">Введите новое имя (до 20 символов).</p>
+                <input type="text" id="characterNameInput" maxlength="20" placeholder="Имя персонажа" style="width:100%; padding:10px 14px; margin-bottom:8px; border:2px solid #5c4033; border-radius:4px; background:#2c1810; color:#e8dcc4;">
+                <p id="characterNameInputStatus" style="margin:0 0 8px; font-size:0.85rem; color:#5c4033;"></p>
+                <div class="modal-buttons">
+                    <button type="button" id="characterNameInputCancel" class="btn-cancel">Отмена</button>
+                    <button type="button" id="characterNameInputSave" class="btn-confirm">Сохранить</button>
+                </div>
+            </div>
+        </div>
+        <div class="modal-overlay" id="characterInsufficientFundsModal" style="display:none; visibility:hidden; align-items:center; justify-content:center;">
+            <div class="modal-box">
+                <h3>Недостаточно средств</h3>
+                <p id="characterInsufficientFundsText" style="margin-bottom:12px;">Недостаточно средств.</p>
+                <div class="modal-buttons">
+                    <button type="button" id="characterInsufficientFundsClose" class="btn-confirm">Понятно</button>
                 </div>
             </div>
         </div>
@@ -1450,6 +1483,12 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         <!-- Участники -->
         <div class="clan-block">
             <h3>Участники клана</h3>
+            <p class="clan-members-count" style="margin:4px 0 8px; font-size:0.9rem; color:#8a7355;">
+                Мест: {{ clan_data.members|length }} / {{ clan_data.clan.max_members }}
+            </p>
+            {% if user.id == clan_data.clan.owner_id %}
+            <button type="button" id="clanExpandSlotBtn" class="clan-btn" style="margin-bottom:8px;">Расширить место</button>
+            {% endif %}
             <button type="button" class="clan-members-toggle" onclick="document.getElementById('membersList').classList.toggle('open')">
                 Показать участников ({{ clan_data.members|length }})
             </button>
@@ -1524,7 +1563,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
             <div class="modal-box">
                 <h3>Анимированая эмблема</h3>
                 <p id="buyClanGifFlagModalText" style="margin-bottom:12px;">
-                    Вы можете навсегда разблокировать возможность загружать GIF-флаг для этого клана за 100000 Нумов (списывается с баланса создателя клана).
+                    Вы можете навсегда разблокировать возможность загружать GIF-флаг для этого клана за {{ clan_gif_flag_price|int }} Нумов (списывается с баланса создателя клана).
                 </p>
                 <div class="modal-buttons">
                     <button type="button" id="buyClanGifFlagCancel" class="btn-cancel">Отмена</button>
@@ -1537,7 +1576,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
             <div class="modal-box">
                 <h3>Изменить название клана</h3>
                 <p id="clanNameChangeModalText" style="margin-bottom:12px;">
-                    Изменить название клана можно за 20000 Нумов (списывается с баланса создателя клана). Продолжить?
+                    Изменить название клана можно за {{ clan_rename_price|int }} Нумов (списывается с баланса создателя клана). Продолжить?
                 </p>
                 <div class="modal-buttons">
                     <button type="button" id="clanNameChangeCancel" class="btn-cancel">Отмена</button>
@@ -1555,6 +1594,19 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                 <div class="modal-buttons">
                     <button type="button" id="clanNameInputCancel" class="btn-cancel">Отмена</button>
                     <button type="button" id="clanNameInputSave" class="btn-confirm">Сохранить</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-overlay" id="expandSlotModal" style="display:none; visibility:hidden; align-items:center; justify-content:center;">
+            <div class="modal-box">
+                <h3>Расширить место в клане</h3>
+                <p id="expandSlotModalText" style="margin-bottom:12px;">
+                    Дополнительное место в клане стоит {{ clan_extra_slot_price|int }} Нумов (списывается с баланса создателя клана). Купить?
+                </p>
+                <div class="modal-buttons">
+                    <button type="button" id="expandSlotCancel" class="btn-cancel">Отмена</button>
+                    <button type="button" id="expandSlotConfirm" class="btn-confirm">Расширить</button>
                 </div>
             </div>
         </div>
@@ -1690,6 +1742,18 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     </div>
 </div>
 
+<!-- Модальное окно исключения участника из клана -->
+<div class="modal-overlay" id="kickMemberModal">
+    <div class="modal-box">
+        <h3>Исключить участника?</h3>
+        <p id="kickMemberModalText" style="margin-bottom:12px;">За исключение участника из клана полагается штраф: в течение 1 часа никто не сможет принимать новых участников в клан..</p>
+        <div class="modal-buttons">
+            <button type="button" class="btn-cancel" id="kickMemberModalCancel">Отмена</button>
+            <button type="button" class="btn-confirm danger" id="kickMemberModalConfirm">Исключить</button>
+        </div>
+    </div>
+</div>
+
 <!-- Модальное окно передачи владения кланом -->
 <div class="modal-overlay" id="transferOwnershipModal">
     <div class="modal-box">
@@ -1713,6 +1777,17 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         <div class="modal-buttons">
             <button type="button" class="btn-cancel" onclick="closeJoinModal()">Отмена</button>
             <button type="button" class="btn-confirm" onclick="confirmJoin()">Подать заявку</button>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно: штрафное время на вступление в клан -->
+<div class="modal-overlay" id="joinPenaltyModal">
+    <div class="modal-box">
+        <h3>Штрафное время</h3>
+        <p id="joinPenaltyModalText" style="margin-bottom:12px;"></p>
+        <div class="modal-buttons">
+            <button type="button" class="btn-confirm" id="joinPenaltyModalOk">Понятно</button>
         </div>
     </div>
 </div>
@@ -2020,42 +2095,119 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 })();
 
 (function() {
+    var characterRenamePrice = {{ character_rename_price|default(100000)|int }};
     var nameDisplay = document.getElementById('characterNameDisplay');
     var nameEditBtn = document.getElementById('nameEditBtn');
-    var nameEditInline = document.getElementById('nameEditInline');
     var nameInput = document.getElementById('characterNameInput');
-    var nameEditSave = document.getElementById('nameEditSave');
-    var nameEditCancel = document.getElementById('nameEditCancel');
-    if (!nameEditBtn || !nameEditInline || !nameInput) return;
-    function showNameEdit() {
-        nameInput.value = (nameDisplay && nameDisplay.textContent) ? nameDisplay.textContent.trim() : '';
-        nameEditInline.classList.add('open');
-        nameInput.focus();
+    var confirmModal = document.getElementById('characterNameChangeModal');
+    var confirmCancel = document.getElementById('characterNameChangeCancel');
+    var confirmBtn = document.getElementById('characterNameChangeConfirm');
+    var inputModal = document.getElementById('characterNameInputModal');
+    var inputCancel = document.getElementById('characterNameInputCancel');
+    var inputSave = document.getElementById('characterNameInputSave');
+    var inputStatus = document.getElementById('characterNameInputStatus');
+    var insufficientModal = document.getElementById('characterInsufficientFundsModal');
+    var insufficientText = document.getElementById('characterInsufficientFundsText');
+    var insufficientClose = document.getElementById('characterInsufficientFundsClose');
+    var balanceDisplay = document.getElementById('numsBalanceDisplay');
+    if (!nameEditBtn || !confirmModal || !inputModal || !nameInput) return;
+
+    function getBalance() {
+        return parseInt(balanceDisplay ? balanceDisplay.textContent : 0, 10) || 0;
     }
-    function hideNameEdit() {
-        nameEditInline.classList.remove('open');
+    function setBalance(v) {
+        if (balanceDisplay) balanceDisplay.textContent = v;
     }
-    function saveName() {
-        var val = nameInput.value.trim();
-        var fd = new FormData();
-        fd.append('character_name', val);
-        fetch('{{ url_for("api_cabinet_profile") }}', { method: 'POST', body: fd })
+    function openModal(m) {
+        if (!m) return;
+        m.style.display = 'flex';
+        m.style.visibility = 'visible';
+        m.classList.add('open');
+    }
+    function closeModal(m) {
+        if (!m) return;
+        m.classList.remove('open');
+        m.style.display = '';
+        m.style.visibility = '';
+    }
+
+    nameEditBtn.addEventListener('click', function() {
+        if (inputStatus) inputStatus.textContent = '';
+        openModal(confirmModal);
+    });
+
+    if (confirmCancel) {
+        confirmCancel.addEventListener('click', function() { closeModal(confirmModal); });
+    }
+
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', function() {
+            closeModal(confirmModal);
+            var balance = getBalance();
+            if (balance < characterRenamePrice) {
+                if (insufficientText) insufficientText.textContent = 'Недостаточно средств.';
+                openModal(insufficientModal);
+                return;
+            }
+            if (nameDisplay && nameInput) {
+                nameInput.value = (nameDisplay.textContent || '').trim();
+            }
+            openModal(inputModal);
+            nameInput.focus();
+        });
+    }
+
+    if (inputCancel) {
+        inputCancel.addEventListener('click', function() {
+            closeModal(inputModal);
+            if (inputStatus) inputStatus.textContent = '';
+        });
+    }
+
+    function sendRename() {
+        var newName = (nameInput.value || '').trim();
+        if (!newName) {
+            if (inputStatus) inputStatus.textContent = 'Введите новое имя.';
+            return;
+        }
+        inputSave.disabled = true;
+        fetch('{{ url_for("api_cabinet_rename_character") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ character_name: newName })
+        })
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (data.success) {
-                    if (nameDisplay) nameDisplay.textContent = val || nameDisplay.textContent;
-                    hideNameEdit();
-                } else { alert(data.error || 'Ошибка'); }
+                    if (nameDisplay) nameDisplay.textContent = data.character_name || newName;
+                    if (data.balance !== undefined) setBalance(data.balance);
+                    closeModal(inputModal);
+                } else {
+                    if (data.error && data.error.indexOf('Недостаточно') !== -1 && insufficientModal) {
+                        if (insufficientText) insufficientText.textContent = 'Недостаточно средств.';
+                        openModal(insufficientModal);
+                    } else if (inputStatus) {
+                        inputStatus.textContent = data.error || 'Ошибка';
+                    }
+                }
+                inputSave.disabled = false;
             })
-            .catch(function() { alert('Ошибка'); });
+            .catch(function() {
+                if (inputStatus) inputStatus.textContent = 'Ошибка соединения';
+                inputSave.disabled = false;
+            });
     }
-    nameEditBtn.addEventListener('click', showNameEdit);
-    nameEditSave.addEventListener('click', saveName);
-    nameEditCancel.addEventListener('click', hideNameEdit);
+
+    if (inputSave) inputSave.addEventListener('click', sendRename);
+
     nameInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') { e.preventDefault(); saveName(); }
-        if (e.key === 'Escape') { e.preventDefault(); hideNameEdit(); }
+        if (e.key === 'Enter') { e.preventDefault(); sendRename(); }
+        if (e.key === 'Escape') { e.preventDefault(); closeModal(inputModal); }
     });
+
+    if (insufficientClose && insufficientModal) {
+        insufficientClose.addEventListener('click', function() { closeModal(insufficientModal); });
+    }
 })();
 
 document.getElementById('clanEditForm')?.addEventListener('submit', function(e) {
@@ -2239,11 +2391,11 @@ document.getElementById('clanEditForm')?.addEventListener('submit', function(e) 
 
 {% if clan_data and user.id == clan_data.clan.owner_id %}
 (function() {
+    var clanRenamePrice = {{ clan_rename_price|default(20000)|int }};
     var changeBtn = document.getElementById('clanNameChangeBtn');
     var input = document.getElementById('clanNameInput');
     var inputStatus = document.getElementById('clanNameInputStatus');
     var displayEl = document.getElementById('clanNameDisplay');
-    var modal = document.getElementById('clanNameChangeModal');
     var modal = document.getElementById('clanNameChangeModal');
     var modalCancel = document.getElementById('clanNameChangeCancel');
     var modalConfirm = document.getElementById('clanNameChangeConfirm');
@@ -2253,8 +2405,13 @@ document.getElementById('clanEditForm')?.addEventListener('submit', function(e) 
     var insufficientModal = document.getElementById('insufficientFundsModal');
     var insufficientText = document.getElementById('insufficientFundsText');
     var insufficientClose = document.getElementById('insufficientFundsClose');
+    var balanceDisplay = document.getElementById('numsBalanceDisplay');
 
     if (!changeBtn || !modal || !inputModal || !input || !inputSave || !inputCancel) return;
+
+    function getBalance() {
+        return parseInt(balanceDisplay ? balanceDisplay.textContent : 0, 10) || 0;
+    }
 
     function openModal(m) {
         if (!m) return;
@@ -2284,6 +2441,12 @@ document.getElementById('clanEditForm')?.addEventListener('submit', function(e) 
     if (modalConfirm) {
         modalConfirm.addEventListener('click', function() {
             closeModal(modal);
+            var balance = getBalance();
+            if (balance < clanRenamePrice) {
+                if (insufficientText) insufficientText.textContent = 'Недостаточно средств.';
+                if (insufficientModal) openModal(insufficientModal);
+                return;
+            }
             if (displayEl && input) {
                 input.value = displayEl.textContent.trim();
             }
@@ -2343,20 +2506,93 @@ document.getElementById('clanEditForm')?.addEventListener('submit', function(e) 
         });
     }
 })();
+
+(function() {
+    var expandBtn = document.getElementById('clanExpandSlotBtn');
+    var expandModal = document.getElementById('expandSlotModal');
+    var expandCancel = document.getElementById('expandSlotCancel');
+    var expandConfirm = document.getElementById('expandSlotConfirm');
+    var insufficientModal = document.getElementById('insufficientFundsModal');
+    var insufficientText = document.getElementById('insufficientFundsText');
+    if (!expandBtn || !expandModal || !expandConfirm) return;
+    function openModal(m) {
+        if (!m) return;
+        m.style.display = 'flex';
+        m.style.visibility = 'visible';
+        m.classList.add('open');
+        if (m.parentNode !== document.body) document.body.appendChild(m);
+    }
+    function closeModal(m) {
+        if (!m) return;
+        m.classList.remove('open');
+        m.style.display = '';
+        m.style.visibility = '';
+    }
+    expandBtn.addEventListener('click', function() {
+        openModal(expandModal);
+    });
+    expandCancel.addEventListener('click', function() { closeModal(expandModal); });
+    expandModal.addEventListener('click', function(e) {
+        if (e.target === expandModal) closeModal(expandModal);
+    });
+    expandConfirm.addEventListener('click', function() {
+        fetch('{{ url_for("api_clan_expand_slot", clan_id=clan_data.clan.id) }}', { method: 'POST' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    closeModal(expandModal);
+                    location.reload();
+                } else {
+                    if (data.error && data.error.indexOf('Недостаточно') !== -1 && insufficientModal) {
+                        if (insufficientText) insufficientText.textContent = (data.error || 'Недостаточно Нумов.') + ' Требуется: ' + (data.price || 0) + ' Нумов.';
+                        openModal(insufficientModal);
+                    } else {
+                        alert(data.error || 'Ошибка');
+                    }
+                }
+            })
+            .catch(function() { alert('Ошибка соединения'); });
+    });
+})();
 {% endif %}
 
 {% if clan_data %}
+var kickMemberPendingUserId = null;
+function openKickMemberModal(userId) {
+    kickMemberPendingUserId = userId;
+    var m = document.getElementById('kickMemberModal');
+    if (m) {
+        m.style.display = 'flex';
+        m.style.visibility = 'visible';
+        m.classList.add('open');
+        document.body.appendChild(m);
+    }
+}
+function closeKickMemberModal() {
+    kickMemberPendingUserId = null;
+    var m = document.getElementById('kickMemberModal');
+    if (m) { m.classList.remove('open'); m.style.display = ''; m.style.visibility = ''; }
+}
 document.querySelectorAll('.kick-btn').forEach(btn => {
     btn.addEventListener('click', function() {
-        if (!confirm('Исключить этого участника?')) return;
-        const uid = this.dataset.userId;
-        fetch(`/api/clan/{{ clan_data.clan.id }}/kick/${uid}`, { method: 'POST' })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) location.reload();
-                else alert(data.error || 'Ошибка');
-            });
+        var uid = this.dataset.userId;
+        if (uid) openKickMemberModal(uid);
     });
+});
+document.getElementById('kickMemberModalCancel')?.addEventListener('click', closeKickMemberModal);
+document.getElementById('kickMemberModalConfirm')?.addEventListener('click', function() {
+    if (kickMemberPendingUserId == null) return;
+    var uid = kickMemberPendingUserId;
+    closeKickMemberModal();
+    fetch(`/api/clan/{{ clan_data.clan.id }}/kick/${uid}`, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) location.reload();
+            else alert(data.error || 'Ошибка');
+        });
+});
+document.getElementById('kickMemberModal')?.addEventListener('click', function(e) {
+    if (e.target === this) closeKickMemberModal();
 });
 var transferOwnershipPendingUserId = null;
 
@@ -2441,8 +2677,8 @@ function openLeaveModal() {
         confirmBtn.textContent = 'Да, распустить клан';
     } else if (title && text && confirmBtn) {
         title.textContent = 'Выйти из клана?';
-        text.textContent = 'Вы уверены, что хотите покинуть клан?';
-        confirmBtn.textContent = 'Выйти';
+        text.textContent = 'Если вы покинете клан, в течение 1 часа вы не сможете вступать в другой клан и подавать заявки на вступление. Всё равно покинуть?';
+        confirmBtn.textContent = 'Всё равно покинуть';
     }
     m.style.display = 'flex';
     m.style.visibility = 'visible';
@@ -2504,6 +2740,26 @@ function closeJoinModal() {
     var count = document.getElementById('joinClanMessageCount');
     if (el && count) el.addEventListener('input', function() { count.textContent = el.value.length + ' / 100'; });
 })();
+function openJoinPenaltyModal(text) {
+    var modal = document.getElementById('joinPenaltyModal');
+    var textEl = document.getElementById('joinPenaltyModalText');
+    if (!modal || !textEl) return;
+    textEl.textContent = text || '';
+    modal.style.display = 'flex';
+    modal.style.visibility = 'visible';
+    modal.classList.add('open');
+    if (modal.parentNode !== document.body) document.body.appendChild(modal);
+}
+function closeJoinPenaltyModal() {
+    var modal = document.getElementById('joinPenaltyModal');
+    if (modal) { modal.classList.remove('open'); modal.style.display = ''; modal.style.visibility = ''; }
+}
+(function() {
+    var okBtn = document.getElementById('joinPenaltyModalOk');
+    var modal = document.getElementById('joinPenaltyModal');
+    if (okBtn) okBtn.addEventListener('click', closeJoinPenaltyModal);
+    if (modal) modal.addEventListener('click', function(e) { if (e.target === modal) closeJoinPenaltyModal(); });
+})();
 function confirmJoin() {
     const cid = document.getElementById('joinClanSelect').value;
     if (!cid) { alert('Выберите клан'); return; }
@@ -2517,7 +2773,16 @@ function confirmJoin() {
     }).then(r => r.json())
       .then(data => {
           if (data.success) location.reload();
-          else alert(data.error || 'Ошибка');
+          else {
+              var msg = data.error || 'Ошибка';
+              if (data.penalty_until) {
+                  msg += ' Время до окончания штрафа: ' + formatPenaltyTimeLeft(data.penalty_until);
+                  closeJoinModal();
+                  openJoinPenaltyModal(msg);
+              } else {
+                  alert(msg);
+              }
+          }
       });
 }
 
@@ -2530,11 +2795,36 @@ function cancelRequest() {
         });
 }
 
+function formatPenaltyTimeLeft(isoString) {
+    if (!isoString) return '';
+    try {
+        var until = new Date(isoString);
+        var now = new Date();
+        var ms = until - now;
+        if (ms <= 0) return 'Штраф истёк.';
+        var min = Math.ceil(ms / 60000);
+        if (min < 60) return 'Осталось примерно ' + min + ' мин.';
+        var h = Math.floor(min / 60);
+        var m = min % 60;
+        return 'Осталось примерно ' + h + ' ч ' + (m ? m + ' мин' : '') + '.';
+    } catch (e) { return ''; }
+}
 {% if clan_data %}
 function handleAccept(rid) {
     fetch(`/api/clan/{{ clan_data.clan.id }}/accept/${rid}`, { method: 'POST' })
         .then(r => r.json())
-        .then(data => { if (data.success) location.reload(); else alert(data.error); });
+        .then(data => {
+            if (data.success) location.reload();
+            else {
+                var msg = data.error || 'Ошибка';
+                if (data.penalty_until) {
+                    msg += ' Время до окончания штрафа: ' + formatPenaltyTimeLeft(data.penalty_until);
+                    openJoinPenaltyModal(msg);
+                } else {
+                    alert(msg);
+                }
+            }
+        });
 }
 function handleReject(rid) {
     fetch(`/api/clan/{{ clan_data.clan.id }}/reject/${rid}`, { method: 'POST' })

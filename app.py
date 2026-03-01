@@ -149,7 +149,22 @@ app.config['SEND_FILE_MAX_AGE_DEFAULT'] = int(os.getenv('SEND_FILE_MAX_AGE_DEFAU
 CLAN_GIF_FLAG_PRICE = 100_000
 
 # Константа стоимости изменения названия клана (в Нумах)
-CLAN_RENAME_PRICE = 20_000
+CLAN_RENAME_PRICE = 100_000
+
+# Максимальное число участников клана по умолчанию (включая создателя)
+CLAN_DEFAULT_MAX_MEMBERS = 15
+
+# Стоимость одного дополнительного места в клане (в Нумах)
+CLAN_EXTRA_SLOT_PRICE = 50_000
+
+# Длительность штрафа за исключение участника: в течение этого времени клан не может принимать новых участников (часы)
+CLAN_ACCEPT_BAN_HOURS = 1
+
+# Длительность штрафа для игрока, покинувшего клан: не может вступать в другой клан и подавать заявки (часы)
+USER_CLAN_JOIN_BAN_HOURS = 1
+
+# Стоимость изменения имени персонажа в личном кабинете (в Нумах)
+CHARACTER_RENAME_PRICE = 100_000
 
 # Разрешённые расширения для загрузки флага клана по умолчанию (без GIF)
 CLAN_FLAG_BASE_EXTENSIONS = {'png', 'jpg', 'jpeg'}
@@ -222,6 +237,8 @@ class Clan(db.Model):
     flag_filename = db.Column(db.String(255), nullable=True)
     owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     can_use_gif_flag = db.Column(db.Boolean, default=False, nullable=False)
+    max_members = db.Column(db.Integer, default=CLAN_DEFAULT_MAX_MEMBERS, nullable=False)
+    accept_ban_until = db.Column(db.DateTime, nullable=True)  # штраф: до этого времени нельзя принимать новых участников
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     owner = db.relationship('User', foreign_keys=[owner_id], backref=db.backref('owned_clan', uselist=False), lazy=True)
@@ -236,7 +253,9 @@ class Clan(db.Model):
             'flag_url': url_for('static', filename=_avatar_static_filename(self.flag_filename)) if self.flag_filename else None,
             'owner_id': self.owner_id,
             'member_count': User.query.filter_by(clan_id=self.id).count(),
+            'max_members': self.max_members,
             'can_use_gif_flag': self.can_use_gif_flag,
+            'accept_ban_until': self.accept_ban_until.isoformat() if self.accept_ban_until else None,
         }
 
 
@@ -251,6 +270,28 @@ class ClanJoinRequest(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     user = db.relationship('User', backref='clan_join_requests', lazy=True)
+
+
+class ClanSearchChatMessage(db.Model):
+    """Сообщение в общем чате страницы «Поиск клана». Лимит: 1 сообщение до 100 символов раз в 5 минут на пользователя."""
+    __tablename__ = 'clan_search_chat_message'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    text = db.Column(db.String(100), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref=db.backref('clan_search_chat_messages', lazy=True))
+
+
+class ClanRecruitmentAd(db.Model):
+    """Объявление о найме в клан (поиск клана в битве за территорию). Одно на клан."""
+    __tablename__ = 'clan_recruitment_ad'
+    id = db.Column(db.Integer, primary_key=True)
+    clan_id = db.Column(db.Integer, db.ForeignKey('clan.id'), nullable=False, unique=True)
+    text = db.Column(db.String(100), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    clan = db.relationship('Clan', backref=db.backref('recruitment_ad', uselist=False, cascade='all, delete-orphan'), lazy=True)
 
 
 class ClanChatMessage(db.Model):
@@ -452,6 +493,7 @@ class User(UserMixin, db.Model):
     current_energy = db.Column(db.Integer, nullable=True)  # None = полный запас
     energy_last_refill_at = db.Column(db.DateTime, nullable=True)  # время последнего восстановления
     nums_balance = db.Column(db.Integer, default=0, nullable=False)  # Нумы (валюта за правильные решения задач)
+    clan_join_ban_until = db.Column(db.DateTime, nullable=True)  # штраф после выхода из клана: до этого времени нельзя вступать в клан и подавать заявки
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -1721,6 +1763,12 @@ with app.app_context():
         if 'clan' not in tables or 'clan_join_request' not in tables or 'user_territory_stats' not in tables or 'clan_chat_message' not in tables:
             db.create_all()
             print("Созданы таблицы clan, clan_join_request, user_territory_stats, clan_chat_message")
+        if 'clan_recruitment_ad' not in tables:
+            db.create_all()
+            print("Создана таблица clan_recruitment_ad")
+        if 'clan_search_chat_message' not in tables:
+            db.create_all()
+            print("Создана таблица clan_search_chat_message")
         if 'user' in tables:
             columns = [col['name'] for col in inspector.get_columns('user')]
             with db.engine.begin() as conn:
@@ -1760,12 +1808,23 @@ with app.app_context():
                 if 'clan_rank' not in columns:
                     conn.execute(text('ALTER TABLE user ADD COLUMN clan_rank VARCHAR(20)'))
                     print("Добавлена колонка clan_rank в user")
+                if 'clan_join_ban_until' not in columns:
+                    conn.execute(text('ALTER TABLE "user" ADD COLUMN clan_join_ban_until TIMESTAMP'))
+                    print("Добавлена колонка clan_join_ban_until в user")
         if 'clan' in tables:
             clan_columns = [col['name'] for col in inspector.get_columns('clan')]
             if 'can_use_gif_flag' not in clan_columns:
                 with db.engine.begin() as conn:
                     conn.execute(text(f'ALTER TABLE clan ADD COLUMN can_use_gif_flag BOOLEAN DEFAULT {_bool_false} NOT NULL'))
                     print("Добавлена колонка can_use_gif_flag в clan")
+            if 'max_members' not in clan_columns:
+                with db.engine.begin() as conn:
+                    conn.execute(text(f'ALTER TABLE clan ADD COLUMN max_members INTEGER DEFAULT {CLAN_DEFAULT_MAX_MEMBERS} NOT NULL'))
+                    print("Добавлена колонка max_members в clan")
+            if 'accept_ban_until' not in clan_columns:
+                with db.engine.begin() as conn:
+                    conn.execute(text('ALTER TABLE clan ADD COLUMN accept_ban_until TIMESTAMP'))
+                    print("Добавлена колонка accept_ban_until в clan")
         if 'clan_join_request' in tables:
             req_columns = [col['name'] for col in inspector.get_columns('clan_join_request')]
             if 'message' not in req_columns:
@@ -2031,21 +2090,18 @@ def cabinet():
         pending_request=pending_request,
         avatar_url=url_for('static', filename=_avatar_static_filename(user.avatar_filename)) if user.avatar_filename else None,
         clan_gif_flag_price=CLAN_GIF_FLAG_PRICE,
+        clan_rename_price=CLAN_RENAME_PRICE,
+        clan_extra_slot_price=CLAN_EXTRA_SLOT_PRICE,
+        character_rename_price=CHARACTER_RENAME_PRICE,
     )
 
 
 @app.route('/api/cabinet/profile', methods=['POST'])
 @login_required
 def api_cabinet_profile():
-    """Обновить профиль: character_name, avatar"""
+    """Обновить профиль: avatar (имя персонажа меняется только платно через /api/cabinet/rename-character)."""
     user = current_user
     data = request.form
-    character_name = (data.get('character_name') or '').strip()
-    if character_name:
-        is_valid, err = validate_user_name(character_name)
-        if not is_valid:
-            return jsonify({'success': False, 'error': err}), 400
-        user.character_name = character_name
     if 'avatar' in request.files:
         f = request.files['avatar']
         if f and f.filename and f.filename.rsplit('.', 1)[-1].lower() in ALLOWED_EXTENSIONS:
@@ -2057,6 +2113,39 @@ def api_cabinet_profile():
             user.avatar_filename = f'uploads/avatars/{filename}'
     db.session.commit()
     return jsonify({'success': True, 'avatar_url': url_for('static', filename=_avatar_static_filename(user.avatar_filename)) if user.avatar_filename else None})
+
+
+@app.route('/api/cabinet/rename-character', methods=['POST'])
+@login_required
+def api_cabinet_rename_character():
+    """Платное изменение имени персонажа (списание с баланса Нумов)."""
+    if current_user.is_admin:
+        return jsonify({'success': False, 'error': 'Администратор не участвует'}), 403
+    data = request.get_json() or {}
+    new_name = (data.get('character_name') or '').strip()
+    if not new_name:
+        return jsonify({'success': False, 'error': 'Введите новое имя'}), 400
+    is_valid, err = validate_user_name(new_name)
+    if not is_valid:
+        return jsonify({'success': False, 'error': err}), 400
+    if len(new_name) > MAX_USER_NAME_LENGTH:
+        return jsonify({'success': False, 'error': f'Имя не может быть длиннее {MAX_USER_NAME_LENGTH} символов'}), 400
+    balance = current_user.nums_balance or 0
+    if balance < CHARACTER_RENAME_PRICE:
+        return jsonify({
+            'success': False,
+            'error': 'Недостаточно Нумов',
+            'balance': balance,
+            'price': CHARACTER_RENAME_PRICE,
+        }), 400
+    current_user.nums_balance = balance - CHARACTER_RENAME_PRICE
+    current_user.character_name = new_name
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'character_name': current_user.character_name,
+        'balance': current_user.nums_balance,
+    })
 
 
 @app.route('/api/cabinet/skills', methods=['POST'])
@@ -2538,14 +2627,14 @@ def api_clan_update(clan_id):
 @app.route('/api/clan/leave', methods=['POST'])
 @login_required
 def api_clan_leave():
-    """Выйти из клана. Если выходит создатель — все участники исключаются, затем клан распускается и вся информация удаляется."""
+    """Выйти из клана. Если выходит создатель — клан распускается. Иначе на игрока вешается штраф: 1 час без вступления в клан и заявок."""
     if not current_user.clan_id:
         return jsonify({'success': False, 'error': 'Вы не в клане'}), 400
     clan = current_user.clan_obj
     clan_id = clan.id
     if clan.owner_id == current_user.id:
         # Создатель выходит: исключаем всех участников, затем распускаем клан
-        User.query.filter_by(clan_id=clan_id).update({'clan_id': None})
+        User.query.filter_by(clan_id=clan_id).update({'clan_id': None, 'clan_rank': None})
         TerritoryRegionState.query.filter_by(owner_clan_id=clan_id).update({'owner_clan_id': None, 'strength': 0})
         ClanJoinRequest.query.filter_by(clan_id=clan_id).delete()
         ClanChatMessage.query.filter_by(clan_id=clan_id).delete()
@@ -2554,6 +2643,7 @@ def api_clan_leave():
     else:
         current_user.clan_id = None
         current_user.clan_rank = None
+        current_user.clan_join_ban_until = datetime.utcnow() + timedelta(hours=USER_CLAN_JOIN_BAN_HOURS)
     db.session.commit()
     return jsonify({'success': True})
 
@@ -2564,6 +2654,16 @@ def api_clan_join_request():
     """Подать заявку на вступление в клан (только одну активную)"""
     if current_user.clan_id:
         return jsonify({'success': False, 'error': 'Вы уже в клане'}), 400
+    now = datetime.utcnow()
+    # Снять штраф с пользователя, если время вышло
+    if current_user.clan_join_ban_until and now >= current_user.clan_join_ban_until:
+        current_user.clan_join_ban_until = None
+    if current_user.clan_join_ban_until and now < current_user.clan_join_ban_until:
+        return jsonify({
+            'success': False,
+            'error': 'Штрафное время ещё не прошло. Вы не можете вступать в клан и подавать заявки.',
+            'penalty_until': current_user.clan_join_ban_until.isoformat() + 'Z',
+        }), 400
     data = request.get_json() or {}
     clan_id_raw = data.get('clan_id')
     try:
@@ -2609,6 +2709,17 @@ def api_clan_accept_request(clan_id, request_id):
         return jsonify({'success': False, 'error': 'Вы не состоите в этом клане'}), 403
     if clan.owner_id != user.id and (user.clan_rank or CLAN_RANK_VASSAL) not in (CLAN_RANK_DUKE, CLAN_RANK_MARQUIS):
         return jsonify({'success': False, 'error': 'Недостаточно прав для принятия заявок'}), 403
+    # Проверка штрафа клана: в течение CLAN_ACCEPT_BAN_HOURS после исключения нельзя принимать
+    now = datetime.utcnow()
+    if clan.accept_ban_until and now < clan.accept_ban_until:
+        return jsonify({
+            'success': False,
+            'error': 'Штрафное время ещё не прошло. Приём участников временно недоступен.',
+            'penalty_until': clan.accept_ban_until.isoformat() + 'Z',
+        }), 400
+    member_count = User.query.filter_by(clan_id=clan.id).count()
+    if member_count >= clan.max_members:
+        return jsonify({'success': False, 'error': 'В клане достигнут максимум участников'}), 400
     req = ClanJoinRequest.query.filter_by(id=request_id, clan_id=clan_id, status='pending').first()
     if not req:
         return jsonify({'success': False, 'error': 'Заявка не найдена'}), 404
@@ -2641,7 +2752,7 @@ def api_clan_reject_request(clan_id, request_id):
 @app.route('/api/clan/<int:clan_id>/kick/<int:user_id>', methods=['POST'])
 @login_required
 def api_clan_kick(clan_id, user_id):
-    """Исключить участника из клана (владелец или Герцог клана)"""
+    """Исключить участника из клана (владелец или Герцог клана). На клан вешается штраф: 1 час без приёма новых участников."""
     clan = Clan.query.get_or_404(clan_id)
     user = current_user
     if not user.clan_id or user.clan_id != clan.id:
@@ -2655,8 +2766,36 @@ def api_clan_kick(clan_id, user_id):
         return jsonify({'success': False, 'error': 'Нельзя исключить владельца'}), 400
     target.clan_id = None
     target.clan_rank = None
+    clan.accept_ban_until = datetime.utcnow() + timedelta(hours=CLAN_ACCEPT_BAN_HOURS)
     db.session.commit()
     return jsonify({'success': True})
+
+
+@app.route('/api/clan/<int:clan_id>/expand-slot', methods=['POST'])
+@login_required
+def api_clan_expand_slot(clan_id):
+    """Купить дополнительное место в клане (только владелец). Стоимость — CLAN_EXTRA_SLOT_PRICE Нумов."""
+    clan = Clan.query.get_or_404(clan_id)
+    if current_user.clan_id != clan.id:
+        return jsonify({'success': False, 'error': 'Вы не состоите в этом клане'}), 403
+    if clan.owner_id != current_user.id:
+        return jsonify({'success': False, 'error': 'Только владелец клана может расширить место'}), 403
+    balance = current_user.nums_balance or 0
+    if balance < CLAN_EXTRA_SLOT_PRICE:
+        return jsonify({
+            'success': False,
+            'error': 'Недостаточно Нумов',
+            'balance': balance,
+            'price': CLAN_EXTRA_SLOT_PRICE,
+        }), 400
+    current_user.nums_balance = balance - CLAN_EXTRA_SLOT_PRICE
+    clan.max_members = (clan.max_members or CLAN_DEFAULT_MAX_MEMBERS) + 1
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'max_members': clan.max_members,
+        'balance': current_user.nums_balance,
+    })
 
 
 @app.route('/api/clan/<int:clan_id>/transfer-ownership', methods=['POST'])
@@ -4658,6 +4797,199 @@ def api_territory_server_time():
 def territory_battle_rules():
     """Страница с обучением и правилами битвы за территорию."""
     return render_template('territory_battle_rules.html')
+
+
+ADS_PER_PAGE = 10
+
+
+@app.route('/territory-battle/clan-search')
+def territory_clan_search_page():
+    """Страница «Поиск клана»: объявления о найме (с пагинацией), подача заявки, общий чат."""
+    base_ads = ClanRecruitmentAd.query.join(Clan).order_by(ClanRecruitmentAd.created_at.desc())
+    ads_total = base_ads.count()
+    ads_page = max(1, request.args.get('page', 1, type=int))
+    ads_total_pages = max(1, (ads_total + ADS_PER_PAGE - 1) // ADS_PER_PAGE)
+    ads_page = min(ads_page, ads_total_pages)
+    ads_query = base_ads.offset((ads_page - 1) * ADS_PER_PAGE).limit(ADS_PER_PAGE).all()
+    ads = []
+    for ad in ads_query:
+        clan = ad.clan
+        ads.append({
+            'id': ad.id,
+            'clan_id': clan.id,
+            'clan_name': clan.name,
+            'flag_url': url_for('static', filename=_avatar_static_filename(clan.flag_filename)) if clan.flag_filename else None,
+            'text': ad.text,
+        })
+    is_clan_owner = False
+    my_ad = None
+    my_clan_id = None
+    user_logged_in = current_user.is_authenticated
+    pending_request_clan_id = None
+    if user_logged_in:
+        if getattr(current_user, 'clan_obj', None) and current_user.clan_obj.owner_id == current_user.id:
+            is_clan_owner = True
+            my_clan_id = current_user.clan_id
+            rec = ClanRecruitmentAd.query.filter_by(clan_id=current_user.clan_id).first()
+            if rec:
+                my_ad = {'id': rec.id, 'text': rec.text}
+        req = ClanJoinRequest.query.filter_by(user_id=current_user.id, status='pending').first()
+        if req:
+            pending_request_clan_id = req.clan_id
+    user_has_no_clan = user_logged_in and (getattr(current_user, 'clan_id', None) is None)
+    return render_template(
+        'territory_clan_search.html',
+        ads=ads,
+        ads_page=ads_page,
+        ads_total_pages=ads_total_pages,
+        ads_total=ads_total,
+        is_clan_owner=is_clan_owner,
+        my_ad=my_ad,
+        my_clan_id=my_clan_id,
+        user_logged_in=user_logged_in,
+        user_has_no_clan=user_has_no_clan,
+        pending_request_clan_id=pending_request_clan_id,
+    )
+
+
+@app.route('/api/territory/clan-search/ads', methods=['GET'])
+def api_territory_clan_search_ads():
+    """Список объявлений о найме в клан (для всех). Параметры: page, per_page (по умолчанию 10)."""
+    per_page = min(max(1, request.args.get('per_page', 10, type=int)), 50)
+    page = max(1, request.args.get('page', 1, type=int))
+    base = ClanRecruitmentAd.query.join(Clan).order_by(ClanRecruitmentAd.created_at.desc())
+    total = base.count()
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    page = min(page, total_pages)
+    ads_query = base.offset((page - 1) * per_page).limit(per_page).all()
+    ads = []
+    for ad in ads_query:
+        clan = ad.clan
+        ads.append({
+            'id': ad.id,
+            'clan_id': clan.id,
+            'clan_name': clan.name,
+            'flag_url': url_for('static', filename=_avatar_static_filename(clan.flag_filename)) if clan.flag_filename else None,
+            'text': ad.text,
+        })
+    return jsonify({'ads': ads, 'page': page, 'total_pages': total_pages, 'total': total})
+
+
+@app.route('/api/territory/clan-search/ad', methods=['POST'])
+@login_required
+def api_territory_clan_search_ad_post():
+    """Разместить или обновить объявление о найме (только владелец клана)."""
+    if not getattr(current_user, 'clan_obj', None) or current_user.clan_obj.owner_id != current_user.id:
+        return jsonify({'success': False, 'error': 'Только владелец клана может размещать объявление'}), 403
+    data = request.get_json() or {}
+    text = (data.get('text') or '').strip()
+    if len(text) > 100:
+        return jsonify({'success': False, 'error': 'Текст не должен превышать 100 символов'}), 400
+    if not text:
+        return jsonify({'success': False, 'error': 'Введите текст объявления'}), 400
+    clan_id = current_user.clan_id
+    ad = ClanRecruitmentAd.query.filter_by(clan_id=clan_id).first()
+    if ad:
+        ad.text = text
+    else:
+        ad = ClanRecruitmentAd(clan_id=clan_id, text=text)
+        db.session.add(ad)
+    db.session.commit()
+    return jsonify({'success': True, 'ad': {'id': ad.id, 'text': ad.text}})
+
+
+@app.route('/api/territory/clan-search/ad', methods=['DELETE'])
+@login_required
+def api_territory_clan_search_ad_delete():
+    """Удалить объявление о найме (только владелец клана)."""
+    if not getattr(current_user, 'clan_obj', None) or current_user.clan_obj.owner_id != current_user.id:
+        return jsonify({'success': False, 'error': 'Только владелец клана может удалять объявление'}), 403
+    ad = ClanRecruitmentAd.query.filter_by(clan_id=current_user.clan_id).first()
+    if not ad:
+        return jsonify({'success': False, 'error': 'Объявление не найдено'}), 404
+    db.session.delete(ad)
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+CLAN_SEARCH_CHAT_COOLDOWN_SECONDS = 300  # 5 минут
+
+
+@app.route('/api/territory/clan-search/chat', methods=['GET'])
+def api_territory_clan_search_chat_list():
+    """Список сообщений общего чата. limit (по умолчанию 20), before_id (подгрузить старые), after_id (только новые)."""
+    limit = min(int(request.args.get('limit', 20)), 100)
+    before_id = request.args.get('before_id', type=int)
+    after_id = request.args.get('after_id', type=int)
+    base = ClanSearchChatMessage.query
+
+    if after_id:
+        messages = base.filter(ClanSearchChatMessage.id > after_id).order_by(ClanSearchChatMessage.id.asc()).all()
+        items = [
+            {'id': m.id, 'user_id': m.user_id, 'author_name': m.user.character_name or m.user.username,
+             'text': m.text, 'created_at': m.created_at.isoformat() if m.created_at else None}
+            for m in messages
+        ]
+        return jsonify({'success': True, 'messages': items})
+    if before_id:
+        messages = base.filter(ClanSearchChatMessage.id < before_id).order_by(
+            ClanSearchChatMessage.id.desc()
+        ).limit(limit + 1).all()
+        has_more = len(messages) > limit
+        messages = list(reversed(messages[:limit]))
+        items = [
+            {'id': m.id, 'user_id': m.user_id, 'author_name': m.user.character_name or m.user.username,
+             'text': m.text, 'created_at': m.created_at.isoformat() if m.created_at else None}
+            for m in messages
+        ]
+        return jsonify({'success': True, 'messages': items, 'has_more': has_more})
+    total = base.count()
+    messages = base.order_by(ClanSearchChatMessage.id.desc()).limit(limit).all()
+    messages = list(reversed(messages))
+    items = [
+        {'id': m.id, 'user_id': m.user_id, 'author_name': m.user.character_name or m.user.username,
+         'text': m.text, 'created_at': m.created_at.isoformat() if m.created_at else None}
+        for m in messages
+    ]
+    return jsonify({'success': True, 'messages': items, 'has_more': total > limit})
+
+
+@app.route('/api/territory/clan-search/chat', methods=['POST'])
+@login_required
+def api_territory_clan_search_chat_send():
+    """Отправить сообщение в общий чат. Не чаще 1 раза в 5 минут, до 100 символов."""
+    data = request.get_json() or request.form
+    text = (data.get('text') or '').strip()
+    if not text:
+        return jsonify({'success': False, 'error': 'Текст сообщения не может быть пустым'}), 400
+    if len(text) > 100:
+        return jsonify({'success': False, 'error': 'Сообщение не должно превышать 100 символов'}), 400
+    now = datetime.utcnow()
+    last = ClanSearchChatMessage.query.filter_by(user_id=current_user.id).order_by(
+        ClanSearchChatMessage.created_at.desc()
+    ).first()
+    if last and last.created_at:
+        delta = (now - last.created_at).total_seconds()
+        if delta < CLAN_SEARCH_CHAT_COOLDOWN_SECONDS:
+            wait = int(CLAN_SEARCH_CHAT_COOLDOWN_SECONDS - delta)
+            return jsonify({
+                'success': False,
+                'error': 'Не чаще одного сообщения в 5 минут. Подождите {} сек.'.format(wait),
+                'wait_seconds': wait,
+            }), 400
+    msg = ClanSearchChatMessage(user_id=current_user.id, text=text)
+    db.session.add(msg)
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'message': {
+            'id': msg.id,
+            'user_id': msg.user_id,
+            'author_name': current_user.character_name or current_user.username,
+            'text': msg.text,
+            'created_at': msg.created_at.isoformat() if msg.created_at else None,
+        }
+    })
 
 
 RATING_PAGE_SIZE = 20

@@ -1,0 +1,986 @@
+{% extends "base.html" %}
+
+{% block title %}Поиск клана — Битва за территорию{% endblock %}
+
+{% block extra_head %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Cinzel+Decorative:wght@700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; }
+body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Roman', serif; }
+
+.clan-search-page {
+    min-height: 100vh;
+    background: #3d2914 linear-gradient(180deg, rgba(61,41,20,0.97) 0%, #2c1810 50%, #1a0f08 100%);
+    padding: 20px;
+    color: #e8dcc4;
+    position: relative;
+}
+.clan-search-page::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+}
+.clan-search-page > * { position: relative; z-index: 1; }
+
+.clan-search-inner { max-width: 640px; margin: 0 auto; }
+
+.clan-search-page h1 {
+    font-family: 'Cinzel Decorative', 'Cinzel', Georgia, serif;
+    text-align: center;
+    margin: 0 0 24px;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #d4a84b;
+    text-shadow: 0 0 20px rgba(212,168,75,0.3), 0 2px 4px rgba(0,0,0,0.5);
+    letter-spacing: 0.08em;
+}
+
+.clan-search-nav {
+    max-width: 920px;
+    margin: 0 auto 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.clan-search-nav a {
+    color: #d4a84b;
+    text-decoration: none;
+    font-weight: bold;
+    padding: 10px 18px;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    border: 1px solid #5c4033;
+    border-radius: 4px;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.9rem;
+    letter-spacing: 0.04em;
+    transition: color 0.2s, border-color 0.2s, box-shadow 0.2s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.clan-search-nav a:hover {
+    color: #e8c86a;
+    border-color: #8b6914;
+    box-shadow: 0 0 12px rgba(212,168,75,0.25);
+}
+.clan-search-nav-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+.clan-search-burger-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    color: #d4a84b;
+    font-size: 1.4rem;
+    cursor: pointer;
+    font-family: inherit;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.clan-search-burger-btn:hover {
+    color: #e8c86a;
+    border-color: #8b6914;
+}
+@media (max-width: 600px) {
+    .clan-search-nav {
+        flex-wrap: nowrap;
+        justify-content: flex-end;
+        gap: 0;
+        position: relative;
+        z-index: 100000;
+    }
+    .clan-search-burger-btn { display: flex; }
+    .clan-search-nav-links {
+        display: none;
+        position: absolute;
+        top: 100%;
+        right: 0;
+        margin-top: 8px;
+        flex-direction: column;
+        min-width: 200px;
+        background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+        border: 2px solid #5c4033;
+        border-radius: 8px;
+        padding: 8px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        z-index: 100001;
+        gap: 4px;
+    }
+    .clan-search-nav.open .clan-search-nav-links {
+        display: flex;
+    }
+    .clan-search-nav a {
+        width: 100%;
+        padding: 12px 16px;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.85rem;
+        box-sizing: border-box;
+    }
+}
+
+.clan-search-owner-block {
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    padding: 20px;
+    margin-bottom: 28px;
+    box-shadow: inset 0 1px 0 rgba(212,168,75,0.1), 0 4px 12px rgba(0,0,0,0.3);
+}
+.clan-search-owner-block h2 {
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 1.1rem;
+    color: #d4a84b;
+    margin: 0 0 12px;
+}
+.clan-search-owner-block textarea {
+    width: 100%;
+    min-height: 80px;
+    padding: 12px;
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    background: #2c1810;
+    color: #e8dcc4;
+    font-family: inherit;
+    font-size: 0.95rem;
+    resize: vertical;
+    box-sizing: border-box;
+}
+.clan-search-owner-block textarea:focus {
+    outline: none;
+    border-color: #d4a84b;
+}
+.clan-search-owner-block .char-count {
+    font-size: 0.85rem;
+    color: #b8a088;
+    margin-top: 6px;
+}
+.clan-search-owner-actions {
+    margin-top: 14px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.clan-search-owner-actions button {
+    padding: 10px 20px;
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+.clan-search-btn-post {
+    background: linear-gradient(180deg, #5c4033 0%, #4a3520 100%);
+    color: #d4a84b;
+}
+.clan-search-btn-post:hover {
+    border-color: #d4a84b;
+    color: #e8c86a;
+}
+.clan-search-btn-delete {
+    background: linear-gradient(180deg, #5c3434 0%, #4a2828 100%);
+    color: #e8c0c0;
+}
+.clan-search-btn-delete:hover {
+    border-color: #c87878;
+    color: #f0d0d0;
+}
+
+.clan-search-list-title {
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 1rem;
+    color: #d4a84b;
+    margin-bottom: 14px;
+}
+.clan-search-ad-card {
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    padding: 16px 18px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.clan-search-ad-flag {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #5c4033;
+    flex-shrink: 0;
+}
+.clan-search-ad-flag-placeholder {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #5c4033;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+.clan-search-ad-body {
+    flex: 1;
+    min-width: 0;
+}
+.clan-search-ad-clan-name {
+    font-weight: bold;
+    color: #e8dcc4;
+    margin-bottom: 4px;
+}
+.clan-search-ad-text {
+    color: #b8a088;
+    font-size: 0.95rem;
+    line-height: 1.4;
+}
+.clan-search-ad-actions {
+    flex-shrink: 0;
+}
+.clan-search-ad-actions .btn-apply {
+    padding: 8px 16px;
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    background: linear-gradient(180deg, #5c4033 0%, #4a3520 100%);
+    color: #d4a84b;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.85rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color 0.2s, color 0.2s;
+}
+.clan-search-ad-actions .btn-apply:hover:not(:disabled) {
+    border-color: #d4a84b;
+    color: #e8c86a;
+}
+.clan-search-ad-actions .btn-apply:disabled {
+    opacity: 0.7;
+    cursor: default;
+}
+.clan-search-ad-pending {
+    font-size: 0.85rem;
+    color: #b8a088;
+    font-style: italic;
+}
+
+.clan-search-empty {
+    text-align: center;
+    color: #b8a088;
+    padding: 24px;
+    font-style: italic;
+}
+
+/* Блок объявлений с пагинацией */
+.clan-search-ads-block {
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    padding: 20px;
+    margin-bottom: 28px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+.clan-search-ads-block h2 {
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 1.1rem;
+    color: #d4a84b;
+    margin: 0 0 16px;
+}
+.clan-search-ads-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+}
+.clan-search-ads-pagination a,
+.clan-search-ads-pagination span {
+    color: #d4a84b;
+    padding: 8px 14px;
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    text-decoration: none;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.9rem;
+    background: rgba(44,24,16,0.4);
+}
+.clan-search-ads-pagination a:hover {
+    color: #e8c86a;
+    border-color: #8b6914;
+}
+.clan-search-ads-pagination span.disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+/* Общий чат (оформление как клан-чат) */
+.clan-search-chat-block {
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    padding: 20px;
+    margin-bottom: 28px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+.clan-search-chat-block h2 {
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 1.1rem;
+    color: #d4a84b;
+    margin: 0 0 12px;
+}
+.clan-search-chat-messages {
+    max-height: 280px;
+    min-height: 140px;
+    overflow-y: auto;
+    margin: 0 0 12px;
+    padding: 10px;
+    background: rgba(44,24,16,0.4);
+    border-radius: 8px;
+    border: 1px solid rgba(92,64,51,0.5);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.clan-search-chat-msg {
+    padding: 8px 10px;
+    background: rgba(61,41,20,0.35);
+    border-radius: 4px;
+    border-left: 3px solid #8b6914;
+    font-size: 0.95rem;
+    max-width: 95%;
+}
+.clan-search-chat-msg-own {
+    align-self: flex-end;
+    border-left: none;
+    border-right: 3px solid #d4a84b;
+    text-align: right;
+    background: rgba(90,60,30,0.4);
+}
+.clan-search-chat-msg .chat-author { font-weight: bold; color: #d4a84b; margin-right: 8px; }
+.clan-search-chat-msg .chat-time { font-size: 0.8rem; color: #b8a088; margin-left: 6px; }
+.clan-search-chat-msg .chat-text { overflow-wrap: break-word; word-break: break-word; min-width: 0; }
+.clan-search-chat-empty {
+    color: #b8a088;
+    padding: 12px;
+    text-align: center;
+    font-size: 0.95rem;
+}
+.clan-search-chat-load-more {
+    text-align: center;
+    padding: 8px;
+}
+.clan-search-chat-load-more button {
+    padding: 6px 14px;
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    background: transparent;
+    color: #d4a84b;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+.clan-search-chat-load-more button:hover { color: #e8c86a; border-color: #8b6914; }
+.clan-search-chat-form {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+.clan-search-chat-form input[type="text"] {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 14px;
+    border: 2px solid #5c4033;
+    border-radius: 6px;
+    background: #2c1810;
+    color: #e8dcc4;
+    font-family: inherit;
+    font-size: 0.95rem;
+}
+.clan-search-chat-form input[type="text"]:focus {
+    outline: none;
+    border-color: #d4a84b;
+}
+.clan-search-chat-form button {
+    padding: 10px 18px;
+    border-radius: 6px;
+    border: 2px solid #5c4033;
+    background: linear-gradient(145deg, #5c4033 0%, #4a3520 100%);
+    color: #d4a84b;
+    font-weight: bold;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.9rem;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.clan-search-chat-form button:hover:not(:disabled) { color: #e8c86a; border-color: #8b6914; }
+.clan-search-chat-form button:disabled { opacity: 0.6; cursor: not-allowed; }
+.clan-search-chat-hint {
+    font-size: 0.8rem;
+    color: #b8a088;
+    margin-top: 6px;
+}
+
+/* Модальное окно заявки */
+.clan-search-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1002;
+    padding: 20px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s, visibility 0.25s;
+}
+.clan-search-modal-overlay.open {
+    opacity: 1;
+    visibility: visible;
+}
+.clan-search-modal-box {
+    background: linear-gradient(180deg, #f4e4bc 0%, #e8d5a3 100%);
+    border-radius: 4px;
+    padding: 24px 28px;
+    max-width: 400px;
+    width: 100%;
+    box-shadow: 0 0 0 3px #5c4033, 0 12px 40px rgba(0,0,0,0.5);
+    border: 2px solid #3d2914;
+    color: #2c1810;
+}
+.clan-search-modal-box h3 {
+    margin: 0 0 12px;
+    font-family: 'Cinzel Decorative', 'Cinzel', Georgia, serif;
+    font-size: 1.2rem;
+    color: #3d2914;
+}
+.clan-search-modal-box label {
+    display: block;
+    margin-top: 10px;
+    font-size: 0.9rem;
+    color: #2c1810;
+}
+.clan-search-modal-box textarea {
+    width: 100%;
+    min-height: 70px;
+    padding: 10px;
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    resize: vertical;
+    box-sizing: border-box;
+    margin-top: 4px;
+}
+.clan-search-modal-box .modal-char-count { font-size: 0.85rem; color: #5c4033; margin-top: 4px; }
+.clan-search-modal-buttons {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+.clan-search-modal-buttons button {
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+.clan-search-modal-cancel {
+    background: #e8dcc4;
+    border: 2px solid #5c4033;
+    color: #3d2914;
+}
+.clan-search-modal-confirm {
+    background: linear-gradient(145deg, #5c4033 0%, #4a3520 100%);
+    border: 2px solid #3d2914;
+    color: #d4a84b;
+}
+.clan-search-modal-confirm:hover { color: #e8c86a; }
+.clan-search-modal-error {
+    margin-top: 10px;
+    font-size: 0.9rem;
+    color: #a03030;
+    display: none;
+}
+.clan-search-modal-error.show { display: block; }
+
+/* Модальное окно ошибки чата (лимит 5 мин) */
+.clan-search-chat-error-modal .clan-search-modal-box {
+    max-width: 360px;
+}
+.clan-search-chat-error-modal p {
+    margin: 0 0 16px;
+    line-height: 1.5;
+    color: #2c1810;
+}
+.clan-search-chat-error-modal .clan-search-modal-buttons {
+    justify-content: flex-end;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="clan-search-page">
+    <nav class="clan-search-nav" id="clanSearchNav">
+        <button type="button" class="clan-search-burger-btn" id="clanSearchBurgerBtn" aria-label="Меню">☰</button>
+        <div class="clan-search-nav-links">
+            <a href="{{ url_for('territory_battle_page') }}">← Битва за территорию</a>
+            <a href="{{ url_for('territory_battle_rules') }}">Как начать?</a>
+            <a href="{{ url_for('game_rating_page', tab='clans') }}">Рейтинг</a>
+            <a href="{{ url_for('pvp_arena_page') }}">PvP Арена</a>
+            {% if user_logged_in %}
+            <a href="{{ url_for('cabinet') }}">Личный кабинет</a>
+            {% else %}
+            <a href="{{ url_for('login') }}?next={{ url_for('territory_clan_search_page') | urlencode }}">Войти</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <div class="clan-search-inner">
+        <h1>Поиск клана</h1>
+
+        {% if is_clan_owner %}
+        <div class="clan-search-owner-block">
+            <h2>Объявление о найме в клан</h2>
+            <textarea id="clanSearchAdText" maxlength="100" placeholder="Текст объявления (до 100 символов)…">{{ my_ad.text if my_ad else '' }}</textarea>
+            <div class="char-count"><span id="clanSearchAdCount">0</span> / 100</div>
+            <div class="clan-search-owner-actions">
+                <button type="button" class="clan-search-btn-post" id="clanSearchBtnPost">Разместить</button>
+                {% if my_ad %}
+                <button type="button" class="clan-search-btn-delete" id="clanSearchBtnDelete">Удалить объявление</button>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <section class="clan-search-ads-block">
+            <h2>Объявления кланов</h2>
+            {% if ads %}
+            <div id="clanSearchAdsList">
+                {% for ad in ads %}
+                <div class="clan-search-ad-card" data-clan-id="{{ ad.clan_id }}">
+                    {% if ad.flag_url %}
+                    <img src="{{ ad.flag_url }}" alt="" class="clan-search-ad-flag">
+                    {% else %}
+                    <div class="clan-search-ad-flag-placeholder">🏴</div>
+                    {% endif %}
+                    <div class="clan-search-ad-body">
+                        <div class="clan-search-ad-clan-name">{{ ad.clan_name }}</div>
+                        <div class="clan-search-ad-text">{{ ad.text }}</div>
+                    </div>
+                    <div class="clan-search-ad-actions">
+                        {% if user_logged_in %}
+                            {% if user_has_no_clan %}
+                                {% if pending_request_clan_id == ad.clan_id %}
+                                <span class="clan-search-ad-pending">Заявка подана</span>
+                                {% else %}
+                                <button type="button" class="btn-apply" data-clan-id="{{ ad.clan_id }}" data-clan-name="{{ ad.clan_name | e }}">Подать заявку</button>
+                                {% endif %}
+                            {% endif %}
+                        {% else %}
+                        <span class="clan-search-ad-pending">Войдите, чтобы подать заявку</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% if ads_total_pages > 1 %}
+            <nav class="clan-search-ads-pagination" aria-label="Пагинация объявлений">
+                {% if ads_page > 1 %}
+                <a href="{{ url_for('territory_clan_search_page', page=ads_page - 1) }}">← Предыдущая</a>
+                {% else %}
+                <span class="disabled">← Предыдущая</span>
+                {% endif %}
+                <span>Страница {{ ads_page }} из {{ ads_total_pages }}</span>
+                {% if ads_page < ads_total_pages %}
+                <a href="{{ url_for('territory_clan_search_page', page=ads_page + 1) }}">Следующая →</a>
+                {% else %}
+                <span class="disabled">Следующая →</span>
+                {% endif %}
+            </nav>
+            {% endif %}
+            {% else %}
+            <p class="clan-search-empty">Пока нет объявлений о найме. Владельцы кланов могут разместить объявление выше.</p>
+            {% endif %}
+        </section>
+
+        <section class="clan-search-chat-block" id="clanSearchChatBlock" data-user-id="{{ current_user.id if user_logged_in else '' }}">
+            <h2>Общий чат</h2>
+            <div class="clan-search-chat-messages" id="clanSearchChatMessages">
+                <div class="clan-search-chat-empty">Загрузка…</div>
+            </div>
+            <div class="clan-search-chat-load-more" id="clanSearchChatLoadMore" style="display: none;">
+                <button type="button" id="clanSearchChatLoadMoreBtn">Загрузить старые сообщения</button>
+            </div>
+            {% if user_logged_in %}
+            <div class="clan-search-chat-form">
+                <input type="text" id="clanSearchChatInput" placeholder="Сообщение (до 100 символов)…" maxlength="100" autocomplete="off">
+                <button type="button" id="clanSearchChatSendBtn">Отправить</button>
+            </div>
+            <p class="clan-search-chat-hint">Не чаще одного сообщения в 5 минут. До 100 символов.</p>
+            {% else %}
+            <p class="clan-search-chat-hint">Войдите, чтобы писать в чат.</p>
+            {% endif %}
+        </section>
+    </div>
+</div>
+
+<!-- Модальное окно: сообщение об ограничении чата (5 мин) -->
+<div class="clan-search-modal-overlay clan-search-chat-error-modal" id="clanSearchChatErrorModal">
+    <div class="clan-search-modal-box">
+        <h3>Общий чат</h3>
+        <p id="clanSearchChatErrorModalText">Не чаще одного сообщения в 5 минут. Подождите указанное время.</p>
+        <div class="clan-search-modal-buttons">
+            <button type="button" class="clan-search-modal-confirm" id="clanSearchChatErrorModalOk">Понятно</button>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно: подача заявки в клан -->
+<div class="clan-search-modal-overlay" id="clanSearchApplyModal">
+    <div class="clan-search-modal-box">
+        <h3 id="clanSearchApplyModalTitle">Подать заявку в клан</h3>
+        <label for="clanSearchApplyMessage">Сообщение владельцу клана (необязательно, до 100 символов)</label>
+        <textarea id="clanSearchApplyMessage" maxlength="100" rows="3" placeholder="Напишите, почему хотите вступить в клан…"></textarea>
+        <span class="modal-char-count" id="clanSearchApplyMessageCount">0 / 100</span>
+        <div class="clan-search-modal-error" id="clanSearchApplyError"></div>
+        <div class="clan-search-modal-buttons">
+            <button type="button" class="clan-search-modal-cancel" id="clanSearchApplyCancel">Отмена</button>
+            <button type="button" class="clan-search-modal-confirm" id="clanSearchApplyConfirm">Подать заявку</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    var nav = document.getElementById('clanSearchNav');
+    var burgerBtn = document.getElementById('clanSearchBurgerBtn');
+    if (nav && burgerBtn) {
+        function closeMenu() { nav.classList.remove('open'); }
+        function toggleMenu() { nav.classList.toggle('open'); }
+        burgerBtn.addEventListener('click', function(e) { e.stopPropagation(); toggleMenu(); });
+        var linksWrap = nav.querySelector('.clan-search-nav-links');
+        if (linksWrap) linksWrap.addEventListener('click', function(e) { e.stopPropagation(); });
+        nav.querySelectorAll('.clan-search-nav-links a').forEach(function(a) { a.addEventListener('click', closeMenu); });
+        document.addEventListener('click', closeMenu);
+    }
+})();
+(function() {
+    var adText = document.getElementById('clanSearchAdText');
+    var adCount = document.getElementById('clanSearchAdCount');
+    if (adText) {
+        function updateCount() { adCount.textContent = adText.value.length; }
+        adText.addEventListener('input', updateCount);
+        updateCount();
+    }
+    var btnPost = document.getElementById('clanSearchBtnPost');
+    if (btnPost) {
+        btnPost.addEventListener('click', function() {
+            var text = (adText && adText.value || '').trim();
+            if (text.length > 100) { alert('Текст не должен превышать 100 символов'); return; }
+            if (!text) { alert('Введите текст объявления'); return; }
+            btnPost.disabled = true;
+            fetch('{{ url_for("api_territory_clan_search_ad_post") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: text })
+            }).then(function(r) { return r.json().then(function(data) { return { ok: r.ok, data: data }; }); })
+            .then(function(res) {
+                btnPost.disabled = false;
+                if (res.ok && res.data.success) {
+                    location.reload();
+                } else {
+                    alert(res.data.error || 'Ошибка');
+                }
+            }).catch(function() { btnPost.disabled = false; alert('Ошибка сети'); });
+        });
+    }
+    var btnDelete = document.getElementById('clanSearchBtnDelete');
+    if (btnDelete) {
+        btnDelete.addEventListener('click', function() {
+            if (!confirm('Удалить объявление?')) return;
+            btnDelete.disabled = true;
+            fetch('{{ url_for("api_territory_clan_search_ad_delete") }}', {
+                method: 'DELETE',
+                headers: {}
+            }).then(function(r) { return r.json(); })
+            .then(function(data) {
+                btnDelete.disabled = false;
+                if (data.success) location.reload();
+                else alert(data.error || 'Ошибка');
+            }).catch(function() { btnDelete.disabled = false; alert('Ошибка сети'); });
+        });
+    }
+
+    var applyModal = document.getElementById('clanSearchApplyModal');
+    var applyMessage = document.getElementById('clanSearchApplyMessage');
+    var applyMessageCount = document.getElementById('clanSearchApplyMessageCount');
+    var applyTitle = document.getElementById('clanSearchApplyModalTitle');
+    var applyError = document.getElementById('clanSearchApplyError');
+    var applyCancel = document.getElementById('clanSearchApplyCancel');
+    var applyConfirm = document.getElementById('clanSearchApplyConfirm');
+    var applyClanId = null;
+
+    if (applyMessage) {
+        applyMessage.addEventListener('input', function() {
+            applyMessageCount.textContent = applyMessage.value.length + ' / 100';
+        });
+    }
+    function openApplyModal(clanId, clanName) {
+        applyClanId = clanId;
+        if (applyTitle) applyTitle.textContent = 'Подать заявку в клан «' + clanName + '»';
+        if (applyMessage) { applyMessage.value = ''; applyMessageCount.textContent = '0 / 100'; }
+        if (applyError) { applyError.classList.remove('show'); applyError.textContent = ''; }
+        if (applyModal) applyModal.classList.add('open');
+    }
+    function closeApplyModal() {
+        applyClanId = null;
+        if (applyModal) applyModal.classList.remove('open');
+    }
+    if (applyCancel) applyCancel.addEventListener('click', closeApplyModal);
+    if (applyModal) {
+        applyModal.addEventListener('click', function(e) {
+            if (e.target === applyModal) closeApplyModal();
+        });
+    }
+    if (applyConfirm) {
+        applyConfirm.addEventListener('click', function() {
+            var message = (applyMessage && applyMessage.value || '').trim();
+            if (applyMessage && applyMessage.value.length > 100) {
+                if (applyError) { applyError.textContent = 'Не более 100 символов'; applyError.classList.add('show'); }
+                return;
+            }
+            if (applyError) { applyError.classList.remove('show'); applyError.textContent = ''; }
+            applyConfirm.disabled = true;
+            fetch('{{ url_for("api_clan_join_request") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clan_id: applyClanId, message: message || null })
+            }).then(function(r) { return r.json().then(function(data) { return { ok: r.ok, status: r.status, data: data }; }); })
+            .then(function(res) {
+                applyConfirm.disabled = false;
+                if (res.ok && res.data.success) {
+                    closeApplyModal();
+                    location.reload();
+                } else {
+                    if (applyError) {
+                        applyError.textContent = res.data.error || 'Ошибка';
+                        applyError.classList.add('show');
+                    } else {
+                        alert(res.data.error || 'Ошибка');
+                    }
+                }
+            }).catch(function() { applyConfirm.disabled = false; if (applyError) { applyError.textContent = 'Ошибка сети'; applyError.classList.add('show'); } });
+        });
+    }
+
+    document.querySelectorAll('.clan-search-ad-actions .btn-apply').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var cid = parseInt(btn.getAttribute('data-clan-id'), 10);
+            var cname = btn.getAttribute('data-clan-name') || '';
+            if (cid) openApplyModal(cid, cname);
+        });
+    });
+})();
+
+(function() {
+    var container = document.getElementById('clanSearchChatMessages');
+    var loadMoreWrap = document.getElementById('clanSearchChatLoadMore');
+    var loadMoreBtn = document.getElementById('clanSearchChatLoadMoreBtn');
+    var input = document.getElementById('clanSearchChatInput');
+    var sendBtn = document.getElementById('clanSearchChatSendBtn');
+    var block = document.getElementById('clanSearchChatBlock');
+    if (!container) return;
+    var chatUrl = '{{ url_for("api_territory_clan_search_chat_list") }}';
+    var currentUserId = (block && block.getAttribute('data-user-id')) ? parseInt(block.getAttribute('data-user-id'), 10) : 0;
+    var chatMessages = [];
+    var hasMore = false;
+    var loading = false;
+    var loadingMore = false;
+
+    function formatTime(iso) {
+        if (!iso) return '';
+        var d = new Date(iso);
+        return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' +
+            d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    }
+    function escapeHtml(s) {
+        if (!s) return '';
+        var div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+    }
+    function msgToHtml(m) {
+        var ownClass = (m.user_id === currentUserId) ? ' clan-search-chat-msg-own' : '';
+        return '<div class="clan-search-chat-msg' + ownClass + '" data-id="' + m.id + '">' +
+            '<span class="chat-author">' + escapeHtml(m.author_name) + '</span>' +
+            '<span class="chat-time">' + escapeHtml(formatTime(m.created_at)) + '</span>' +
+            '<div class="chat-text">' + escapeHtml(m.text) + '</div></div>';
+    }
+    function renderAll() {
+        if (chatMessages.length === 0) {
+            container.innerHTML = '<div class="clan-search-chat-empty">Пока нет сообщений. Напишите первым!</div>';
+        } else {
+            container.innerHTML = chatMessages.map(msgToHtml).join('');
+            container.scrollTop = container.scrollHeight;
+        }
+    }
+    function appendMessages(newMsgs) {
+        if (!newMsgs || newMsgs.length === 0) return;
+        var wasAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 30;
+        var emptyEl = container.querySelector('.clan-search-chat-empty');
+        if (emptyEl) {
+            container.innerHTML = newMsgs.map(msgToHtml).join('');
+        } else {
+            newMsgs.forEach(function(m) {
+                container.insertAdjacentHTML('beforeend', msgToHtml(m));
+            });
+        }
+        if (wasAtBottom) container.scrollTop = container.scrollHeight;
+    }
+    function loadChat(appendNewOnly) {
+        if (appendNewOnly) {
+            if (chatMessages.length === 0) return;
+            var newestId = chatMessages[chatMessages.length - 1].id;
+            fetch(chatUrl + '?after_id=' + newestId)
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success && data.messages && data.messages.length > 0) {
+                        data.messages.forEach(function(m) { chatMessages.push(m); });
+                        appendMessages(data.messages);
+                    }
+                });
+            return;
+        }
+        if (loading) return;
+        loading = true;
+        fetch(chatUrl + '?limit=20')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                loading = false;
+                if (data.success) {
+                    chatMessages = data.messages || [];
+                    hasMore = !!data.has_more;
+                    renderAll();
+                    if (loadMoreWrap) loadMoreWrap.style.display = hasMore ? 'block' : 'none';
+                } else {
+                    container.innerHTML = '<div class="clan-search-chat-empty">Не удалось загрузить сообщения</div>';
+                }
+            })
+            .catch(function() {
+                loading = false;
+                container.innerHTML = '<div class="clan-search-chat-empty">Не удалось загрузить сообщения</div>';
+            });
+    }
+    function loadMore() {
+        if (loadingMore || !hasMore || chatMessages.length === 0) return;
+        var oldestId = chatMessages[0].id;
+        loadingMore = true;
+        if (loadMoreBtn) loadMoreBtn.disabled = true;
+        fetch(chatUrl + '?before_id=' + oldestId + '&limit=20')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                loadingMore = false;
+                if (loadMoreBtn) loadMoreBtn.disabled = false;
+                if (data.success && data.messages && data.messages.length > 0) {
+                    hasMore = !!data.has_more;
+                    var oldScrollHeight = container.scrollHeight;
+                    var oldScrollTop = container.scrollTop;
+                    data.messages.reverse();
+                    data.messages.forEach(function(m) { chatMessages.unshift(m); });
+                    var emptyEl = container.querySelector('.clan-search-chat-empty');
+                    if (emptyEl) {
+                        container.innerHTML = data.messages.map(msgToHtml).join('');
+                    } else {
+                        var first = container.firstElementChild;
+                        data.messages.forEach(function(m) {
+                            container.insertAdjacentHTML('afterbegin', msgToHtml(m));
+                        });
+                    }
+                    container.scrollTop = container.scrollHeight - oldScrollHeight + oldScrollTop;
+                    if (loadMoreWrap) loadMoreWrap.style.display = hasMore ? 'block' : 'none';
+                } else {
+                    hasMore = false;
+                    if (loadMoreWrap) loadMoreWrap.style.display = 'none';
+                }
+            })
+            .catch(function() {
+                loadingMore = false;
+                if (loadMoreBtn) loadMoreBtn.disabled = false;
+            });
+    }
+    var chatErrorModal = document.getElementById('clanSearchChatErrorModal');
+    var chatErrorModalText = document.getElementById('clanSearchChatErrorModalText');
+    var chatErrorModalOk = document.getElementById('clanSearchChatErrorModalOk');
+    function showChatErrorModal(message) {
+        if (chatErrorModalText) chatErrorModalText.textContent = message || 'Не чаще одного сообщения в 5 минут. Подождите указанное время.';
+        if (chatErrorModal) chatErrorModal.classList.add('open');
+    }
+    function closeChatErrorModal() {
+        if (chatErrorModal) chatErrorModal.classList.remove('open');
+    }
+    if (chatErrorModalOk) chatErrorModalOk.addEventListener('click', closeChatErrorModal);
+    if (chatErrorModal) chatErrorModal.addEventListener('click', function(e) {
+        if (e.target === chatErrorModal) closeChatErrorModal();
+    });
+
+    function sendMessage() {
+        var text = (input && input.value || '').trim();
+        if (!text) return;
+        if (sendBtn) sendBtn.disabled = true;
+        fetch('{{ url_for("api_territory_clan_search_chat_send") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: text })
+        })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (sendBtn) sendBtn.disabled = false;
+                if (data.success && data.message) {
+                    input.value = '';
+                    chatMessages.push(data.message);
+                    appendMessages([data.message]);
+                } else {
+                    showChatErrorModal(data.error || 'Ошибка отправки');
+                }
+            })
+            .catch(function() {
+                if (sendBtn) sendBtn.disabled = false;
+                showChatErrorModal('Ошибка соединения');
+            });
+    }
+
+    loadChat();
+    setInterval(function() { loadChat(true); }, 10000);
+    if (loadMoreBtn) loadMoreBtn.addEventListener('click', loadMore);
+    container.addEventListener('scroll', function() {
+        if (container.scrollTop < 50 && hasMore && !loadingMore) loadMore();
+    });
+    if (sendBtn) sendBtn.addEventListener('click', sendMessage);
+    if (input) input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }
+    });
+})();
+</script>
+{% endblock %}

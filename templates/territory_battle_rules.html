@@ -153,14 +153,21 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     display: flex;
     align-items: center;
     justify-content: space-between;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 10px;
     margin-bottom: 24px;
 }
 .rules-nav-links {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 10px;
+    flex: 1;
+    justify-content: space-evenly;
+    min-width: 0;
+}
+.rules-nav-links a {
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 .rules-burger-btn {
     display: none;
@@ -246,6 +253,8 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         right: 0;
         margin-top: 8px;
         flex-direction: column;
+        flex: none;
+        justify-content: flex-start;
         min-width: 200px;
         background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
         border: 2px solid #5c4033;
@@ -382,8 +391,6 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
             <button type="button" class="rules-burger-btn" id="rulesBurgerBtn" aria-label="Меню">☰</button>
             <div class="rules-nav-links">
                 <a href="{{ url_for('territory_battle_page') }}">← Битва за территорию</a>
-                <a href="{{ url_for('game_rating_page', tab='clans') }}">Рейтинг</a>
-                <a href="{{ url_for('pvp_arena_page') }}">PvP Арена</a>
                 <a href="{{ url_for('cabinet') }}">Личный кабинет</a>
             </div>
         </nav>
