@@ -245,6 +245,35 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 .profile-info p { margin: 6px 0; }
 .profile-info strong { color: #d4a84b; }
 
+.profile-login-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.password-change-btn {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid #5c4033;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    color: #d4a84b;
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 0;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+
+.password-change-btn:hover {
+    color: #e8c86a;
+    border-color: #8b6914;
+}
+
 .stats-row { display: flex; gap: 20px; flex-wrap: wrap; }
 .stat-item {
     background: linear-gradient(145deg, #3d2914 0%, #2c1810 100%);
@@ -1031,6 +1060,46 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     color: #2c1810;
     font-family: inherit;
 }
+
+.modal-form-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.modal-form-row label {
+    font-weight: bold;
+    color: #3d2914;
+}
+
+.modal-form-row input {
+    padding: 12px 14px;
+    border-radius: 4px;
+    border: 2px solid #5c4033;
+    background: rgba(255,255,255,0.9);
+    flex: 1;
+}
+
+.modal-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.pw-toggle-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    border: 2px solid #5c4033;
+    background: linear-gradient(145deg, #5c4033 0%, #4a3520 100%);
+    color: #d4a84b;
+    cursor: pointer;
+    font-size: 1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
 .create-clan-form input, .create-clan-form label { display: block; margin: 8px 0; width: 100%; }
 .create-clan-form input[type="text"] {
     padding: 10px 14px;
@@ -1237,7 +1306,15 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                 {% endif %}
             </div>
             <div class="profile-info">
-                <p><strong>Логин:</strong> {{ user.username }}</p>
+                <p class="profile-login-row">
+                    <strong>Логин:</strong> {{ user.username }}
+                    <button type="button"
+                            class="password-change-btn"
+                            id="openUserPasswordModalBtn"
+                            aria-label="Сменить пароль">
+                        🔑
+                    </button>
+                </p>
                 <p><strong>Имя персонажа:</strong> <span id="characterNameDisplay">{{ user.character_name or user.username }}</span> <button type="button" class="name-edit-btn" id="nameEditBtn" aria-label="Изменить имя">✏️</button></p>
                 <p><strong>Звание:</strong>
                     {% if user.clan_title == 'Бродяга' %}
@@ -1730,6 +1807,40 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         </div>
     </div>
 </div>
+
+<!-- Модальное окно смены пароля пользователя -->
+<div class="modal-overlay" id="userPasswordModal">
+    <div class="modal-box">
+        <h3>Сменить пароль</h3>
+        <form method="POST" action="{{ url_for('user_change_password') }}">
+            <div class="modal-form-row">
+                <label for="userPwCurrent">Текущий пароль</label>
+                <div class="modal-input-wrap">
+                    <input id="userPwCurrent" type="password" name="current_password" required autocomplete="current-password">
+                    <button type="button" class="pw-toggle-btn" data-target="userPwCurrent" aria-label="Показать пароль">👁</button>
+                </div>
+            </div>
+            <div class="modal-form-row">
+                <label for="userPwNew">Новый пароль</label>
+                <div class="modal-input-wrap">
+                    <input id="userPwNew" type="password" name="new_password" required minlength="6" autocomplete="new-password">
+                    <button type="button" class="pw-toggle-btn" data-target="userPwNew" aria-label="Показать пароль">👁</button>
+                </div>
+            </div>
+            <div class="modal-form-row">
+                <label for="userPwConfirm">Подтвердите пароль</label>
+                <div class="modal-input-wrap">
+                    <input id="userPwConfirm" type="password" name="new_password_confirm" required minlength="6" autocomplete="new-password">
+                    <button type="button" class="pw-toggle-btn" data-target="userPwConfirm" aria-label="Показать пароль">👁</button>
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button type="button" class="btn-cancel" onclick="closeUserPasswordModal()">Отмена</button>
+                <button type="submit" class="btn-confirm">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
 <!-- Модальное окно выхода из клана -->
 <div class="modal-overlay" id="leaveModal">
     <div class="modal-box">
@@ -1896,6 +2007,64 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         e.preventDefault();
         open();
     });
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            close();
+        }
+    });
+})();
+
+// Переключатели видимости паролей в модалке смены пароля
+(function() {
+    var buttons = document.querySelectorAll('.pw-toggle-btn');
+    if (!buttons.length) return;
+
+    buttons.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var targetId = btn.getAttribute('data-target');
+            if (!targetId) return;
+            var input = document.getElementById(targetId);
+            if (!input) return;
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.textContent = '🙈';
+                btn.setAttribute('aria-label', 'Скрыть пароль');
+            } else {
+                input.type = 'password';
+                btn.textContent = '👁';
+                btn.setAttribute('aria-label', 'Показать пароль');
+            }
+        });
+    });
+})();
+
+// Смена пароля пользователя (модальное окно)
+(function() {
+    var btn = document.getElementById('openUserPasswordModalBtn');
+    var modal = document.getElementById('userPasswordModal');
+    if (!btn || !modal) return;
+
+    function open() {
+        modal.style.display = 'flex';
+        modal.style.visibility = 'visible';
+        modal.classList.add('open');
+        var firstInput = modal.querySelector('input[name="current_password"]');
+        if (firstInput) firstInput.focus();
+    }
+
+    function close() {
+        modal.classList.remove('open');
+        modal.style.display = '';
+        modal.style.visibility = '';
+    }
+
+    window.closeUserPasswordModal = close;
+
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        open();
+    });
+
     modal.addEventListener('click', function(e) {
         if (e.target === modal) {
             close();

@@ -296,6 +296,27 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     flex-wrap: wrap;
     gap: 8px;
 }
+
+.territory-login-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 14px;
+    border-radius: 4px;
+    border: 1px solid #8b6914;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    color: #e8dcc4;
+    font-size: 0.9rem;
+    text-decoration: none;
+    cursor: pointer;
+    font-family: inherit;
+    margin-left: 8px;
+}
+
+.territory-login-button:hover {
+    color: #fff;
+    border-color: #d4a84b;
+}
 .territory-buff-icons {
     display: inline-flex;
     align-items: center;
@@ -1467,6 +1488,12 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         align-items: center;
         justify-content: center;
     }
+    .territory-login-button {
+        display: flex;
+        margin: 8px auto 0;
+        width: 100%;
+        max-width: 220px;
+    }
     .territory-map .region-label { font-size: 7px; }
     .territory-buff-icon { width: 20px; height: 20px; }
     .territory-buff-icons-clan { margin-top: 2px; }
@@ -1664,7 +1691,13 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         {% elif user_logged_in and not capture_enabled %}
         <span class="territory-registration-disabled">Захват областей отключён</span>
         {% else %}
-        <p class="territory-player-name" style="margin:0; flex:1;">Войдите, чтобы видеть профиль и участвовать</p>
+        <p class="territory-player-name" style="margin:0; flex:1;">
+            Войдите, чтобы видеть профиль и участвовать
+        </p>
+        <a href="{{ url_for('login', next=request.path) }}"
+           class="territory-login-button">
+            Войти
+        </a>
         {% endif %}
     </div>
 
@@ -2051,7 +2084,7 @@ window.territoryFocusProtection = (function() {
 })();
 
 (function() {
-    const MAX_STRENGTH = 1000;
+    const MAX_STRENGTH = 2000;
     const STRENGTH_STEP_SAME = 25;   // за правильный ответ своего класса
     const STRENGTH_STEP_OTHER = 25;  // уменьшение при правильном ответе чужого класса
 

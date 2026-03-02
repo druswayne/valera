@@ -215,9 +215,14 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     padding: 16px 18px;
     margin-bottom: 12px;
     display: flex;
-    align-items: flex-start;
-    gap: 14px;
+    flex-direction: column;
+    gap: 8px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.clan-search-ad-main {
+    display: flex;
+    align-items: center;
+    gap: 14px;
 }
 .clan-search-ad-flag {
     width: 48px;
@@ -254,6 +259,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 }
 .clan-search-ad-actions {
     flex-shrink: 0;
+    margin-left: auto;
 }
 .clan-search-ad-actions .btn-apply {
     padding: 8px 16px;
@@ -286,6 +292,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     color: #b8a088;
     padding: 24px;
     font-style: italic;
+    display: block;
 }
 
 /* Блок объявлений с пагинацией */
@@ -578,28 +585,30 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
             <div id="clanSearchAdsList">
                 {% for ad in ads %}
                 <div class="clan-search-ad-card" data-clan-id="{{ ad.clan_id }}">
-                    {% if ad.flag_url %}
-                    <img src="{{ ad.flag_url }}" alt="" class="clan-search-ad-flag">
-                    {% else %}
-                    <div class="clan-search-ad-flag-placeholder">🏴</div>
-                    {% endif %}
-                    <div class="clan-search-ad-body">
-                        <div class="clan-search-ad-clan-name">{{ ad.clan_name }}</div>
-                        <div class="clan-search-ad-text">{{ ad.text }}</div>
-                    </div>
-                    <div class="clan-search-ad-actions">
-                        {% if user_logged_in %}
-                            {% if user_has_no_clan %}
-                                {% if pending_request_clan_id == ad.clan_id %}
-                                <span class="clan-search-ad-pending">Заявка подана</span>
-                                {% else %}
-                                <button type="button" class="btn-apply" data-clan-id="{{ ad.clan_id }}" data-clan-name="{{ ad.clan_name | e }}">Подать заявку</button>
-                                {% endif %}
-                            {% endif %}
+                    <div class="clan-search-ad-main">
+                        {% if ad.flag_url %}
+                        <img src="{{ ad.flag_url }}" alt="" class="clan-search-ad-flag">
                         {% else %}
-                        <span class="clan-search-ad-pending">Войдите, чтобы подать заявку</span>
+                        <div class="clan-search-ad-flag-placeholder">🏴</div>
                         {% endif %}
+                        <div class="clan-search-ad-body">
+                            <div class="clan-search-ad-clan-name">{{ ad.clan_name }}</div>
+                        </div>
+                        <div class="clan-search-ad-actions">
+                            {% if user_logged_in %}
+                                {% if user_has_no_clan %}
+                                    {% if pending_request_clan_id == ad.clan_id %}
+                                    <span class="clan-search-ad-pending">Заявка подана</span>
+                                    {% else %}
+                                    <button type="button" class="btn-apply" data-clan-id="{{ ad.clan_id }}" data-clan-name="{{ ad.clan_name | e }}">Подать заявку</button>
+                                    {% endif %}
+                                {% endif %}
+                            {% else %}
+                            <span class="clan-search-ad-pending">Войдите, чтобы подать заявку</span>
+                            {% endif %}
+                        </div>
                     </div>
+                    <div class="clan-search-ad-text">{{ ad.text }}</div>
                 </div>
                 {% endfor %}
             </div>
