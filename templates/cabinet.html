@@ -1940,6 +1940,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         <div id="shopItemModalImageWrap"></div>
         <p id="shopItemModalDesc" style="margin: 12px 0; color: #2c1810;"></p>
         <p id="shopItemModalAction" style="margin: 6px 0 0; font-size: 0.9rem; color: #5c4033; display: none;"></p>
+        <p id="shopItemModalDuration" style="margin: 4px 0 0; font-size: 0.9rem; color: #5c4033; display: none;"></p>
         <p class="item-price" id="shopItemModalPrice"></p>
         <div class="modal-buttons">
             <button type="button" class="btn-cancel" id="shopItemModalClose">Закрыть</button>
@@ -1954,6 +1955,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         <h3 id="inventoryItemModalTitle">Предмет</h3>
         <div id="inventoryItemModalImageWrap"></div>
         <p id="inventoryItemModalDesc" class="inventory-item-desc"></p>
+        <p id="inventoryItemModalDuration" class="inventory-item-duration" style="margin: 4px 0 10px; font-size: 0.9rem; color: #5c4033; display: none;"></p>
         <div id="inventoryItemClanWrap" class="inventory-item-region-wrap" style="display: none;">
             <label for="inventoryItemClanSelect">Клан для применения:</label>
             <select id="inventoryItemClanSelect"></select>
@@ -3430,6 +3432,7 @@ var CURRENT_USER_ID = {{ user.id }};
     var inventoryItemModalTitle = document.getElementById('inventoryItemModalTitle');
     var inventoryItemModalImageWrap = document.getElementById('inventoryItemModalImageWrap');
     var inventoryItemModalDesc = document.getElementById('inventoryItemModalDesc');
+    var inventoryItemModalDuration = document.getElementById('inventoryItemModalDuration');
     var inventoryItemClanWrap = document.getElementById('inventoryItemClanWrap');
     var inventoryItemClanSelect = document.getElementById('inventoryItemClanSelect');
     var inventoryItemRegionWrap = document.getElementById('inventoryItemRegionWrap');
@@ -3478,6 +3481,16 @@ var CURRENT_USER_ID = {{ user.id }};
                     inventoryItemModalImageWrap.appendChild(ph);
                 }
                 inventoryItemModalDesc.textContent = item.description || '—';
+                if (inventoryItemModalDuration) {
+                    var durs = (item.effects || []).map(function(e) { return e.duration_minutes; }).filter(function(v) { return v !== null && v !== undefined; });
+                    if (durs.length) {
+                        var maxDur = Math.max.apply(null, durs);
+                        inventoryItemModalDuration.textContent = 'Длительность: ' + maxDur + ' мин';
+                        inventoryItemModalDuration.style.display = 'block';
+                    } else {
+                        inventoryItemModalDuration.style.display = 'none';
+                    }
+                }
                 var targets = (item.effects || []).map(function(e) { return e.target; }).filter(Boolean);
                 var needClan = targets.indexOf('clan') !== -1;
                 var needRegion = targets.indexOf('region') !== -1;
@@ -3569,6 +3582,7 @@ var CURRENT_USER_ID = {{ user.id }};
     var shopItemModalImageWrap = document.getElementById('shopItemModalImageWrap');
     var shopItemModalDesc = document.getElementById('shopItemModalDesc');
     var shopItemModalAction = document.getElementById('shopItemModalAction');
+    var shopItemModalDuration = document.getElementById('shopItemModalDuration');
     var shopItemModalPrice = document.getElementById('shopItemModalPrice');
     var shopItemModalBuy = document.getElementById('shopItemModalBuy');
     var shopItemModalClose = document.getElementById('shopItemModalClose');
@@ -3608,6 +3622,16 @@ var CURRENT_USER_ID = {{ user.id }};
                     shopItemModalAction.style.display = 'block';
                 } else {
                     shopItemModalAction.style.display = 'none';
+                }
+                if (shopItemModalDuration) {
+                    var durs2 = (item.effects || []).map(function(e) { return e.duration_minutes; }).filter(function(v) { return v !== null && v !== undefined; });
+                    if (durs2.length) {
+                        var maxDur2 = Math.max.apply(null, durs2);
+                        shopItemModalDuration.textContent = 'Длительность: ' + maxDur2 + ' мин';
+                        shopItemModalDuration.style.display = 'block';
+                    } else {
+                        shopItemModalDuration.style.display = 'none';
+                    }
                 }
                 shopItemModalPrice.textContent = item.price + ' Нумов';
                 var balance = getBalance();

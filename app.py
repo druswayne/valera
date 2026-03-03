@@ -152,7 +152,7 @@ CLAN_GIF_FLAG_PRICE = 100_000
 CLAN_RENAME_PRICE = 100_000
 
 # Максимальное число участников клана по умолчанию (включая создателя)
-CLAN_DEFAULT_MAX_MEMBERS = 15
+CLAN_DEFAULT_MAX_MEMBERS = 10
 
 # Стоимость одного дополнительного места в клане (в Нумах)
 CLAN_EXTRA_SLOT_PRICE = 50_000
@@ -681,6 +681,39 @@ class UserShopPurchase(db.Model):
     user = db.relationship('User', backref=db.backref('shop_purchases', lazy=True))
     shop_item = db.relationship('ShopItem', backref=db.backref('purchases', lazy=True))
 
+
+DEFAULT_TERRITORY_SHOP_ITEM_NAMES = [
+    'Приём: крепкий удар',
+    'Импульс энергии',
+    'Талант чемпиона',
+    'Стойка защитника',
+    'Чутьё на трофеи',
+]
+
+
+def grant_default_territory_shop_items(user: 'User') -> None:
+    """
+    Выдать пользователю стартовый набор способностей лавки битвы за территорию.
+    Если какие-то покупки уже есть, дубликаты не создаются.
+    """
+    if not user or not user.id:
+        return
+    items = (
+        ShopItem.query.filter(
+            ShopItem.shop_context == SHOP_CONTEXT_TERRITORY,
+            ShopItem.name.in_(DEFAULT_TERRITORY_SHOP_ITEM_NAMES),
+        ).all()
+    )
+    if not items:
+        return
+    existing_ids = {
+        p.shop_item_id
+        for p in UserShopPurchase.query.filter_by(user_id=user.id).all()
+    }
+    for item in items:
+        if item.id in existing_ids:
+            continue
+        db.session.add(UserShopPurchase(user_id=user.id, shop_item_id=item.id))
 
 class ActiveItemBuff(db.Model):
     """Активное улучшение от использованного предмета (с длительностью или разовое).
@@ -2009,6 +2042,8 @@ def register():
         user = User(username=username, character_name=character_name or username)
         user.set_password(password)
         db.session.add(user)
+        db.session.flush()
+        grant_default_territory_shop_items(user)
         db.session.commit()
         login_user(user)
         flash('Регистрация успешна! Добро пожаловать.', 'info')
