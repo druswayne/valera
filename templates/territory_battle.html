@@ -722,6 +722,9 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 }
 .territory-buff-detail-image { margin: 10px 0; }
 .territory-buff-detail-image img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 2px solid #5c4033; }
+.region-structure-logo-wrap { transition: opacity 0.2s; }
+.region-structure-logo-wrap:hover { opacity: 0.9; }
+.region-structure-logo-wrap:active { opacity: 0.8; }
 .territory-buff-detail-time { font-size: 0.9rem; color: #b8a088; margin-top: 8px; }
 .region-buff-icons image { cursor: pointer; }
 .territory-map .region-buff-icons image,
@@ -1176,6 +1179,134 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 .territory-confirm-no:hover {
     background: linear-gradient(180deg, #d4c0a8 0%, #b8a088 100%);
     transform: translateY(-1px);
+}
+
+.territory-structure-block,
+.territory-structure-info-block {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(92,64,51,0.3);
+}
+.territory-structure-block-header {
+    margin-bottom: 10px;
+    text-align: center;
+}
+.territory-structure-block-title {
+    display: block;
+    font-weight: bold;
+    font-family: 'Cinzel', Georgia, serif;
+    color: #3d2914;
+    font-size: 1rem;
+}
+.territory-structure-block-desc {
+    display: block;
+    font-size: 0.8rem;
+    color: #6b5344;
+    margin-top: 2px;
+}
+.territory-structure-build-btn {
+    width: 100%;
+    margin-bottom: 4px;
+}
+.territory-structure-choice {
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.territory-structure-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 12px 14px;
+    text-align: left;
+    border: 2px solid #5c4033;
+    border-radius: 6px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.7) 0%, rgba(232,213,163,0.5) 100%);
+    color: #2c1810;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+}
+.territory-structure-card:hover {
+    border-color: #8b6914;
+    box-shadow: 0 2px 12px rgba(139,105,20,0.25);
+    transform: translateY(-1px);
+}
+.territory-structure-card:active {
+    transform: translateY(0);
+}
+.territory-structure-card-icon {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    border-radius: 4px;
+    background: rgba(61,41,20,0.08);
+}
+.territory-structure-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+.territory-structure-card-name {
+    font-weight: bold;
+    font-family: 'Cinzel', Georgia, serif;
+    color: #3d2914;
+}
+.territory-structure-card-income {
+    font-size: 0.9rem;
+    color: #2d5016;
+}
+.territory-structure-card-cost {
+    font-size: 0.85rem;
+    color: #6b5344;
+}
+.territory-structure-info-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    background: rgba(61,41,20,0.06);
+    border-radius: 6px;
+    border: 1px solid rgba(92,64,51,0.2);
+}
+.territory-structure-info-icon {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+    border-radius: 4px;
+}
+.territory-structure-info-text {
+    flex: 1;
+    min-width: 0;
+}
+.territory-structure-info-label {
+    display: block;
+    font-weight: bold;
+    font-family: 'Cinzel', Georgia, serif;
+    color: #3d2914;
+    margin-bottom: 6px;
+}
+.territory-structure-next-payout {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #5c4033;
+    line-height: 1.35;
+}
+.territory-structure-destroy-btn {
+    width: 100%;
+    background: linear-gradient(180deg, rgba(160,60,60,0.15) 0%, rgba(140,50,50,0.2) 100%);
+    color: #8b2020;
+    border-color: rgba(139,32,32,0.5);
+}
+.territory-structure-destroy-btn:hover {
+    background: linear-gradient(180deg, rgba(180,70,70,0.25) 0%, rgba(160,50,50,0.3) 100%);
+    border-color: #8b2020;
 }
 
 .territory-clan-marker-block {
@@ -1827,6 +1958,49 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                     <button type="button" class="territory-clan-marker-btn territory-clan-marker-clear" id="territoryClanMarkerClear" title="Убрать метку">Убрать метку</button>
                 </div>
             </div>
+            <div class="territory-structure-block" id="territoryStructureBuildBlock" style="display: none;">
+                <div class="territory-structure-block-header">
+                    <span class="territory-structure-block-title">Сооружения</span>
+                    <span class="territory-structure-block-desc">Доход лидеру клана каждые два часа</span>
+                </div>
+                <button type="button" class="territory-clan-marker-btn territory-structure-build-btn" id="territoryStructureBuildBtn">🏗 Выбрать тип постройки</button>
+                <div class="territory-structure-choice" id="territoryStructureChoice" style="display: none;">
+                    <button type="button" class="territory-structure-card territory-structure-type-btn" data-type="village" data-cost="4000" data-income="500">
+                        <img class="territory-structure-card-icon" src="{{ url_for('static', filename='village.png') }}" alt="" width="40" height="40">
+                        <div class="territory-structure-card-body">
+                            <span class="territory-structure-card-name">Деревня</span>
+                            <span class="territory-structure-card-income">+500 Нум каждые 2 ч</span>
+                            <span class="territory-structure-card-cost">Стоимость: 4 000 Нум</span>
+                        </div>
+                    </button>
+                    <button type="button" class="territory-structure-card territory-structure-type-btn" data-type="fortress" data-cost="7000" data-income="1000">
+                        <img class="territory-structure-card-icon" src="{{ url_for('static', filename='fortress.png') }}" alt="" width="40" height="40">
+                        <div class="territory-structure-card-body">
+                            <span class="territory-structure-card-name">Крепость</span>
+                            <span class="territory-structure-card-income">+1 000 Нум каждые 2 ч</span>
+                            <span class="territory-structure-card-cost">Стоимость: 7 000 Нум</span>
+                        </div>
+                    </button>
+                    <button type="button" class="territory-structure-card territory-structure-type-btn" data-type="castle" data-cost="10000" data-income="2000">
+                        <img class="territory-structure-card-icon" src="{{ url_for('static', filename='castle.png') }}" alt="" width="40" height="40">
+                        <div class="territory-structure-card-body">
+                            <span class="territory-structure-card-name">Замок</span>
+                            <span class="territory-structure-card-income">+2 000 Нум каждые 2 ч</span>
+                            <span class="territory-structure-card-cost">Стоимость: 10 000 Нум</span>
+                        </div>
+                    </button>
+                </div>
+            </div>
+            <div class="territory-structure-info-block" id="territoryStructureInfoBlock" style="display: none;">
+                <div class="territory-structure-info-header">
+                    <img class="territory-structure-info-icon" id="territoryStructureInfoIcon" src="" alt="" width="36" height="36">
+                    <div class="territory-structure-info-text">
+                        <span class="territory-structure-info-label" id="territoryStructureInfoLabel"></span>
+                        <p class="territory-structure-next-payout" id="territoryStructureNextPayout"></p>
+                    </div>
+                </div>
+                <button type="button" class="territory-clan-marker-btn territory-structure-destroy-btn" id="territoryStructureDestroyBtn">🗑 Разрушить строение</button>
+            </div>
             {% endif %}
         </div>
     </div>
@@ -1968,6 +2142,17 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         <p id="territoryBuffDetailDesc"></p>
         <p id="territoryBuffDetailTime" class="territory-buff-detail-time"></p>
         <button type="button" class="territory-description-popover-close" id="territoryBuffDetailClose">Закрыть</button>
+    </div>
+</div>
+
+<div class="territory-description-popover-overlay" id="territoryStructurePopover">
+    <div class="territory-description-popover">
+        <h4 id="territoryStructurePopoverTitle"></h4>
+        <div id="territoryStructurePopoverImageWrap" class="territory-buff-detail-image"></div>
+        <p id="territoryStructurePopoverRegion"></p>
+        <p id="territoryStructurePopoverIncome"></p>
+        <p id="territoryStructurePopoverNext" class="territory-buff-detail-time"></p>
+        <button type="button" class="territory-description-popover-close" id="territoryStructurePopoverClose">Закрыть</button>
     </div>
 </div>
 
@@ -2127,7 +2312,9 @@ window.territoryFocusProtection = (function() {
         state.regions.push({
             ownerId: st.owner_clan_id !== undefined ? st.owner_clan_id : (st.owner_class_id !== undefined ? st.owner_class_id : null),
             strength: st.strength || 0,
-            isLocked: isLocked
+            isLocked: isLocked,
+            structureType: st.structure_type || null,
+            lastPayoutAt: st.last_payout_at || null
         });
         const g = regionElements[i];
         if (g) {
@@ -2574,6 +2761,57 @@ window.territoryFocusProtection = (function() {
         if (overlay) overlay.addEventListener('click', function(e) { if (e.target === overlay) hide(); });
     })();
 
+    (function initStructurePopover() {
+        var overlay = document.getElementById('territoryStructurePopover');
+        var titleEl = document.getElementById('territoryStructurePopoverTitle');
+        var imageWrap = document.getElementById('territoryStructurePopoverImageWrap');
+        var regionEl = document.getElementById('territoryStructurePopoverRegion');
+        var incomeEl = document.getElementById('territoryStructurePopoverIncome');
+        var nextEl = document.getElementById('territoryStructurePopoverNext');
+        var closeBtn = document.getElementById('territoryStructurePopoverClose');
+        function hide() { if (overlay) overlay.classList.remove('show'); }
+        function showForRegion(regionId) {
+            var r = state.regions[regionId];
+            if (!r || !r.structureType) return;
+            var names = { village: 'Деревня', fortress: 'Крепость', castle: 'Замок' };
+            var incomes = { village: '500', fortress: '1 000', castle: '2 000' };
+            var icons = {
+                village: '{{ url_for("static", filename="village.png") }}',
+                fortress: '{{ url_for("static", filename="fortress.png") }}',
+                castle: '{{ url_for("static", filename="castle.png") }}'
+            };
+            if (titleEl) titleEl.textContent = names[r.structureType] || r.structureType;
+            if (imageWrap) imageWrap.innerHTML = icons[r.structureType] ? '<img src="' + (icons[r.structureType] || '').replace(/"/g, '&quot;') + '" alt="" width="64" height="64">' : '';
+            if (regionEl) regionEl.textContent = 'Область: ' + getRegionDisplayName(regionId);
+            if (incomeEl) incomeEl.textContent = '+' + (incomes[r.structureType] || '0') + ' Нум каждые 2 ч';
+            if (nextEl && r.lastPayoutAt) {
+                var twoHoursMs = 2 * 60 * 60 * 1000;
+                var last = new Date(r.lastPayoutAt).getTime();
+                var now = Date.now();
+                var next = last + twoHoursMs;
+                while (next <= now) next += twoHoursMs;
+                var sec = Math.max(0, Math.ceil((next - now) / 1000));
+                var m = Math.floor(sec / 60);
+                var s = sec % 60;
+                nextEl.textContent = 'До начисления: ' + m + ' мин ' + s + ' сек';
+            } else if (nextEl) nextEl.textContent = 'До начисления: ~2 ч';
+            if (overlay) overlay.classList.add('show');
+        }
+        var layer = document.getElementById('regionOverlaysLayer');
+        if (layer) {
+            layer.addEventListener('click', function(e) {
+                var wrap = e.target.closest('.region-structure-logo-wrap');
+                if (!wrap) return;
+                e.preventDefault();
+                e.stopPropagation();
+                var regionId = parseInt(wrap.getAttribute('data-region-id'), 10);
+                if (!isNaN(regionId)) showForRegion(regionId);
+            });
+        }
+        if (closeBtn) closeBtn.addEventListener('click', hide);
+        if (overlay) overlay.addEventListener('click', function(e) { if (e.target === overlay) hide(); });
+    })();
+
     (function initHoverLabelLayer() {
         const layer = document.getElementById('hoverLabelLayer');
         const svg = document.getElementById('territoryMap');
@@ -2889,6 +3127,46 @@ window.territoryFocusProtection = (function() {
                 strengthBgEl.setAttribute('height', Math.max(1, strengthBBox.height) + strengthPad * 2);
             }
         }
+
+        var structWrap = overlay ? overlay.querySelector('.region-structure-logo-wrap') : null;
+        var structImg = structWrap ? structWrap.querySelector('.region-structure-img') : null;
+        var cx = overlay && flag ? parseFloat(flag.getAttribute('cx')) : 0;
+        var cy = overlay && flag ? parseFloat(flag.getAttribute('cy')) : 0;
+        var structureLogoSize = 16;
+        var nameBlockTopApprox = cy - 28;
+        var gapBetweenLogoAndBlock = 2;
+        var structureLogoBottomY = nameBlockTopApprox - gapBetweenLogoAndBlock;
+        var structureLogoX = cx - structureLogoSize / 2;
+        var structureLogoY = structureLogoBottomY - structureLogoSize;
+        if (r.structureType === 'village' || r.structureType === 'fortress' || r.structureType === 'castle') {
+            var imgUrl = '{{ url_for("static", filename="village.png") }}';
+            if (r.structureType === 'fortress') imgUrl = '{{ url_for("static", filename="fortress.png") }}';
+            if (r.structureType === 'castle') imgUrl = '{{ url_for("static", filename="castle.png") }}';
+            if (!structWrap && overlay) {
+                structWrap = document.createElementNS(overlay.ownerDocument.namespaceURI || 'http://www.w3.org/2000/svg', 'g');
+                structWrap.setAttribute('class', 'region-structure-logo-wrap');
+                structWrap.setAttribute('data-region-id', String(regionId));
+                structWrap.setAttribute('pointer-events', 'auto');
+                structWrap.style.cursor = 'pointer';
+                structImg = document.createElementNS(overlay.ownerDocument.namespaceURI || 'http://www.w3.org/2000/svg', 'image');
+                structImg.setAttribute('class', 'region-structure-img');
+                structImg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+                structWrap.appendChild(structImg);
+                var first = overlay.firstChild;
+                if (first) overlay.insertBefore(structWrap, first);
+                else overlay.appendChild(structWrap);
+            }
+            if (structWrap && structImg) {
+                structImg.setAttribute('href', imgUrl);
+                structImg.setAttribute('x', structureLogoX);
+                structImg.setAttribute('y', structureLogoY);
+                structImg.setAttribute('width', structureLogoSize);
+                structImg.setAttribute('height', structureLogoSize);
+                structWrap.setAttribute('visibility', 'visible');
+            }
+        } else if (structWrap) {
+            structWrap.setAttribute('visibility', 'hidden');
+        }
     }
 
     function renderGlobalProgress() {
@@ -2948,11 +3226,56 @@ window.territoryFocusProtection = (function() {
         var defendBtn = document.getElementById('territoryClanMarkerDefend');
         if (attackBtn) attackBtn.style.display = isOwn ? 'none' : '';
         if (defendBtn) defendBtn.style.display = isOwn ? '' : 'none';
+        var buildBlock = document.getElementById('territoryStructureBuildBlock');
+        var infoBlock = document.getElementById('territoryStructureInfoBlock');
+        var choiceDiv = document.getElementById('territoryStructureChoice');
+        if (choiceDiv) choiceDiv.style.display = 'none';
+        if (buildBlock) buildBlock.style.display = isClanOwner && isOwn ? 'block' : 'none';
+        if (infoBlock) infoBlock.style.display = 'none';
+        if (isClanOwner && isOwn && r && r.structureType) {
+            if (infoBlock) {
+                infoBlock.style.display = 'block';
+                var names = { village: 'Деревня', fortress: 'Крепость', castle: 'Замок' };
+                var icons = {
+                    village: '{{ url_for("static", filename="village.png") }}',
+                    fortress: '{{ url_for("static", filename="fortress.png") }}',
+                    castle: '{{ url_for("static", filename="castle.png") }}'
+                };
+                document.getElementById('territoryStructureInfoLabel').textContent = names[r.structureType] || r.structureType;
+                var iconEl = document.getElementById('territoryStructureInfoIcon');
+                if (iconEl && icons[r.structureType]) iconEl.src = icons[r.structureType];
+                var nextPayoutEl = document.getElementById('territoryStructureNextPayout');
+                function updateStructureCountdown() {
+                    if (!nextPayoutEl || !r.lastPayoutAt) return;
+                    var twoHoursMs = 2 * 60 * 60 * 1000;
+                    var last = new Date(r.lastPayoutAt).getTime();
+                    var now = Date.now();
+                    var next = last + twoHoursMs;
+                    while (next <= now) {
+                        next += twoHoursMs;
+                    }
+                    var sec = Math.max(0, Math.ceil((next - now) / 1000));
+                    var m = Math.floor(sec / 60);
+                    var s = sec % 60;
+                    nextPayoutEl.textContent = 'До начисления: ' + m + ' мин ' + s + ' сек';
+                }
+                updateStructureCountdown();
+                if (window._territoryStructureCountdownId) clearInterval(window._territoryStructureCountdownId);
+                window._territoryStructureCountdownId = setInterval(updateStructureCountdown, 1000);
+            }
+            if (buildBlock) buildBlock.style.display = 'none';
+        } else if (isClanOwner && isOwn && buildBlock) {
+            buildBlock.style.display = 'block';
+        }
         document.getElementById('territoryConfirmWrap').classList.add('open');
     }
 
     function closeConfirmModal() {
         _pendingConfirmRegionId = null;
+        if (window._territoryStructureCountdownId) {
+            clearInterval(window._territoryStructureCountdownId);
+            window._territoryStructureCountdownId = null;
+        }
         document.getElementById('territoryConfirmWrap').classList.remove('open');
     }
 
@@ -3248,6 +3571,70 @@ window.territoryFocusProtection = (function() {
     if (clanMarkerClearBtn) {
         clanMarkerClearBtn.addEventListener('click', function() {
             setClanMarkerAndRefresh(_pendingConfirmRegionId, null);
+        });
+    }
+
+    var territoryStructureBuildBtn = document.getElementById('territoryStructureBuildBtn');
+    var territoryStructureChoice = document.getElementById('territoryStructureChoice');
+    if (territoryStructureBuildBtn && territoryStructureChoice) {
+        territoryStructureBuildBtn.addEventListener('click', function() {
+            territoryStructureChoice.style.display = territoryStructureChoice.style.display === 'none' ? 'block' : 'none';
+        });
+    }
+    document.querySelectorAll('.territory-structure-type-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var regionId = _pendingConfirmRegionId;
+            var structureType = this.getAttribute('data-type');
+            var cost = parseInt(this.getAttribute('data-cost'), 10);
+            if (regionId === null || regionId === undefined) return;
+            fetch('{{ url_for("api_territory_battle_structure_build") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ region_index: regionId, structure_type: structureType })
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.success) {
+                    var reg = state.regions[regionId];
+                    if (reg) {
+                        reg.structureType = data.structure_type;
+                        reg.lastPayoutAt = data.last_payout_at;
+                    }
+                    for (var i = 0; i < state.regions.length; i++) updateRegionUI(i);
+                    if (territoryStructureChoice) territoryStructureChoice.style.display = 'none';
+                    closeConfirmModal();
+                    showToast('Сооружение построено', true);
+                    if (data.nums_balance !== undefined) {
+                        var numsEl = document.getElementById('playerCardNums');
+                        if (numsEl) numsEl.textContent = data.nums_balance;
+                    }
+                } else {
+                    showToast(data.error || 'Ошибка', false);
+                }
+            }).catch(function() { showToast('Ошибка сети', false); });
+        });
+    });
+    var territoryStructureDestroyBtn = document.getElementById('territoryStructureDestroyBtn');
+    if (territoryStructureDestroyBtn) {
+        territoryStructureDestroyBtn.addEventListener('click', function() {
+            var regionId = _pendingConfirmRegionId;
+            if (regionId === null || regionId === undefined) return;
+            fetch('{{ url_for("api_territory_battle_structure_destroy") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ region_index: regionId })
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.success) {
+                    var reg = state.regions[regionId];
+                    if (reg) {
+                        reg.structureType = null;
+                        reg.lastPayoutAt = null;
+                    }
+                    for (var i = 0; i < state.regions.length; i++) updateRegionUI(i);
+                    closeConfirmModal();
+                    showToast('Сооружение разрушено', true);
+                } else {
+                    showToast(data.error || 'Ошибка', false);
+                }
+            }).catch(function() { showToast('Ошибка сети', false); });
         });
     }
 

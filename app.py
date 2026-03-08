@@ -155,7 +155,7 @@ CLAN_RENAME_PRICE = 100_000
 CLAN_DEFAULT_MAX_MEMBERS = 10
 
 # Стоимость одного дополнительного места в клане (в Нумах)
-CLAN_EXTRA_SLOT_PRICE = 50_000
+CLAN_EXTRA_SLOT_PRICE = 30_000
 
 # Длительность штрафа за исключение участника: в течение этого времени клан не может принимать новых участников (часы)
 CLAN_ACCEPT_BAN_HOURS = 1
@@ -1105,6 +1105,25 @@ class TerritoryRegionState(db.Model):
     )
 
 
+# Битва за территорию: сооружение на области (одно на область; привязано к области, доход — лидеру клана-владельца)
+TERRITORY_STRUCTURE_VILLAGE = 'village'
+TERRITORY_STRUCTURE_FORTRESS = 'fortress'
+TERRITORY_STRUCTURE_CASTLE = 'castle'
+TERRITORY_STRUCTURE_TYPES = (TERRITORY_STRUCTURE_VILLAGE, TERRITORY_STRUCTURE_FORTRESS, TERRITORY_STRUCTURE_CASTLE)
+TERRITORY_STRUCTURE_BUILD_COST = {TERRITORY_STRUCTURE_VILLAGE: 4000, TERRITORY_STRUCTURE_FORTRESS: 7000, TERRITORY_STRUCTURE_CASTLE: 10000}
+TERRITORY_STRUCTURE_PAYOUT_AMOUNT = {TERRITORY_STRUCTURE_VILLAGE: 500, TERRITORY_STRUCTURE_FORTRESS: 1000, TERRITORY_STRUCTURE_CASTLE: 2000}
+# Интервал начисления дохода с сооружений — ровно 2 часа
+TERRITORY_STRUCTURE_PAYOUT_INTERVAL_HOURS = 2
+
+
+class TerritoryRegionStructure(db.Model):
+    __tablename__ = 'territory_region_structure'
+    id = db.Column(db.Integer, primary_key=True)
+    region_index = db.Column(db.Integer, unique=True, nullable=False)
+    structure_type = db.Column(db.String(20), nullable=False)  # village | fortress | castle
+    last_payout_at = db.Column(db.DateTime, nullable=True)  # время последнего начисления; при постройке = now
+
+
 # Битва за территорию: метка клана на карте (нападение/защита) — только одна на клан, выставляет создатель
 class ClanTerritoryMarker(db.Model):
     __tablename__ = 'clan_territory_marker'
@@ -1186,6 +1205,35 @@ def get_territory_capture_settings():
     )
     _territory_capture_cache = (result, now)
     return result
+
+
+def process_territory_structure_payouts(clan_id):
+    """Начислить Нумы лидеру клана за все области с сооружениями. Начисление — каждые 2 часа (интервал TERRITORY_STRUCTURE_PAYOUT_INTERVAL_HOURS). Вызывать при загрузке страницы битвы."""
+    interval_hours = TERRITORY_STRUCTURE_PAYOUT_INTERVAL_HOURS  # 2 часа
+    if not clan_id:
+        return
+    clan = Clan.query.get(clan_id)
+    if not clan or not clan.owner_id:
+        return
+    owner_user = User.query.get(clan.owner_id)
+    if not owner_user:
+        return
+    regions_owned = TerritoryRegionState.query.filter_by(owner_clan_id=clan_id).all()
+    now = datetime.utcnow()
+    for state in regions_owned:
+        struct = TerritoryRegionStructure.query.filter_by(region_index=state.region_index).first()
+        if not struct or struct.structure_type not in TERRITORY_STRUCTURE_PAYOUT_AMOUNT:
+            continue
+        last = struct.last_payout_at or now
+        elapsed_h = (now - last).total_seconds() / 3600.0
+        # Количество полных интервалов по 2 часа
+        intervals = int(elapsed_h // interval_hours)
+        if intervals <= 0:
+            continue
+        amount = TERRITORY_STRUCTURE_PAYOUT_AMOUNT[struct.structure_type] * intervals
+        owner_user.nums_balance = (owner_user.nums_balance or 0) + amount
+        struct.last_payout_at = last + timedelta(hours=intervals * interval_hours)
+    db.session.commit()
 
 
 # Декоратор для проверки прав администратора
@@ -1742,6 +1790,10 @@ with app.app_context():
         if 'clan_territory_marker' not in tables:
             db.create_all()
             print("Создана таблица clan_territory_marker")
+        tables = inspector.get_table_names()
+        if 'territory_region_structure' not in tables:
+            db.create_all()
+            print("Создана таблица territory_region_structure")
     except Exception as e:
         print(f"Ошибка при миграции битвы за территорию: {e}")
         db.create_all()
@@ -1905,7 +1957,7 @@ with app.app_context():
     if not admin:
         admin = User(username='admin', is_admin=True)
         admin.set_password('admin')  # Пароль по умолчанию - измените его!
-        db.session.add()
+        db.session.add(admin)
         db.session.commit()
     
     # Проверяем, есть ли активная задача, если нет - создаем из нерешенных
@@ -4731,6 +4783,16 @@ def territory_battle_page():
     regions_json = [{'region_index': r.region_index, 'display_name': r.display_name, 'description': r.description or '', 'is_locked': r.is_locked} for r in regions_config]
     states = TerritoryRegionState.query.order_by(TerritoryRegionState.region_index).all()
     state_by_index = {s.region_index: {'owner_clan_id': s.owner_clan_id, 'strength': s.strength} for s in states}
+    # Начислить доход с сооружений лидеру клана при заходе на страницу только создателя клана (как восстановление энергии — за всё прошедшее время)
+    if user_logged_in and not is_admin and clan_id and getattr(current_user, 'clan_obj', None) and current_user.clan_obj.owner_id == current_user.id:
+        process_territory_structure_payouts(clan_id)
+    structures_by_region = {s.region_index: {'structure_type': s.structure_type, 'last_payout_at': s.last_payout_at} for s in TerritoryRegionStructure.query.all()}
+    for ri, data in structures_by_region.items():
+        if ri in state_by_index:
+            state_by_index[ri]['structure_type'] = data['structure_type']
+            state_by_index[ri]['last_payout_at'] = (data['last_payout_at'].isoformat() + 'Z') if data['last_payout_at'] else None
+        else:
+            state_by_index[ri] = {'owner_clan_id': None, 'strength': 0, 'structure_type': data['structure_type'], 'last_payout_at': (data['last_payout_at'].isoformat() + 'Z') if data['last_payout_at'] else None}
     current_energy = None
     energy_max = None
     avatar_url = None
@@ -4857,6 +4919,76 @@ def api_territory_battle_clan_marker():
         'success': True,
         'clan_marker': {'region_index': region_index, 'marker_type': marker_type}
     })
+
+
+def _can_manage_territory_structures(user):
+    """Только создатель клана может строить/разрушать сооружения."""
+    if not user or not user.clan_id:
+        return False
+    clan = Clan.query.get(user.clan_id)
+    return clan and clan.owner_id == user.id
+
+
+@app.route('/api/territory-battle/structure/build', methods=['POST'])
+@login_required
+def api_territory_battle_structure_build():
+    """Построить сооружение на своей области. Только создатель клана."""
+    if not _can_manage_territory_structures(current_user):
+        return jsonify({'success': False, 'error': 'Только создатель клана может строить сооружения'}), 403
+    data = request.get_json() or {}
+    region_index = data.get('region_index')
+    structure_type = (data.get('structure_type') or '').strip().lower()
+    if structure_type not in TERRITORY_STRUCTURE_TYPES:
+        return jsonify({'success': False, 'error': 'Укажите тип: village, fortress или castle'}), 400
+    try:
+        region_index = int(region_index)
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'error': 'Некорректный region_index'}), 400
+    region_state = TerritoryRegionState.query.filter_by(region_index=region_index).first()
+    if not region_state or region_state.owner_clan_id != current_user.clan_id:
+        return jsonify({'success': False, 'error': 'Область не принадлежит вашему клану'}), 400
+    existing = TerritoryRegionStructure.query.filter_by(region_index=region_index).first()
+    if existing:
+        return jsonify({'success': False, 'error': 'На области уже есть сооружение'}), 400
+    cost = TERRITORY_STRUCTURE_BUILD_COST.get(structure_type, 0)
+    if (current_user.nums_balance or 0) < cost:
+        return jsonify({'success': False, 'error': f'Недостаточно Нумов. Нужно {cost}.'}), 400
+    config = TerritoryRegionConfig.query.filter_by(region_index=region_index).first()
+    if not config or config.is_locked:
+        return jsonify({'success': False, 'error': 'Область недоступна'}), 400
+    current_user.nums_balance = (current_user.nums_balance or 0) - cost
+    now = datetime.utcnow()
+    db.session.add(TerritoryRegionStructure(region_index=region_index, structure_type=structure_type, last_payout_at=now))
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'region_index': region_index,
+        'structure_type': structure_type,
+        'last_payout_at': now.isoformat() + 'Z',
+        'nums_balance': current_user.nums_balance
+    })
+
+
+@app.route('/api/territory-battle/structure/destroy', methods=['POST'])
+@login_required
+def api_territory_battle_structure_destroy():
+    """Разрушить сооружение на своей области. Только создатель клана."""
+    if not _can_manage_territory_structures(current_user):
+        return jsonify({'success': False, 'error': 'Только создатель клана может разрушать сооружения'}), 403
+    data = request.get_json() or {}
+    try:
+        region_index = int(data.get('region_index'))
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'error': 'Некорректный region_index'}), 400
+    region_state = TerritoryRegionState.query.filter_by(region_index=region_index).first()
+    if not region_state or region_state.owner_clan_id != current_user.clan_id:
+        return jsonify({'success': False, 'error': 'Область не принадлежит вашему клану'}), 400
+    existing = TerritoryRegionStructure.query.filter_by(region_index=region_index).first()
+    if not existing:
+        return jsonify({'success': False, 'error': 'На области нет сооружения'}), 400
+    db.session.delete(existing)
+    db.session.commit()
+    return jsonify({'success': True, 'region_index': region_index})
 
 
 @app.route('/api/territory-battle/server-time')
