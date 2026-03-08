@@ -60,6 +60,8 @@ except ImportError:
     generate_joint_work_task = None
 import re
 import shutil
+
+from ban_filter import filter_chat_text
 import tempfile
 from dotenv import load_dotenv
 
@@ -3074,7 +3076,7 @@ def api_clan_chat_list():
         messages = base.filter(ClanChatMessage.id > after_id).order_by(ClanChatMessage.id.asc()).all()
         items = [
             {'id': m.id, 'user_id': m.user_id, 'author_name': m.user.character_name or m.user.username,
-             'text': m.text, 'created_at': m.created_at.isoformat() if m.created_at else None}
+             'text': filter_chat_text(m.text), 'created_at': m.created_at.isoformat() if m.created_at else None}
             for m in messages
         ]
         return jsonify({'success': True, 'messages': items})
@@ -3087,7 +3089,7 @@ def api_clan_chat_list():
         messages = list(reversed(messages[:limit]))
         items = [
             {'id': m.id, 'user_id': m.user_id, 'author_name': m.user.character_name or m.user.username,
-             'text': m.text, 'created_at': m.created_at.isoformat() if m.created_at else None}
+             'text': filter_chat_text(m.text), 'created_at': m.created_at.isoformat() if m.created_at else None}
             for m in messages
         ]
         return jsonify({'success': True, 'messages': items, 'has_more': has_more})
@@ -3097,7 +3099,7 @@ def api_clan_chat_list():
     messages = list(reversed(messages))
     items = [
         {'id': m.id, 'user_id': m.user_id, 'author_name': m.user.character_name or m.user.username,
-         'text': m.text, 'created_at': m.created_at.isoformat() if m.created_at else None}
+         'text': filter_chat_text(m.text), 'created_at': m.created_at.isoformat() if m.created_at else None}
         for m in messages
     ]
     return jsonify({'success': True, 'messages': items, 'has_more': total > limit})
@@ -3115,6 +3117,7 @@ def api_clan_chat_send():
         return jsonify({'success': False, 'error': 'Текст сообщения не может быть пустым'}), 400
     if len(text) > 2000:
         return jsonify({'success': False, 'error': 'Сообщение слишком длинное'}), 400
+    text = filter_chat_text(text)
     msg = ClanChatMessage(clan_id=current_user.clan_id, user_id=current_user.id, text=text)
     db.session.add(msg)
     db.session.commit()
@@ -3139,7 +3142,7 @@ def _admin_chat_message_to_item(m):
     return {
         'id': m.id,
         'author_name': m.author_name or 'Администратор',
-        'text': m.text,
+        'text': filter_chat_text(m.text),
         'is_from_admin': m.is_from_admin,
         'created_at': m.created_at.isoformat() if m.created_at else None,
     }
@@ -3168,6 +3171,7 @@ def api_territory_admin_chat_send():
         return jsonify({'success': False, 'error': 'Сообщение не более {} символов'.format(TERRITORY_ADMIN_CHAT_TEXT_MAX)}), 400
     if len(author_name) > 200:
         author_name = author_name[:200]
+    text = filter_chat_text(text)
     msg = TerritoryAdminChatMessage(
         user_id=user_id,
         guest_key=guest_key,
@@ -4491,6 +4495,7 @@ def api_admin_territory_admin_chat_reply(user_id):
         return jsonify({'success': False, 'error': 'Текст ответа не может быть пустым'}), 400
     if len(text) > TERRITORY_ADMIN_CHAT_TEXT_MAX:
         return jsonify({'success': False, 'error': 'Ответ не более {} символов'.format(TERRITORY_ADMIN_CHAT_TEXT_MAX)}), 400
+    text = filter_chat_text(text)
     msg = TerritoryAdminChatMessage(user_id=user_id, guest_key=None, author_name=None, text=text, is_from_admin=True)
     db.session.add(msg)
     db.session.commit()
@@ -4518,6 +4523,7 @@ def api_admin_territory_admin_chat_reply_guest(guest_key):
         return jsonify({'success': False, 'error': 'Ответ не более {} символов'.format(TERRITORY_ADMIN_CHAT_TEXT_MAX)}), 400
     if not TerritoryAdminChatMessage.query.filter_by(guest_key=guest_key).first():
         return jsonify({'success': False, 'error': 'Тред не найден'}), 404
+    text = filter_chat_text(text)
     msg = TerritoryAdminChatMessage(user_id=None, guest_key=guest_key, author_name=None, text=text, is_from_admin=True)
     db.session.add(msg)
     db.session.commit()
@@ -5421,7 +5427,7 @@ def api_territory_clan_search_chat_list():
         messages = base.filter(ClanSearchChatMessage.id > after_id).order_by(ClanSearchChatMessage.id.asc()).all()
         items = [
             {'id': m.id, 'user_id': m.user_id, 'author_name': m.user.character_name or m.user.username,
-             'text': m.text, 'created_at': m.created_at.isoformat() if m.created_at else None}
+             'text': filter_chat_text(m.text), 'created_at': m.created_at.isoformat() if m.created_at else None}
             for m in messages
         ]
         return jsonify({'success': True, 'messages': items})
@@ -5433,7 +5439,7 @@ def api_territory_clan_search_chat_list():
         messages = list(reversed(messages[:limit]))
         items = [
             {'id': m.id, 'user_id': m.user_id, 'author_name': m.user.character_name or m.user.username,
-             'text': m.text, 'created_at': m.created_at.isoformat() if m.created_at else None}
+             'text': filter_chat_text(m.text), 'created_at': m.created_at.isoformat() if m.created_at else None}
             for m in messages
         ]
         return jsonify({'success': True, 'messages': items, 'has_more': has_more})
@@ -5442,7 +5448,7 @@ def api_territory_clan_search_chat_list():
     messages = list(reversed(messages))
     items = [
         {'id': m.id, 'user_id': m.user_id, 'author_name': m.user.character_name or m.user.username,
-         'text': m.text, 'created_at': m.created_at.isoformat() if m.created_at else None}
+         'text': filter_chat_text(m.text), 'created_at': m.created_at.isoformat() if m.created_at else None}
         for m in messages
     ]
     return jsonify({'success': True, 'messages': items, 'has_more': total > limit})
@@ -5458,6 +5464,7 @@ def api_territory_clan_search_chat_send():
         return jsonify({'success': False, 'error': 'Текст сообщения не может быть пустым'}), 400
     if len(text) > 100:
         return jsonify({'success': False, 'error': 'Сообщение не должно превышать 100 символов'}), 400
+    text = filter_chat_text(text)
     now = datetime.utcnow()
     last = ClanSearchChatMessage.query.filter_by(user_id=current_user.id).order_by(
         ClanSearchChatMessage.created_at.desc()
@@ -6307,7 +6314,7 @@ def api_pvp_chat_get():
             'user_id': m.user_id,
             'user_name': name,
             'avatar_url': avatar_url,
-            'text': m.text,
+            'text': filter_chat_text(m.text),
             'created_at': m.created_at.isoformat() if m.created_at else None,
         })
     return jsonify({'success': True, 'messages': out, 'has_more': has_more})
@@ -6323,6 +6330,7 @@ def api_pvp_chat_post():
     text = (data.get('text') or '').strip()
     if not text or len(text) > 2000:
         return jsonify({'success': False, 'error': 'Сообщение пустое или слишком длинное'}), 400
+    text = filter_chat_text(text)
     msg = PvPArenaChatMessage(user_id=current_user.id, text=text)
     db.session.add(msg)
     db.session.commit()
