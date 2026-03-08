@@ -1554,6 +1554,115 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 }
 .clan-chat-modal .modal-chat-close:hover { background: rgba(92,64,51,0.3); color: #3d2914; }
 
+/* Кнопка «Чат с администратором» — левый нижний угол */
+.floating-admin-chat-btn {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(145deg, #5c5344 0%, #4a4033 50%, #3a3520 100%);
+    color: #fff;
+    font-size: 1.5rem;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35), 0 0 0 1px rgba(212,168,75,0.2), inset 0 1px 0 rgba(255,255,255,0.08);
+    z-index: 99990;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.floating-admin-chat-btn:hover {
+    background: linear-gradient(145deg, #6a6352 0%, #5c5344 100%);
+    color: #e8c86a;
+    transform: scale(1.08);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.4), 0 0 0 1px rgba(212,168,75,0.35), inset 0 1px 0 rgba(255,255,255,0.12);
+}
+.floating-admin-chat-btn:active { transform: scale(1.02); }
+.floating-admin-chat-btn .chat-unread-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #dc2626;
+    border: 2px solid #3d2914;
+    display: none;
+}
+.floating-admin-chat-btn.has-unread .chat-unread-badge {
+    display: block;
+}
+
+/* Модалка чата с администратором — те же стили, что у чата с кланом */
+.admin-chat-modal-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.75);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    padding: 20px;
+}
+.admin-chat-modal-overlay.open {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+/* Контейнер чата с админом использует те же стили, что clan-chat-modal */
+.admin-chat-modal .modal-box {
+    width: 547px;
+    max-width: 100%;
+    min-width: 0;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    padding: 18px;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.45), 0 0 0 1px rgba(92,64,51,0.4), inset 0 1px 0 rgba(255,255,255,0.15);
+    background: linear-gradient(180deg, #f5e8d0 0%, #e8dcc4 50%, #ddd0b8 100%);
+    border: 2px solid #5c4033;
+    color: #2c1810;
+    position: relative;
+}
+.admin-chat-modal .modal-box h3 { margin: 0 0 12px; font-size: 1.05rem; color: #3d2914; font-family: 'Cinzel', Georgia, serif; }
+.admin-chat-modal .clan-chat-modal-body { flex: 1; min-height: 0; overflow: hidden; }
+.admin-chat-modal .clan-chat-content { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.admin-chat-modal .clan-chat-messages {
+    height: 240px; min-height: 240px; overflow-y: auto; margin: 0 0 10px; padding: 10px;
+    background: rgba(44,24,16,0.08); border-radius: 8px; border: 1px solid rgba(92,64,51,0.35);
+    display: flex; flex-direction: column; flex-shrink: 0;
+}
+.admin-chat-modal .clan-chat-msg { padding: 8px 10px; margin-bottom: 8px; background: rgba(61,41,20,0.2); border-radius: 4px; border-left: 3px solid #8b6914; font-size: 0.95rem; max-width: 85%; }
+.admin-chat-modal .clan-chat-msg.clan-chat-msg-own { align-self: flex-end; border-left: none; border-right: 3px solid #d4a84b; text-align: right; background: rgba(90,60,30,0.25); }
+.admin-chat-modal .clan-chat-msg .chat-author { font-weight: bold; color: #5c4033; margin-right: 8px; }
+.admin-chat-modal .clan-chat-msg .chat-time { font-size: 0.8rem; color: #8b7355; margin-left: 6px; }
+.admin-chat-modal .clan-chat-msg,
+.admin-chat-modal .clan-chat-msg .chat-text { overflow-wrap: break-word; word-break: break-word; min-width: 0; }
+.admin-chat-modal .clan-chat-form { display: flex; flex-direction: column; gap: 10px; margin-top: 0; flex-shrink: 0; }
+.admin-chat-modal .clan-chat-form input[type="text"],
+.admin-chat-modal .clan-chat-form textarea {
+    padding: 10px 14px; border: 2px solid #5c4033; border-radius: 6px; background: #fff; color: #2c1810; font-family: inherit;
+    min-width: 0;
+}
+.admin-chat-modal .clan-chat-form textarea { min-height: 70px; resize: vertical; max-height: 120px; }
+.admin-chat-modal .clan-chat-form .char-count { font-size: 0.8rem; color: #8b7355; }
+.admin-chat-modal .clan-chat-form button[type="submit"] {
+    padding: 10px 18px; border-radius: 6px; border: 2px solid #5c4033; background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    color: #d4a84b; font-weight: bold; font-family: 'Cinzel', Georgia, serif; cursor: pointer;
+}
+.admin-chat-modal .clan-chat-form button[type="submit"]:hover { color: #e8c86a; border-color: #8b6914; }
+.admin-chat-modal .clan-chat-empty { color: #8b7355; padding: 12px; text-align: center; font-size: 0.95rem; }
+.admin-chat-modal .modal-chat-close {
+    position: absolute; top: 10px; right: 10px; width: 34px; height: 34px; padding: 0; border: none; border-radius: 50%;
+    background: rgba(92,64,51,0.15); color: #5c4033; font-size: 1.25rem; cursor: pointer; line-height: 1;
+}
+.admin-chat-modal .modal-chat-close:hover { background: rgba(92,64,51,0.3); color: #3d2914; }
+
 @media (max-width: 600px) {
     .territory-page { padding: 12px; }
     .territory-page h1 { font-size: 1.4rem; letter-spacing: 0.04em; }
@@ -1648,11 +1757,17 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     .task-modal-footer .submit-task-btn { min-height: 44px; }
     .energy-modal-box { margin: 16px; max-width: calc(100% - 32px); }
     .energy-modal-box .energy-modal-ok { min-height: 44px; }
+    .floating-admin-chat-btn { bottom: 16px; left: 16px; width: 52px; height: 52px; font-size: 1.15rem; }
     .floating-chat-btn { bottom: 16px; right: 16px; width: 52px; height: 52px; font-size: 1.4rem; }
-    .clan-chat-modal-overlay { padding: 12px; }
-    .clan-chat-modal .modal-box { max-height: 80vh; padding: 14px; }
-    .clan-chat-modal .clan-chat-messages { max-height: 200px; min-height: 100px; }
-    .clan-chat-modal .modal-chat-close { top: 8px; right: 8px; width: 32px; height: 32px; }
+    .clan-chat-modal-overlay, .admin-chat-modal-overlay { padding: 12px; align-items: flex-end; }
+    .clan-chat-modal .modal-box, .admin-chat-modal .modal-box { max-height: 80vh; padding: 14px; max-width: calc(100% - 24px); width: 100%; }
+    .clan-chat-modal .clan-chat-messages, .admin-chat-modal .clan-chat-messages { height: 200px; min-height: 200px; max-height: 200px; }
+    .clan-chat-modal .modal-chat-close, .admin-chat-modal .modal-chat-close { top: 8px; right: 8px; width: 32px; height: 32px; }
+    .admin-chat-modal .clan-chat-form { gap: 8px; }
+    .admin-chat-modal .clan-chat-form input[type="text"],
+    .admin-chat-modal .clan-chat-form textarea { min-height: 44px; padding: 12px 14px; }
+    .admin-chat-modal .clan-chat-form textarea { min-height: 72px; }
+    .admin-chat-modal .clan-chat-form button[type="submit"] { min-height: 44px; }
 }
 </style>
 {% endblock %}
@@ -2005,6 +2120,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         </div>
     </div>
     </div>
+    <button type="button" class="floating-admin-chat-btn" id="battleAdminChatBtn" aria-label="Чат с администратором" title="Чат с администратором">?<span class="chat-unread-badge" id="battleAdminChatUnreadBadge" aria-hidden="true" title="Есть новые сообщения"></span></button>
     {% if user_logged_in and current_user.clan_id %}
     <button type="button" class="floating-chat-btn" id="battleFloatingChatBtn" aria-label="Чат с кланом" title="Чат с кланом" data-clan-id="{{ current_user.clan_id if (user_logged_in and current_user.clan_id) else '' }}">💬<span class="chat-unread-badge" id="battleClanChatUnreadBadge" aria-hidden="true" title="Есть новые сообщения"></span></button>
     {% endif %}
@@ -2112,6 +2228,29 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     </div>
 </div>
 {% endif %}
+
+<!-- Модальное окно чата с администратором (доступно всем, оформление как у чата с кланом) -->
+<div class="admin-chat-modal-overlay" id="battleAdminChatModal">
+    <div class="admin-chat-modal">
+        <div class="modal-box">
+            <button type="button" class="modal-chat-close" id="battleAdminChatModalClose" aria-label="Закрыть">×</button>
+            <h3>Чат с администратором</h3>
+            <div class="clan-chat-modal-body">
+                <div class="clan-chat-content open">
+                    <div class="clan-chat-messages" id="battleAdminChatMessages">
+                        <div class="clan-chat-empty">Загрузка…</div>
+                    </div>
+                    <form class="clan-chat-form" id="battleAdminChatForm">
+                        <input type="text" id="battleAdminChatName" placeholder="Введите ваше имя" maxlength="200" autocomplete="name" title="Ваше имя">
+                        <textarea id="battleAdminChatText" placeholder="Введите сообщение (до 200 символов)…" maxlength="200" rows="2" title="Сообщение"></textarea>
+                        <span class="char-count" id="battleAdminChatCharCount">0 / 200</span>
+                        <button type="submit">Отправить</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="task-result-toast" id="taskResultToast"></div>
 
@@ -3980,5 +4119,226 @@ window.territoryFocusProtection = (function() {
     });
 })();
 {% endif %}
+
+(function battleAdminChat() {
+    var openBtn = document.getElementById('battleAdminChatBtn');
+    var modal = document.getElementById('battleAdminChatModal');
+    var closeBtn = document.getElementById('battleAdminChatModalClose');
+    var form = document.getElementById('battleAdminChatForm');
+    var messagesEl = document.getElementById('battleAdminChatMessages');
+    var nameInput = document.getElementById('battleAdminChatName');
+    var textInput = document.getElementById('battleAdminChatText');
+    var charCountEl = document.getElementById('battleAdminChatCharCount');
+    var unreadBadge = document.getElementById('battleAdminChatUnreadBadge');
+    var listUrlBase = '{{ url_for("api_territory_admin_chat_messages") }}';
+    var sendUrl = '{{ url_for("api_territory_admin_chat_send") }}';
+    var unreadUrlBase = '{{ url_for("api_territory_admin_chat_unread_count") }}';
+    var MAX_LEN = 200;
+    var PAGE_SIZE = 20;
+    var storageKey = 'adminChatGuestKey';
+    var lastReadKey = 'adminChatLastRead';
+    var chatMessages = [];
+    var hasMore = false;
+    var loading = false;
+    var loadingMore = false;
+
+    function getGuestKey() {
+        try { return localStorage.getItem(storageKey) || ''; } catch (e) { return ''; }
+    }
+    function setGuestKey(key) {
+        try { if (key) localStorage.setItem(storageKey, key); } catch (e) {}
+    }
+    function getLastReadId() {
+        try { return parseInt(localStorage.getItem(lastReadKey) || '0', 10); } catch (e) { return 0; }
+    }
+    function setLastReadId(id) {
+        try { localStorage.setItem(lastReadKey, String(id)); } catch (e) {}
+    }
+    function listUrl(params) {
+        var gk = getGuestKey();
+        var q = params || {};
+        if (gk) q.guest_key = gk;
+        if (q.limit === undefined) q.limit = PAGE_SIZE;
+        var parts = [];
+        for (var k in q) if (q.hasOwnProperty(k)) parts.push(encodeURIComponent(k) + '=' + encodeURIComponent(q[k]));
+        return listUrlBase + (parts.length ? '?' + parts.join('&') : '');
+    }
+    function unreadUrl() {
+        var after = getLastReadId();
+        var gk = getGuestKey();
+        var u = unreadUrlBase + '?after_id=' + after;
+        if (gk) u += '&guest_key=' + encodeURIComponent(gk);
+        return u;
+    }
+    function closeClanChatIfOpen() {
+        var clanModal = document.getElementById('battleClanChatModal');
+        if (clanModal && clanModal.classList.contains('open')) clanModal.classList.remove('open');
+    }
+    function formatTime(iso) {
+        if (!iso) return '';
+        var d = new Date(iso);
+        return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' +
+            d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    }
+    function escapeHtml(s) {
+        if (!s) return '';
+        var div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+    }
+    function msgToHtml(m) {
+        var ownClass = m.is_from_admin ? ' clan-chat-msg-own' : '';
+        return '<div class="clan-chat-msg' + ownClass + '" data-id="' + m.id + '">' +
+            '<span class="chat-author">' + escapeHtml(m.author_name) + '</span>' +
+            '<span class="chat-time">' + escapeHtml(formatTime(m.created_at)) + '</span>' +
+            '<div class="chat-text">' + escapeHtml(m.text) + '</div></div>';
+    }
+    function renderMessages() {
+        if (!messagesEl) return;
+        if (!chatMessages || chatMessages.length === 0) {
+            messagesEl.innerHTML = '<div class="clan-chat-empty">Пока нет сообщений. Напишите администратору.</div>';
+            return;
+        }
+        messagesEl.innerHTML = chatMessages.map(msgToHtml).join('');
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+    function loadMessages(appendOlder, silent) {
+        if (!messagesEl) return;
+        var isGuest = !{{ 'true' if user_logged_in else 'false' }};
+        if (isGuest && !getGuestKey()) {
+            if (!silent) messagesEl.innerHTML = '<div class="clan-chat-empty">Напишите сообщение, чтобы начать переписку.</div>';
+            return;
+        }
+        if (appendOlder) {
+            if (loadingMore || !hasMore || chatMessages.length === 0) return;
+            var beforeId = chatMessages[0].id;
+            loadingMore = true;
+            fetch(listUrl({ before_id: beforeId, limit: PAGE_SIZE })).then(function(r) { return r.json(); }).then(function(data) {
+                loadingMore = false;
+                if (data.success && data.messages && data.messages.length > 0) {
+                    hasMore = !!data.has_more;
+                    chatMessages = data.messages.concat(chatMessages);
+                    var emptyEl = messagesEl.querySelector('.clan-chat-empty');
+                    if (emptyEl) emptyEl.parentNode.removeChild(emptyEl);
+                    var scrollHeightBefore = messagesEl.scrollHeight;
+                    var scrollTopBefore = messagesEl.scrollTop;
+                    data.messages.forEach(function(m) {
+                        messagesEl.insertAdjacentHTML('afterbegin', msgToHtml(m));
+                    });
+                    messagesEl.scrollTop = messagesEl.scrollHeight - scrollHeightBefore + scrollTopBefore;
+                }
+            }).catch(function() { loadingMore = false; });
+            return;
+        }
+        if (loading) return;
+        loading = true;
+        if (!silent) messagesEl.innerHTML = '<div class="clan-chat-empty">Загрузка…</div>';
+        fetch(listUrl()).then(function(r) { return r.json(); }).then(function(data) {
+            loading = false;
+            if (data.success) {
+                chatMessages = data.messages || [];
+                hasMore = !!data.has_more;
+                renderMessages();
+            } else {
+                if (!silent) {
+                    if (data.error && data.error.indexOf('guest_key') !== -1)
+                        messagesEl.innerHTML = '<div class="clan-chat-empty">Напишите сообщение, чтобы начать переписку.</div>';
+                    else
+                        messagesEl.innerHTML = '<div class="clan-chat-empty">Не удалось загрузить сообщения</div>';
+                }
+            }
+        }).catch(function() {
+            loading = false;
+            if (!silent) messagesEl.innerHTML = '<div class="clan-chat-empty">Ошибка загрузки</div>';
+        });
+    }
+    function updateCharCount() {
+        if (charCountEl && textInput) charCountEl.textContent = (textInput.value.length) + ' / ' + MAX_LEN;
+    }
+    function updateUnreadBadge() {
+        var isGuest = !{{ 'true' if user_logged_in else 'false' }};
+        if (isGuest && !getGuestKey()) return;
+        fetch(unreadUrl()).then(function(r) { return r.json(); }).then(function(data) {
+            if (openBtn) {
+                if (data.success && data.count > 0) openBtn.classList.add('has-unread');
+                else openBtn.classList.remove('has-unread');
+            }
+        }).catch(function() {});
+    }
+    function markAsRead() {
+        if (!chatMessages || chatMessages.length === 0) return;
+        var maxId = 0;
+        chatMessages.forEach(function(m) { if (m.id > maxId) maxId = m.id; });
+        if (maxId > 0) setLastReadId(maxId);
+        if (openBtn) openBtn.classList.remove('has-unread');
+    }
+    if (textInput) {
+        textInput.addEventListener('input', updateCharCount);
+        textInput.addEventListener('keydown', function(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); form && form.requestSubmit(); } });
+    }
+    if (messagesEl) {
+        messagesEl.addEventListener('scroll', function() {
+            if (messagesEl.scrollTop < 80 && hasMore && !loadingMore) loadMessages(true);
+        });
+    }
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            var name = (nameInput && nameInput.value || '').trim();
+            var text = (textInput && textInput.value || '').trim();
+            if (!text) return;
+            if (text.length > MAX_LEN) { alert('Сообщение не более ' + MAX_LEN + ' символов'); return; }
+            var submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.disabled = true;
+            var payload = { author_name: name || undefined, text: text };
+            if (getGuestKey()) payload.guest_key = getGuestKey();
+            fetch(sendUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (submitBtn) submitBtn.disabled = false;
+                if (data.success) {
+                    if (data.guest_key) setGuestKey(data.guest_key);
+                    if (textInput) textInput.value = '';
+                    updateCharCount();
+                    chatMessages.push(data.message);
+                    var emptyEl = messagesEl.querySelector('.clan-chat-empty');
+                    if (emptyEl) messagesEl.innerHTML = '';
+                    messagesEl.insertAdjacentHTML('beforeend', msgToHtml(data.message));
+                    messagesEl.scrollTop = messagesEl.scrollHeight;
+                } else {
+                    alert(data.error || 'Ошибка отправки');
+                }
+            }).catch(function() {
+                if (submitBtn) submitBtn.disabled = false;
+                alert('Ошибка соединения');
+            });
+        });
+    }
+    function openAdminModal() {
+        closeClanChatIfOpen();
+        if (modal) {
+            modal.classList.add('open');
+            loadMessages(false);
+            updateCharCount();
+            setTimeout(markAsRead, 300);
+        }
+    }
+    function closeAdminModal() {
+        markAsRead();
+        if (modal) modal.classList.remove('open');
+    }
+    if (openBtn) openBtn.addEventListener('click', openAdminModal);
+    if (closeBtn) closeBtn.addEventListener('click', closeAdminModal);
+    if (modal) modal.addEventListener('click', function(e) { if (e.target === modal) closeAdminModal(); });
+    updateUnreadBadge();
+    setInterval(function() {
+        if (modal && !modal.classList.contains('open')) updateUnreadBadge();
+    }, 25000);
+    setInterval(function() {
+        if (modal && modal.classList.contains('open')) loadMessages(false, true);
+    }, 10000);
+})();
 </script>
 {% endblock %}

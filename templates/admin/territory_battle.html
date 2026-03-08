@@ -534,6 +534,60 @@ body {
     background: linear-gradient(135deg, #9b8fb8 0%, #8b6fa8 100%);
     color: #fff;
 }
+/* Модальное окно: чаты с пользователями (битва за территорию) */
+.admin-chats-modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center;
+    z-index: 100000; padding: 20px;
+}
+.admin-chats-modal-overlay.open { display: flex !important; }
+.admin-chats-modal-box {
+    background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+    border-radius: 20px; border: 3px solid #d4c5b0;
+    max-width: 520px; width: 100%; max-height: 85vh;
+    display: flex; flex-direction: column; overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+}
+.admin-chats-modal-box h3 { margin: 0; padding: 18px 20px; color: #8b6fa8; font-size: 1.3rem; border-bottom: 2px solid #d4c5b0; }
+.admin-chats-list-wrap { overflow-y: auto; flex: 1; min-height: 0; padding: 12px; }
+.admin-chats-list-empty { color: #666; padding: 20px; text-align: center; }
+.admin-chats-thread-item {
+    display: block; width: 100%; padding: 12px 14px; margin-bottom: 8px;
+    text-align: left; border: 2px solid #d4c5b0; border-radius: 12px;
+    background: #fff; cursor: pointer; transition: all 0.2s ease;
+}
+.admin-chats-thread-item:hover { border-color: #8b6fa8; background: #f8f4ff; }
+.admin-chats-thread-item .thread-name { font-weight: bold; color: #333; }
+.admin-chats-thread-item .thread-preview { font-size: 0.9rem; color: #666; margin-top: 4px; }
+.admin-chats-thread-view { display: none; flex-direction: column; flex: 1; min-height: 0; }
+.admin-chats-thread-view.open { display: flex; }
+.admin-chats-thread-header { padding: 12px 20px; border-bottom: 2px solid #d4c5b0; display: flex; align-items: center; gap: 10px; }
+.admin-chats-thread-header .back-btn { padding: 8px 14px; border-radius: 10px; border: 2px solid #8b6fa8; background: #f8f4ff; color: #8b6fa8; cursor: pointer; font-weight: bold; }
+.admin-chats-thread-messages { overflow-y: auto; flex: 1; padding: 12px; min-height: 150px; max-height: 280px; }
+.admin-chats-msg { padding: 10px 12px; margin-bottom: 8px; border-radius: 8px; background: rgba(139,111,168,0.1); border-left: 4px solid #8b6fa8; font-size: 0.95rem; overflow-wrap: break-word; word-break: break-word; min-width: 0; }
+.admin-chats-msg.admin-msg { background: rgba(139,111,168,0.2); border-left-color: #6b5f88; }
+.admin-chats-msg .msg-author { font-weight: bold; color: #8b6fa8; margin-right: 8px; }
+.admin-chats-msg .msg-time { font-size: 0.8rem; color: #888; }
+.admin-chats-msg .chat-text { overflow-wrap: break-word; word-break: break-word; min-width: 0; }
+.admin-chats-reply-form { padding: 12px 20px; border-top: 2px solid #d4c5b0; display: flex; gap: 10px; flex-wrap: wrap; }
+.admin-chats-reply-form input[type="text"] { flex: 1; min-width: 180px; padding: 10px 14px; border-radius: 10px; border: 2px solid #a8b8d0; }
+.admin-chats-reply-form button { padding: 10px 20px; border-radius: 10px; border: none; background: linear-gradient(135deg, #8b9dc8 0%, #9b8fb8 100%); color: #fff; font-weight: bold; cursor: pointer; }
+@media (max-width: 600px) {
+    .admin-chats-modal-overlay { padding: 12px; align-items: flex-end; }
+    .admin-chats-modal-box { max-width: calc(100% - 24px); width: 100%; max-height: 90vh; border-radius: 16px; }
+    .admin-chats-modal-box h3 { padding: 14px 16px; font-size: 1.1rem; }
+    .admin-chats-list-wrap { padding: 10px; }
+    .admin-chats-thread-item { padding: 14px 12px; min-height: 44px; }
+    .admin-chats-thread-item .thread-name { font-size: 0.95rem; }
+    .admin-chats-thread-item .thread-preview { font-size: 0.85rem; }
+    .admin-chats-thread-header { padding: 12px 14px; flex-wrap: wrap; gap: 8px; }
+    .admin-chats-thread-header .back-btn { padding: 10px 14px; min-height: 44px; }
+    .admin-chats-thread-messages { padding: 10px; min-height: 120px; max-height: 220px; }
+    .admin-chats-msg { padding: 10px 12px; font-size: 0.9rem; }
+    .admin-chats-reply-form { padding: 12px 14px; flex-direction: column; gap: 10px; }
+    .admin-chats-reply-form input[type="text"] { min-width: 0; width: 100%; padding: 12px 14px; min-height: 44px; }
+    .admin-chats-reply-form button { width: 100%; min-height: 44px; }
+}
 </style>
 {% endblock %}
 
@@ -547,6 +601,7 @@ body {
         <a href="{{ url_for('admin_boss_raid') }}" class="back-link">Рейд босс</a>
         <a href="{{ url_for('admin_download_db') }}" class="back-link">Скачать БД</a>
         <a href="{{ url_for('logout') }}" class="back-link logout-link">Выйти</a>
+        <button type="button" class="territory-reset-btn" id="territoryAdminChatsBtn">Чаты с пользователями</button>
         <button type="button" class="territory-reset-btn" id="territoryResetBtn">Сбросить битву за территорию</button>
     </div>
 
@@ -839,6 +894,27 @@ body {
         <div class="territory-reset-modal-buttons">
             <button type="button" class="territory-reset-cancel" id="territoryResetCancel">Отмена</button>
             <button type="button" class="territory-reset-confirm" id="territoryResetConfirm">Сбросить</button>
+        </div>
+    </div>
+</div>
+
+<div class="admin-chats-modal-overlay" id="adminTerritoryChatsModal">
+    <div class="admin-chats-modal-box">
+        <h3>Чаты с пользователями</h3>
+        <div class="admin-chats-list-wrap" id="adminChatsListWrap">
+            <div class="admin-chats-list-empty" id="adminChatsListEmpty">Загрузка…</div>
+            <div id="adminChatsThreadsList"></div>
+        </div>
+        <div class="admin-chats-thread-view" id="adminChatsThreadView">
+            <div class="admin-chats-thread-header">
+                <button type="button" class="back-btn" id="adminChatsBackBtn">← К списку</button>
+                <span id="adminChatsThreadUserName"></span>
+            </div>
+            <div class="admin-chats-thread-messages" id="adminChatsThreadMessages"></div>
+            <form class="admin-chats-reply-form" id="adminChatsReplyForm">
+                <input type="text" id="adminChatsReplyInput" placeholder="Ответ (до 200 символов)" maxlength="200" required>
+                <button type="submit">Ответить</button>
+            </form>
         </div>
     </div>
 </div>
@@ -1436,6 +1512,148 @@ document.getElementById('clanDeleteConfirm').addEventListener('click', function(
             }
         }).catch(function() { alert('Ошибка соединения.'); }).finally(function() { btn.disabled = false; });
     });
+})();
+
+(function adminTerritoryChatsModal() {
+    var threadsUrl = '{{ url_for("api_admin_territory_admin_chat_threads") }}';
+    var messagesUserUrlTpl = '{{ url_for("api_admin_territory_admin_chat_thread_messages", user_id=0) }}'.replace('/0/messages', '');
+    var messagesGuestUrlTpl = '{{ url_for("api_admin_territory_admin_chat_thread_guest_messages", guest_key="GUEST_KEY_PLACEHOLDER") }}';
+    var replyUserUrlTpl = '{{ url_for("api_admin_territory_admin_chat_reply", user_id=0) }}'.replace('/0/reply', '');
+    var replyGuestUrlTpl = '{{ url_for("api_admin_territory_admin_chat_reply_guest", guest_key="GUEST_KEY_PLACEHOLDER") }}';
+    var MAX_REPLY_LEN = 200;
+    var modal = document.getElementById('adminTerritoryChatsModal');
+    var listWrap = document.getElementById('adminChatsListWrap');
+    var listEmpty = document.getElementById('adminChatsListEmpty');
+    var threadsList = document.getElementById('adminChatsThreadsList');
+    var threadView = document.getElementById('adminChatsThreadView');
+    var threadUserName = document.getElementById('adminChatsThreadUserName');
+    var threadMessages = document.getElementById('adminChatsThreadMessages');
+    var replyForm = document.getElementById('adminChatsReplyForm');
+    var replyInput = document.getElementById('adminChatsReplyInput');
+    var backBtn = document.getElementById('adminChatsBackBtn');
+    var openBtn = document.getElementById('territoryAdminChatsBtn');
+    var currentThread = null;
+
+    function escapeHtml(s) {
+        if (!s) return '';
+        var div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+    }
+    function formatTime(iso) {
+        if (!iso) return '';
+        var d = new Date(iso);
+        return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' +
+            d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    }
+    function loadThreads() {
+        listEmpty.textContent = 'Загрузка…';
+        threadsList.innerHTML = '';
+        fetch(threadsUrl).then(function(r) { return r.json(); }).then(function(data) {
+            if (!data.success || !data.threads || data.threads.length === 0) {
+                listEmpty.textContent = 'Нет обращений от пользователей.';
+                return;
+            }
+            listEmpty.style.display = 'none';
+            data.threads.forEach(function(t) {
+                var el = document.createElement('button');
+                el.type = 'button';
+                el.className = 'admin-chats-thread-item';
+                el.setAttribute('data-user-id', t.user_id !== null ? String(t.user_id) : '');
+                el.setAttribute('data-guest-key', t.guest_key || '');
+                el.innerHTML = '<span class="thread-name">' + escapeHtml(t.display_name) + (t.guest_key ? ' (гость)' : ' (@' + escapeHtml(t.username) + ')') + '</span>' +
+                    (t.last_preview ? '<span class="thread-preview">' + escapeHtml(t.last_preview) + '</span>' : '');
+                el.addEventListener('click', function() {
+                    currentThread = { user_id: this.getAttribute('data-user-id') ? parseInt(this.getAttribute('data-user-id'), 10) : null, guest_key: this.getAttribute('data-guest-key') || null };
+                    threadUserName.textContent = this.querySelector('.thread-name').textContent;
+                    threadView.classList.add('open');
+                    listWrap.style.display = 'none';
+                    loadThreadMessages(currentThread);
+                    replyInput.value = '';
+                });
+                threadsList.appendChild(el);
+            });
+        }).catch(function() {
+            listEmpty.textContent = 'Ошибка загрузки.';
+        });
+    }
+    function loadThreadMessages(thread, silent) {
+        if (!silent) threadMessages.innerHTML = '<div class="admin-chats-list-empty">Загрузка…</div>';
+        var messagesUrl = thread.user_id !== null
+            ? (messagesUserUrlTpl + '/' + thread.user_id + '/messages')
+            : messagesGuestUrlTpl.replace('GUEST_KEY_PLACEHOLDER', encodeURIComponent(thread.guest_key));
+        fetch(messagesUrl).then(function(r) { return r.json(); }).then(function(data) {
+            if (!data.success || !data.messages) {
+                if (!silent) threadMessages.innerHTML = '<div class="admin-chats-list-empty">Нет сообщений</div>';
+                return;
+            }
+            threadMessages.innerHTML = data.messages.map(function(m) {
+                var cls = m.is_from_admin ? ' admin-chats-msg admin-msg' : ' admin-chats-msg';
+                return '<div class="' + cls + '">' +
+                    '<span class="msg-author">' + escapeHtml(m.author_name) + '</span>' +
+                    '<span class="msg-time">' + escapeHtml(formatTime(m.created_at)) + '</span>' +
+                    '<div class="chat-text">' + escapeHtml(m.text) + '</div></div>';
+            }).join('');
+            threadMessages.scrollTop = threadMessages.scrollHeight;
+        }).catch(function() {
+            if (!silent) threadMessages.innerHTML = '<div class="admin-chats-list-empty">Ошибка загрузки</div>';
+        });
+    }
+    function showList() {
+        threadView.classList.remove('open');
+        listWrap.style.display = 'block';
+        listEmpty.style.display = 'block';
+        currentThread = null;
+    }
+    if (openBtn) {
+        openBtn.addEventListener('click', function() {
+            modal.classList.add('open');
+            loadThreads();
+            showList();
+        });
+    }
+    if (backBtn) backBtn.addEventListener('click', showList);
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) modal.classList.remove('open');
+    });
+    setInterval(function() {
+        if (!modal || !modal.classList.contains('open')) return;
+        if (currentThread) loadThreadMessages(currentThread, true);
+        else loadThreads();
+    }, 10000);
+    if (replyForm) {
+        replyForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (!currentThread) return;
+            var text = (replyInput && replyInput.value || '').trim();
+            if (!text) return;
+            if (text.length > MAX_REPLY_LEN) {
+                alert('Ответ не более ' + MAX_REPLY_LEN + ' символов.');
+                return;
+            }
+            var replyUrl = currentThread.user_id !== null
+                ? (replyUserUrlTpl + '/' + currentThread.user_id + '/reply')
+                : replyGuestUrlTpl.replace('GUEST_KEY_PLACEHOLDER', encodeURIComponent(currentThread.guest_key));
+            var btn = replyForm.querySelector('button[type="submit"]');
+            if (btn) btn.disabled = true;
+            fetch(replyUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify({ text: text })
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (btn) btn.disabled = false;
+                if (data.success) {
+                    replyInput.value = '';
+                    loadThreadMessages(currentThread);
+                } else {
+                    alert(data.error || 'Ошибка отправки.');
+                }
+            }).catch(function() {
+                if (btn) btn.disabled = false;
+                alert('Ошибка соединения.');
+            });
+        });
+    }
 })();
 </script>
 {% endblock %}

@@ -14,6 +14,7 @@ import json
 import random
 import os
 import logging
+import uuid
 
 try:
     from generate_boss_tasks import (
@@ -305,6 +306,20 @@ class ClanChatMessage(db.Model):
 
     clan = db.relationship('Clan', backref=db.backref('chat_messages', lazy=True, order_by='ClanChatMessage.created_at'))
     user = db.relationship('User', backref='clan_chat_messages', lazy=True)
+
+
+class TerritoryAdminChatMessage(db.Model):
+    """Сообщение в чате с администратором (битва за территорию). Лимит текста: 200 символов. Тред: user_id (авторизованный) или guest_key (гость)."""
+    __tablename__ = 'territory_admin_chat_message'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # владелец треда (None для гостя)
+    guest_key = db.Column(db.String(64), nullable=True, index=True)  # ключ гостя (если user_id пуст)
+    author_name = db.Column(db.String(200), nullable=True)  # имя отправителя (от пользователя) или None для админа
+    text = db.Column(db.String(200), nullable=False)
+    is_from_admin = db.Column(db.Boolean, default=False, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref=db.backref('territory_admin_chat_messages', lazy=True, order_by='TerritoryAdminChatMessage.created_at'))
 
 
 # PvP Арена
@@ -1854,6 +1869,19 @@ with app.app_context():
         if 'clan_search_chat_message' not in tables:
             db.create_all()
             print("Создана таблица clan_search_chat_message")
+        # Миграция: колонка guest_key и user_id NULLABLE в чате с администратором (битва за территорию)
+        if 'territory_admin_chat_message' in tables:
+            tac_cols = inspector.get_columns('territory_admin_chat_message')
+            tac_column_names = [c['name'] for c in tac_cols]
+            user_id_nullable = next((c.get('nullable', True) for c in tac_cols if c['name'] == 'user_id'), True)
+            with db.engine.begin() as conn:
+                if 'guest_key' not in tac_column_names:
+                    conn.execute(text('ALTER TABLE territory_admin_chat_message ADD COLUMN guest_key VARCHAR(64)'))
+                    print("Добавлена колонка guest_key в таблицу territory_admin_chat_message")
+                # Разрешить NULL в user_id для сообщений гостей (PostgreSQL)
+                if is_pg and not user_id_nullable:
+                    conn.execute(text('ALTER TABLE territory_admin_chat_message ALTER COLUMN user_id DROP NOT NULL'))
+                    print("Колонка user_id в territory_admin_chat_message: разрешён NULL")
         if 'user' in tables:
             columns = [col['name'] for col in inspector.get_columns('user')]
             with db.engine.begin() as conn:
@@ -3102,6 +3130,109 @@ def api_clan_chat_send():
     })
 
 
+# Чат с администратором (битва за территорию)
+TERRITORY_ADMIN_CHAT_TEXT_MAX = 200
+TERRITORY_ADMIN_CHAT_PAGE_SIZE = 20
+
+
+def _admin_chat_message_to_item(m):
+    return {
+        'id': m.id,
+        'author_name': m.author_name or 'Администратор',
+        'text': m.text,
+        'is_from_admin': m.is_from_admin,
+        'created_at': m.created_at.isoformat() if m.created_at else None,
+    }
+
+
+@app.route('/api/territory/admin-chat/send', methods=['POST'])
+def api_territory_admin_chat_send():
+    """Отправить сообщение администратору. Доступно и гостям. Тело: author_name, text (макс. 200 символов), guest_key (опционально, для гостя)."""
+    data = request.get_json() or request.form
+    if current_user.is_authenticated:
+        author_name = (data.get('author_name') or '').strip() or (current_user.character_name or current_user.username)
+        user_id = current_user.id
+        guest_key = None
+    else:
+        author_name = (data.get('author_name') or '').strip()
+        if not author_name:
+            author_name = 'Гость'
+        user_id = None
+        guest_key = (data.get('guest_key') or '').strip() or None
+        if not guest_key:
+            guest_key = str(uuid.uuid4())
+    text = (data.get('text') or '').strip()
+    if not text:
+        return jsonify({'success': False, 'error': 'Текст сообщения не может быть пустым'}), 400
+    if len(text) > TERRITORY_ADMIN_CHAT_TEXT_MAX:
+        return jsonify({'success': False, 'error': 'Сообщение не более {} символов'.format(TERRITORY_ADMIN_CHAT_TEXT_MAX)}), 400
+    if len(author_name) > 200:
+        author_name = author_name[:200]
+    msg = TerritoryAdminChatMessage(
+        user_id=user_id,
+        guest_key=guest_key,
+        author_name=author_name,
+        text=text,
+        is_from_admin=False,
+    )
+    db.session.add(msg)
+    db.session.commit()
+    out = {'success': True, 'message': _admin_chat_message_to_item(msg)}
+    if guest_key and not current_user.is_authenticated:
+        out['guest_key'] = guest_key
+    return jsonify(out)
+
+
+@app.route('/api/territory/admin-chat/messages')
+def api_territory_admin_chat_messages():
+    """Список сообщений чата. Для авторизованных — по user_id, для гостей — guest_key в query. Пагинация: limit (макс. 50), before_id (подгрузка старых). По умолчанию последние 20."""
+    limit = min(int(request.args.get('limit', TERRITORY_ADMIN_CHAT_PAGE_SIZE)), 50)
+    before_id = request.args.get('before_id', type=int)
+    guest_key = (request.args.get('guest_key') or '').strip() or None
+    if current_user.is_authenticated:
+        base = TerritoryAdminChatMessage.query.filter_by(user_id=current_user.id)
+    elif guest_key:
+        base = TerritoryAdminChatMessage.query.filter_by(guest_key=guest_key)
+    else:
+        return jsonify({'success': False, 'error': 'Укажите guest_key или войдите'}), 400
+    total = base.count()
+    if before_id:
+        messages = base.filter(TerritoryAdminChatMessage.id < before_id).order_by(
+            TerritoryAdminChatMessage.id.desc()
+        ).limit(limit + 1).all()
+        has_more = len(messages) > limit
+        messages = list(reversed(messages[:limit]))
+    else:
+        messages = base.order_by(TerritoryAdminChatMessage.id.desc()).limit(limit).all()
+        messages = list(reversed(messages))
+        has_more = total > limit
+    items = [_admin_chat_message_to_item(m) for m in messages]
+    return jsonify({'success': True, 'messages': items, 'has_more': has_more})
+
+
+@app.route('/api/territory/admin-chat/unread-count')
+def api_territory_admin_chat_unread_count():
+    """Количество непрочитанных (ответы админа с id > after_id). Параметр after_id. Для гостя — guest_key."""
+    after_id = request.args.get('after_id', type=int) or 0
+    guest_key = (request.args.get('guest_key') or '').strip() or None
+    if current_user.is_authenticated:
+        q = TerritoryAdminChatMessage.query.filter(
+            TerritoryAdminChatMessage.user_id == current_user.id,
+            TerritoryAdminChatMessage.is_from_admin == True,
+            TerritoryAdminChatMessage.id > after_id,
+        )
+    elif guest_key:
+        q = TerritoryAdminChatMessage.query.filter(
+            TerritoryAdminChatMessage.guest_key == guest_key,
+            TerritoryAdminChatMessage.is_from_admin == True,
+            TerritoryAdminChatMessage.id > after_id,
+        )
+    else:
+        return jsonify({'success': True, 'count': 0})
+    count = q.count()
+    return jsonify({'success': True, 'count': count})
+
+
 # Главная страница — сразу открывается битва за территорию
 @app.route('/')
 def index():
@@ -4242,6 +4373,164 @@ def admin_territory_reset():
     ClanTerritoryMarker.query.delete()
     db.session.commit()
     return jsonify({'success': True})
+
+
+# --- Админ: чаты с пользователями (битва за территорию) ---
+@app.route('/api/admin/territory-battle/admin-chat/threads')
+@admin_required
+def api_admin_territory_admin_chat_threads():
+    """Список тредов: и по user_id, и по guest_key (гости)."""
+    out = []
+    # Треды авторизованных пользователей
+    subq = db.session.query(
+        TerritoryAdminChatMessage.user_id,
+        db.func.max(TerritoryAdminChatMessage.created_at).label('last_at'),
+    ).filter(TerritoryAdminChatMessage.user_id.isnot(None)).group_by(TerritoryAdminChatMessage.user_id).subquery()
+    user_threads = db.session.query(User.id, User.username, User.character_name, subq.c.last_at).join(
+        subq, User.id == subq.c.user_id
+    ).order_by(subq.c.last_at.desc()).all()
+    for user_id, username, character_name, last_at in user_threads:
+        last_msg = TerritoryAdminChatMessage.query.filter_by(user_id=user_id).order_by(
+            TerritoryAdminChatMessage.created_at.desc()
+        ).first()
+        preview = (last_msg.text[:50] + '…') if last_msg and len(last_msg.text) > 50 else (last_msg.text if last_msg else '')
+        out.append({
+            'user_id': user_id,
+            'guest_key': None,
+            'display_name': character_name or username,
+            'username': username,
+            'last_at': last_at.isoformat() if last_at else None,
+            'last_preview': preview,
+        })
+    # Треды гостей
+    guest_subq = db.session.query(
+        TerritoryAdminChatMessage.guest_key,
+        db.func.max(TerritoryAdminChatMessage.created_at).label('last_at'),
+    ).filter(TerritoryAdminChatMessage.guest_key.isnot(None)).group_by(TerritoryAdminChatMessage.guest_key).subquery()
+    guest_keys = db.session.query(TerritoryAdminChatMessage.guest_key).distinct().filter(
+        TerritoryAdminChatMessage.guest_key.isnot(None)
+    ).all()
+    for (gk,) in guest_keys:
+        last_msg = TerritoryAdminChatMessage.query.filter_by(guest_key=gk).order_by(
+            TerritoryAdminChatMessage.created_at.desc()
+        ).first()
+        last_at = last_msg.created_at if last_msg else None
+        preview = (last_msg.text[:50] + '…') if last_msg and len(last_msg.text) > 50 else (last_msg.text if last_msg else '')
+        first_user_msg = TerritoryAdminChatMessage.query.filter_by(guest_key=gk, is_from_admin=False).order_by(
+            TerritoryAdminChatMessage.id.asc()
+        ).first()
+        guest_name = first_user_msg.author_name if first_user_msg else 'Гость'
+        out.append({
+            'user_id': None,
+            'guest_key': gk,
+            'display_name': guest_name,
+            'username': 'guest',
+            'last_at': last_at.isoformat() if last_at else None,
+            'last_preview': preview,
+        })
+    out.sort(key=lambda x: (x['last_at'] or ''), reverse=True)
+    return jsonify({'success': True, 'threads': out})
+
+
+def _admin_thread_messages_query(user_id=None, guest_key=None):
+    if user_id is not None:
+        return TerritoryAdminChatMessage.query.filter_by(user_id=user_id)
+    if guest_key:
+        return TerritoryAdminChatMessage.query.filter_by(guest_key=guest_key)
+    return None
+
+
+@app.route('/api/admin/territory-battle/admin-chat/thread/<int:user_id>/messages')
+@admin_required
+def api_admin_territory_admin_chat_thread_messages(user_id):
+    """Сообщения в треде с пользователем user_id."""
+    q = _admin_thread_messages_query(user_id=user_id)
+    if not q: return jsonify({'success': False, 'error': 'Not found'}), 404
+    messages = q.order_by(TerritoryAdminChatMessage.created_at.asc()).all()
+    items = []
+    for m in messages:
+        author = 'Администратор' if m.is_from_admin else (m.author_name or 'Пользователь')
+        items.append({
+            'id': m.id,
+            'author_name': author,
+            'text': m.text,
+            'is_from_admin': m.is_from_admin,
+            'created_at': m.created_at.isoformat() if m.created_at else None,
+        })
+    return jsonify({'success': True, 'messages': items})
+
+
+@app.route('/api/admin/territory-battle/admin-chat/thread/guest/<guest_key>/messages')
+@admin_required
+def api_admin_territory_admin_chat_thread_guest_messages(guest_key):
+    """Сообщения в треде гостя."""
+    q = _admin_thread_messages_query(guest_key=guest_key)
+    if not q: return jsonify({'success': False, 'error': 'Not found'}), 404
+    messages = q.order_by(TerritoryAdminChatMessage.created_at.asc()).all()
+    items = []
+    for m in messages:
+        author = 'Администратор' if m.is_from_admin else (m.author_name or 'Гость')
+        items.append({
+            'id': m.id,
+            'author_name': author,
+            'text': m.text,
+            'is_from_admin': m.is_from_admin,
+            'created_at': m.created_at.isoformat() if m.created_at else None,
+        })
+    return jsonify({'success': True, 'messages': items})
+
+
+@app.route('/api/admin/territory-battle/admin-chat/thread/<int:user_id>/reply', methods=['POST'])
+@admin_required
+def api_admin_territory_admin_chat_reply(user_id):
+    """Ответ администратора пользователю. Тело: text (макс. 200 символов)."""
+    User.query.get_or_404(user_id)
+    data = request.get_json() or request.form
+    text = (data.get('text') or '').strip()
+    if not text:
+        return jsonify({'success': False, 'error': 'Текст ответа не может быть пустым'}), 400
+    if len(text) > TERRITORY_ADMIN_CHAT_TEXT_MAX:
+        return jsonify({'success': False, 'error': 'Ответ не более {} символов'.format(TERRITORY_ADMIN_CHAT_TEXT_MAX)}), 400
+    msg = TerritoryAdminChatMessage(user_id=user_id, guest_key=None, author_name=None, text=text, is_from_admin=True)
+    db.session.add(msg)
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'message': {
+            'id': msg.id,
+            'author_name': 'Администратор',
+            'text': msg.text,
+            'is_from_admin': True,
+            'created_at': msg.created_at.isoformat() if msg.created_at else None,
+        }
+    })
+
+
+@app.route('/api/admin/territory-battle/admin-chat/thread/guest/<guest_key>/reply', methods=['POST'])
+@admin_required
+def api_admin_territory_admin_chat_reply_guest(guest_key):
+    """Ответ администратора гостю."""
+    data = request.get_json() or request.form
+    text = (data.get('text') or '').strip()
+    if not text:
+        return jsonify({'success': False, 'error': 'Текст ответа не может быть пустым'}), 400
+    if len(text) > TERRITORY_ADMIN_CHAT_TEXT_MAX:
+        return jsonify({'success': False, 'error': 'Ответ не более {} символов'.format(TERRITORY_ADMIN_CHAT_TEXT_MAX)}), 400
+    if not TerritoryAdminChatMessage.query.filter_by(guest_key=guest_key).first():
+        return jsonify({'success': False, 'error': 'Тред не найден'}), 404
+    msg = TerritoryAdminChatMessage(user_id=None, guest_key=guest_key, author_name=None, text=text, is_from_admin=True)
+    db.session.add(msg)
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'message': {
+            'id': msg.id,
+            'author_name': 'Администратор',
+            'text': msg.text,
+            'is_from_admin': True,
+            'created_at': msg.created_at.isoformat() if msg.created_at else None,
+        }
+    })
 
 
 # --- Админ: редактор лавки (в разделе битвы за территорию) ---
