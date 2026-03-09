@@ -706,6 +706,7 @@ body {
                     <tr>
                         <th>Название</th>
                         <th>Категория</th>
+                        <th>Грейд</th>
                         <th>Цена (Нумы)</th>
                         <th></th>
                     </tr>
@@ -725,6 +726,7 @@ body {
                                 {{ item.category }}
                             {% endif %}
                         </td>
+                        <td>{% if item.category == 'equipment' and item.grade %}{{ item.grade|upper }}{% else %}—{% endif %}</td>
                         <td>{{ item.price }}</td>
                         <td>
                             <button type="button" class="edit-btn shop-item-edit-btn" data-item-id="{{ item.id }}">Изменить</button>
@@ -861,6 +863,16 @@ body {
                     <option value="gloves">Перчатки</option>
                     <option value="boots">Сапоги</option>
                     <option value="weapon">Оружие</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Грейд (для категории «Снаряжение»: D, C, B, S)</label>
+                <select id="shopItemEditorGrade" name="grade" style="min-width:100px;">
+                    <option value="">— не задан —</option>
+                    <option value="d">D</option>
+                    <option value="c">C</option>
+                    <option value="b">B</option>
+                    <option value="s">S</option>
                 </select>
             </div>
             <div class="form-group">
@@ -1366,6 +1378,8 @@ document.getElementById('clanDeleteConfirm').addEventListener('click', function(
             document.getElementById('shopItemEditorDesc').value = '';
             document.getElementById('shopItemEditorPrice').value = '0';
             document.getElementById('shopItemEditorCategory').value = 'equipment';
+            document.getElementById('shopItemEditorEquipmentSlot').value = '';
+            document.getElementById('shopItemEditorGrade').value = '';
             document.getElementById('shopItemEditorImage').value = '';
             container.innerHTML = '';
             addEffectRow();
@@ -1387,6 +1401,7 @@ document.getElementById('clanDeleteConfirm').addEventListener('click', function(
                 document.getElementById('shopItemEditorPrice').value = item.price != null ? item.price : 0;
                 document.getElementById('shopItemEditorCategory').value = item.category || 'enhancement';
                 document.getElementById('shopItemEditorEquipmentSlot').value = item.equipment_slot || '';
+                document.getElementById('shopItemEditorGrade').value = item.grade || '';
                 document.getElementById('shopItemEditorImage').value = '';
                 container.innerHTML = '';
                 (item.effects || []).forEach(function(e) { addEffectRow(e); });
@@ -1415,6 +1430,7 @@ document.getElementById('clanDeleteConfirm').addEventListener('click', function(
         fd.append('price', document.getElementById('shopItemEditorPrice').value);
         fd.append('category', document.getElementById('shopItemEditorCategory').value);
         fd.append('equipment_slot', document.getElementById('shopItemEditorEquipmentSlot').value);
+        fd.append('grade', document.getElementById('shopItemEditorGrade').value);
         fd.append('effects', JSON.stringify(getEffectsFromForm()));
         var imgInput = document.getElementById('shopItemEditorImage');
         if (imgInput.files && imgInput.files[0]) fd.append('image', imgInput.files[0]);

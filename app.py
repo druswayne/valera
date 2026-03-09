@@ -681,6 +681,8 @@ class ShopItem(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.now)
     # Для предметов категории equipment: слот снаряжения (helmet, chest, pants, gloves, boots, weapon)
     equipment_slot = db.Column(db.String(20), nullable=True)
+    # Для снаряжения: грейд (d, c, b, s) — для группировки и сортировки в лавке
+    grade = db.Column(db.String(5), nullable=True)
     effects = db.relationship('ShopItemEffect', backref='shop_item', lazy=True, cascade='all, delete-orphan')
 
     def to_dict(self):
@@ -1894,6 +1896,9 @@ with app.app_context():
                 if 'equipment_slot' not in columns:
                     conn.execute(text("ALTER TABLE shop_item ADD COLUMN equipment_slot VARCHAR(20)"))
                     print("Добавлена колонка equipment_slot в shop_item")
+                if 'grade' not in columns:
+                    conn.execute(text("ALTER TABLE shop_item ADD COLUMN grade VARCHAR(5)"))
+                    print("Добавлена колонка grade в shop_item")
     except Exception as e:
         print(f"Ошибка при создании таблиц лавки: {e}")
         db.create_all()
@@ -2352,6 +2357,7 @@ def _shop_item_to_dict(item, include_effects=False):
         'category': item.category,
         'image_url': url_for('static', filename=_avatar_static_filename(item.image_filename)) if item.image_filename else None,
         'equipment_slot': item.equipment_slot,
+        'grade': (item.grade or '').strip().lower() or None,
     }
     if include_effects:
         d['effects'] = [
@@ -2567,14 +2573,32 @@ def _consume_one_shot_buffs(user_id, clan_id, region_index):
         db.session.delete(b)
 
 
+# Порядок грейдов снаряжения для сортировки в лавке (d → c → b → s)
+SHOP_EQUIPMENT_GRADE_ORDER = {'d': 0, 'c': 1, 'b': 2, 's': 3}
+
+
 @app.route('/api/shop/items')
 @login_required
 def api_shop_items():
-    """Список товаров лавки по категориям (для блока «Лавка предметов» в битве за территорию)."""
+    """Список товаров лавки по категориям (для блока «Лавка предметов» в битве за территорию). Снаряжение отсортировано по грейду (d, c, b, s)."""
     items = ShopItem.query.filter_by(shop_context=SHOP_CONTEXT_TERRITORY).order_by(ShopItem.category, ShopItem.sort_order, ShopItem.id).all()
     by_category = {'enhancement': [], 'curse': [], 'equipment': []}
+    eq_items = []
     for item in items:
-        by_category.setdefault(item.category, []).append(_shop_item_to_dict(item))
+        if item.category == SHOP_CATEGORY_EQUIPMENT:
+            eq_items.append(item)
+        else:
+            by_category.setdefault(item.category, []).append(_shop_item_to_dict(item))
+    # Снаряжение: сортировка по грейду (d, c, b, s), затем sort_order, id
+    eq_items_sorted = sorted(
+        eq_items,
+        key=lambda i: (
+            SHOP_EQUIPMENT_GRADE_ORDER.get((i.grade or '').strip().lower(), 99),
+            i.sort_order,
+            i.id,
+        ),
+    )
+    by_category['equipment'] = [_shop_item_to_dict(i) for i in eq_items_sorted]
     return jsonify({'success': True, 'items': by_category})
 
 
@@ -2672,6 +2696,7 @@ def api_cabinet_inventory():
             'purchased_at': p.purchased_at.isoformat() if p.purchased_at else None,
             'category': p.shop_item.category,
             'equipment_slot': p.shop_item.equipment_slot,
+            'grade': (p.shop_item.grade or '').strip().lower() or None,
             'equipped_slot': equipped.get(p.id),
         })
     return jsonify({'success': True, 'inventory': out})
@@ -4844,7 +4869,10 @@ def api_admin_shop_item_create():
     except Exception:
         effects_list = []
     equipment_slot = (request.form.get('equipment_slot') or '').strip().lower() or None
-    item = ShopItem(name=name, description=description, price=price, category=category, shop_context=SHOP_CONTEXT_TERRITORY, equipment_slot=equipment_slot)
+    grade = (request.form.get('grade') or '').strip().lower() or None
+    if grade not in ('d', 'c', 'b', 's'):
+        grade = None
+    item = ShopItem(name=name, description=description, price=price, category=category, shop_context=SHOP_CONTEXT_TERRITORY, equipment_slot=equipment_slot, grade=grade)
     db.session.add(item)
     db.session.flush()
     if 'image' in request.files:
@@ -4895,6 +4923,12 @@ def api_admin_shop_item_update_delete(item_id):
     if equipment_slot is not None:
         equipment_slot = equipment_slot.strip().lower() or None
         item.equipment_slot = equipment_slot
+    grade = request.form.get('grade')
+    if grade is not None:
+        grade = grade.strip().lower() or None
+        if grade not in ('d', 'c', 'b', 's'):
+            grade = None
+        item.grade = grade
     effects_json = request.form.get('effects', '[]')
     try:
         effects_list = json.loads(effects_json) if isinstance(effects_json, str) else (effects_json if isinstance(effects_json, list) else [])

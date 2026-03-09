@@ -733,6 +733,16 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     font-size: 1rem;
     cursor: pointer;
 }
+.shop-grade-header {
+    grid-column: 1 / -1;
+    font-size: 0.95rem;
+    color: #b8956b;
+    margin: 12px 0 6px;
+    font-family: 'Cinzel', Georgia, serif;
+    border-bottom: 1px solid #5c4033;
+    padding-bottom: 4px;
+}
+.shop-grade-header:first-child { margin-top: 0; }
 .shop-tiles {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -3680,7 +3690,23 @@ var CURRENT_USER_ID = {{ user.id }};
         (items.enhancement || []).forEach(function(it) { enh.appendChild(createTile(it)); });
         (items.curse || []).forEach(function(it) { cur.appendChild(createTile(it)); });
         if (eq && items.equipment) {
-            (items.equipment || []).forEach(function(it) { eq.appendChild(createTile(it)); });
+            var gradeOrder = ['d', 'c', 'b', 's', ''];
+            var gradeLabels = { 'd': 'Грейд D', 'c': 'Грейд C', 'b': 'Грейд B', 's': 'Грейд S', '': 'Прочее' };
+            var byGrade = {};
+            (items.equipment || []).forEach(function(it) {
+                var g = (it.grade || '').toLowerCase() || '';
+                if (g && !gradeLabels[g]) g = '';
+                if (!byGrade[g]) byGrade[g] = [];
+                byGrade[g].push(it);
+            });
+            gradeOrder.forEach(function(g) {
+                if (!byGrade[g] || byGrade[g].length === 0) return;
+                var h = document.createElement('div');
+                h.className = 'shop-grade-header';
+                h.textContent = gradeLabels[g];
+                eq.appendChild(h);
+                byGrade[g].forEach(function(it) { eq.appendChild(createTile(it)); });
+            });
         }
     }
     function createTile(it) {
