@@ -2426,6 +2426,24 @@ window.territoryFocusProtection = (function() {
     const captureStartTimeIso = {{ capture_start_time_iso | tojson }};
     const captureStartTimeMs = {{ capture_start_time_ms | tojson }};
     const captureEndTimeMs = {{ capture_end_time_ms | tojson }};
+    let serverTimeOffsetMs = 0;
+    function getServerNowMs() {
+        return Date.now() + serverTimeOffsetMs;
+    }
+    (function initServerTimeOffset() {
+        try {
+            fetch('/api/territory-battle/server-time')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data && data.server_time_ms) {
+                        serverTimeOffsetMs = data.server_time_ms - Date.now();
+                    }
+                })
+                .catch(function() {});
+        } catch (e) {
+            // ignore; будем использовать локальное время
+        }
+    })();
     const clanColors = {};
     const clanHeraldry = {};
     clansData.forEach(function(c) {
@@ -2927,7 +2945,7 @@ window.territoryFocusProtection = (function() {
             if (nextEl && r.lastPayoutAt) {
                 var twoHoursMs = 2 * 60 * 60 * 1000;
                 var last = new Date(r.lastPayoutAt).getTime();
-                var now = Date.now();
+                var now = getServerNowMs();
                 var next = last + twoHoursMs;
                 while (next <= now) next += twoHoursMs;
                 var sec = Math.max(0, Math.ceil((next - now) / 1000));
@@ -3389,7 +3407,7 @@ window.territoryFocusProtection = (function() {
                     if (!nextPayoutEl || !r.lastPayoutAt) return;
                     var twoHoursMs = 2 * 60 * 60 * 1000;
                     var last = new Date(r.lastPayoutAt).getTime();
-                    var now = Date.now();
+                    var now = getServerNowMs();
                     var next = last + twoHoursMs;
                     while (next <= now) {
                         next += twoHoursMs;

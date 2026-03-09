@@ -81,8 +81,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def now_utc_plus_3():
-    """Текущее время сервера + 3 часа (для сохранения времени решения)."""
-    return datetime.now() + timedelta(hours=3)
+    """Текущее время сервера (локальный часовой пояс, например MSK) для сохранения времени решения."""
+    return datetime.now()
 
 def list_animation_frame_urls(animation_name: str):
     """
@@ -242,7 +242,7 @@ class Clan(db.Model):
     can_use_gif_flag = db.Column(db.Boolean, default=False, nullable=False)
     max_members = db.Column(db.Integer, default=CLAN_DEFAULT_MAX_MEMBERS, nullable=False)
     accept_ban_until = db.Column(db.DateTime, nullable=True)  # штраф: до этого времени нельзя принимать новых участников
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
 
     owner = db.relationship('User', foreign_keys=[owner_id], backref=db.backref('owned_clan', uselist=False), lazy=True)
     members_rel = db.relationship('User', back_populates='clan_obj', foreign_keys='User.clan_id', lazy=True)  # участники клана
@@ -270,7 +270,7 @@ class ClanJoinRequest(db.Model):
     clan_id = db.Column(db.Integer, db.ForeignKey('clan.id'), nullable=False)
     status = db.Column(db.String(20), default='pending', nullable=False)  # pending, accepted, rejected
     message = db.Column(db.String(100), nullable=True)  # сообщение владельцу клана (до 100 символов)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
 
     user = db.relationship('User', backref='clan_join_requests', lazy=True)
 
@@ -281,7 +281,7 @@ class ClanSearchChatMessage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     text = db.Column(db.String(100), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
 
     user = db.relationship('User', backref=db.backref('clan_search_chat_messages', lazy=True))
 
@@ -292,7 +292,7 @@ class ClanRecruitmentAd(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     clan_id = db.Column(db.Integer, db.ForeignKey('clan.id'), nullable=False, unique=True)
     text = db.Column(db.String(100), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
 
     clan = db.relationship('Clan', backref=db.backref('recruitment_ad', uselist=False, cascade='all, delete-orphan'), lazy=True)
 
@@ -304,7 +304,7 @@ class ClanChatMessage(db.Model):
     clan_id = db.Column(db.Integer, db.ForeignKey('clan.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     text = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
 
     clan = db.relationship('Clan', backref=db.backref('chat_messages', lazy=True, order_by='ClanChatMessage.created_at'))
     user = db.relationship('User', backref='clan_chat_messages', lazy=True)
@@ -319,7 +319,7 @@ class TerritoryAdminChatMessage(db.Model):
     author_name = db.Column(db.String(200), nullable=True)  # имя отправителя (от пользователя) или None для админа
     text = db.Column(db.String(200), nullable=False)
     is_from_admin = db.Column(db.Boolean, default=False, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
 
     user = db.relationship('User', backref=db.backref('territory_admin_chat_messages', lazy=True, order_by='TerritoryAdminChatMessage.created_at'))
 
@@ -333,8 +333,8 @@ class PvPArenaPresence(db.Model):
     __tablename__ = 'pvp_arena_presence'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, unique=True)
-    entered_at = db.Column(db.DateTime, default=datetime.utcnow)
-    last_seen_at = db.Column(db.DateTime, default=datetime.utcnow)  # обновляется при любом запросе с арены
+    entered_at = db.Column(db.DateTime, default=datetime.now)
+    last_seen_at = db.Column(db.DateTime, default=datetime.now)  # обновляется при любом запросе с арены
 
     user = db.relationship('User', backref=db.backref('pvp_arena_presence', uselist=False, lazy=True, cascade='all, delete-orphan'))
 
@@ -345,7 +345,7 @@ class PvPArenaChatMessage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     text = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
 
     user = db.relationship('User', backref='pvp_arena_chat_messages', lazy=True)
 
@@ -358,7 +358,7 @@ class PvPDuelChallenge(db.Model):
     defender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     status = db.Column(db.String(20), default='pending', nullable=False)  # pending, accepted, declined
     wager = db.Column(db.Integer, default=0, nullable=False)  # ставка в нумах (0 = без ставки, для старых записей)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
 
     challenger = db.relationship('User', foreign_keys=[challenger_id], lazy=True)
     defender = db.relationship('User', foreign_keys=[defender_id], lazy=True)
@@ -378,7 +378,7 @@ class PvPDuel(db.Model):
     status = db.Column(db.String(20), default='active', nullable=False)  # active, finished
     winner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     wager = db.Column(db.Integer, default=0, nullable=False)  # ставка в нумах (списана с обоих при старте)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
     finished_at = db.Column(db.DateTime, nullable=True)
 
     challenger = db.relationship('User', foreign_keys=[challenger_id], lazy=True)
@@ -512,7 +512,7 @@ class User(UserMixin, db.Model):
     nums_balance = db.Column(db.Integer, default=0, nullable=False)  # Нумы (валюта за правильные решения задач)
     clan_join_ban_until = db.Column(db.DateTime, nullable=True)  # штраф после выхода из клана: до этого времени нельзя вступать в клан и подавать заявки
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
 
     clan_obj = db.relationship('Clan', back_populates='members_rel', foreign_keys=[clan_id], lazy=True)
     territory_stats_rel = db.relationship('UserTerritoryStats', backref='user', uselist=False, lazy=True, cascade='all, delete-orphan')
@@ -572,7 +572,7 @@ class User(UserMixin, db.Model):
 
     def ensure_energy_refill(self):
         """Восстанавливать энергию каждые 30 мин на 20% от макс."""
-        now = datetime.utcnow()
+        now = datetime.now()
         max_e = self.energy
         last = self.energy_last_refill_at
         if last is None:
@@ -662,7 +662,7 @@ class ShopItem(db.Model):
     category = db.Column(db.String(20), nullable=False)  # enhancement / curse (territory) или для game
     sort_order = db.Column(db.Integer, default=0, nullable=False)
     shop_context = db.Column(db.String(20), nullable=False, default=SHOP_CONTEXT_TERRITORY)  # territory | game
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
     effects = db.relationship('ShopItemEffect', backref='shop_item', lazy=True, cascade='all, delete-orphan')
 
     def to_dict(self):
@@ -693,7 +693,7 @@ class UserShopPurchase(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     shop_item_id = db.Column(db.Integer, db.ForeignKey('shop_item.id'), nullable=False)
-    purchased_at = db.Column(db.DateTime, default=datetime.utcnow)
+    purchased_at = db.Column(db.DateTime, default=datetime.now)
     used_at = db.Column(db.DateTime, nullable=True)  # когда активирован (пока не используется)
     user = db.relationship('User', backref=db.backref('shop_purchases', lazy=True))
     shop_item = db.relationship('ShopItem', backref=db.backref('purchases', lazy=True))
@@ -741,7 +741,7 @@ class ActiveItemBuff(db.Model):
     clan_id = db.Column(db.Integer, db.ForeignKey('clan.id'), nullable=True)
     region_index = db.Column(db.Integer, nullable=True)
     shop_item_id = db.Column(db.Integer, db.ForeignKey('shop_item.id'), nullable=False)
-    used_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    used_at = db.Column(db.DateTime, default=datetime.now, nullable=False)
     one_shot = db.Column(db.Boolean, default=False, nullable=False)  # разовое: применить и удалить после одного действия
     user = db.relationship('User', backref=db.backref('active_buffs', lazy=True))
     clan = db.relationship('Clan', backref=db.backref('active_buffs', lazy=True))
@@ -757,7 +757,7 @@ class Class(db.Model):
     name = db.Column(db.String(100), nullable=False, unique=True)
     students_balance = db.Column(db.Integer, default=0)
     valera_balance = db.Column(db.Integer, default=0)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
     territory_fill_color = db.Column(db.String(20), nullable=True)
     territory_heraldry_filename = db.Column(db.String(255), nullable=True)
     students = db.relationship('Student', backref='class_obj', lazy=True, cascade='all, delete-orphan')
@@ -777,7 +777,7 @@ class Student(db.Model):
     name = db.Column(db.String(100), nullable=False)
     class_id = db.Column(db.Integer, db.ForeignKey('class.id'), nullable=False)
     rating = db.Column(db.Integer, default=0, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
     selections = db.relationship('StudentSelection', backref='student', lazy=True, cascade='all, delete-orphan')
 
     def to_dict(self):
@@ -792,7 +792,7 @@ class StudentSelection(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
     class_id = db.Column(db.Integer, db.ForeignKey('class.id'), nullable=False)
-    selected_at = db.Column(db.DateTime, default=datetime.utcnow)
+    selected_at = db.Column(db.DateTime, default=datetime.now)
 
     def to_dict(self):
         return {
@@ -809,7 +809,7 @@ class Prize(db.Model):
     students_change = db.Column(db.Integer, default=0, nullable=False)  # Изменение баланса учащихся
     valera_change = db.Column(db.Integer, default=0, nullable=False)  # Изменение баланса Валеры
     probability = db.Column(db.String(20), default='medium', nullable=False)  # 'high', 'medium', 'low'
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
 
     def to_dict(self):
         return {
@@ -828,8 +828,8 @@ class WeeklyTask(db.Model):
     image_filename = db.Column(db.String(255), nullable=True)
     correct_answer = db.Column(db.String(200), nullable=False)
     is_active = db.Column(db.Boolean, default=False, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    last_updated = db.Column(db.DateTime, default=datetime.utcnow)  # Дата последнего обновления
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    last_updated = db.Column(db.DateTime, default=datetime.now)  # Дата последнего обновления
     
     # Связь с решениями
     solutions = db.relationship('TaskSolution', backref='task', lazy=True, cascade='all, delete-orphan')
@@ -877,8 +877,8 @@ class Boss(db.Model):
     name = db.Column(db.String(200), nullable=False)
     rewards_list = db.Column(db.Text, nullable=True)  # Список наград (текст)
     is_active = db.Column(db.Boolean, default=False, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     
     tasks = db.relationship('BossTask', backref='boss', lazy=True, cascade='all, delete-orphan')
     solutions = db.relationship('BossTaskSolution', backref='boss', lazy=True, cascade='all, delete-orphan')
@@ -926,7 +926,7 @@ class BossTask(db.Model):
     image_filename = db.Column(db.String(255), nullable=True)
     correct_answer = db.Column(db.String(200), nullable=False)
     points = db.Column(db.Integer, nullable=False, default=0)  # Стоимость в баллах (урон)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
 
     # Индексы для оптимизации частых запросов
     __table_args__ = (
@@ -996,7 +996,7 @@ class BossUser(db.Model):
     """Пользователь босса (сохраненные имена)"""
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)  # Фамилия и Имя
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
     
     # Связи
     solutions = db.relationship('BossTaskSolution', backref='user', lazy=True)
@@ -1018,7 +1018,7 @@ class BossDrop(db.Model):
     # Максимальное количество этого дропа для одного пользователя (BossUser.id).
     # None/NULL = без ограничений.
     max_per_user = db.Column(db.Integer, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
     
     # Связи
     rewards = db.relationship('BossDropReward', backref='drop', lazy=True)
@@ -1058,7 +1058,7 @@ class BossDropReward(db.Model):
     # в момент получения дропа (и при необходимости связать выдачу с задачей).
     task_id = db.Column(db.Integer, db.ForeignKey('boss_task.id'), nullable=True)
     class_id = db.Column(db.Integer, db.ForeignKey('class.id'), nullable=True)
-    received_at = db.Column(db.DateTime, default=datetime.utcnow)
+    received_at = db.Column(db.DateTime, default=datetime.now)
 
     task = db.relationship('BossTask', foreign_keys=[task_id], lazy=True)
     class_obj = db.relationship('Class', foreign_keys=[class_id], lazy=True)
@@ -1167,7 +1167,7 @@ class GameUpdate(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(300), nullable=False)
     content = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.now, nullable=False)
 
 
 # Кэш настроек битвы за территорию (снижает нагрузку на БД при пиковой посещаемости)
@@ -1185,7 +1185,7 @@ def _invalidate_territory_settings_cache():
 def get_territory_registration_enabled():
     """Проверить, включена ли регистрация участников в битве за территорию."""
     cache_ttl = app.config.get('TERRITORY_SETTINGS_CACHE_SECONDS', 60)
-    now = datetime.utcnow().timestamp()
+    now = datetime.now().timestamp()
     global _territory_registration_cache
     if _territory_registration_cache is not None:
         val, ts = _territory_registration_cache
@@ -1204,7 +1204,7 @@ def get_territory_registration_enabled():
 def get_territory_capture_settings():
     """Вернуть (capture_enabled, capture_start_time, capture_end_time). datetime — или None."""
     cache_ttl = app.config.get('TERRITORY_SETTINGS_CACHE_SECONDS', 60)
-    now = datetime.utcnow().timestamp()
+    now = datetime.now().timestamp()
     global _territory_capture_cache
     if _territory_capture_cache is not None:
         val, ts = _territory_capture_cache
@@ -1236,7 +1236,7 @@ def process_territory_structure_payouts(clan_id):
     if not owner_user:
         return
     regions_owned = TerritoryRegionState.query.filter_by(owner_clan_id=clan_id).all()
-    now = datetime.utcnow()
+    now = datetime.now()
     for state in regions_owned:
         struct = TerritoryRegionStructure.query.filter_by(region_index=state.region_index).first()
         if not struct or struct.structure_type not in TERRITORY_STRUCTURE_PAYOUT_AMOUNT:
@@ -1483,7 +1483,7 @@ def update_weekly_task():
                 first_task = all_tasks[0]
                 WeeklyTask.query.update({WeeklyTask.is_active: False})
                 first_task.is_active = True
-                first_task.last_updated = datetime.utcnow()
+                first_task.last_updated = datetime.now()
                 db.session.commit()
                 print(f"Задача недели обновлена (все задачи решены): {first_task.title}")
                 return
@@ -1496,7 +1496,7 @@ def update_weekly_task():
             
             # Активируем новую задачу
             new_task.is_active = True
-            new_task.last_updated = datetime.utcnow()
+            new_task.last_updated = datetime.now()
             
             db.session.commit()
             print(f"Задача недели обновлена: {new_task.title}")
@@ -2000,14 +2000,14 @@ with app.app_context():
                 # Выбираем случайную задачу из нерешенных
                 new_task = random.choice(unsolved_tasks)
                 new_task.is_active = True
-                new_task.last_updated = datetime.utcnow()
+                new_task.last_updated = datetime.now()
                 db.session.commit()
                 print(f"Активирована задача недели: {new_task.title}")
             elif all_tasks:
                 # Если все задачи решены, активируем первую
                 first_task = all_tasks[0]
                 first_task.is_active = True
-                first_task.last_updated = datetime.utcnow()
+                first_task.last_updated = datetime.now()
                 db.session.commit()
                 print(f"Активирована задача недели (все задачи решены): {first_task.title}")
     
@@ -2321,7 +2321,7 @@ def _shop_item_to_dict(item, include_effects=False):
 
 def _active_buffs_query(user_id=None, clan_id=None, region_index=None):
     """Базовый запрос активных баффов по одному из критериев (все ещё действующие по времени)."""
-    now = datetime.utcnow()
+    now = datetime.now()
     q = ActiveItemBuff.query
     if user_id is not None:
         q = q.filter(ActiveItemBuff.user_id == user_id)
@@ -2384,7 +2384,7 @@ def _single_buff_to_display(b, now):
 def get_active_buffs_for_display(user_id=None, clan_id=None, region_index=None):
     """Список активных баффов для отображения (название, иконка, время использования, макс. время окончания).
     Возвращаются только баффы с длительностью действия (для отображения иконок на странице битвы)."""
-    now = datetime.utcnow()
+    now = datetime.now()
     rows = _active_buffs_query(user_id=user_id, clan_id=clan_id, region_index=region_index).all()
     out = []
     for b in rows:
@@ -2398,7 +2398,7 @@ def get_active_buffs_for_display_by_regions(region_indices):
     """Загрузить баффы по областям одним запросом. Возвращает dict: region_index -> список баффов для отображения."""
     if not region_indices:
         return {}
-    now = datetime.utcnow()
+    now = datetime.now()
     rows = ActiveItemBuff.query.filter(
         ActiveItemBuff.region_index.in_(region_indices)
     ).all()
@@ -2417,7 +2417,7 @@ def _get_multipliers_for_action(user_id, clan_id, region_index, is_attack):
     is_attack: True = атака чужой области (damage), False = защита своей (defense).
     Возвращает dict: damage_pct, defense_pct, xp_reward_pct, nums_reward_pct (суммы процентов).
     """
-    now = datetime.utcnow()
+    now = datetime.now()
     damage_pct = 0.0
     defense_pct = 0.0
     xp_reward_pct = 0.0
@@ -2659,7 +2659,7 @@ def api_cabinet_inventory_use(purchase_id):
         clan_id=clan_id,
         region_index=reg_idx,
         shop_item_id=item.id,
-        used_at=datetime.utcnow(),
+        used_at=datetime.now(),
         one_shot=one_shot,
     )
     db.session.add(buff)
@@ -2760,7 +2760,7 @@ def api_clan_leave():
     else:
         current_user.clan_id = None
         current_user.clan_rank = None
-        current_user.clan_join_ban_until = datetime.utcnow() + timedelta(hours=USER_CLAN_JOIN_BAN_HOURS)
+        current_user.clan_join_ban_until = datetime.now() + timedelta(hours=USER_CLAN_JOIN_BAN_HOURS)
     db.session.commit()
     return jsonify({'success': True})
 
@@ -2771,7 +2771,7 @@ def api_clan_join_request():
     """Подать заявку на вступление в клан (только одну активную)"""
     if current_user.clan_id:
         return jsonify({'success': False, 'error': 'Вы уже в клане'}), 400
-    now = datetime.utcnow()
+    now = datetime.now()
     # Снять штраф с пользователя, если время вышло
     if current_user.clan_join_ban_until and now >= current_user.clan_join_ban_until:
         current_user.clan_join_ban_until = None
@@ -2827,7 +2827,7 @@ def api_clan_accept_request(clan_id, request_id):
     if clan.owner_id != user.id and (user.clan_rank or CLAN_RANK_VASSAL) not in (CLAN_RANK_DUKE, CLAN_RANK_MARQUIS):
         return jsonify({'success': False, 'error': 'Недостаточно прав для принятия заявок'}), 403
     # Проверка штрафа клана: в течение CLAN_ACCEPT_BAN_HOURS после исключения нельзя принимать
-    now = datetime.utcnow()
+    now = datetime.now()
     if clan.accept_ban_until and now < clan.accept_ban_until:
         return jsonify({
             'success': False,
@@ -2883,7 +2883,7 @@ def api_clan_kick(clan_id, user_id):
         return jsonify({'success': False, 'error': 'Нельзя исключить владельца'}), 400
     target.clan_id = None
     target.clan_rank = None
-    clan.accept_ban_until = datetime.utcnow() + timedelta(hours=CLAN_ACCEPT_BAN_HOURS)
+    clan.accept_ban_until = datetime.now() + timedelta(hours=CLAN_ACCEPT_BAN_HOURS)
     db.session.commit()
     return jsonify({'success': True})
 
@@ -4562,7 +4562,7 @@ def _shop_save_image(file, item_id=None):
     folder = os.path.join(app.root_path, app.config['SHOP_IMAGE_FOLDER'])
     os.makedirs(folder, exist_ok=True)
     prefix = 'item_' + (str(item_id) if item_id else 'new')
-    filename = f'{prefix}_{datetime.utcnow().strftime("%Y%m%d_%H%M%S")}.{ext}'
+    filename = f'{prefix}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.{ext}'
     filepath = os.path.join(folder, filename)
     file.save(filepath)
     return f'uploads/shop/{filename}'
@@ -4759,7 +4759,7 @@ def update_boss(boss_id):
     if 'rewards_list' in data:
         boss.rewards_list = data['rewards_list'].strip() or None
     
-    boss.updated_at = datetime.utcnow()
+    boss.updated_at = datetime.now()
     db.session.commit()
     return jsonify({'success': True, 'boss': boss.to_dict()})
 
@@ -4793,7 +4793,7 @@ def toggle_boss_active(boss_id):
         Boss.query.filter(Boss.id != boss_id).update({Boss.is_active: False})
         boss.is_active = True
     
-    boss.updated_at = datetime.utcnow()
+    boss.updated_at = datetime.now()
     db.session.commit()
     return jsonify({'success': True, 'boss': boss.to_dict()})
 
@@ -5252,7 +5252,7 @@ def api_territory_battle_structure_build():
     if not config or config.is_locked:
         return jsonify({'success': False, 'error': 'Область недоступна'}), 400
     current_user.nums_balance = (current_user.nums_balance or 0) - cost
-    now = datetime.utcnow()
+    now = datetime.now()
     db.session.add(TerritoryRegionStructure(region_index=region_index, structure_type=structure_type, last_payout_at=now))
     db.session.commit()
     return jsonify({
@@ -5465,7 +5465,7 @@ def api_territory_clan_search_chat_send():
     if len(text) > 100:
         return jsonify({'success': False, 'error': 'Сообщение не должно превышать 100 символов'}), 400
     text = filter_chat_text(text)
-    now = datetime.utcnow()
+    now = datetime.now()
     last = ClanSearchChatMessage.query.filter_by(user_id=current_user.id).order_by(
         ClanSearchChatMessage.created_at.desc()
     ).first()
@@ -6161,7 +6161,7 @@ def _pvp_arena_ensure_last_seen_column():
 def _pvp_arena_cleanup_stale():
     """Удалить присутствия на арене, у которых last_seen_at старше PVP_ARENA_INACTIVITY_MINUTES или не задан."""
     _pvp_arena_ensure_last_seen_column()
-    limit = datetime.utcnow() - timedelta(minutes=PVP_ARENA_INACTIVITY_MINUTES)
+    limit = datetime.now() - timedelta(minutes=PVP_ARENA_INACTIVITY_MINUTES)
     stale = PvPArenaPresence.query.filter(
         db.or_(PvPArenaPresence.last_seen_at.is_(None), PvPArenaPresence.last_seen_at < limit)
     ).all()
@@ -6175,7 +6175,7 @@ def _pvp_arena_touch_presence():
     """Обновить last_seen_at у текущего пользователя на арене. Возвращает presence или None."""
     presence = PvPArenaPresence.query.filter_by(user_id=current_user.id).first()
     if presence:
-        presence.last_seen_at = datetime.utcnow()
+        presence.last_seen_at = datetime.now()
         db.session.commit()
     return presence
 
@@ -6184,7 +6184,7 @@ def _pvp_arena_presence_valid(presence):
     """Проверить, что присутствие ещё «активно» (не просрочено по last_seen_at)."""
     if not presence or not getattr(presence, 'last_seen_at', None):
         return True
-    limit = datetime.utcnow() - timedelta(minutes=PVP_ARENA_INACTIVITY_MINUTES)
+    limit = datetime.now() - timedelta(minutes=PVP_ARENA_INACTIVITY_MINUTES)
     return presence.last_seen_at >= limit
 
 
@@ -6234,7 +6234,7 @@ def api_pvp_enter():
         db.session.add(presence)
         db.session.commit()
     else:
-        presence.last_seen_at = datetime.utcnow()
+        presence.last_seen_at = datetime.now()
         db.session.commit()
     return jsonify({'success': True})
 
@@ -6537,7 +6537,7 @@ def _pvp_duel_check_time_limit(duel):
     if duel.status != 'active' or not duel.created_at:
         return
     end_time = duel.created_at + timedelta(minutes=PVP_DUEL_DURATION_MINUTES)
-    if datetime.utcnow() <= end_time:
+    if datetime.now() <= end_time:
         return
     if duel.challenger_health > duel.defender_health:
         duel.winner_id = duel.challenger_id
@@ -6546,7 +6546,7 @@ def _pvp_duel_check_time_limit(duel):
     else:
         duel.winner_id = None
     duel.status = 'finished'
-    duel.finished_at = datetime.utcnow()
+    duel.finished_at = datetime.now()
     _pvp_duel_apply_stake_result(duel)
     db.session.commit()
 
@@ -6724,7 +6724,7 @@ def api_pvp_duel_answer(duel_id):
                 duel.winner_id = None
             else:
                 duel.winner_id = attacker.id
-            duel.finished_at = datetime.utcnow()
+            duel.finished_at = datetime.now()
             _pvp_duel_apply_stake_result(duel)
     db.session.commit()
     me_is_challenger = current_user.id == duel.challenger_id
@@ -6776,7 +6776,7 @@ def api_pvp_duel_surrender(duel_id):
     _apply_surrender_penalty(loser)
     duel.status = 'finished'
     duel.winner_id = winner.id
-    duel.finished_at = datetime.utcnow()
+    duel.finished_at = datetime.now()
     _pvp_duel_apply_stake_result(duel)
     db.session.commit()
     return jsonify({'success': True})
