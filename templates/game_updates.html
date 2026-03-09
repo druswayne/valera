@@ -236,7 +236,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 
         {% if pagination.items %}
             {% for update in pagination.items %}
-            <article class="update-block">
+            <article class="update-block" id="update-{{ update.id }}">
                 <h2>{{ update.title }}</h2>
                 <div class="update-date">{{ update.created_at.strftime('%d.%m.%Y %H:%M') if update.created_at else '' }}</div>
                 <div class="update-content">{{ update.content }}</div>

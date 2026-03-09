@@ -695,8 +695,11 @@ body {
 
     <section class="admin-section">
         <h2>Редактор лавки</h2>
-        <p>Товары лавки отображаются в личном кабинете в блоке «Баланс и Лавка предметов». Категории: Усиления (улучшают характеристики) и Проклятия (ухудшают у всего клана).</p>
-        <button type="button" class="edit-btn" id="shopItemAddBtn">Добавить товар</button>
+        <p>Товары лавки отображаются в личном кабинете в блоке «Баланс и Лавка предметов». Категории: Усиления (улучшают характеристики), Проклятия (ухудшают у всего клана) и Снаряжение (долговременные предметы экипировки).</p>
+        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+            <button type="button" class="edit-btn" id="shopItemAddBtn">Добавить товар</button>
+            <button type="button" class="edit-btn" id="shopEquipmentAddBtn">Добавить предмет</button>
+        </div>
         <div class="admin-table-wrap" style="margin-top: 12px;">
             <table class="admin-table" id="shopItemsTable">
                 <thead>
@@ -711,7 +714,17 @@ body {
                     {% for item in shop_items or [] %}
                     <tr data-item-id="{{ item.id }}">
                         <td>{{ item.name }}</td>
-                        <td>{{ 'Усиления' if item.category == 'enhancement' else 'Проклятия' }}</td>
+                        <td>
+                            {% if item.category == 'enhancement' %}
+                                Усиления
+                            {% elif item.category == 'curse' %}
+                                Проклятия
+                            {% elif item.category == 'equipment' %}
+                                Снаряжение
+                            {% else %}
+                                {{ item.category }}
+                            {% endif %}
+                        </td>
                         <td>{{ item.price }}</td>
                         <td>
                             <button type="button" class="edit-btn shop-item-edit-btn" data-item-id="{{ item.id }}">Изменить</button>
@@ -835,6 +848,19 @@ body {
                 <select id="shopItemEditorCategory" name="category" style="min-width:160px;">
                     <option value="enhancement">Усиления</option>
                     <option value="curse">Проклятия</option>
+                    <option value="equipment">Снаряжение</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Слот снаряжения (для категории «Снаряжение»)</label>
+                <select id="shopItemEditorEquipmentSlot" name="equipment_slot" style="min-width:160px;">
+                    <option value="">— не задан —</option>
+                    <option value="helmet">Шлем</option>
+                    <option value="chest">Нагрудник</option>
+                    <option value="pants">Штаны</option>
+                    <option value="gloves">Перчатки</option>
+                    <option value="boots">Сапоги</option>
+                    <option value="weapon">Оружие</option>
                 </select>
             </div>
             <div class="form-group">
@@ -862,6 +888,13 @@ body {
             <div class="form-group">
                 <label for="gameUpdateContent">Текст</label>
                 <textarea id="gameUpdateContent" name="content" rows="6" style="width:100%; padding:10px 12px; border-radius:12px; border:2px solid #a8b8d0; resize:vertical;"></textarea>
+            </div>
+            <div class="form-group">
+                <label class="registration-toggle-label" style="margin-top: 4px;">
+                    <input type="checkbox" id="gameUpdateShowOnMain" name="show_on_main">
+                    <span class="registration-toggle-switch"></span>
+                    <span class="registration-toggle-text">Показать на главной странице битвы</span>
+                </label>
             </div>
         </form>
         <div style="margin-top: 16px; display: flex; gap: 12px;">
@@ -1318,11 +1351,27 @@ document.getElementById('clanDeleteConfirm').addEventListener('click', function(
         document.getElementById('shopItemEditorDesc').value = '';
         document.getElementById('shopItemEditorPrice').value = '0';
         document.getElementById('shopItemEditorCategory').value = 'enhancement';
+        document.getElementById('shopItemEditorEquipmentSlot').value = '';
         document.getElementById('shopItemEditorImage').value = '';
         container.innerHTML = '';
         addEffectRow();
         if (modal) modal.classList.add('show');
     });
+    var shopEquipmentAddBtn = document.getElementById('shopEquipmentAddBtn');
+    if (shopEquipmentAddBtn) {
+        shopEquipmentAddBtn.addEventListener('click', function() {
+            document.getElementById('shopItemEditorTitle').textContent = 'Добавить предмет снаряжения';
+            document.getElementById('shopItemEditorId').value = '';
+            document.getElementById('shopItemEditorName').value = '';
+            document.getElementById('shopItemEditorDesc').value = '';
+            document.getElementById('shopItemEditorPrice').value = '0';
+            document.getElementById('shopItemEditorCategory').value = 'equipment';
+            document.getElementById('shopItemEditorImage').value = '';
+            container.innerHTML = '';
+            addEffectRow();
+            if (modal) modal.classList.add('show');
+        });
+    }
 
     document.querySelectorAll('.shop-item-edit-btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
@@ -1337,6 +1386,7 @@ document.getElementById('clanDeleteConfirm').addEventListener('click', function(
                 document.getElementById('shopItemEditorDesc').value = item.description || '';
                 document.getElementById('shopItemEditorPrice').value = item.price != null ? item.price : 0;
                 document.getElementById('shopItemEditorCategory').value = item.category || 'enhancement';
+                document.getElementById('shopItemEditorEquipmentSlot').value = item.equipment_slot || '';
                 document.getElementById('shopItemEditorImage').value = '';
                 container.innerHTML = '';
                 (item.effects || []).forEach(function(e) { addEffectRow(e); });
@@ -1364,6 +1414,7 @@ document.getElementById('clanDeleteConfirm').addEventListener('click', function(
         fd.append('description', document.getElementById('shopItemEditorDesc').value.trim());
         fd.append('price', document.getElementById('shopItemEditorPrice').value);
         fd.append('category', document.getElementById('shopItemEditorCategory').value);
+        fd.append('equipment_slot', document.getElementById('shopItemEditorEquipmentSlot').value);
         fd.append('effects', JSON.stringify(getEffectsFromForm()));
         var imgInput = document.getElementById('shopItemEditorImage');
         if (imgInput.files && imgInput.files[0]) fd.append('image', imgInput.files[0]);
@@ -1406,6 +1457,7 @@ document.getElementById('clanDeleteConfirm').addEventListener('click', function(
     var gameUpdateId = document.getElementById('gameUpdateId');
     var gameUpdateTitle = document.getElementById('gameUpdateTitle');
     var gameUpdateContent = document.getElementById('gameUpdateContent');
+    var gameUpdateShowOnMain = document.getElementById('gameUpdateShowOnMain');
     var gameUpdateDeleteModal = document.getElementById('gameUpdateDeleteModal');
     var gameUpdateDeleteTitle = document.getElementById('gameUpdateDeleteTitle');
     var gameUpdateDeleteTargetId = null;
@@ -1415,6 +1467,9 @@ document.getElementById('clanDeleteConfirm').addEventListener('click', function(
         gameUpdateId.value = '';
         gameUpdateTitle.value = '';
         gameUpdateContent.value = '';
+        if (gameUpdateShowOnMain) {
+            gameUpdateShowOnMain.checked = false;
+        }
         gameUpdateModal.classList.add('show');
     });
 
@@ -1425,12 +1480,18 @@ document.getElementById('clanDeleteConfirm').addEventListener('click', function(
             gameUpdateId.value = id;
             gameUpdateTitle.value = '';
             gameUpdateContent.value = '';
+            if (gameUpdateShowOnMain) {
+                gameUpdateShowOnMain.checked = false;
+            }
             gameUpdateModal.classList.add('show');
             fetch('{{ url_for("admin_territory_updates_get_or_update", update_id=0) }}'.replace(/\/0$/, '') + '/' + id)
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
                     gameUpdateTitle.value = data.title || '';
                     gameUpdateContent.value = data.content || '';
+                    if (gameUpdateShowOnMain) {
+                        gameUpdateShowOnMain.checked = !!data.show_on_main;
+                    }
                 })
                 .catch(function() { alert('Ошибка загрузки.'); });
         });
@@ -1447,6 +1508,7 @@ document.getElementById('clanDeleteConfirm').addEventListener('click', function(
         var id = gameUpdateId.value;
         var title = gameUpdateTitle.value.trim();
         var content = gameUpdateContent.value.trim();
+        var showOnMain = gameUpdateShowOnMain ? gameUpdateShowOnMain.checked : false;
         if (!title) {
             alert('Введите заголовок.');
             return;
@@ -1455,7 +1517,7 @@ document.getElementById('clanDeleteConfirm').addEventListener('click', function(
         saveBtn.disabled = true;
         var baseUrl = '{{ url_for("admin_territory_updates_create") }}';
         var url = id ? baseUrl + '/' + id : baseUrl;
-        var payload = { title: title, content: content };
+        var payload = { title: title, content: content, show_on_main: showOnMain };
         if (id) {
             fetch(url, {
                 method: 'POST',

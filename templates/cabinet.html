@@ -365,6 +365,142 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 }
 .stat-tooltip.show { display: block; }
 .skill-row .stat-label-wrap { display: inline-flex; align-items: center; gap: 0; position: relative; }
+.equipment-section {
+    margin-top: 20px;
+    padding-top: 18px;
+    border-top: 1px solid rgba(92,64,51,0.6);
+}
+.equipment-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+    margin-bottom: 4px;
+}
+.equipment-section-header h4 {
+    margin: 0;
+    font-size: 1rem;
+    color: #d4a84b;
+    font-family: 'Cinzel', Georgia, serif;
+}
+.equipment-section-body {
+    margin-top: 6px;
+}
+.equipment-section.collapsed .equipment-section-body {
+    display: none;
+}
+.equipment-section.collapsed .section-toggle {
+    transform: rotate(-90deg);
+}
+.equipment-hint {
+    margin: 0 0 14px;
+    font-size: 0.85rem;
+    color: #b8a088;
+}
+.equipment-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-areas:
+        ". helmet ."
+        "weapon chest offhand"
+        "gloves pants boots";
+    gap: 6px;
+    align-items: stretch;
+    max-width: 260px;
+    margin: 0 auto;
+}
+.equipment-slot {
+    background: linear-gradient(145deg, #3d2914 0%, #2c1810 100%);
+    border-radius: 8px;
+    border: 2px solid #5c4033;
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    box-shadow: inset 0 1px 0 rgba(212,168,75,0.08);
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+}
+.equipment-slot-label {
+    display: none;
+}
+.equipment-slot-body {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    border-radius: 6px;
+    border: 1px dashed rgba(212,168,75,0.35);
+    background-color: rgba(26,15,8,0.7);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    width: 100%;
+    height: 100%;
+    font-size: 0.7rem;
+    color: #8f7a62;
+    text-align: center;
+    padding: 0;
+}
+.equipment-slot-body::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: rgba(0, 0, 0, 0.35);
+    pointer-events: none;
+}
+.equipment-slot-empty {
+    opacity: 0.8;
+}
+.equipment-slot--inactive {
+    opacity: 0.65;
+    cursor: default;
+}
+.equipment-slot--equipped {
+    opacity: 1;
+    box-shadow: 0 0 10px rgba(212,168,75,0.6), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+.equipment-slot--equipped .equipment-slot-body::after {
+    background: none;
+}
+.equipment-slot--helmet   { grid-area: helmet; }
+.equipment-slot--chest    { grid-area: chest; }
+.equipment-slot--pants    { grid-area: pants; }
+.equipment-slot--gloves   { grid-area: gloves; }
+.equipment-slot--boots    { grid-area: boots; }
+.equipment-slot--weapon   { grid-area: weapon; }
+.equipment-slot--offhand  { grid-area: offhand; }
+.equipment-slot-body--helmet  { background-image: url("{{ url_for('static', filename='item/standart/helmet.png') }}"); }
+.equipment-slot-body--chest   { background-image: url("{{ url_for('static', filename='item/standart/breastplate.png') }}"); }
+.equipment-slot-body--pants   { background-image: url("{{ url_for('static', filename='item/standart/trousers.png') }}"); }
+.equipment-slot-body--gloves  { background-image: url("{{ url_for('static', filename='item/standart/gloves.png') }}"); }
+.equipment-slot-body--weapon  { background-image: url("{{ url_for('static', filename='item/standart/weapon.png') }}"); }
+.equipment-slot-body--offhand { background-image: url("{{ url_for('static', filename='item/standart/weapon.png') }}"); }
+.equipment-slot-body--boots   { background-image: url("{{ url_for('static', filename='item/standart/boots.png') }}"); }
+@media (max-width: 640px) {
+    .equipment-grid {
+        width: 100%;
+        max-width: 180px;
+        margin: 8px auto 0;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-areas:
+            ". helmet ."
+            "weapon chest offhand"
+            "gloves pants boots";
+        gap: 4px;
+    }
+    .equipment-slot {
+        aspect-ratio: 1 / 1;
+        padding: 2px;
+    }
+    .equipment-section-header h4 {
+        font-size: 0.95rem;
+    }
+}
 .level-block { margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(92,64,51,0.6); }
 .level-block p { margin: 6px 0; }
 .level-progress-wrap {
@@ -579,6 +715,24 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 .shop-grid-wrap.open { display: block; }
 .shop-category-block { margin-bottom: 24px; }
 .shop-category-block h4 { color: #c4a574; font-size: 1rem; margin: 0 0 12px; font-family: 'Cinzel', Georgia, serif; }
+.shop-category-block.collapsed .shop-tiles { display: none; }
+.shop-category-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+    margin-bottom: 8px;
+}
+.shop-category-header h4 { margin: 0; }
+.shop-category-toggle {
+    border: none;
+    background: transparent;
+    color: #d4a84b;
+    font-size: 1rem;
+    cursor: pointer;
+}
 .shop-tiles {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -616,6 +770,25 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 .inventory-tile .tile-placeholder { width: 48px; height: 48px; margin: 0 auto 6px; background: #2c1810; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: #5c4033; }
 .inventory-tile .tile-name { font-size: 0.8rem; color: #b8a088; }
 .inventory-empty { color: #b8a088; padding: 16px; text-align: center; }
+.inventory-category { margin-bottom: 16px; }
+.inventory-category.collapsed .inventory-tiles { display: none; }
+.inventory-category-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+    margin-bottom: 8px;
+}
+.inventory-category-title { margin: 0; font-size: 0.95rem; color: #d4a84b; font-family: 'Cinzel', Georgia, serif; }
+.inventory-category-toggle {
+    border: none;
+    background: transparent;
+    color: #d4a84b;
+    font-size: 1rem;
+    cursor: pointer;
+}
 
 /* Модалка товара в лавке */
 .shop-item-modal .modal-box { max-width: 420px; }
@@ -639,6 +812,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 .inventory-item-use-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .inventory-tile { cursor: pointer; }
 .inventory-tile:hover { border-color: #8b6914; }
+.inventory-tile-equipped { border-color: #d4a84b; box-shadow: 0 0 10px rgba(212,168,75,0.5); opacity: 1; }
 
 .clan-info { margin-bottom: 12px; }
 .clan-name { font-weight: bold; color: #d4a84b; font-size: 1.1rem; font-family: 'Cinzel', Georgia, serif; }
@@ -1025,6 +1199,27 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     border: 2px solid #3d2914;
     color: #2c1810;
 }
+.modal-box-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+.modal-box-close {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid #5c4033;
+    background: linear-gradient(145deg, #5c4033 0%, #4a3520 100%);
+    color: #e8dcc4;
+    font-size: 1.1rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
 .modal-box h3 { margin: 0 0 16px; font-family: 'Cinzel Decorative', 'Cinzel', Georgia, serif; color: #3d2914; }
 .modal-box p { color: #2c1810; }
 .modal-box .modal-buttons { margin-top: 20px; display: flex; gap: 12px; justify-content: flex-end; }
@@ -1383,6 +1578,44 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                         <button type="button" class="skill-save-btn" id="skillSaveBtn" title="Сохранить">✓ Сохранить</button>
                     </div>
                 </div>
+                <div class="equipment-section collapsed" id="equipmentSection">
+                    <div class="equipment-section-header" id="equipmentSectionHeader">
+                        <h4>Снаряжение</h4>
+                        <button type="button" class="section-toggle" aria-label="Свернуть/развернуть снаряжение">▼</button>
+                    </div>
+                    <div class="equipment-section-body">
+                        <div class="equipment-grid">
+                            <div class="equipment-slot equipment-slot--helmet equipment-slot--inactive" data-slot="helmet">
+                                <div class="equipment-slot-label">Шлем</div>
+                                <div class="equipment-slot-body equipment-slot-body--helmet"></div>
+                            </div>
+                            <div class="equipment-slot equipment-slot--weapon equipment-slot--inactive" data-slot="weapon_main">
+                                <div class="equipment-slot-label">Оружие</div>
+                                <div class="equipment-slot-body equipment-slot-body--weapon"></div>
+                            </div>
+                            <div class="equipment-slot equipment-slot--offhand equipment-slot--inactive" data-slot="weapon_off">
+                                <div class="equipment-slot-label">Второе оружие</div>
+                                <div class="equipment-slot-body equipment-slot-body--offhand"></div>
+                            </div>
+                            <div class="equipment-slot equipment-slot--chest equipment-slot--inactive" data-slot="chest">
+                                <div class="equipment-slot-label">Нагрудник</div>
+                                <div class="equipment-slot-body equipment-slot-body--chest"></div>
+                            </div>
+                            <div class="equipment-slot equipment-slot--pants equipment-slot--inactive" data-slot="pants">
+                                <div class="equipment-slot-label">Штаны</div>
+                                <div class="equipment-slot-body equipment-slot-body--pants"></div>
+                            </div>
+                            <div class="equipment-slot equipment-slot--gloves equipment-slot--inactive" data-slot="gloves">
+                                <div class="equipment-slot-label">Рукавицы</div>
+                                <div class="equipment-slot-body equipment-slot-body--gloves"></div>
+                            </div>
+                            <div class="equipment-slot equipment-slot--boots equipment-slot--inactive" data-slot="boots">
+                                <div class="equipment-slot-label">Сапоги</div>
+                                <div class="equipment-slot-body equipment-slot-body--boots"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         <!-- Модальные окна смены имени персонажа -->
@@ -1459,13 +1692,26 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                 </div>
             </div>
             <div class="shop-grid-wrap" id="shopGridWrap">
-                <div class="shop-category-block" id="shopCategoryEnhancement">
-                    <h4>Усиления</h4>
+                <div class="shop-category-block collapsed" id="shopCategoryEnhancement">
+                    <div class="shop-category-header" data-shop-category-toggle>
+                        <h4>Усиления</h4>
+                        <button type="button" class="shop-category-toggle" aria-label="Свернуть/развернуть">▼</button>
+                    </div>
                     <div class="shop-tiles" id="shopTilesEnhancement"></div>
                 </div>
-                <div class="shop-category-block" id="shopCategoryCurse">
-                    <h4>Проклятия</h4>
+                <div class="shop-category-block collapsed" id="shopCategoryCurse">
+                    <div class="shop-category-header" data-shop-category-toggle>
+                        <h4>Проклятия</h4>
+                        <button type="button" class="shop-category-toggle" aria-label="Свернуть/развернуть">▼</button>
+                    </div>
                     <div class="shop-tiles" id="shopTilesCurse"></div>
+                </div>
+                <div class="shop-category-block collapsed" id="shopCategoryEquipment">
+                    <div class="shop-category-header" data-shop-category-toggle>
+                        <h4>Снаряжение</h4>
+                        <button type="button" class="shop-category-toggle" aria-label="Свернуть/развернуть">▼</button>
+                    </div>
+                    <div class="shop-tiles" id="shopTilesEquipment"></div>
                 </div>
             </div>
         </div>
@@ -1477,7 +1723,27 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
             <button type="button" class="section-toggle" aria-label="Свернуть/развернуть">▼</button>
         </div>
         <div class="cabinet-section-body">
-            <div class="inventory-tiles" id="inventoryTiles"></div>
+            <div class="inventory-category collapsed" id="inventoryCategoryEnhancement" style="display:none;">
+                <div class="inventory-category-header" data-inventory-category-toggle>
+                    <h3 class="inventory-category-title">Усиления</h3>
+                    <button type="button" class="inventory-category-toggle" aria-label="Свернуть/развернуть">▼</button>
+                </div>
+                <div class="inventory-tiles" id="inventoryTilesEnhancement"></div>
+            </div>
+            <div class="inventory-category collapsed" id="inventoryCategoryCurse" style="display:none;">
+                <div class="inventory-category-header" data-inventory-category-toggle>
+                    <h3 class="inventory-category-title">Проклятия</h3>
+                    <button type="button" class="inventory-category-toggle" aria-label="Свернуть/развернуть">▼</button>
+                </div>
+                <div class="inventory-tiles" id="inventoryTilesCurse"></div>
+            </div>
+            <div class="inventory-category collapsed" id="inventoryCategoryEquipment" style="display:none;">
+                <div class="inventory-category-header" data-inventory-category-toggle>
+                    <h3 class="inventory-category-title">Снаряжение</h3>
+                    <button type="button" class="inventory-category-toggle" aria-label="Свернуть/развернуть">▼</button>
+                </div>
+                <div class="inventory-tiles" id="inventoryTilesEquipment"></div>
+            </div>
             <p class="inventory-empty" id="inventoryEmpty" style="display: none;">Пока пусто. Покупайте товары в лавке.</p>
         </div>
     </div>
@@ -1936,10 +2202,14 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 <!-- Модальное окно товара лавки -->
 <div class="modal-overlay shop-item-modal" id="shopItemModal">
     <div class="modal-box">
-        <h3 id="shopItemModalTitle">Товар</h3>
+        <div class="modal-box-header">
+            <h3 id="shopItemModalTitle">Товар</h3>
+            <button type="button" class="modal-box-close" id="shopItemModalCloseTop" aria-label="Закрыть">×</button>
+        </div>
         <div id="shopItemModalImageWrap"></div>
         <p id="shopItemModalDesc" style="margin: 12px 0; color: #2c1810;"></p>
-        <p id="shopItemModalAction" style="margin: 6px 0 0; font-size: 0.9rem; color: #5c4033; display: none;"></p>
+        <p id="shopItemModalEffects" style="margin: 4px 0 0; font-size: 0.9rem; color: #5c4033; display: none;"></p>
+        <p id="shopItemModalAction" style="margin: 4px 0 0; font-size: 0.9rem; color: #5c4033; display: none;"></p>
         <p id="shopItemModalDuration" style="margin: 4px 0 0; font-size: 0.9rem; color: #5c4033; display: none;"></p>
         <p class="item-price" id="shopItemModalPrice"></p>
         <div class="modal-buttons">
@@ -1952,10 +2222,14 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 <!-- Модальное окно предмета из инвентаря (использование) -->
 <div class="modal-overlay inventory-item-modal" id="inventoryItemModal">
     <div class="modal-box">
-        <h3 id="inventoryItemModalTitle">Предмет</h3>
+        <div class="modal-box-header">
+            <h3 id="inventoryItemModalTitle">Предмет</h3>
+            <button type="button" class="modal-box-close" id="inventoryItemModalCloseTop" aria-label="Закрыть">×</button>
+        </div>
         <div id="inventoryItemModalImageWrap"></div>
         <p id="inventoryItemModalDesc" class="inventory-item-desc"></p>
-        <p id="inventoryItemModalDuration" class="inventory-item-duration" style="margin: 4px 0 10px; font-size: 0.9rem; color: #5c4033; display: none;"></p>
+        <p id="inventoryItemModalEffects" class="inventory-item-duration" style="margin: 4px 0 4px; font-size: 0.9rem; color: #5c4033; display: none;"></p>
+        <p id="inventoryItemModalDuration" class="inventory-item-duration" style="margin: 0 0 10px; font-size: 0.9rem; color: #5c4033; display: none;"></p>
         <div id="inventoryItemClanWrap" class="inventory-item-region-wrap" style="display: none;">
             <label for="inventoryItemClanSelect">Клан для применения:</label>
             <select id="inventoryItemClanSelect"></select>
@@ -1967,6 +2241,38 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         <div class="modal-buttons">
             <button type="button" class="btn-cancel" id="inventoryItemModalClose">Закрыть</button>
             <button type="button" class="btn-confirm inventory-item-use-btn" id="inventoryItemUseBtn">Использовать</button>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно предмета снаряжения -->
+<div class="modal-overlay inventory-item-modal" id="equipmentItemModal" style="display:none; visibility:hidden; align-items:center; justify-content:center;">
+    <div class="modal-box">
+        <div class="modal-box-header">
+            <h3 id="equipmentItemModalTitle">Снаряжение</h3>
+            <button type="button" class="modal-box-close" id="equipmentItemModalCloseTop" aria-label="Закрыть">×</button>
+        </div>
+        <div id="equipmentItemModalImageWrap"></div>
+        <p id="equipmentItemModalDesc" class="inventory-item-desc"></p>
+        <p id="equipmentItemModalBonus" class="inventory-item-duration" style="margin: 4px 0 10px; font-size: 0.9rem; color: #5c4033;"></p>
+        <div class="modal-buttons">
+            <button type="button" class="btn-cancel" id="equipmentItemModalSell">Продать (50%)</button>
+            <button type="button" class="btn-confirm" id="equipmentItemModalEquipToggle">Надеть</button>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно выбора предмета для слота -->
+<div class="modal-overlay inventory-item-modal" id="equipmentSlotSelectModal" style="display:none; visibility:hidden; align-items:center; justify-content:center;">
+    <div class="modal-box">
+        <div class="modal-box-header">
+            <h3 id="equipmentSlotSelectTitle">Выберите предмет</h3>
+            <button type="button" class="modal-box-close" id="equipmentSlotSelectCloseTop" aria-label="Закрыть">×</button>
+        </div>
+        <div class="inventory-tiles" id="equipmentSlotSelectList"></div>
+        <p class="inventory-empty" id="equipmentSlotSelectEmpty" style="display:none;">Подходящих предметов нет. Купите снаряжение в лавке.</p>
+        <div class="modal-buttons">
+            <button type="button" class="btn-cancel" id="equipmentSlotSelectClose">Закрыть</button>
         </div>
     </div>
 </div>
@@ -2120,12 +2426,18 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         skillState[stat]--;
         updateSkillUI();
     }
-    document.getElementById('skillDamagePlus')?.addEventListener('click', function() { skillPlus('damage'); });
-    document.getElementById('skillDamageMinus')?.addEventListener('click', function() { skillMinus('damage'); });
-    document.getElementById('skillDefensePlus')?.addEventListener('click', function() { skillPlus('defense'); });
-    document.getElementById('skillDefenseMinus')?.addEventListener('click', function() { skillMinus('defense'); });
-    document.getElementById('skillEnergyPlus')?.addEventListener('click', function() { skillPlus('energy'); });
-    document.getElementById('skillEnergyMinus')?.addEventListener('click', function() { skillMinus('energy'); });
+    var btnSDP = document.getElementById('skillDamagePlus');
+    if (btnSDP) btnSDP.addEventListener('click', function() { skillPlus('damage'); });
+    var btnSDM = document.getElementById('skillDamageMinus');
+    if (btnSDM) btnSDM.addEventListener('click', function() { skillMinus('damage'); });
+    var btnSDFP = document.getElementById('skillDefensePlus');
+    if (btnSDFP) btnSDFP.addEventListener('click', function() { skillPlus('defense'); });
+    var btnSDFM = document.getElementById('skillDefenseMinus');
+    if (btnSDFM) btnSDFM.addEventListener('click', function() { skillMinus('defense'); });
+    var btnSEP = document.getElementById('skillEnergyPlus');
+    if (btnSEP) btnSEP.addEventListener('click', function() { skillPlus('energy'); });
+    var btnSEM = document.getElementById('skillEnergyMinus');
+    if (btnSEM) btnSEM.addEventListener('click', function() { skillMinus('energy'); });
 
     (function() {
         var helpPairs = [
@@ -2158,7 +2470,8 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         });
         document.addEventListener('click', closeAllTooltips);
     })();
-    document.getElementById('skillSaveBtn')?.addEventListener('click', function() {
+    var btnSkillSave = document.getElementById('skillSaveBtn');
+    if (btnSkillSave) btnSkillSave.addEventListener('click', function() {
         var btn = this;
         btn.disabled = true;
         fetch('{{ url_for("api_cabinet_skills") }}', {
@@ -2223,7 +2536,8 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
             m.style.visibility = '';
         }
     }
-    document.getElementById('skillSavedOkBtn')?.addEventListener('click', function() {
+    var btnSkillSavedOk = document.getElementById('skillSavedOkBtn');
+    if (btnSkillSavedOk) btnSkillSavedOk.addEventListener('click', function() {
         if (skillSavedTimer) clearTimeout(skillSavedTimer);
         skillSavedTimer = null;
         closeSkillSavedModal();
@@ -2381,7 +2695,8 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     }
 })();
 
-document.getElementById('clanEditForm')?.addEventListener('submit', function(e) {
+var clanEditForm = document.getElementById('clanEditForm');
+if (clanEditForm) clanEditForm.addEventListener('submit', function(e) {
     e.preventDefault();
     var form = this;
     var clanId = {{ clan_data.clan.id if clan_data and clan_data.clan else 'null' }};
@@ -2750,8 +3065,10 @@ document.querySelectorAll('.kick-btn').forEach(btn => {
         if (uid) openKickMemberModal(uid);
     });
 });
-document.getElementById('kickMemberModalCancel')?.addEventListener('click', closeKickMemberModal);
-document.getElementById('kickMemberModalConfirm')?.addEventListener('click', function() {
+var kickCancelBtn = document.getElementById('kickMemberModalCancel');
+if (kickCancelBtn) kickCancelBtn.addEventListener('click', closeKickMemberModal);
+var kickConfirmBtn = document.getElementById('kickMemberModalConfirm');
+if (kickConfirmBtn) kickConfirmBtn.addEventListener('click', function() {
     if (kickMemberPendingUserId == null) return;
     var uid = kickMemberPendingUserId;
     closeKickMemberModal();
@@ -2762,7 +3079,8 @@ document.getElementById('kickMemberModalConfirm')?.addEventListener('click', fun
             else alert(data.error || 'Ошибка');
         });
 });
-document.getElementById('kickMemberModal')?.addEventListener('click', function(e) {
+var kickModal = document.getElementById('kickMemberModal');
+if (kickModal) kickModal.addEventListener('click', function(e) {
     if (e.target === this) closeKickMemberModal();
 });
 var transferOwnershipPendingUserId = null;
@@ -3288,6 +3606,13 @@ var CURRENT_USER_ID = {{ user.id }};
             section.classList.toggle('collapsed');
         });
     });
+    var equipmentSection = document.getElementById('equipmentSection');
+    var equipmentHeader = document.getElementById('equipmentSectionHeader');
+    if (equipmentSection && equipmentHeader) {
+        equipmentHeader.addEventListener('click', function() {
+            equipmentSection.classList.toggle('collapsed');
+        });
+    }
     var shopToggleBtn = document.getElementById('shopToggleBtn');
     var shopGridWrap = document.getElementById('shopGridWrap');
     if (shopToggleBtn && shopGridWrap) {
@@ -3344,15 +3669,19 @@ var CURRENT_USER_ID = {{ user.id }};
                 });
         });
     }
-
     function renderShopTiles(items) {
         var enh = document.getElementById('shopTilesEnhancement');
         var cur = document.getElementById('shopTilesCurse');
+        var eq = document.getElementById('shopTilesEquipment');
         if (!enh || !cur) return;
         enh.innerHTML = '';
         cur.innerHTML = '';
+        if (eq) eq.innerHTML = '';
         (items.enhancement || []).forEach(function(it) { enh.appendChild(createTile(it)); });
         (items.curse || []).forEach(function(it) { cur.appendChild(createTile(it)); });
+        if (eq && items.equipment) {
+            (items.equipment || []).forEach(function(it) { eq.appendChild(createTile(it)); });
+        }
     }
     function createTile(it) {
         var div = document.createElement('div');
@@ -3386,15 +3715,28 @@ var CURRENT_USER_ID = {{ user.id }};
                 if (data.success && data.items) renderShopTiles(data.items);
             });
     }
+    var lastInventoryList = [];
+
     function loadInventory() {
         fetch('{{ url_for("api_cabinet_inventory") }}')
             .then(function(r) { return r.json(); })
             .then(function(data) {
-                var container = document.getElementById('inventoryTiles');
+                var enhWrap = document.getElementById('inventoryCategoryEnhancement');
+                var curseWrap = document.getElementById('inventoryCategoryCurse');
+                var eqWrap = document.getElementById('inventoryCategoryEquipment');
+                var enh = document.getElementById('inventoryTilesEnhancement');
+                var cur = document.getElementById('inventoryTilesCurse');
+                var eq = document.getElementById('inventoryTilesEquipment');
                 var empty = document.getElementById('inventoryEmpty');
-                if (!container) return;
-                container.innerHTML = '';
+                if (!enh || !cur || !eq) return;
+                enh.innerHTML = '';
+                cur.innerHTML = '';
+                eq.innerHTML = '';
+                if (enhWrap) enhWrap.style.display = 'none';
+                if (curseWrap) curseWrap.style.display = 'none';
+                if (eqWrap) eqWrap.style.display = 'none';
                 var list = (data.success && data.inventory) ? data.inventory : [];
+                lastInventoryList = list;
                 if (list.length === 0) {
                     if (empty) empty.style.display = 'block';
                     return;
@@ -3420,10 +3762,33 @@ var CURRENT_USER_ID = {{ user.id }};
                     name.className = 'tile-name';
                     name.textContent = p.name;
                     div.appendChild(name);
+                    if (p.equipped_slot) {
+                        div.classList.add('inventory-tile-equipped');
+                    }
                     div.addEventListener('click', function() {
-                        openInventoryItemModal(parseInt(div.getAttribute('data-purchase-id'), 10), parseInt(div.getAttribute('data-item-id'), 10));
+                        var purchaseId = parseInt(div.getAttribute('data-purchase-id'), 10);
+                        var itemId = parseInt(div.getAttribute('data-item-id'), 10);
+                        if (p.category === 'equipment') {
+                            openEquipmentItemModal(purchaseId, itemId);
+                        } else {
+                            openInventoryItemModal(purchaseId, itemId);
+                        }
                     });
-                    container.appendChild(div);
+                    var targetGrid = null;
+                    if (p.category === 'enhancement') {
+                        targetGrid = enh;
+                        if (enhWrap) enhWrap.style.display = '';
+                    } else if (p.category === 'curse') {
+                        targetGrid = cur;
+                        if (curseWrap) curseWrap.style.display = '';
+                    } else if (p.category === 'equipment') {
+                        targetGrid = eq;
+                        if (eqWrap) eqWrap.style.display = '';
+                    } else {
+                        targetGrid = enh;
+                        if (enhWrap) enhWrap.style.display = '';
+                    }
+                    targetGrid.appendChild(div);
                 });
             });
     }
@@ -3432,6 +3797,7 @@ var CURRENT_USER_ID = {{ user.id }};
     var inventoryItemModalTitle = document.getElementById('inventoryItemModalTitle');
     var inventoryItemModalImageWrap = document.getElementById('inventoryItemModalImageWrap');
     var inventoryItemModalDesc = document.getElementById('inventoryItemModalDesc');
+    var inventoryItemModalEffects = document.getElementById('inventoryItemModalEffects');
     var inventoryItemModalDuration = document.getElementById('inventoryItemModalDuration');
     var inventoryItemClanWrap = document.getElementById('inventoryItemClanWrap');
     var inventoryItemClanSelect = document.getElementById('inventoryItemClanSelect');
@@ -3439,6 +3805,7 @@ var CURRENT_USER_ID = {{ user.id }};
     var inventoryItemRegionSelect = document.getElementById('inventoryItemRegionSelect');
     var inventoryItemUseBtn = document.getElementById('inventoryItemUseBtn');
     var inventoryItemModalClose = document.getElementById('inventoryItemModalClose');
+    var inventoryItemModalCloseTop = document.getElementById('inventoryItemModalCloseTop');
     var currentInventoryPurchaseId = null;
     var currentInventoryItem = null;
 
@@ -3481,6 +3848,15 @@ var CURRENT_USER_ID = {{ user.id }};
                     inventoryItemModalImageWrap.appendChild(ph);
                 }
                 inventoryItemModalDesc.textContent = item.description || '—';
+                if (inventoryItemModalEffects) {
+                    var effText2 = formatItemEffectsText(item);
+                    if (effText2) {
+                        inventoryItemModalEffects.textContent = 'Эффекты: ' + effText2;
+                        inventoryItemModalEffects.style.display = 'block';
+                    } else {
+                        inventoryItemModalEffects.style.display = 'none';
+                    }
+                }
                 if (inventoryItemModalDuration) {
                     var durs = (item.effects || []).map(function(e) { return e.duration_minutes; }).filter(function(v) { return v !== null && v !== undefined; });
                     if (durs.length) {
@@ -3535,13 +3911,24 @@ var CURRENT_USER_ID = {{ user.id }};
         currentInventoryPurchaseId = null;
         currentInventoryItem = null;
     }
-    inventoryItemModalClose?.addEventListener('click', closeInventoryItemModal);
-    inventoryItemModal?.addEventListener('click', function(e) {
-        if (e.target === inventoryItemModal) closeInventoryItemModal();
-    });
-    inventoryItemClanSelect?.addEventListener('change', updateInventoryUseButtonState);
-    inventoryItemRegionSelect?.addEventListener('change', updateInventoryUseButtonState);
-    inventoryItemUseBtn?.addEventListener('click', function() {
+    if (inventoryItemModalClose) {
+        inventoryItemModalClose.addEventListener('click', closeInventoryItemModal);
+    }
+    if (inventoryItemModalCloseTop) {
+        inventoryItemModalCloseTop.addEventListener('click', closeInventoryItemModal);
+    }
+    if (inventoryItemModal) {
+        inventoryItemModal.addEventListener('click', function(e) {
+            if (e.target === inventoryItemModal) closeInventoryItemModal();
+        });
+    }
+    if (inventoryItemClanSelect) {
+        inventoryItemClanSelect.addEventListener('change', updateInventoryUseButtonState);
+    }
+    if (inventoryItemRegionSelect) {
+        inventoryItemRegionSelect.addEventListener('change', updateInventoryUseButtonState);
+    }
+    if (inventoryItemUseBtn) inventoryItemUseBtn.addEventListener('click', function() {
         if (!currentInventoryPurchaseId || this.disabled) return;
         var effects = currentInventoryItem && (currentInventoryItem.effects || []);
         var needClan = effects.some(function(e) { return e.target === 'clan'; });
@@ -3574,21 +3961,423 @@ var CURRENT_USER_ID = {{ user.id }};
             });
     });
 
+    // --- Снаряжение: модалка, экипировка, продажа ---
+    var equipmentItemModal = document.getElementById('equipmentItemModal');
+    var equipmentItemModalTitle = document.getElementById('equipmentItemModalTitle');
+    var equipmentItemModalImageWrap = document.getElementById('equipmentItemModalImageWrap');
+    var equipmentItemModalDesc = document.getElementById('equipmentItemModalDesc');
+    var equipmentItemModalBonus = document.getElementById('equipmentItemModalBonus');
+    var equipmentItemModalSell = document.getElementById('equipmentItemModalSell');
+    var equipmentItemModalEquipToggle = document.getElementById('equipmentItemModalEquipToggle');
+    var equipmentItemModalCloseTop = document.getElementById('equipmentItemModalCloseTop');
+    var currentEquipmentPurchaseId = null;
+    var currentEquipmentItemId = null;
+    var currentEquipmentItemData = null;
+    var currentEquipmentTargetSlot = null;
+
+    var equipmentSlotSelectModal = document.getElementById('equipmentSlotSelectModal');
+    var equipmentSlotSelectTitle = document.getElementById('equipmentSlotSelectTitle');
+    var equipmentSlotSelectList = document.getElementById('equipmentSlotSelectList');
+    var equipmentSlotSelectEmpty = document.getElementById('equipmentSlotSelectEmpty');
+    var equipmentSlotSelectClose = document.getElementById('equipmentSlotSelectClose');
+    var equipmentSlotSelectCloseTop = document.getElementById('equipmentSlotSelectCloseTop');
+
+    function getEquipmentSlotForPurchase(purchaseId, equipmentState) {
+        if (!equipmentState || !equipmentState.slots) return null;
+        var slots = equipmentState.slots;
+        for (var key in slots) {
+            if (!Object.prototype.hasOwnProperty.call(slots, key)) continue;
+            if (slots[key] && slots[key].purchase_id === purchaseId) return key;
+        }
+        return null;
+    }
+
+    function formatItemEffectsText(item) {
+        var effects = (item && item.effects) || [];
+        if (!effects.length) return '';
+        var parts = [];
+        effects.forEach(function(e) {
+            var v = e.percent_change;
+            if (v === null || v === undefined || v === 0) return;
+            var label = '';
+            if (e.effect_type === 'damage') label = 'Атака';
+            else if (e.effect_type === 'defense') label = 'Защита';
+            else if (e.effect_type === 'max_energy') label = 'Макс. энергия';
+            else if (e.effect_type === 'xp_reward') label = 'Опыт за задачу';
+            else if (e.effect_type === 'nums_reward') label = 'Награда Нумов';
+            if (!label) return;
+            var sign = v > 0 ? '+' : '';
+            if (e.effect_type === 'xp_reward' || e.effect_type === 'nums_reward') {
+                parts.push(label + ': ' + sign + v + '%');
+            } else {
+                parts.push(label + ': ' + sign + v);
+            }
+        });
+        return parts.join(', ');
+    }
+
+    function openEquipmentItemModal(purchaseId, itemId, targetSlot) {
+        currentEquipmentPurchaseId = purchaseId;
+        currentEquipmentItemId = itemId;
+        currentEquipmentItemData = null;
+        currentEquipmentTargetSlot = targetSlot || null;
+        if (!equipmentItemModal) return;
+        equipmentItemModalImageWrap.innerHTML = '';
+        equipmentItemModalDesc.textContent = '';
+        equipmentItemModalBonus.textContent = '';
+        equipmentItemModalEquipToggle.disabled = true;
+        fetch('{{ url_for("api_shop_item_detail", item_id=0) }}'.replace('/0', '/' + itemId))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.success || !data.item) return;
+                var item = data.item;
+                currentEquipmentItemData = item;
+                equipmentItemModalTitle.textContent = item.name || 'Снаряжение';
+                equipmentItemModalImageWrap.innerHTML = '';
+                if (item.image_url) {
+                    var img = document.createElement('img');
+                    img.className = 'item-image';
+                    img.src = item.image_url;
+                    img.alt = item.name;
+                    equipmentItemModalImageWrap.appendChild(img);
+                } else {
+                    var ph = document.createElement('div');
+                    ph.className = 'item-image-placeholder';
+                    ph.textContent = '🛡️';
+                    equipmentItemModalImageWrap.appendChild(ph);
+                }
+                equipmentItemModalDesc.textContent = item.description || '—';
+                var bonusText = formatItemEffectsText(item);
+                equipmentItemModalBonus.textContent = bonusText;
+                // Определяем, надет ли сейчас этот предмет
+                fetch('{{ url_for("api_cabinet_equipment_state") }}')
+                    .then(function(r) { return r.json(); })
+                    .then(function(state) {
+                        var slot = getEquipmentSlotForPurchase(purchaseId, state);
+                        equipmentItemModalEquipToggle.textContent = slot ? 'Снять' : 'Надеть';
+                        equipmentItemModalEquipToggle.disabled = false;
+                    });
+                equipmentItemModal.classList.add('open');
+                equipmentItemModal.style.display = 'flex';
+                equipmentItemModal.style.visibility = 'visible';
+            });
+    }
+
+    function closeEquipmentItemModal() {
+        if (!equipmentItemModal) return;
+        equipmentItemModal.classList.remove('open');
+        equipmentItemModal.style.display = 'none';
+        equipmentItemModal.style.visibility = 'hidden';
+        currentEquipmentPurchaseId = null;
+        currentEquipmentItemId = null;
+        currentEquipmentItemData = null;
+        currentEquipmentTargetSlot = null;
+    }
+
+    if (equipmentItemModal) {
+        equipmentItemModal.addEventListener('click', function(e) {
+            if (e.target === equipmentItemModal) {
+                closeEquipmentItemModal();
+            }
+        });
+    }
+    if (equipmentItemModalCloseTop) {
+        equipmentItemModalCloseTop.addEventListener('click', closeEquipmentItemModal);
+    }
+
+    if (equipmentItemModalSell) equipmentItemModalSell.addEventListener('click', function() {
+        if (!currentEquipmentPurchaseId) return;
+        if (!confirm('Продать этот предмет за половину стоимости?')) return;
+        var btn = this;
+        btn.disabled = true;
+        fetch('{{ url_for("api_cabinet_inventory_sell", purchase_id=0) }}'.replace('/0', '/' + currentEquipmentPurchaseId), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+        })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.success) {
+                    alert(data.error || 'Не удалось продать предмет');
+                    return;
+                }
+                var balanceDisplay = document.getElementById('numsBalanceDisplay');
+                if (balanceDisplay) balanceDisplay.textContent = data.balance;
+                closeEquipmentItemModal();
+                loadInventory();
+                // обновим подсветку и характеристики
+                fetch('{{ url_for("api_cabinet_equipment_state") }}')
+                    .then(function(r) { return r.json(); })
+                    .then(function(state) {
+                        applyEquipmentStateToUI(state);
+                        updateStatsFromEquipmentState(state);
+                    });
+            })
+            .finally(function() { btn.disabled = false; });
+    });
+
+    if (equipmentItemModalEquipToggle) equipmentItemModalEquipToggle.addEventListener('click', function() {
+        if (!currentEquipmentPurchaseId || !currentEquipmentItemData) return;
+        var btn = this;
+        btn.disabled = true;
+        // Выясняем, надет ли сейчас предмет
+        fetch('{{ url_for("api_cabinet_equipment_state") }}')
+            .then(function(r) { return r.json(); })
+            .then(function(state) {
+                var slotNow = getEquipmentSlotForPurchase(currentEquipmentPurchaseId, state);
+                var url;
+                var payload = { purchase_id: currentEquipmentPurchaseId };
+                if (slotNow) {
+                    // Снять
+                    payload.slot = slotNow;
+                    url = '{{ url_for("api_cabinet_equipment_unequip") }}';
+                } else {
+                    // Надеть
+                    var equipType = (currentEquipmentItemData.equipment_slot || '').toLowerCase();
+                    var slotToUse = currentEquipmentTargetSlot;
+                    if (!slotToUse) {
+                        if (equipType === 'weapon') {
+                            if (!state.slots || !state.slots.weapon_main) slotToUse = 'weapon_main';
+                            else if (!state.slots.weapon_off) slotToUse = 'weapon_off';
+                            else slotToUse = 'weapon_main';
+                        } else {
+                            slotToUse = equipType;
+                        }
+                    }
+                    if (!slotToUse) {
+                        alert('Для этого предмета не задан слот снаряжения.');
+                        return;
+                    }
+                    payload.slot = slotToUse;
+                    url = '{{ url_for("api_cabinet_equipment_equip") }}';
+                }
+                fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                })
+                    .then(function(r) { return r.json(); })
+                    .then(function(resp) {
+                        if (!resp.success) {
+                            alert(resp.error || 'Ошибка при изменении снаряжения');
+                            return;
+                        }
+                        applyEquipmentStateToUI(resp);
+                        updateStatsFromEquipmentState(resp);
+                        // Обновим инвентарь, чтобы отметки "надето" были корректными
+                        loadInventory();
+                        // Обновим подпись кнопки
+                        var newSlot = getEquipmentSlotForPurchase(currentEquipmentPurchaseId, resp);
+                        equipmentItemModalEquipToggle.textContent = newSlot ? 'Снять' : 'Надеть';
+                    })
+                    .finally(function() { btn.disabled = false; });
+            });
+    });
+
+    function updateStatsFromEquipmentState(state) {
+        if (!state || !state.stats) return;
+        var s = state.stats;
+        var dmgEl = document.getElementById('skillDamageVal');
+        var defEl = document.getElementById('skillDefenseVal');
+        var eneEl = document.getElementById('skillEnergyVal');
+        var energyMaxSpan = document.getElementById('energyMax');
+        if (dmgEl && s.damage != null) dmgEl.textContent = s.damage;
+        if (defEl && s.defense != null) defEl.textContent = s.defense;
+        if (eneEl && s.max_energy != null) eneEl.textContent = s.max_energy;
+        if (energyMaxSpan && s.max_energy != null) energyMaxSpan.textContent = s.max_energy;
+    }
+
+    function applyEquipmentStateToUI(state) {
+        if (!state || !state.slots) return;
+        var slots = state.slots;
+        var mapping = {
+            'helmet': '.equipment-slot--helmet',
+            'chest': '.equipment-slot--chest',
+            'pants': '.equipment-slot--pants',
+            'gloves': '.equipment-slot--gloves',
+            'boots': '.equipment-slot--boots',
+            'weapon_main': '.equipment-slot--weapon',
+            'weapon_off': '.equipment-slot--offhand',
+        };
+        Object.keys(mapping).forEach(function(key) {
+            var selector = mapping[key];
+            var el = document.querySelector(selector);
+            if (!el) return;
+            var body = el.querySelector('.equipment-slot-body');
+            var info = slots[key];
+            if (info) {
+                el.classList.add('equipment-slot--equipped');
+                el.classList.remove('equipment-slot--inactive');
+                el.setAttribute('data-purchase-id', String(info.purchase_id));
+                el.setAttribute('data-item-id', String(info.item_id));
+                if (body && info.image_url) {
+                    body.style.backgroundImage = 'url(' + info.image_url + ')';
+                }
+            } else {
+                el.classList.remove('equipment-slot--equipped');
+                el.classList.add('equipment-slot--inactive');
+                el.removeAttribute('data-purchase-id');
+                el.removeAttribute('data-item-id');
+                if (body) {
+                    body.style.backgroundImage = '';
+                }
+            }
+        });
+        // Подсветка в инвентаре
+        document.querySelectorAll('.inventory-tile').forEach(function(tile) {
+            tile.classList.remove('inventory-tile-equipped');
+            var pid = parseInt(tile.getAttribute('data-purchase-id') || '0', 10);
+            for (var key in slots) {
+                if (!Object.prototype.hasOwnProperty.call(slots, key)) continue;
+                if (slots[key] && slots[key].purchase_id === pid) {
+                    tile.classList.add('inventory-tile-equipped');
+                    break;
+                }
+            }
+        });
+    }
+
+    function openEquipmentSlotSelectModal(slotKey) {
+        if (!equipmentSlotSelectModal || !equipmentSlotSelectList || !equipmentSlotSelectEmpty) return;
+        equipmentSlotSelectList.innerHTML = '';
+        equipmentSlotSelectEmpty.style.display = 'none';
+        var titleText = 'Выберите предмет';
+        var slotLabelMap = {
+            'helmet': 'шлем',
+            'chest': 'нагрудник',
+            'pants': 'штаны',
+            'gloves': 'перчатки',
+            'boots': 'сапоги',
+            'weapon_main': 'оружие (основное)',
+            'weapon_off': 'оружие (второе)',
+        };
+        if (equipmentSlotSelectTitle) {
+            var label = slotLabelMap[slotKey] || slotKey;
+            equipmentSlotSelectTitle.textContent = 'Предметы для слота: ' + label;
+        }
+        // Подходящие предметы категории equipment
+        var candidates = (lastInventoryList || []).filter(function(p) {
+            if (p.category !== 'equipment') return false;
+            var eqSlot = (p.equipment_slot || '').toLowerCase();
+            if (!eqSlot) return false;
+            if (slotKey === 'weapon_main' || slotKey === 'weapon_off') {
+                return eqSlot === 'weapon';
+            }
+            return eqSlot === slotKey;
+        });
+        if (!candidates.length) {
+            equipmentSlotSelectEmpty.style.display = 'block';
+        } else {
+            candidates.forEach(function(p) {
+                var div = document.createElement('div');
+                div.className = 'inventory-tile';
+                div.setAttribute('data-purchase-id', String(p.id));
+                div.setAttribute('data-item-id', String(p.item_id));
+                if (p.image_url) {
+                    var img = document.createElement('img');
+                    img.src = p.image_url;
+                    img.alt = p.name;
+                    div.appendChild(img);
+                } else {
+                    var ph = document.createElement('div');
+                    ph.className = 'tile-placeholder';
+                    ph.textContent = '📦';
+                    div.appendChild(ph);
+                }
+                var name = document.createElement('div');
+                name.className = 'tile-name';
+                name.textContent = p.name;
+                div.appendChild(name);
+                div.addEventListener('click', function() {
+                    var purchaseId = parseInt(div.getAttribute('data-purchase-id'), 10);
+                    var itemId = parseInt(div.getAttribute('data-item-id'), 10);
+                    closeEquipmentSlotSelectModal();
+                    openEquipmentItemModal(purchaseId, itemId, slotKey);
+                });
+                equipmentSlotSelectList.appendChild(div);
+            });
+        }
+        equipmentSlotSelectModal.classList.add('open');
+        equipmentSlotSelectModal.style.display = 'flex';
+        equipmentSlotSelectModal.style.visibility = 'visible';
+    }
+
+    function closeEquipmentSlotSelectModal() {
+        if (!equipmentSlotSelectModal) return;
+        equipmentSlotSelectModal.classList.remove('open');
+        equipmentSlotSelectModal.style.display = 'none';
+        equipmentSlotSelectModal.style.visibility = 'hidden';
+    }
+
+    if (equipmentSlotSelectClose) {
+        equipmentSlotSelectClose.addEventListener('click', closeEquipmentSlotSelectModal);
+    }
+    if (equipmentSlotSelectModal) {
+        equipmentSlotSelectModal.addEventListener('click', function(e) {
+            if (e.target === equipmentSlotSelectModal) closeEquipmentSlotSelectModal();
+        });
+    }
+    if (equipmentSlotSelectCloseTop) {
+        equipmentSlotSelectCloseTop.addEventListener('click', closeEquipmentSlotSelectModal);
+    }
+
     loadShop();
     loadInventory();
+    // Загрузим состояние снаряжения при открытии кабинета
+    fetch('{{ url_for("api_cabinet_equipment_state") }}')
+        .then(function(r) { return r.json(); })
+        .then(function(state) {
+            if (!state.success) return;
+            applyEquipmentStateToUI(state);
+            updateStatsFromEquipmentState(state);
+        });
+
+    // Клик по слотам снаряжения:
+    // если предмет надет — открываем модалку предмета,
+    // если слот пуст — открываем выбор только подходящих предметов этого слота.
+    document.querySelectorAll('.equipment-slot').forEach(function(slotEl) {
+        slotEl.addEventListener('click', function() {
+            var purchaseId = this.getAttribute('data-purchase-id');
+            var itemId = this.getAttribute('data-item-id');
+            var slotKey = this.getAttribute('data-slot');
+            if (purchaseId && itemId) {
+                openEquipmentItemModal(parseInt(purchaseId, 10), parseInt(itemId, 10), slotKey);
+            } else if (slotKey) {
+                openEquipmentSlotSelectModal(slotKey);
+            }
+        });
+    });
+
+    document.querySelectorAll('[data-shop-category-toggle]').forEach(function(header) {
+        var block = header.closest('.shop-category-block');
+        if (!block) return;
+        header.addEventListener('click', function() {
+            block.classList.toggle('collapsed');
+        });
+    });
+
+    document.querySelectorAll('[data-inventory-category-toggle]').forEach(function(header) {
+        var block = header.closest('.inventory-category');
+        if (!block) return;
+        header.addEventListener('click', function() {
+            block.classList.toggle('collapsed');
+        });
+    });
 
     var shopItemModal = document.getElementById('shopItemModal');
     var shopItemModalTitle = document.getElementById('shopItemModalTitle');
     var shopItemModalImageWrap = document.getElementById('shopItemModalImageWrap');
     var shopItemModalDesc = document.getElementById('shopItemModalDesc');
+    var shopItemModalEffects = document.getElementById('shopItemModalEffects');
     var shopItemModalAction = document.getElementById('shopItemModalAction');
     var shopItemModalDuration = document.getElementById('shopItemModalDuration');
     var shopItemModalPrice = document.getElementById('shopItemModalPrice');
     var shopItemModalBuy = document.getElementById('shopItemModalBuy');
     var shopItemModalClose = document.getElementById('shopItemModalClose');
+    var shopItemModalCloseTop = document.getElementById('shopItemModalCloseTop');
     var currentShopItemId = null;
 
-    document.getElementById('shopGridWrap')?.addEventListener('click', function(e) {
+    var shopGridWrap = document.getElementById('shopGridWrap');
+    if (shopGridWrap) shopGridWrap.addEventListener('click', function(e) {
         var tile = e.target.closest('.shop-item-tile');
         if (!tile) return;
         var id = tile.getAttribute('data-item-id');
@@ -3614,6 +4403,15 @@ var CURRENT_USER_ID = {{ user.id }};
                     shopItemModalImageWrap.appendChild(ph);
                 }
                 shopItemModalDesc.textContent = item.description || '—';
+                if (shopItemModalEffects) {
+                    var effText = formatItemEffectsText(item);
+                    if (effText) {
+                        shopItemModalEffects.textContent = 'Эффекты: ' + effText;
+                        shopItemModalEffects.style.display = 'block';
+                    } else {
+                        shopItemModalEffects.style.display = 'none';
+                    }
+                }
                 var actionLabels = { 'self': 'Личное', 'clan': 'На весь клан', 'region': 'На область' };
                 var targets = (item.effects || []).map(function(e) { return e.target; }).filter(Boolean);
                 var unique = targets.filter(function(t, i) { return targets.indexOf(t) === i; });
@@ -3645,11 +4443,14 @@ var CURRENT_USER_ID = {{ user.id }};
         shopItemModal.style.display = 'none';
         currentShopItemId = null;
     }
-    shopItemModalClose?.addEventListener('click', closeShopItemModal);
-    shopItemModal?.addEventListener('click', function(e) {
-        if (e.target === shopItemModal) closeShopItemModal();
-    });
-    shopItemModalBuy?.addEventListener('click', function() {
+    if (shopItemModalClose) shopItemModalClose.addEventListener('click', closeShopItemModal);
+    if (shopItemModalCloseTop) shopItemModalCloseTop.addEventListener('click', closeShopItemModal);
+    if (shopItemModal) {
+        shopItemModal.addEventListener('click', function(e) {
+            if (e.target === shopItemModal) closeShopItemModal();
+        });
+    }
+    if (shopItemModalBuy) shopItemModalBuy.addEventListener('click', function() {
         if (!currentShopItemId || this.disabled) return;
         this.disabled = true;
         fetch('{{ url_for("api_shop_purchase") }}', {

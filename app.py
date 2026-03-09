@@ -557,18 +557,33 @@ class User(UserMixin, db.Model):
 
     @property
     def damage(self):
-        """Текущий урон персонажа: база 5 + очки навыков."""
-        return USER_BASE_DAMAGE + (self.damage_skill or 0)
+        """Текущий урон персонажа: база 5 + очки навыков + бонусы снаряжения."""
+        base = USER_BASE_DAMAGE + (self.damage_skill or 0)
+        try:
+            bonuses = _get_equipment_bonuses(self.id)
+            return base + int(bonuses.get('damage_add', 0) or 0)
+        except Exception:
+            return base
 
     @property
     def defense(self):
-        """Защита: база 5 + очки навыков."""
-        return USER_BASE_DEFENSE + (self.defense_skill or 0)
+        """Защита: база 5 + очки навыков + бонусы снаряжения."""
+        base = USER_BASE_DEFENSE + (self.defense_skill or 0)
+        try:
+            bonuses = _get_equipment_bonuses(self.id)
+            return base + int(bonuses.get('defense_add', 0) or 0)
+        except Exception:
+            return base
 
     @property
     def energy(self):
-        """Макс. энергия: база 5 + очки навыков."""
-        return USER_BASE_ENERGY + (self.energy_skill or 0)
+        """Макс. энергия: база 5 + очки навыков + бонусы снаряжения."""
+        base = USER_BASE_ENERGY + (self.energy_skill or 0)
+        try:
+            bonuses = _get_equipment_bonuses(self.id)
+            return base + int(bonuses.get('max_energy_add', 0) or 0)
+        except Exception:
+            return base
 
     def ensure_energy_refill(self):
         """Восстанавливать энергию каждые 30 мин на 20% от макс."""
@@ -640,9 +655,10 @@ class UserTerritoryStats(db.Model):
     total_influence_points = db.Column(db.Integer, default=0, nullable=False)  # очки при защите своей области
 
 
-# --- Лавка предметов (усиления / проклятия), покупка за Нумы ---
+# --- Лавка предметов (усиления / проклятия / снаряжение), покупка за Нумы ---
 SHOP_CATEGORY_ENHANCEMENT = 'enhancement'
 SHOP_CATEGORY_CURSE = 'curse'
+SHOP_CATEGORY_EQUIPMENT = 'equipment'
 SHOP_EFFECT_TYPES = ['damage', 'defense', 'current_energy', 'max_energy', 'xp_reward', 'nums_reward']
 
 
@@ -659,10 +675,12 @@ class ShopItem(db.Model):
     image_filename = db.Column(db.String(255), nullable=True)
     description = db.Column(db.Text, nullable=True)
     price = db.Column(db.Integer, nullable=False, default=0)  # в Нумах (territory) или в монетах (game)
-    category = db.Column(db.String(20), nullable=False)  # enhancement / curse (territory) или для game
+    category = db.Column(db.String(20), nullable=False)  # enhancement / curse / equipment (territory) или для game
     sort_order = db.Column(db.Integer, default=0, nullable=False)
     shop_context = db.Column(db.String(20), nullable=False, default=SHOP_CONTEXT_TERRITORY)  # territory | game
     created_at = db.Column(db.DateTime, default=datetime.now)
+    # Для предметов категории equipment: слот снаряжения (helmet, chest, pants, gloves, boots, weapon)
+    equipment_slot = db.Column(db.String(20), nullable=True)
     effects = db.relationship('ShopItemEffect', backref='shop_item', lazy=True, cascade='all, delete-orphan')
 
     def to_dict(self):
@@ -697,6 +715,19 @@ class UserShopPurchase(db.Model):
     used_at = db.Column(db.DateTime, nullable=True)  # когда активирован (пока не используется)
     user = db.relationship('User', backref=db.backref('shop_purchases', lazy=True))
     shop_item = db.relationship('ShopItem', backref=db.backref('purchases', lazy=True))
+
+
+class UserEquipment(db.Model):
+    """Надетые предметы снаряжения (постоянные бонусы от купленных товаров категории equipment)."""
+    __tablename__ = 'user_equipment'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    purchase_id = db.Column(db.Integer, db.ForeignKey('user_shop_purchase.id'), nullable=False, unique=True)
+    slot = db.Column(db.String(20), nullable=False)  # helmet, chest, pants, gloves, boots, weapon_main, weapon_off
+    created_at = db.Column(db.DateTime, default=datetime.now, nullable=False)
+
+    user = db.relationship('User', backref=db.backref('equipment_rel', lazy=True, cascade='all, delete-orphan'))
+    purchase = db.relationship('UserShopPurchase', backref=db.backref('equipment_entry', uselist=False, lazy=True, cascade='all, delete-orphan'))
 
 
 DEFAULT_TERRITORY_SHOP_ITEM_NAMES = [
@@ -1167,6 +1198,7 @@ class GameUpdate(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(300), nullable=False)
     content = db.Column(db.Text, nullable=False)
+    show_on_main = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now, nullable=False)
 
 
@@ -1817,12 +1849,18 @@ with app.app_context():
 
     # Таблица записей об обновлениях игры
     try:
-        from sqlalchemy import inspect as _insp
+        from sqlalchemy import inspect as _insp, text
         inspector = _insp(db.engine)
         tables = inspector.get_table_names()
         if 'game_update' not in tables:
             db.create_all()
             print("Создана таблица game_update")
+        elif 'game_update' in tables:
+            columns = [col['name'] for col in inspector.get_columns('game_update')]
+            if 'show_on_main' not in columns:
+                with db.engine.begin() as conn:
+                    conn.execute(text(f'ALTER TABLE game_update ADD COLUMN show_on_main BOOLEAN DEFAULT {_bool_false} NOT NULL'))
+                print("Добавлена колонка show_on_main в game_update")
     except Exception as e:
         print(f"Ошибка при создании таблицы game_update: {e}")
         db.create_all()
@@ -1853,6 +1891,9 @@ with app.app_context():
                 if 'shop_context' not in columns:
                     conn.execute(text("ALTER TABLE shop_item ADD COLUMN shop_context VARCHAR(20) NOT NULL DEFAULT 'territory'"))
                     print("Добавлена колонка shop_context в shop_item")
+                if 'equipment_slot' not in columns:
+                    conn.execute(text("ALTER TABLE shop_item ADD COLUMN equipment_slot VARCHAR(20)"))
+                    print("Добавлена колонка equipment_slot в shop_item")
     except Exception as e:
         print(f"Ошибка при создании таблиц лавки: {e}")
         db.create_all()
@@ -2310,6 +2351,7 @@ def _shop_item_to_dict(item, include_effects=False):
         'price': item.price,
         'category': item.category,
         'image_url': url_for('static', filename=_avatar_static_filename(item.image_filename)) if item.image_filename else None,
+        'equipment_slot': item.equipment_slot,
     }
     if include_effects:
         d['effects'] = [
@@ -2410,6 +2452,52 @@ def get_active_buffs_for_display_by_regions(region_indices):
     return by_region
 
 
+def _get_equipment_bonuses(user_id: int | None):
+    """
+    Суммарные бонусы от надетого снаряжения для пользователя.
+    Возвращает dict с ключами:
+      damage_add, defense_add, max_energy_add (абсолютные значения),
+      xp_pct, nums_pct (суммарные проценты).
+    """
+    result = {
+        'damage_add': 0.0,
+        'defense_add': 0.0,
+        'max_energy_add': 0.0,
+        'xp_pct': 0.0,
+        'nums_pct': 0.0,
+    }
+    if not user_id:
+        return result
+    # Получаем все надетые предметы пользователя и их эффекты
+    equipments = (
+        UserEquipment.query
+        .join(UserShopPurchase, UserEquipment.purchase_id == UserShopPurchase.id)
+        .join(ShopItem, UserShopPurchase.shop_item_id == ShopItem.id)
+        .filter(
+            UserEquipment.user_id == user_id,
+            ShopItem.category == SHOP_CATEGORY_EQUIPMENT,
+        )
+        .all()
+    )
+    for ue in equipments:
+        item = ue.purchase.shop_item if ue.purchase else None
+        if not item:
+            continue
+        for e in item.effects:
+            val = e.percent_change or 0
+            if e.effect_type == 'damage':
+                result['damage_add'] += val
+            elif e.effect_type == 'defense':
+                result['defense_add'] += val
+            elif e.effect_type == 'max_energy':
+                result['max_energy_add'] += val
+            elif e.effect_type == 'xp_reward':
+                result['xp_pct'] += val
+            elif e.effect_type == 'nums_reward':
+                result['nums_pct'] += val
+    return result
+
+
 def _get_multipliers_for_action(user_id, clan_id, region_index, is_attack):
     """
     Суммарные множители (1 + sum(percent/100)) по типам эффектов для одного действия.
@@ -2457,6 +2545,13 @@ def _get_multipliers_for_action(user_id, clan_id, region_index, is_attack):
         for b in _active_buffs_query(region_index=region_index).all():
             apply_effects(b)
 
+    # Постоянные бонусы от снаряжения (category=equipment) к опыту и Нумам
+    if user_id is not None:
+        eq = _get_equipment_bonuses(user_id)
+        if isinstance(eq, dict):
+            xp_reward_pct += eq.get('xp_pct', 0.0) or 0.0
+            nums_reward_pct += eq.get('nums_pct', 0.0) or 0.0
+
     return {
         'damage_pct': damage_pct,
         'defense_pct': defense_pct,
@@ -2477,7 +2572,7 @@ def _consume_one_shot_buffs(user_id, clan_id, region_index):
 def api_shop_items():
     """Список товаров лавки по категориям (для блока «Лавка предметов» в битве за территорию)."""
     items = ShopItem.query.filter_by(shop_context=SHOP_CONTEXT_TERRITORY).order_by(ShopItem.category, ShopItem.sort_order, ShopItem.id).all()
-    by_category = {'enhancement': [], 'curse': []}
+    by_category = {'enhancement': [], 'curse': [], 'equipment': []}
     for item in items:
         by_category.setdefault(item.category, []).append(_shop_item_to_dict(item))
     return jsonify({'success': True, 'items': by_category})
@@ -2564,6 +2659,10 @@ def api_cabinet_inventory():
         ShopItem.shop_context == SHOP_CONTEXT_TERRITORY
     ).order_by(UserShopPurchase.purchased_at.desc()).all()
     out = []
+    equipped = {
+        e.purchase_id: e.slot
+        for e in UserEquipment.query.filter(UserEquipment.user_id == current_user.id).all()
+    }
     for p in purchases:
         out.append({
             'id': p.id,
@@ -2572,8 +2671,155 @@ def api_cabinet_inventory():
             'image_url': url_for('static', filename=_avatar_static_filename(p.shop_item.image_filename)) if p.shop_item.image_filename else None,
             'purchased_at': p.purchased_at.isoformat() if p.purchased_at else None,
             'category': p.shop_item.category,
+            'equipment_slot': p.shop_item.equipment_slot,
+            'equipped_slot': equipped.get(p.id),
         })
     return jsonify({'success': True, 'inventory': out})
+
+
+@app.route('/api/cabinet/equipment/state')
+@login_required
+def api_cabinet_equipment_state():
+    """Текущее надетое снаряжение пользователя и итоговые характеристики."""
+    slots: dict[str, dict] = {}
+    rows = (
+        UserEquipment.query
+        .join(UserShopPurchase, UserEquipment.purchase_id == UserShopPurchase.id)
+        .join(ShopItem, UserShopPurchase.shop_item_id == ShopItem.id)
+        .filter(
+            UserEquipment.user_id == current_user.id,
+            ShopItem.category == SHOP_CATEGORY_EQUIPMENT,
+        )
+        .all()
+    )
+    for ue in rows:
+        item = ue.purchase.shop_item if ue.purchase else None
+        if not item:
+            continue
+        static_path = _avatar_static_filename(item.image_filename) if item.image_filename else None
+        slots[ue.slot] = {
+            'purchase_id': ue.purchase_id,
+            'item_id': item.id,
+            'name': item.name,
+            'image_url': url_for('static', filename=static_path) if static_path else None,
+        }
+    bonuses = _get_equipment_bonuses(current_user.id)
+    return jsonify({
+        'success': True,
+        'slots': slots,
+        'stats': {
+            'damage': current_user.damage,
+            'defense': current_user.defense,
+            'max_energy': current_user.energy,
+            'current_energy': current_user.current_energy_value,
+            'xp_bonus_pct': bonuses.get('xp_pct', 0.0) if isinstance(bonuses, dict) else 0.0,
+            'nums_bonus_pct': bonuses.get('nums_pct', 0.0) if isinstance(bonuses, dict) else 0.0,
+        },
+    })
+
+
+@app.route('/api/cabinet/equipment/equip', methods=['POST'])
+@login_required
+def api_cabinet_equipment_equip():
+    """Надеть предмет снаряжения в указанный слот."""
+    if current_user.is_admin:
+        return jsonify({'success': False, 'error': 'Администратор не участвует'}), 403
+    data = request.get_json() or {}
+    purchase_id = data.get('purchase_id')
+    slot = (data.get('slot') or '').strip().lower()
+    valid_slots = {'helmet', 'chest', 'pants', 'gloves', 'boots', 'weapon_main', 'weapon_off'}
+    if not purchase_id or slot not in valid_slots:
+        return jsonify({'success': False, 'error': 'Неверные данные'}), 400
+    purchase = UserShopPurchase.query.filter_by(id=purchase_id, user_id=current_user.id).first()
+    if not purchase:
+        return jsonify({'success': False, 'error': 'Покупка не найдена'}), 404
+    item = purchase.shop_item
+    if not item or item.shop_context != SHOP_CONTEXT_TERRITORY or item.category != SHOP_CATEGORY_EQUIPMENT:
+        return jsonify({'success': False, 'error': 'Это не предмет снаряжения'}), 400
+    equip_type = (item.equipment_slot or '').strip().lower()
+    if equip_type not in ('helmet', 'chest', 'pants', 'gloves', 'boots', 'weapon'):
+        return jsonify({'success': False, 'error': 'У предмета не задан слот снаряжения'}), 400
+    # Проверяем совместимость типа и слота
+    if equip_type == 'weapon':
+        if slot not in ('weapon_main', 'weapon_off'):
+            return jsonify({'success': False, 'error': 'Это оружие. Его можно надеть только в слоты оружия.'}), 400
+    else:
+        if slot != equip_type:
+            return jsonify({'success': False, 'error': 'Этот предмет нельзя надеть в выбранный слот.'}), 400
+    # Нельзя надеть один и тот же предмет в два слота
+    existing_for_purchase = UserEquipment.query.filter_by(purchase_id=purchase.id).first()
+    if existing_for_purchase:
+        existing_for_purchase.slot = slot
+    else:
+        # Снимаем предыдущий предмет из этого слота (если был)
+        prev = UserEquipment.query.filter_by(user_id=current_user.id, slot=slot).first()
+        if prev:
+            db.session.delete(prev)
+        db.session.add(UserEquipment(user_id=current_user.id, purchase_id=purchase.id, slot=slot))
+    db.session.commit()
+    return api_cabinet_equipment_state()
+
+
+@app.route('/api/cabinet/equipment/unequip', methods=['POST'])
+@login_required
+def api_cabinet_equipment_unequip():
+    """Снять предмет снаряжения из указанного слота."""
+    if current_user.is_admin:
+        return jsonify({'success': False, 'error': 'Администратор не участвует'}), 403
+    data = request.get_json() or {}
+    purchase_id = data.get('purchase_id')
+    slot = (data.get('slot') or '').strip().lower()
+    q = UserEquipment.query.filter(UserEquipment.user_id == current_user.id)
+    if purchase_id:
+        q = q.filter(UserEquipment.purchase_id == purchase_id)
+    if slot:
+        q = q.filter(UserEquipment.slot == slot)
+    removed_any = False
+    for ue in q.all():
+        db.session.delete(ue)
+        removed_any = True
+    if removed_any:
+        # Если макс. энергия уменьшилась, текущую энергию не увеличиваем, но можно скорректировать сверху
+        current_user.ensure_energy_refill()
+        if current_user.current_energy is not None and current_user.current_energy > current_user.energy:
+            current_user.current_energy = current_user.energy
+    db.session.commit()
+    return api_cabinet_equipment_state()
+
+
+@app.route('/api/cabinet/inventory/<int:purchase_id>/sell', methods=['POST'])
+@login_required
+def api_cabinet_inventory_sell(purchase_id):
+    """Продать предмет из инвентаря за 50% цены."""
+    if current_user.is_admin:
+        return jsonify({'success': False, 'error': 'Администратор не участвует'}), 403
+    purchase = UserShopPurchase.query.filter_by(id=purchase_id, user_id=current_user.id).first()
+    if not purchase:
+        return jsonify({'success': False, 'error': 'Покупка не найдена'}), 404
+    item = purchase.shop_item
+    if not item or item.shop_context != SHOP_CONTEXT_TERRITORY:
+        return jsonify({'success': False, 'error': 'Предмет не найден'}), 404
+    # Если предмет надет, снимаем его
+    removed_any = False
+    for ue in UserEquipment.query.filter_by(user_id=current_user.id, purchase_id=purchase.id).all():
+        db.session.delete(ue)
+        removed_any = True
+    # Если максимальная энергия уменьшилась из-за снятого предмета — подрежем текущую до нового максимума
+    if removed_any:
+        current_user.ensure_energy_refill()
+        if current_user.current_energy is not None and current_user.current_energy > current_user.energy:
+            current_user.current_energy = current_user.energy
+
+    price = item.price or 0
+    refund = max(0, int(price // 2))
+    current_user.nums_balance = (current_user.nums_balance or 0) + refund
+    db.session.delete(purchase)
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'balance': current_user.nums_balance,
+        'refund': refund,
+    })
 
 
 @app.route('/api/cabinet/inventory/<int:purchase_id>/use', methods=['POST'])
@@ -4198,9 +4444,10 @@ def admin_territory_updates_create():
     data = request.get_json() or {}
     title = (data.get('title') or '').strip()
     content = (data.get('content') or '').strip()
+    show_on_main = bool(data.get('show_on_main'))
     if not title:
         return jsonify({'success': False, 'error': 'Укажите заголовок'}), 400
-    u = GameUpdate(title=title, content=content)
+    u = GameUpdate(title=title, content=content, show_on_main=show_on_main)
     db.session.add(u)
     db.session.commit()
     return jsonify({'success': True, 'id': u.id, 'title': u.title, 'content': u.content, 'created_at': u.created_at.isoformat() if u.created_at else None})
@@ -4212,7 +4459,13 @@ def admin_territory_updates_get_or_update(update_id):
     """GET: получить запись. POST: редактировать запись."""
     u = GameUpdate.query.get_or_404(update_id)
     if request.method == 'GET':
-        return jsonify({'id': u.id, 'title': u.title, 'content': u.content or '', 'created_at': u.created_at.isoformat() if u.created_at else None})
+        return jsonify({
+            'id': u.id,
+            'title': u.title,
+            'content': u.content or '',
+            'show_on_main': bool(u.show_on_main),
+            'created_at': u.created_at.isoformat() if u.created_at else None,
+        })
     data = request.get_json() or {}
     if 'title' in data:
         title = (data.get('title') or '').strip()
@@ -4221,6 +4474,8 @@ def admin_territory_updates_get_or_update(update_id):
         u.title = title
     if 'content' in data:
         u.content = (data.get('content') or '').strip()
+    if 'show_on_main' in data:
+        u.show_on_main = bool(data.get('show_on_main'))
     db.session.commit()
     return jsonify({'success': True})
 
@@ -4580,7 +4835,7 @@ def api_admin_shop_item_create():
     except (TypeError, ValueError):
         price = 0
     category = (request.form.get('category') or '').strip().lower()
-    if category not in (SHOP_CATEGORY_ENHANCEMENT, SHOP_CATEGORY_CURSE):
+    if category not in (SHOP_CATEGORY_ENHANCEMENT, SHOP_CATEGORY_CURSE, SHOP_CATEGORY_EQUIPMENT):
         category = SHOP_CATEGORY_ENHANCEMENT
     description = (request.form.get('description') or '').strip() or None
     effects_json = request.form.get('effects', '[]')
@@ -4588,7 +4843,8 @@ def api_admin_shop_item_create():
         effects_list = json.loads(effects_json) if isinstance(effects_json, str) else (effects_json if isinstance(effects_json, list) else [])
     except Exception:
         effects_list = []
-    item = ShopItem(name=name, description=description, price=price, category=category, shop_context=SHOP_CONTEXT_TERRITORY)
+    equipment_slot = (request.form.get('equipment_slot') or '').strip().lower() or None
+    item = ShopItem(name=name, description=description, price=price, category=category, shop_context=SHOP_CONTEXT_TERRITORY, equipment_slot=equipment_slot)
     db.session.add(item)
     db.session.flush()
     if 'image' in request.files:
@@ -4633,8 +4889,12 @@ def api_admin_shop_item_update_delete(item_id):
     except (TypeError, ValueError):
         pass
     category = (request.form.get('category') or '').strip().lower()
-    if category in (SHOP_CATEGORY_ENHANCEMENT, SHOP_CATEGORY_CURSE):
+    if category in (SHOP_CATEGORY_ENHANCEMENT, SHOP_CATEGORY_CURSE, SHOP_CATEGORY_EQUIPMENT):
         item.category = category
+    equipment_slot = request.form.get('equipment_slot')
+    if equipment_slot is not None:
+        equipment_slot = equipment_slot.strip().lower() or None
+        item.equipment_slot = equipment_slot
     effects_json = request.form.get('effects', '[]')
     try:
         effects_list = json.loads(effects_json) if isinstance(effects_json, str) else (effects_json if isinstance(effects_json, list) else [])
@@ -5108,6 +5368,7 @@ def territory_battle_page():
     capture_start_time_iso = capture_start_time.isoformat() if capture_start_time else None
     capture_start_time_ms = int(capture_start_time.timestamp() * 1000) if capture_start_time else None
     capture_end_time_ms = int(capture_end_time.timestamp() * 1000) if capture_end_time else None
+    featured_update = GameUpdate.query.filter_by(show_on_main=True).order_by(GameUpdate.created_at.desc()).first()
     clan_pending_join_count = 0
     if user_logged_in and not is_admin and getattr(current_user, 'clan_obj', None):
         can_see_join_requests = (
@@ -5160,6 +5421,7 @@ def territory_battle_page():
         region_active_buffs=region_active_buffs,
         is_clan_owner=is_clan_owner,
         clan_marker=clan_marker,
+        featured_update=featured_update,
     )
 
 
