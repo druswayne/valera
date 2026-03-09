@@ -619,11 +619,39 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     gap: 12px;
     margin-bottom: 16px;
 }
+/* Обёртка: баланс + блок «Перевести Нумы» (десктоп: колонка справа; мобильная: одна строка) */
+.balance-transfer-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-left: auto;
+    min-width: 200px;
+    box-sizing: border-box;
+}
+.balance-transfer-wrap .nums-balance-block {
+    margin-left: 0;
+    width: 100%;
+    box-sizing: border-box;
+    justify-content: flex-end;
+}
+.balance-transfer-wrap .nums-transfer-block {
+    margin-bottom: 0;
+    box-sizing: border-box;
+}
+.balance-transfer-wrap .nums-transfer-header {
+    min-height: 48px;
+    box-sizing: border-box;
+}
 .balance-shop-section .balance-display-row .nums-balance-block {
     margin-left: auto;
     width: auto;
     box-sizing: border-box;
     justify-content: flex-end;
+}
+.balance-shop-section .balance-display-row .balance-transfer-wrap .nums-balance-block {
+    margin-left: 0;
+    width: 100%;
 }
 .balance-shop-section .shop-toggle-btn {
     padding: 14px 28px;
@@ -1323,8 +1351,8 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     .cabinet-support-float-label { display: none; }
     .section-title-row { flex-direction: column; align-items: stretch; gap: 8px; }
     .nums-balance-block { padding: 14px 16px; margin-left: 0; }
-    .nums-balance-block .nums-value { font-size: 1.5rem; }
-    .nums-balance-block .nums-suffix { font-size: 1.1rem; }
+    .nums-balance-block .nums-value { font-size: 1.2rem; }
+    .nums-balance-block .nums-suffix { font-size: 0.95rem; }
     .cabinet-top-nav {
         flex-wrap: nowrap;
         justify-content: flex-end;
@@ -1393,6 +1421,37 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         gap: 10px;
         margin-bottom: 12px;
     }
+    .balance-transfer-wrap {
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-left: 0;
+        min-width: 0;
+        width: 100%;
+    }
+    .balance-transfer-wrap .nums-balance-block {
+        flex: 1;
+        min-width: 0;
+        padding: 12px 44px 12px 14px;
+        justify-content: flex-start;
+    }
+    .balance-transfer-wrap .nums-balance-block .nums-balance-main {
+        min-width: 0;
+    }
+    .balance-transfer-wrap .nums-transfer-block {
+        flex-shrink: 0;
+        min-width: 0;
+    }
+    .balance-transfer-wrap .nums-transfer-block:not(.collapsed) {
+        flex-basis: 100%;
+        width: 100%;
+    }
+    .balance-transfer-wrap .nums-transfer-header {
+        min-height: 44px;
+        padding: 10px 14px;
+    }
     .balance-shop-section .balance-display-row .nums-balance-block {
         margin-left: 0;
         width: 100%;
@@ -1403,9 +1462,12 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     /* Описание баланса нумов — не выходить за экран на мобильных */
     .nums-balance-block {
         position: relative;
+        padding-right: 44px;
     }
     .nums-balance-block .nums-tooltip-wrap {
-        position: static;
+        position: absolute;
+        top: -2px;
+        right: 0;
     }
     .nums-balance-block .stat-tooltip {
         left: 0;
@@ -1673,32 +1735,34 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         <div class="cabinet-section-body">
             <div class="balance-display-row">
                 <button type="button" class="shop-toggle-btn" id="shopToggleBtn">Открыть лавку предметов</button>
-                <div class="nums-balance-block" aria-label="Баланс Нумов">
-                    <div class="nums-balance-main">
-                        <span class="nums-value" id="numsBalanceDisplay">{{ user.nums_balance or 0 }}</span>
-                        <span class="nums-suffix">Нумов</span>
+                <div class="balance-transfer-wrap">
+                    <div class="nums-balance-block" aria-label="Баланс Нумов">
+                        <div class="nums-balance-main">
+                            <span class="nums-value" id="numsBalanceDisplay">{{ user.nums_balance or 0 }}</span>
+                            <span class="nums-suffix">Нумов</span>
+                        </div>
+                        <span class="stat-label-wrap nums-tooltip-wrap">
+                            <button type="button" class="stat-help" id="helpNums" aria-label="Описание">?</button>
+                            <span class="stat-tooltip" id="tooltipNums">Нумы начисляются за правильное решение задач в битве за территорию. Награда зависит от уровня сложности задания.</span>
+                        </span>
                     </div>
-                    <span class="stat-label-wrap nums-tooltip-wrap">
-                        <button type="button" class="stat-help" id="helpNums" aria-label="Описание">?</button>
-                        <span class="stat-tooltip" id="tooltipNums">Нумы начисляются за правильное решение задач в битве за территорию. Награда зависит от уровня сложности задания.</span>
-                    </span>
-                </div>
-            </div>
-            <div class="nums-transfer-block collapsed" id="numsTransferBlock">
-                <div class="nums-transfer-header" id="numsTransferHeader" data-toggle-nums-transfer>
-                    <h3 class="nums-transfer-title">Перевести Нумы</h3>
-                    <button type="button" class="nums-transfer-toggle" aria-label="Свернуть/развернуть">▼</button>
-                </div>
-                <div class="nums-transfer-body">
-                    <p class="nums-transfer-desc">Переведите часть своих Нумов другому игроку по его логину.</p>
-                    <form id="numsTransferForm" class="nums-transfer-form">
-                        <label for="numsTransferUsername">Логин получателя</label>
-                        <input type="text" id="numsTransferUsername" name="username" placeholder="Логин игрока" autocomplete="off" required>
-                        <label for="numsTransferAmount">Сумма (Нумов)</label>
-                        <input type="number" id="numsTransferAmount" name="amount" min="1" placeholder="0" required>
-                        <button type="submit" class="nums-transfer-btn">Перевести</button>
-                    </form>
-                    <p id="numsTransferError" class="nums-transfer-error" style="display: none;"></p>
+                    <div class="nums-transfer-block collapsed" id="numsTransferBlock">
+                        <div class="nums-transfer-header" id="numsTransferHeader" data-toggle-nums-transfer>
+                            <h3 class="nums-transfer-title">Перевести Нумы</h3>
+                            <button type="button" class="nums-transfer-toggle" aria-label="Свернуть/развернуть">▼</button>
+                        </div>
+                        <div class="nums-transfer-body">
+                            <p class="nums-transfer-desc">Переведите часть своих Нумов другому игроку по его логину.</p>
+                            <form id="numsTransferForm" class="nums-transfer-form">
+                                <label for="numsTransferUsername">Логин получателя</label>
+                                <input type="text" id="numsTransferUsername" name="username" placeholder="Логин игрока" autocomplete="off" required>
+                                <label for="numsTransferAmount">Сумма (Нумов)</label>
+                                <input type="number" id="numsTransferAmount" name="amount" min="1" placeholder="0" required>
+                                <button type="submit" class="nums-transfer-btn">Перевести</button>
+                            </form>
+                            <p id="numsTransferError" class="nums-transfer-error" style="display: none;"></p>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="shop-grid-wrap" id="shopGridWrap">
