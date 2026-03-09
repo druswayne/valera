@@ -2583,8 +2583,14 @@ window.territoryFocusProtection = (function() {
                     infoBtn.style.pointerEvents = 'auto';
                     var btnY = textBBox.y - pad - 8;
                     var btnSize = 16;
+                    var gap = 4;
+                    var offset = (btnSize + gap) / 2;
+                    var infoCenterX = cx - offset;
+                    var structCenterX = cx + offset;
+                    overlay.setAttribute('data-structure-logo-center-x', String(structCenterX));
+                    overlay.setAttribute('data-structure-logo-center-y', String(btnY));
                     var infoRect = document.createElementNS(svg.namespaceURI, 'rect');
-                    infoRect.setAttribute('x', cx - btnSize / 2);
+                    infoRect.setAttribute('x', infoCenterX - btnSize / 2);
                     infoRect.setAttribute('y', btnY - btnSize / 2);
                     infoRect.setAttribute('width', btnSize);
                     infoRect.setAttribute('height', btnSize);
@@ -2592,7 +2598,7 @@ window.territoryFocusProtection = (function() {
                     infoBtn.appendChild(infoRect);
                     var bookIcon = document.createElementNS(svg.namespaceURI, 'text');
                     bookIcon.setAttribute('class', 'region-info-book');
-                    bookIcon.setAttribute('x', cx);
+                    bookIcon.setAttribute('x', infoCenterX);
                     bookIcon.setAttribute('y', btnY);
                     bookIcon.setAttribute('text-anchor', 'middle');
                     bookIcon.setAttribute('dominant-baseline', 'central');
@@ -3291,11 +3297,14 @@ window.territoryFocusProtection = (function() {
         var cx = overlay && flag ? parseFloat(flag.getAttribute('cx')) : 0;
         var cy = overlay && flag ? parseFloat(flag.getAttribute('cy')) : 0;
         var structureLogoSize = 16;
-        var nameBlockTopApprox = cy - 28;
-        var gapBetweenLogoAndBlock = 2;
-        var structureLogoBottomY = nameBlockTopApprox - gapBetweenLogoAndBlock;
-        var structureLogoX = cx - structureLogoSize / 2;
-        var structureLogoY = structureLogoBottomY - structureLogoSize;
+        var logoCenterX = overlay && overlay.hasAttribute('data-structure-logo-center-x')
+            ? parseFloat(overlay.getAttribute('data-structure-logo-center-x'))
+            : cx;
+        var logoCenterY = overlay && overlay.hasAttribute('data-structure-logo-center-y')
+            ? parseFloat(overlay.getAttribute('data-structure-logo-center-y'))
+            : (cy - 28);
+        var structureLogoX = logoCenterX - structureLogoSize / 2;
+        var structureLogoY = logoCenterY - structureLogoSize / 2;
         if (r.structureType === 'village' || r.structureType === 'fortress' || r.structureType === 'castle') {
             var imgUrl = '{{ url_for("static", filename="village.png") }}';
             if (r.structureType === 'fortress') imgUrl = '{{ url_for("static", filename="fortress.png") }}';

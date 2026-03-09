@@ -50,9 +50,13 @@ def filter_chat_text(text):
     result = text
     for p in _regex_patterns:
         result = p.sub(lambda m: '*' * len(m.group(0)), result)
+    # Для буквенных слов из ban.txt заменяем ТОЛЬКО целые слова, чтобы
+    # не зацеплять части других слов (\"тебя сука\" -> \"тебя ****\").
     for word in _literal_words:
         if len(word) == 0:
             continue
         replacement = '*' * len(word)
-        result = re.sub(re.escape(word), replacement, result, flags=re.IGNORECASE)
+        # \b работает с юникодом, поэтому границы слов для русских букв учитываются.
+        pattern = r'\b' + re.escape(word) + r'\b'
+        result = re.sub(pattern, replacement, result, flags=re.IGNORECASE)
     return result
