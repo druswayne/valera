@@ -5085,9 +5085,14 @@ def territory_battle_page():
     for ri, data in structures_by_region.items():
         if ri in state_by_index:
             state_by_index[ri]['structure_type'] = data['structure_type']
-            state_by_index[ri]['last_payout_at'] = (data['last_payout_at'].isoformat() + 'Z') if data['last_payout_at'] else None
+            state_by_index[ri]['last_payout_at'] = data['last_payout_at'].isoformat() if data['last_payout_at'] else None
         else:
-            state_by_index[ri] = {'owner_clan_id': None, 'strength': 0, 'structure_type': data['structure_type'], 'last_payout_at': (data['last_payout_at'].isoformat() + 'Z') if data['last_payout_at'] else None}
+            state_by_index[ri] = {
+                'owner_clan_id': None,
+                'strength': 0,
+                'structure_type': data['structure_type'],
+                'last_payout_at': data['last_payout_at'].isoformat() if data['last_payout_at'] else None,
+            }
     current_energy = None
     energy_max = None
     avatar_url = None
@@ -5259,7 +5264,7 @@ def api_territory_battle_structure_build():
         'success': True,
         'region_index': region_index,
         'structure_type': structure_type,
-        'last_payout_at': now.isoformat() + 'Z',
+        'last_payout_at': now.isoformat(),
         'nums_balance': current_user.nums_balance
     })
 
