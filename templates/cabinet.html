@@ -1436,9 +1436,14 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         min-width: 0;
         padding: 12px 44px 12px 14px;
         justify-content: flex-start;
+        overflow: hidden;
     }
     .balance-transfer-wrap .nums-balance-block .nums-balance-main {
         min-width: 0;
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+        flex-wrap: nowrap;
     }
     .balance-transfer-wrap .nums-transfer-block {
         flex-shrink: 0;
@@ -1458,11 +1463,13 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         min-width: 0;
         padding: 12px 14px;
         justify-content: flex-start;
+        overflow: hidden;
     }
     /* Описание баланса нумов — не выходить за экран на мобильных */
     .nums-balance-block {
         position: relative;
         padding-right: 44px;
+        overflow: hidden;
     }
     .nums-balance-block .nums-tooltip-wrap {
         position: absolute;
@@ -1556,6 +1563,18 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         </div>
     </nav>
     <h1>Личный кабинет</h1>
+
+    <div class="cabinet-support-float">
+        <div class="cabinet-support-float-label">Поддержать проект</div>
+        <a href="https://t.me/territory_battle"
+           class="cabinet-support-float-btn"
+           aria-label="Поддержать проект в Telegram"
+           title="Поддержать проект в Telegram"
+           target="_blank"
+           rel="noopener noreferrer">
+            ❤
+        </a>
+    </div>
 
     <div class="cabinet-section" data-section="personal">
         <div class="cabinet-section-header" data-toggle-section>
@@ -2147,6 +2166,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         </div>
     </div>
 </div>
+
 
 <!-- Модальное окно смены пароля пользователя -->
 <div class="modal-overlay" id="userPasswordModal">
@@ -4089,6 +4109,12 @@ var CURRENT_USER_ID = {{ user.id }};
         effects.forEach(function(e) {
             var v = e.percent_change;
             if (v === null || v === undefined || v === 0) return;
+            // Приводим знак к логике сервера: усиления = плюс, проклятия = минус
+            if (item && item.category === 'curse' && v > 0) {
+                v = -v;
+            } else if (item && item.category === 'enhancement' && v < 0) {
+                v = -v;
+            }
             var label = '';
             if (e.effect_type === 'damage') label = 'Атака';
             else if (e.effect_type === 'defense') label = 'Защита';
