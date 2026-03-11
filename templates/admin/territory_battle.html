@@ -695,7 +695,7 @@ body {
 
     <section class="admin-section">
         <h2>Редактор лавки</h2>
-        <p>Товары лавки отображаются в личном кабинете в блоке «Баланс и Лавка предметов». Категории: Усиления (улучшают характеристики), Проклятия (ухудшают у всего клана) и Снаряжение (долговременные предметы экипировки).</p>
+        <p>Товары лавки отображаются в личном кабинете в блоке «Баланс и Лавка предметов». Категории: Усиления (улучшают характеристики), Проклятия (ухудшают у всего клана), Снаряжение (долговременные предметы экипировки) и Особое (уникальные эффекты).</p>
         <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
             <button type="button" class="edit-btn" id="shopItemAddBtn">Добавить товар</button>
             <button type="button" class="edit-btn" id="shopEquipmentAddBtn">Добавить предмет</button>
@@ -722,6 +722,8 @@ body {
                                 Проклятия
                             {% elif item.category == 'equipment' %}
                                 Снаряжение
+                            {% elif item.category == 'special' %}
+                                Особое
                             {% else %}
                                 {{ item.category }}
                             {% endif %}
@@ -851,9 +853,10 @@ body {
                     <option value="enhancement">Усиления</option>
                     <option value="curse">Проклятия</option>
                     <option value="equipment">Снаряжение</option>
+                    <option value="special">Особое</option>
                 </select>
             </div>
-            <div class="form-group">
+            <div class="form-group" id="shopItemEquipmentSlotGroup">
                 <label>Слот снаряжения (для категории «Снаряжение»)</label>
                 <select id="shopItemEditorEquipmentSlot" name="equipment_slot" style="min-width:160px;">
                     <option value="">— не задан —</option>
@@ -865,7 +868,7 @@ body {
                     <option value="weapon">Оружие</option>
                 </select>
             </div>
-            <div class="form-group">
+            <div class="form-group" id="shopItemGradeGroup">
                 <label>Грейд (для категории «Снаряжение»: D, C, B, S)</label>
                 <select id="shopItemEditorGrade" name="grade" style="min-width:100px;">
                     <option value="">— не задан —</option>
@@ -873,6 +876,13 @@ body {
                     <option value="c">C</option>
                     <option value="b">B</option>
                     <option value="s">S</option>
+                </select>
+            </div>
+            <div class="form-group" id="shopItemSpecialTypeGroup" style="display:none;">
+                <label>Тип особого предмета (для категории «Особое»)</label>
+                <select id="shopItemEditorSpecialType" name="special_type" style="min-width:160px;">
+                    <option value="">— выберите тип —</option>
+                    <option value="map_clear">Очистка карты</option>
                 </select>
             </div>
             <div class="form-group">
@@ -1281,6 +1291,30 @@ document.getElementById('clanDeleteConfirm').addEventListener('click', function(
     var modal = document.getElementById('shopItemEditorModal');
     var container = document.getElementById('shopItemEffectsContainer');
     var addEffectBtn = document.getElementById('shopItemAddEffectBtn');
+    var categorySelect = document.getElementById('shopItemEditorCategory');
+    var equipmentSlotGroup = document.getElementById('shopItemEquipmentSlotGroup');
+    var gradeGroup = document.getElementById('shopItemGradeGroup');
+    var specialTypeGroup = document.getElementById('shopItemSpecialTypeGroup');
+    var specialTypeSelect = document.getElementById('shopItemEditorSpecialType');
+
+    function updateCategoryDependentFields() {
+        if (!categorySelect) return;
+        var cat = categorySelect.value;
+        if (equipmentSlotGroup) {
+            equipmentSlotGroup.style.display = (cat === 'equipment') ? 'block' : 'none';
+        }
+        if (gradeGroup) {
+            gradeGroup.style.display = (cat === 'equipment') ? 'block' : 'none';
+        }
+        if (specialTypeGroup) {
+            specialTypeGroup.style.display = (cat === 'special') ? 'block' : 'none';
+        }
+    }
+    if (categorySelect) {
+        categorySelect.addEventListener('change', function() {
+            updateCategoryDependentFields();
+        });
+    }
 
     function addEffectRow(data) {
         data = data || {};
@@ -1364,9 +1398,12 @@ document.getElementById('clanDeleteConfirm').addEventListener('click', function(
         document.getElementById('shopItemEditorPrice').value = '0';
         document.getElementById('shopItemEditorCategory').value = 'enhancement';
         document.getElementById('shopItemEditorEquipmentSlot').value = '';
+        document.getElementById('shopItemEditorGrade').value = '';
+        if (specialTypeSelect) specialTypeSelect.value = '';
         document.getElementById('shopItemEditorImage').value = '';
         container.innerHTML = '';
         addEffectRow();
+        updateCategoryDependentFields();
         if (modal) modal.classList.add('show');
     });
     var shopEquipmentAddBtn = document.getElementById('shopEquipmentAddBtn');
@@ -1380,9 +1417,11 @@ document.getElementById('clanDeleteConfirm').addEventListener('click', function(
             document.getElementById('shopItemEditorCategory').value = 'equipment';
             document.getElementById('shopItemEditorEquipmentSlot').value = '';
             document.getElementById('shopItemEditorGrade').value = '';
+            if (specialTypeSelect) specialTypeSelect.value = '';
             document.getElementById('shopItemEditorImage').value = '';
             container.innerHTML = '';
             addEffectRow();
+            updateCategoryDependentFields();
             if (modal) modal.classList.add('show');
         });
     }
@@ -1402,10 +1441,12 @@ document.getElementById('clanDeleteConfirm').addEventListener('click', function(
                 document.getElementById('shopItemEditorCategory').value = item.category || 'enhancement';
                 document.getElementById('shopItemEditorEquipmentSlot').value = item.equipment_slot || '';
                 document.getElementById('shopItemEditorGrade').value = item.grade || '';
+                if (specialTypeSelect) specialTypeSelect.value = (item.special_type || '');
                 document.getElementById('shopItemEditorImage').value = '';
                 container.innerHTML = '';
                 (item.effects || []).forEach(function(e) { addEffectRow(e); });
                 if (container.querySelectorAll('.shop-effect-row').length === 0) addEffectRow();
+                updateCategoryDependentFields();
                 if (modal) modal.classList.add('show');
             });
         });
@@ -1431,6 +1472,9 @@ document.getElementById('clanDeleteConfirm').addEventListener('click', function(
         fd.append('category', document.getElementById('shopItemEditorCategory').value);
         fd.append('equipment_slot', document.getElementById('shopItemEditorEquipmentSlot').value);
         fd.append('grade', document.getElementById('shopItemEditorGrade').value);
+        if (specialTypeSelect) {
+            fd.append('special_type', specialTypeSelect.value);
+        }
         fd.append('effects', JSON.stringify(getEffectsFromForm()));
         var imgInput = document.getElementById('shopItemEditorImage');
         if (imgInput.files && imgInput.files[0]) fd.append('image', imgInput.files[0]);

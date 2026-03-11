@@ -1806,6 +1806,13 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                     </div>
                     <div class="shop-tiles" id="shopTilesEquipment"></div>
                 </div>
+                <div class="shop-category-block collapsed" id="shopCategorySpecial">
+                    <div class="shop-category-header" data-shop-category-toggle>
+                        <h4>Особое</h4>
+                        <button type="button" class="shop-category-toggle" aria-label="Свернуть/развернуть">▼</button>
+                    </div>
+                    <div class="shop-tiles" id="shopTilesSpecial"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -1836,6 +1843,13 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                     <button type="button" class="inventory-category-toggle" aria-label="Свернуть/развернуть">▼</button>
                 </div>
                 <div class="inventory-tiles" id="inventoryTilesEquipment"></div>
+            </div>
+            <div class="inventory-category collapsed" id="inventoryCategorySpecial" style="display:none;">
+                <div class="inventory-category-header" data-inventory-category-toggle>
+                    <h3 class="inventory-category-title">Особое</h3>
+                    <button type="button" class="inventory-category-toggle" aria-label="Свернуть/развернуть">▼</button>
+                </div>
+                <div class="inventory-tiles" id="inventoryTilesSpecial"></div>
             </div>
             <p class="inventory-empty" id="inventoryEmpty" style="display: none;">Пока пусто. Покупайте товары в лавке.</p>
         </div>
@@ -3767,12 +3781,17 @@ var CURRENT_USER_ID = {{ user.id }};
         var enh = document.getElementById('shopTilesEnhancement');
         var cur = document.getElementById('shopTilesCurse');
         var eq = document.getElementById('shopTilesEquipment');
+        var sp = document.getElementById('shopTilesSpecial');
         if (!enh || !cur) return;
         enh.innerHTML = '';
         cur.innerHTML = '';
         if (eq) eq.innerHTML = '';
+        if (sp) sp.innerHTML = '';
         (items.enhancement || []).forEach(function(it) { enh.appendChild(createTile(it)); });
         (items.curse || []).forEach(function(it) { cur.appendChild(createTile(it)); });
+        if (sp && items.special) {
+            (items.special || []).forEach(function(it) { sp.appendChild(createTile(it)); });
+        }
         if (eq && items.equipment) {
             var gradeOrder = ['d', 'c', 'b', 's', ''];
             var gradeLabels = { 'd': 'Грейд D', 'c': 'Грейд C', 'b': 'Грейд B', 's': 'Грейд S', '': 'Прочее' };
@@ -3834,17 +3853,21 @@ var CURRENT_USER_ID = {{ user.id }};
                 var enhWrap = document.getElementById('inventoryCategoryEnhancement');
                 var curseWrap = document.getElementById('inventoryCategoryCurse');
                 var eqWrap = document.getElementById('inventoryCategoryEquipment');
+                var specWrap = document.getElementById('inventoryCategorySpecial');
                 var enh = document.getElementById('inventoryTilesEnhancement');
                 var cur = document.getElementById('inventoryTilesCurse');
                 var eq = document.getElementById('inventoryTilesEquipment');
+                var spec = document.getElementById('inventoryTilesSpecial');
                 var empty = document.getElementById('inventoryEmpty');
                 if (!enh || !cur || !eq) return;
                 enh.innerHTML = '';
                 cur.innerHTML = '';
                 eq.innerHTML = '';
+                if (spec) spec.innerHTML = '';
                 if (enhWrap) enhWrap.style.display = 'none';
                 if (curseWrap) curseWrap.style.display = 'none';
                 if (eqWrap) eqWrap.style.display = 'none';
+                if (specWrap) specWrap.style.display = 'none';
                 var list = (data.success && data.inventory) ? data.inventory : [];
                 lastInventoryList = list;
                 if (list.length === 0) {
@@ -3894,6 +3917,13 @@ var CURRENT_USER_ID = {{ user.id }};
                     } else if (p.category === 'equipment') {
                         targetGrid = eq;
                         if (eqWrap) eqWrap.style.display = '';
+                    } else if (p.category === 'special') {
+                        targetGrid = spec || enh;
+                        if (p.category === 'special' && specWrap && spec) {
+                            specWrap.style.display = '';
+                        } else if (enhWrap) {
+                            enhWrap.style.display = '';
+                        }
                     } else {
                         targetGrid = enh;
                         if (enhWrap) enhWrap.style.display = '';

@@ -657,10 +657,13 @@ class UserTerritoryStats(db.Model):
     total_influence_points = db.Column(db.Integer, default=0, nullable=False)  # очки при защите своей области
 
 
-# --- Лавка предметов (усиления / проклятия / снаряжение), покупка за Нумы ---
+# --- Лавка предметов (усиления / проклятия / снаряжение / особое), покупка за Нумы ---
 SHOP_CATEGORY_ENHANCEMENT = 'enhancement'
 SHOP_CATEGORY_CURSE = 'curse'
 SHOP_CATEGORY_EQUIPMENT = 'equipment'
+# Особые предметы (кастомные эффекты, не завязанные на таблицу эффектов)
+SHOP_CATEGORY_SPECIAL = 'special'
+
 SHOP_EFFECT_TYPES = ['damage', 'defense', 'current_energy', 'max_energy', 'xp_reward', 'nums_reward']
 
 
@@ -670,14 +673,15 @@ SHOP_CONTEXT_GAME = 'game'
 
 
 class ShopItem(db.Model):
-    """Товар лавки: усиление/проклятие (territory) или приз в прайсе (game)."""
+    """Товар лавки: усиление/проклятие/особое (territory) или приз в прайсе (game)."""
     __tablename__ = 'shop_item'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)
     image_filename = db.Column(db.String(255), nullable=True)
     description = db.Column(db.Text, nullable=True)
     price = db.Column(db.Integer, nullable=False, default=0)  # в Нумах (territory) или в монетах (game)
-    category = db.Column(db.String(20), nullable=False)  # enhancement / curse / equipment (territory) или для game
+    # enhancement / curse / equipment / special (territory) или для game
+    category = db.Column(db.String(20), nullable=False)
     sort_order = db.Column(db.Integer, default=0, nullable=False)
     shop_context = db.Column(db.String(20), nullable=False, default=SHOP_CONTEXT_TERRITORY)  # territory | game
     created_at = db.Column(db.DateTime, default=datetime.now)
@@ -685,6 +689,8 @@ class ShopItem(db.Model):
     equipment_slot = db.Column(db.String(20), nullable=True)
     # Для снаряжения: грейд (d, c, b, s) — для группировки и сортировки в лавке
     grade = db.Column(db.String(5), nullable=True)
+    # Для категории special: тип особого предмета (например, очистка карты)
+    special_type = db.Column(db.String(50), nullable=True)
     effects = db.relationship('ShopItemEffect', backref='shop_item', lazy=True, cascade='all, delete-orphan')
 
     def to_dict(self):
@@ -781,6 +787,31 @@ class ActiveItemBuff(db.Model):
     user = db.relationship('User', backref=db.backref('active_buffs', lazy=True))
     clan = db.relationship('Clan', backref=db.backref('active_buffs', lazy=True))
     shop_item = db.relationship('ShopItem', backref=db.backref('active_buffs', lazy=True))
+
+
+def _use_special_shop_item(purchase: 'UserShopPurchase', item: 'ShopItem'):
+    """
+    Обработка особых предметов лавки (category = special).
+    Пока поддерживается тип special_type = 'map_clear' — очистка карты битвы за территорию.
+    """
+    special_type = (item.special_type or '').strip().lower()
+    if special_type == 'map_clear':
+        # Очистка карты: все области становятся нейтральными, сила = 0
+        for state in TerritoryRegionState.query.all():
+            state.owner_class_id = None
+            state.owner_clan_id = None
+            state.strength = 0
+        # Сам предмет одноразовый — удаляем покупку
+        db.session.delete(purchase)
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'message': 'Карта очищена: все области стали нейтральными.',
+        })
+    # Неизвестный тип особого предмета — просто безопасно удалить покупку
+    db.session.delete(purchase)
+    db.session.commit()
+    return jsonify({'success': True, 'message': 'Предмет использован'})
 
 
 @login_manager.user_loader
@@ -1901,6 +1932,9 @@ with app.app_context():
                 if 'grade' not in columns:
                     conn.execute(text("ALTER TABLE shop_item ADD COLUMN grade VARCHAR(5)"))
                     print("Добавлена колонка grade в shop_item")
+                if 'special_type' not in columns:
+                    conn.execute(text("ALTER TABLE shop_item ADD COLUMN special_type VARCHAR(50)"))
+                    print("Добавлена колонка special_type в shop_item")
     except Exception as e:
         print(f"Ошибка при создании таблиц лавки: {e}")
         db.create_all()
@@ -2360,6 +2394,7 @@ def _shop_item_to_dict(item, include_effects=False):
         'image_url': url_for('static', filename=_avatar_static_filename(item.image_filename)) if item.image_filename else None,
         'equipment_slot': item.equipment_slot,
         'grade': (item.grade or '').strip().lower() or None,
+        'special_type': (item.special_type or '').strip().lower() or None,
     }
     if include_effects:
         d['effects'] = [
@@ -2584,11 +2619,13 @@ SHOP_EQUIPMENT_GRADE_ORDER = {'d': 0, 'c': 1, 'b': 2, 's': 3}
 def api_shop_items():
     """Список товаров лавки по категориям (для блока «Лавка предметов» в битве за территорию). Снаряжение отсортировано по грейду (d, c, b, s)."""
     items = ShopItem.query.filter_by(shop_context=SHOP_CONTEXT_TERRITORY).order_by(ShopItem.category, ShopItem.sort_order, ShopItem.id).all()
-    by_category = {'enhancement': [], 'curse': [], 'equipment': []}
+    by_category = {'enhancement': [], 'curse': [], 'equipment': [], 'special': []}
     eq_items = []
     for item in items:
         if item.category == SHOP_CATEGORY_EQUIPMENT:
             eq_items.append(item)
+        elif item.category == SHOP_CATEGORY_SPECIAL:
+            by_category.setdefault('special', []).append(_shop_item_to_dict(item))
         else:
             by_category.setdefault(item.category, []).append(_shop_item_to_dict(item))
     # Снаряжение: сортировка по грейду (d, c, b, s), затем sort_order, id
@@ -2700,6 +2737,7 @@ def api_cabinet_inventory():
             'equipment_slot': p.shop_item.equipment_slot,
             'grade': (p.shop_item.grade or '').strip().lower() or None,
             'equipped_slot': equipped.get(p.id),
+            'special_type': (p.shop_item.special_type or '').strip().lower() if getattr(p.shop_item, 'special_type', None) else None,
         })
     return jsonify({'success': True, 'inventory': out})
 
@@ -2861,6 +2899,9 @@ def api_cabinet_inventory_use(purchase_id):
     item = purchase.shop_item
     if not item or item.shop_context != SHOP_CONTEXT_TERRITORY:
         return jsonify({'success': False, 'error': 'Предмет не найден'}), 404
+    # Особые предметы обрабатываются отдельной логикой
+    if item.category == SHOP_CATEGORY_SPECIAL:
+        return _use_special_shop_item(purchase, item)
     effects = list(item.effects)
     if not effects:
         db.session.delete(purchase)
@@ -4872,7 +4913,7 @@ def api_admin_shop_item_create():
     except (TypeError, ValueError):
         price = 0
     category = (request.form.get('category') or '').strip().lower()
-    if category not in (SHOP_CATEGORY_ENHANCEMENT, SHOP_CATEGORY_CURSE, SHOP_CATEGORY_EQUIPMENT):
+    if category not in (SHOP_CATEGORY_ENHANCEMENT, SHOP_CATEGORY_CURSE, SHOP_CATEGORY_EQUIPMENT, SHOP_CATEGORY_SPECIAL):
         category = SHOP_CATEGORY_ENHANCEMENT
     description = (request.form.get('description') or '').strip() or None
     effects_json = request.form.get('effects', '[]')
@@ -4884,7 +4925,19 @@ def api_admin_shop_item_create():
     grade = (request.form.get('grade') or '').strip().lower() or None
     if grade not in ('d', 'c', 'b', 's'):
         grade = None
-    item = ShopItem(name=name, description=description, price=price, category=category, shop_context=SHOP_CONTEXT_TERRITORY, equipment_slot=equipment_slot, grade=grade)
+    special_type = (request.form.get('special_type') or '').strip().lower() or None
+    if category != SHOP_CATEGORY_SPECIAL:
+        special_type = None
+    item = ShopItem(
+        name=name,
+        description=description,
+        price=price,
+        category=category,
+        shop_context=SHOP_CONTEXT_TERRITORY,
+        equipment_slot=equipment_slot,
+        grade=grade,
+        special_type=special_type,
+    )
     db.session.add(item)
     db.session.flush()
     if 'image' in request.files:
@@ -4929,7 +4982,7 @@ def api_admin_shop_item_update_delete(item_id):
     except (TypeError, ValueError):
         pass
     category = (request.form.get('category') or '').strip().lower()
-    if category in (SHOP_CATEGORY_ENHANCEMENT, SHOP_CATEGORY_CURSE, SHOP_CATEGORY_EQUIPMENT):
+    if category in (SHOP_CATEGORY_ENHANCEMENT, SHOP_CATEGORY_CURSE, SHOP_CATEGORY_EQUIPMENT, SHOP_CATEGORY_SPECIAL):
         item.category = category
     equipment_slot = request.form.get('equipment_slot')
     if equipment_slot is not None:
@@ -4941,6 +4994,15 @@ def api_admin_shop_item_update_delete(item_id):
         if grade not in ('d', 'c', 'b', 's'):
             grade = None
         item.grade = grade
+    # special_type задаётся только для категории special
+    special_type = request.form.get('special_type')
+    if special_type is not None:
+        special_type = (special_type or '').strip().lower() or None
+        if item.category == SHOP_CATEGORY_SPECIAL:
+            item.special_type = special_type
+        else:
+            item.special_type = None
+
     effects_json = request.form.get('effects', '[]')
     try:
         effects_list = json.loads(effects_json) if isinstance(effects_json, str) else (effects_json if isinstance(effects_json, list) else [])
