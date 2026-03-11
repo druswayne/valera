@@ -380,6 +380,8 @@ class PvPDuel(db.Model):
     wager = db.Column(db.Integer, default=0, nullable=False)  # ставка в нумах (списана с обоих при старте)
     created_at = db.Column(db.DateTime, default=datetime.now)
     finished_at = db.Column(db.DateTime, nullable=True)
+    # Покупка-приз за дуэль (UserShopPurchase.id), если есть победитель
+    reward_purchase_id = db.Column(db.Integer, nullable=True)
 
     challenger = db.relationship('User', foreign_keys=[challenger_id], lazy=True)
     defender = db.relationship('User', foreign_keys=[defender_id], lazy=True)
@@ -4556,14 +4558,24 @@ def admin_territory_clan_members(clan_id):
 @app.route('/admin/territory-battle/clan/<int:clan_id>/delete', methods=['POST'])
 @admin_required
 def admin_territory_clan_delete(clan_id):
-    """Удаляет клан: исключает участников, сбрасывает владение областями, удаляет клан."""
+    """Удаляет клан: исключает участников, сбрасывает владение областями и связанными сущностями, удаляет клан."""
     clan = db.get_or_404(Clan, clan_id)
     # Исключить всех участников
     User.query.filter_by(clan_id=clan_id).update({'clan_id': None})
     # Сбросить владение областями
-    TerritoryRegionState.query.filter_by(owner_clan_id=clan_id).update({'owner_clan_id': None, 'strength': 0})
-    # Удалить заявки на вступление (cascade сработает при удалении клана)
+    TerritoryRegionState.query.filter_by(owner_clan_id=clan_id).update(
+        {'owner_clan_id': None, 'strength': 0}
+    )
+    # Удалить заявки на вступление
     ClanJoinRequest.query.filter_by(clan_id=clan_id).delete()
+    # Удалить объявления о найме
+    ClanRecruitmentAd.query.filter_by(clan_id=clan_id).delete()
+    # Удалить сообщения чата клана
+    ClanChatMessage.query.filter_by(clan_id=clan_id).delete()
+    # Удалить метку клана на карте
+    ClanTerritoryMarker.query.filter_by(clan_id=clan_id).delete()
+    # Сбросить клановые бафы
+    ActiveItemBuff.query.filter_by(clan_id=clan_id).delete()
     db.session.delete(clan)
     db.session.commit()
     return jsonify({'success': True})
@@ -5341,7 +5353,7 @@ def game_updates_page():
 
 
 # Битва за территорию
-TERRITORY_MAX_STRENGTH = 2000
+TERRITORY_MAX_STRENGTH = 5000
 TERRITORY_STRENGTH_STEP_SAME = 25
 TERRITORY_STRENGTH_STEP_OTHER = 25
 
@@ -6411,25 +6423,38 @@ PVP_REWARD_BASE_MULT = 50
 PVP_REWARD_SPREAD = 0.3
 PVP_DUEL_DURATION_MINUTES = 5
 
+# Вероятности диапазонов цен для PvP-приза
+PVP_REWARD_PROB_LOW = 0.7    # до 500 включительно
+PVP_REWARD_PROB_MED = 0.2    # 500–1000
+PVP_REWARD_PROB_HIGH = 0.08  # 1000–5000
+# оставшиеся 0.02 — очень дорогие предметы > 500
+
 _pvp_last_seen_column_ensured = False
 _pvp_wager_columns_ensured = False
 
 
 def _pvp_ensure_wager_columns():
-    """Добавить колонку wager в pvp_duel_challenge и pvp_duel, если её нет."""
+    """Добавить колонку wager в pvp_duel_challenge и pvp_duel, а также reward_purchase_id в pvp_duel, если их нет."""
     global _pvp_wager_columns_ensured
     if _pvp_wager_columns_ensured:
         return
     try:
         from sqlalchemy import inspect as _inspect
         inspector = _inspect(db.engine)
+        tables = inspector.get_table_names()
         for table in ('pvp_duel_challenge', 'pvp_duel'):
-            if table not in inspector.get_table_names():
+            if table not in tables:
                 continue
             columns = [col['name'] for col in inspector.get_columns(table)]
             if 'wager' not in columns:
                 with db.engine.begin() as c2:
-                    c2.execute(text("ALTER TABLE {} ADD COLUMN wager INTEGER DEFAULT 0 NOT NULL".format(table)))
+                    c2.execute(text(f"ALTER TABLE {table} ADD COLUMN wager INTEGER DEFAULT 0 NOT NULL"))
+        # reward_purchase_id только в pvp_duel
+        if 'pvp_duel' in tables:
+            columns = [col['name'] for col in inspector.get_columns('pvp_duel')]
+            if 'reward_purchase_id' not in columns:
+                with db.engine.begin() as c2:
+                    c2.execute(text("ALTER TABLE pvp_duel ADD COLUMN reward_purchase_id INTEGER"))
     except Exception:
         pass
     _pvp_wager_columns_ensured = True
@@ -6833,6 +6858,68 @@ def _pvp_duel_apply_stake_result(duel):
                 u.nums_balance = (u.nums_balance or 0) + wager
 
 
+def _pvp_choose_random_reward_item():
+    """
+    Выбрать случайный предмет для приза победителю дуэли.
+    Используются товары территории (усиления, проклятия, снаряжение) с разными диапазонами цен.
+    """
+    base_query = ShopItem.query.filter(
+        ShopItem.shop_context == SHOP_CONTEXT_TERRITORY,
+        ShopItem.category.in_([SHOP_CATEGORY_ENHANCEMENT, SHOP_CATEGORY_CURSE, SHOP_CATEGORY_EQUIPMENT])
+    )
+
+    r = random.random()
+    if r < PVP_REWARD_PROB_LOW:
+        # До 500 включительно
+        price_filter = ShopItem.price <= 500
+    elif r < PVP_REWARD_PROB_LOW + PVP_REWARD_PROB_MED:
+        # 500–1000 включительно (строго >500 до 1000)
+        price_filter = db.and_(ShopItem.price > 500, ShopItem.price <= 1000)
+    elif r < PVP_REWARD_PROB_LOW + PVP_REWARD_PROB_MED + PVP_REWARD_PROB_HIGH:
+        # 1000–5000 включительно
+        price_filter = db.and_(ShopItem.price > 1000, ShopItem.price <= 5000)
+    else:
+        # Очень дорогие: >5000
+        price_filter = ShopItem.price > 5000
+
+    items = base_query.filter(price_filter).all()
+    if not items:
+        # Фоллбэк: любые подходящие товары территории
+        items = base_query.all()
+        if not items:
+            return None
+    return random.choice(items)
+
+
+def _pvp_duel_award_random_item(duel):
+    """
+    Начислить победителю дуэли случайный предмет (UserShopPurchase).
+    Вызывается только если есть победитель.
+    """
+    if not duel or not duel.winner_id:
+        return None
+    winner = duel.winner
+    if not winner:
+        return None
+    item = _pvp_choose_random_reward_item()
+    if not item:
+        return None
+    purchase = UserShopPurchase(user_id=winner.id, shop_item_id=item.id)
+    db.session.add(purchase)
+    db.session.flush()
+    try:
+        duel.reward_purchase_id = purchase.id
+    except Exception:
+        # Даже если что-то пошло не так при сохранении ссылки, награду всё равно выдаём
+        pass
+    try:
+        logger.info("PvP duel %s: winner %s awarded item %s (price=%s)", duel.id, winner.id, item.id, item.price)
+    except Exception:
+        # Логирование не должно ломать транзакцию
+        pass
+    return purchase
+
+
 def _pvp_duel_check_time_limit(duel):
     """Если дуэль активна и время вышло (5 мин) — завершить по оставшемуся здоровью. Победитель тот, у кого больше HP; при равенстве — ничья."""
     if duel.status != 'active' or not duel.created_at:
@@ -6848,6 +6935,8 @@ def _pvp_duel_check_time_limit(duel):
         duel.winner_id = None
     duel.status = 'finished'
     duel.finished_at = datetime.now()
+    if duel.winner_id:
+        _pvp_duel_award_random_item(duel)
     _pvp_duel_apply_stake_result(duel)
     db.session.commit()
 
@@ -6872,7 +6961,25 @@ def pvp_duel_page(duel_id):
         return redirect(url_for('pvp_arena_page'))
     if duel.status == 'finished':
         duel_wager = getattr(duel, 'wager', 0) or 0
-        return render_template('pvp_duel.html', duel_id=duel_id, duel=duel, finished=True, winner=duel.winner, duel_wager=duel_wager)
+        reward_item = None
+        reward_item_image_url = None
+        reward_purchase = None
+        if duel.winner_id and getattr(duel, 'reward_purchase_id', None):
+            reward_purchase = UserShopPurchase.query.get(duel.reward_purchase_id)
+        if reward_purchase and reward_purchase.shop_item:
+            reward_item = reward_purchase.shop_item
+            if reward_item.image_filename:
+                reward_item_image_url = url_for('static', filename=_avatar_static_filename(reward_item.image_filename))
+        return render_template(
+            'pvp_duel.html',
+            duel_id=duel_id,
+            duel=duel,
+            finished=True,
+            winner=duel.winner,
+            duel_wager=duel_wager,
+            reward_item=reward_item,
+            reward_item_image_url=reward_item_image_url,
+        )
     opponent = duel.defender if current_user.id == duel.challenger_id else duel.challenger
     me_is_challenger = current_user.id == duel.challenger_id
     my_health = duel.challenger_health if me_is_challenger else duel.defender_health
@@ -7026,6 +7133,8 @@ def api_pvp_duel_answer(duel_id):
             else:
                 duel.winner_id = attacker.id
             duel.finished_at = datetime.now()
+            if duel.winner_id:
+                _pvp_duel_award_random_item(duel)
             _pvp_duel_apply_stake_result(duel)
     db.session.commit()
     me_is_challenger = current_user.id == duel.challenger_id
@@ -7078,6 +7187,7 @@ def api_pvp_duel_surrender(duel_id):
     duel.status = 'finished'
     duel.winner_id = winner.id
     duel.finished_at = datetime.now()
+    _pvp_duel_award_random_item(duel)
     _pvp_duel_apply_stake_result(duel)
     db.session.commit()
     return jsonify({'success': True})

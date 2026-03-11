@@ -720,6 +720,20 @@
                 <p class="winner-msg" style="color:#c4b098;">Ничья. Ваша ставка возвращена ({{ duel_wager }} нумов).</p>
             {% endif %}
         {% endif %}
+        {% if reward_item %}
+        <p class="winner-msg" style="margin-top: 10px;">
+            {% if winner and winner.id == current_user.id %}
+                Вы также получили приз:
+            {% else %}
+                Победитель получил приз:
+            {% endif %}
+            <br>
+            {% if reward_item_image_url %}
+                <img src="{{ reward_item_image_url }}" alt="{{ reward_item.name }}" style="width:32px; height:32px; object-fit:cover; border-radius:4px; vertical-align:middle; margin-right:6px;">
+            {% endif %}
+            <strong>{{ reward_item.name }}</strong>
+        </p>
+        {% endif %}
         <a href="{{ url_for('pvp_arena_page') }}" class="pvp-btn">На арену</a>
     </div>
     {% else %}
