@@ -811,6 +811,22 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 .region-buff-carousel-arrow:hover rect { fill: rgba(232,212,170,0.98); stroke: #d4a84b; }
 .region-buff-carousel-arrow:hover text { fill: #2c1810; }
 
+/* Демогоргоны (особый ивент) */
+.demogorgon-army-icon {
+    cursor: pointer;
+}
+.demogorgon-hp-label {
+    fill: #ffffff;
+    font-size: 13px;
+    font-weight: bold;
+    text-shadow: 0 0 3px rgba(0,0,0,0.7);
+}
+.demogorgon-hp-bg {
+    fill: rgba(0,0,0,0.6);
+    stroke: #f87171;
+    stroke-width: 1;
+}
+
 /* Запрет копирования/выделения текста условия задачи */
 .territory-task-content.no-copy {
     -webkit-user-select: none;
@@ -2130,6 +2146,8 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                 <rect class="region-label-bg" id="hoverLabelBg" x="0" y="0" width="1" height="1"/>
                 <text class="region-label" id="hoverLabelText" x="0" y="0" text-anchor="middle"></text>
             </g>
+            <!-- Слой для иконок Демогоргонов -->
+            <g id="demogorgonLayer"></g>
         </svg>
             </div>
         </div>
@@ -2887,6 +2905,195 @@ window.territoryFocusProtection = (function() {
                 overlay.appendChild(buffG);
             }
         });
+    }
+
+    // --- Демогоргоны: отрисовка и взаимодействие ---
+    var demogorgonState = {
+        active: false,
+        region_index: null,
+        pos_x: 0.5,
+        pos_y: 0.5,
+        health: 0,
+        max_health: 0
+    };
+    var demogorgonSvgNodes = {
+        group: null,
+        icon: null,
+        hpBg: null,
+        hpText: null
+    };
+
+    function _getRegionCenterForIndex(regionIndex) {
+        var path = getRegionPathById(regionIndex);
+        if (!path) return null;
+        var bbox = path.getBBox();
+        return {
+            cx: bbox.x + bbox.width / 2,
+            cy: bbox.y + bbox.height / 2,
+            bbox: bbox
+        };
+    }
+
+    function renderDemogorgonArmy() {
+        var svg = document.getElementById('territoryMap');
+        if (!svg) return;
+        var layer = document.getElementById('demogorgonLayer');
+        if (!layer) {
+            layer = document.createElementNS(svg.namespaceURI, 'g');
+            layer.setAttribute('id', 'demogorgonLayer');
+            svg.appendChild(layer);
+        }
+        // Очистка, если нет армии
+        if (!demogorgonState.active) {
+            while (layer.firstChild) layer.removeChild(layer.firstChild);
+            demogorgonSvgNodes = { group: null, icon: null, hpBg: null, hpText: null };
+            return;
+        }
+        // Пытаемся использовать заранее посчитанный центр области, чтобы иконка была хорошо видна
+        var rc = regionCenters[demogorgonState.region_index];
+        var cx, cy;
+        if (rc && typeof rc.cx === 'number' && typeof rc.cy === 'number') {
+            cx = rc.cx;
+            // Чуть выше центра, чтобы не перекрывать флаг/название
+            cy = rc.cy - 20;
+        } else {
+            var regionCenter = _getRegionCenterForIndex(demogorgonState.region_index);
+            if (!regionCenter) return;
+            cx = regionCenter.bbox.x + demogorgonState.pos_x * regionCenter.bbox.width;
+            cy = regionCenter.bbox.y + demogorgonState.pos_y * regionCenter.bbox.height;
+        }
+
+        if (!demogorgonSvgNodes.group) {
+            var g = document.createElementNS(svg.namespaceURI, 'g');
+            g.setAttribute('class', 'demogorgon-army-icon');
+            g.addEventListener('click', function(e) {
+                e.stopPropagation();
+                openDemogorgonTaskModal();
+            });
+            var iconCircle = document.createElementNS(svg.namespaceURI, 'circle');
+            iconCircle.setAttribute('r', 20);
+            iconCircle.setAttribute('fill', '#4b1d3f');
+            iconCircle.setAttribute('stroke', '#f97316');
+            iconCircle.setAttribute('stroke-width', '3');
+            var iconText = document.createElementNS(svg.namespaceURI, 'text');
+            iconText.setAttribute('text-anchor', 'middle');
+            iconText.setAttribute('dominant-baseline', 'central');
+            iconText.setAttribute('fill', '#fff');
+            iconText.setAttribute('font-size', '18');
+            iconText.textContent = '👾';
+            var hpBg = document.createElementNS(svg.namespaceURI, 'rect');
+            hpBg.setAttribute('class', 'demogorgon-hp-bg');
+            var hpText = document.createElementNS(svg.namespaceURI, 'text');
+            hpText.setAttribute('class', 'demogorgon-hp-label');
+            hpText.setAttribute('text-anchor', 'middle');
+            // Собираем
+            g.appendChild(iconCircle);
+            g.appendChild(iconText);
+            g.appendChild(hpBg);
+            g.appendChild(hpText);
+            layer.appendChild(g);
+            demogorgonSvgNodes.group = g;
+            demogorgonSvgNodes.icon = iconCircle;
+            demogorgonSvgNodes.hpBg = hpBg;
+            demogorgonSvgNodes.hpText = hpText;
+        }
+        var g = demogorgonSvgNodes.group;
+        g.setAttribute('transform', 'translate(' + cx + ',' + cy + ')');
+        // HP
+        var hpTextEl = demogorgonSvgNodes.hpText;
+        var hpBgEl = demogorgonSvgNodes.hpBg;
+        if (hpTextEl && hpBgEl) {
+            var hpStr = String(demogorgonState.health) + ' / ' + String(demogorgonState.max_health);
+            hpTextEl.textContent = hpStr;
+            // Временная позиция, чтобы измерить bbox
+            hpTextEl.setAttribute('x', 0);
+            hpTextEl.setAttribute('y', 26);
+            var bbox = hpTextEl.getBBox();
+            var padX = 4, padY = 2;
+            hpBgEl.setAttribute('x', bbox.x - padX);
+            hpBgEl.setAttribute('y', bbox.y - padY);
+            hpBgEl.setAttribute('width', Math.max(1, bbox.width) + padX * 2);
+            hpBgEl.setAttribute('height', Math.max(1, bbox.height) + padY * 2);
+        }
+    }
+
+    function fetchDemogorgonState() {
+        fetch('{{ url_for("api_territory_demogorgons_state") }}')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data || !data.active) {
+                    demogorgonState.active = false;
+                    renderDemogorgonArmy();
+                    return;
+                }
+                demogorgonState.active = true;
+                demogorgonState.region_index = data.region_index;
+                demogorgonState.pos_x = data.pos_x;
+                demogorgonState.pos_y = data.pos_y;
+                demogorgonState.health = data.health;
+                demogorgonState.max_health = data.max_health || data.health || 0;
+                // Обновляем силу владения области в клиентском состоянии, если пришла
+                if (typeof data.region_strength === 'number' && state.regions && state.regions[demogorgonState.region_index]) {
+                    state.regions[demogorgonState.region_index].strength = data.region_strength;
+                    updateRegionUI(demogorgonState.region_index);
+                }
+                renderDemogorgonArmy();
+            })
+            .catch(function() {
+                // игнорируем ошибки сети
+            });
+    }
+
+    function openDemogorgonTaskModal() {
+        // Переиспользуем существующую модалку задания, но без расхода энергии и без region_index
+        document.getElementById('taskModalTitle').textContent = 'Атака на армию Демогorgonов';
+        document.getElementById('taskModalText').textContent = 'Загрузка задачи...';
+        var exprDisp = document.getElementById('taskExpressionDisplay');
+        exprDisp.style.display = 'none';
+        exprDisp.innerHTML = '';
+        document.getElementById('taskModalImage').style.display = 'none';
+        document.getElementById('taskAnswerInput').value = '';
+        document.getElementById('taskAnswerWrapDefault').style.display = 'block';
+        document.getElementById('taskAnswerWrapFraction').style.display = 'none';
+        document.getElementById('taskAnswerWrapCommonDenom').style.display = 'none';
+        document.getElementById('taskAnswerWrapMixedFraction').style.display = 'none';
+        window._currentDemogorgonTask = null;
+        document.getElementById('taskModal').classList.add('open');
+        fetch('{{ url_for("api_territory_demogorgons_task") }}', { method: 'POST' })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.success && data.task) {
+                    var t = data.task;
+                    window._currentDemogorgonTask = t;
+                    document.getElementById('taskModalTitle').textContent = t.title || 'Задание';
+                    var textEl = document.getElementById('taskModalText');
+                    if (t.text && t.text.indexOf('<span') !== -1) {
+                        textEl.innerHTML = t.text;
+                    } else {
+                        textEl.textContent = t.text || '';
+                    }
+                    var img = document.getElementById('taskModalImage');
+                    if (t.image_url) {
+                        img.src = t.image_url;
+                        img.style.display = 'block';
+                    } else {
+                        img.style.display = 'none';
+                    }
+                    document.getElementById('taskAnswerWrapDefault').style.display = 'block';
+                    document.getElementById('taskAnswerWrapFraction').style.display = 'none';
+                    document.getElementById('taskAnswerWrapCommonDenom').style.display = 'none';
+                    document.getElementById('taskAnswerWrapMixedFraction').style.display = 'none';
+                    document.getElementById('taskAnswerInput').value = '';
+                    document.getElementById('taskAnswerInput').focus();
+                } else {
+                    document.getElementById('taskModalTitle').textContent = 'Ошибка';
+                    document.getElementById('taskModalText').textContent = data.error || 'Не удалось загрузить задачу.';
+                }
+            })
+            .catch(function() {
+                document.getElementById('taskModalTitle').textContent = 'Ошибка';
+                document.getElementById('taskModalText').textContent = 'Не удалось загрузить задачу.';
+            });
     }
 
     function renderClanMarker() {
@@ -3881,9 +4088,11 @@ window.territoryFocusProtection = (function() {
     }
 
     document.getElementById('submitTaskBtn').addEventListener('click', function() {
-        const regionId = state.currentRegionId;
-        const task = window._currentTask;
-        if (regionId === null || !task || !playerClanId) {
+        var demogTask = window._currentDemogorgonTask || null;
+        var isDemogorgon = !!demogTask;
+        var regionId = state.currentRegionId;
+        var task = isDemogorgon ? demogTask : window._currentTask;
+        if (!task || (!isDemogorgon && (regionId === null || !playerClanId))) {
             closeTaskModal();
             return;
         }
@@ -3912,7 +4121,44 @@ window.territoryFocusProtection = (function() {
             answer = document.getElementById('taskAnswerInput').value;
         }
         closeTaskModal();
-        submitTaskAnswer(regionId, task.id, answer);
+        if (isDemogorgon) {
+            // Ответ по Демогоргону
+            fetch('{{ url_for("api_territory_demogorgons_answer") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ task_id: task.id, answer: answer })
+            })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (!data || !data.success) {
+                        showToast((data && data.error) || 'Ошибка атаки по Демогоргону', false);
+                        return;
+                    }
+                    var dmg = data.damage_done || 0;
+                    if (data.correct) {
+                        showToast('Верно! Урон по Демогоргону: ' + dmg, true);
+                    } else {
+                        showToast('Ответ неверный.', false);
+                    }
+                    // Обновляем локальное состояние по данным сервера (если пришли)
+                    if (typeof data.army_health === 'number') {
+                        demogorgonState.health = data.army_health;
+                    }
+                    if (typeof data.army_max_health === 'number') {
+                        demogorgonState.max_health = data.army_max_health;
+                    }
+                    if (demogorgonState.health <= 0) {
+                        demogorgonState.active = false;
+                    }
+                    window._currentDemogorgonTask = null;
+                    renderDemogorgonArmy();
+                })
+                .catch(function() {
+                    showToast('Ошибка сети при атаке по Демогоргону', false);
+                });
+        } else {
+            submitTaskAnswer(regionId, task.id, answer);
+        }
     });
 
     document.getElementById('taskModal').addEventListener('click', function(e) {
@@ -3958,6 +4204,10 @@ window.territoryFocusProtection = (function() {
     document.getElementById('taskAnswerIntPart').addEventListener('keydown', onTaskAnswerKeydown);
     document.getElementById('taskAnswerNumMixed').addEventListener('keydown', onTaskAnswerKeydown);
     document.getElementById('taskAnswerDenMixed').addEventListener('keydown', onTaskAnswerKeydown);
+
+    // Периодический опрос состояния армии Демогorgonов
+    fetchDemogorgonState();
+    setInterval(fetchDemogorgonState, 10000);
 
     if (captureEnabled) {
         renderGlobalProgress();

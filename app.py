@@ -204,6 +204,9 @@ scheduler = BackgroundScheduler(jobstores=jobstores, executors=executors, job_de
 
 db = SQLAlchemy(app)
 
+# Уникальный идентификатор экземпляра приложения (для распределённого лока планировщика)
+SCHEDULER_INSTANCE_ID = f"{os.getenv('HOSTNAME', 'host')}:{os.getpid()}:{uuid.uuid4().hex[:8]}"
+
 # Настройка Flask-Login
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -400,6 +403,17 @@ SKILL_POINTS_PER_LEVEL = 3
 XP_BASE_PER_LEVEL = 128
 # Ускоренная прокачка до 10 уровня
 XP_BASE_PER_LEVEL_BELOW_10 = 80
+
+# Демогorgonы (особый предмет)
+DEMOGORGON_MAX_HEALTH = 100_000
+DEMOGORGON_DAMAGE_TICK_SECONDS = 2
+DEMOGORGON_MIN_MOVE_MINUTES = 10
+DEMOGORGON_MAX_MOVE_MINUTES = 30
+DEMOGORGON_REWARD_NUMS = 100_000
+
+# Лок планировщика (распределённый)
+SCHEDULER_LOCK_TTL_SECONDS = 60
+SCHEDULER_LOCK_RENEW_SECONDS = 20
 
 def xp_required_for_level(level):
     """Суммарный опыт для достижения уровня level.
@@ -789,10 +803,107 @@ class ActiveItemBuff(db.Model):
     shop_item = db.relationship('ShopItem', backref=db.backref('active_buffs', lazy=True))
 
 
+class SchedulerInstanceLock(db.Model):
+    """Распределённый лок для единственного владельца планировщика задач.
+    В таблице всегда максимум одна запись с id=1.
+    """
+    __tablename__ = 'scheduler_instance_lock'
+    id = db.Column(db.Integer, primary_key=True)
+    owner_id = db.Column(db.String(200), nullable=True, index=True)
+    owner_pid = db.Column(db.Integer, nullable=True)
+    # Время, до которого лок считается действующим
+    expires_at = db.Column(db.DateTime, nullable=True)
+
+
+def _scheduler_try_acquire_lock() -> bool:
+    """Пытается захватить лок планировщика для текущего экземпляра.
+    Возвращает True, если лок успешно захвачен.
+    """
+    now = datetime.now()
+    expires_new = now + timedelta(seconds=SCHEDULER_LOCK_TTL_SECONDS)
+    try:
+        with db.session.begin():
+            # Берём строку с id=1 под эксклюзивный лок
+            lock = (
+                SchedulerInstanceLock.query.filter_by(id=1)
+                .with_for_update(nowait=True)
+                .first()
+            )
+            if lock is None:
+                lock = SchedulerInstanceLock(id=1, owner_id=SCHEDULER_INSTANCE_ID, owner_pid=os.getpid(), expires_at=expires_new)
+                db.session.add(lock)
+                return True
+            # Если владелец живой и срок не истёк — лок занят
+            lock_owner_alive = False
+            try:
+                if lock.owner_pid:
+                    # Проверяем, жив ли процесс. На Unix используем os.kill(pid, 0); на Windows — best-effort через OpenProcess.
+                    if os.name == 'posix':
+                        try:
+                            os.kill(lock.owner_pid, 0)
+                            lock_owner_alive = True
+                        except OSError:
+                            lock_owner_alive = False
+                    elif os.name == 'nt':
+                        try:
+                            import ctypes
+                            PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+                            handle = ctypes.windll.kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, int(lock.owner_pid))
+                            if handle:
+                                ctypes.windll.kernel32.CloseHandle(handle)
+                                lock_owner_alive = True
+                            else:
+                                lock_owner_alive = False
+                        except Exception:
+                            lock_owner_alive = False
+            except Exception:
+                lock_owner_alive = False
+
+            # Если лок истёк, владелец мёртв или это мы — перехватываем / обновляем
+            if (
+                lock.owner_id == SCHEDULER_INSTANCE_ID
+                or not lock.expires_at
+                or lock.expires_at < now
+                or not lock_owner_alive
+            ):
+                lock.owner_id = SCHEDULER_INSTANCE_ID
+                lock.owner_pid = os.getpid()
+                lock.expires_at = expires_new
+                return True
+            # Иначе кто-то другой владелец и лок ещё жив
+            return False
+    except Exception as e:
+        logger.error(f'Ошибка при попытке захвата лока планировщика: {e}')
+        db.session.rollback()
+        return False
+
+
+def _scheduler_renew_lock() -> None:
+    """Периодически продлевает лок планировщика, если он всё ещё принадлежит нам."""
+    now = datetime.now()
+    expires_new = now + timedelta(seconds=SCHEDULER_LOCK_TTL_SECONDS)
+    try:
+        with db.session.begin():
+            lock = (
+                SchedulerInstanceLock.query.filter_by(id=1)
+                .with_for_update(nowait=True)
+                .first()
+            )
+            if not lock or lock.owner_id != SCHEDULER_INSTANCE_ID:
+                return
+            lock.expires_at = expires_new
+            lock.owner_pid = os.getpid()
+    except Exception as e:
+        logger.error(f'Ошибка продления лока планировщика: {e}')
+        db.session.rollback()
+
+
 def _use_special_shop_item(purchase: 'UserShopPurchase', item: 'ShopItem'):
     """
     Обработка особых предметов лавки (category = special).
-    Пока поддерживается тип special_type = 'map_clear' — очистка карты битвы за территорию.
+    Сейчас поддерживаются:
+    - special_type = 'map_clear' — очистка карты битвы за территорию;
+    - special_type = 'demogorgons' — призыв армии Демогоргонов.
     """
     special_type = (item.special_type or '').strip().lower()
     if special_type == 'map_clear':
@@ -807,6 +918,51 @@ def _use_special_shop_item(purchase: 'UserShopPurchase', item: 'ShopItem'):
         return jsonify({
             'success': True,
             'message': 'Карта очищена: все области стали нейтральными.',
+        })
+    if special_type == 'demogorgons':
+        # Лёгкая очистка: деактивируем "зависшие" армии с нулевым здоровьем
+        for a in DemogorgonArmy.query.filter(DemogorgonArmy.is_active == True, DemogorgonArmy.health <= 0).all():
+            a.is_active = False
+        db.session.flush()
+
+        # Нельзя призвать вторую армию, пока активна предыдущая (здоровье > 0)
+        active = DemogorgonArmy.query.filter(
+            DemogorgonArmy.is_active == True,
+            DemogorgonArmy.health > 0
+        ).first()
+        if active:
+            return jsonify({
+                'success': False,
+                'error': 'Армия Демогorgonов уже бродит по карте.',
+            }), 400
+        # Выбираем случайную доступную область
+        regions = TerritoryRegionConfig.query.order_by(TerritoryRegionConfig.region_index).all()
+        if not regions:
+            return jsonify({'success': False, 'error': 'Нет областей для призыва армии.'}), 400
+        region = random.choice(regions)
+        # Случайные нормированные координаты внутри области
+        pos_x = random.random()
+        pos_y = random.random()
+        now = datetime.now()
+        move_delay_min = random.randint(DEMOGORGON_MIN_MOVE_MINUTES, DEMOGORGON_MAX_MOVE_MINUTES)
+        army = DemogorgonArmy(
+            region_index=region.region_index,
+            pos_x=pos_x,
+            pos_y=pos_y,
+            health=DEMOGORGON_MAX_HEALTH,
+            max_health=DEMOGORGON_MAX_HEALTH,
+            is_active=True,
+            created_at=now,
+            last_damage_tick_at=now,
+            next_move_at=now + timedelta(minutes=move_delay_min),
+        )
+        db.session.add(army)
+        # Сам предмет одноразовый — удаляем покупку
+        db.session.delete(purchase)
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'message': 'Армия Демогorgonов призвана на карту.',
         })
     # Неизвестный тип особого предмета — просто безопасно удалить покупку
     db.session.delete(purchase)
@@ -1186,6 +1342,36 @@ class TerritoryRegionState(db.Model):
         Index('idx_territory_region_state_owner', 'owner_class_id'),
         Index('idx_territory_region_state_owner_clan', 'owner_clan_id'),
     )
+
+
+class DemogorgonArmy(db.Model):
+    """Армия Демогоргонов, призванная особым предметом.
+    В каждый момент времени активна максимум одна запись.
+    """
+    __tablename__ = 'demogorgon_army'
+    id = db.Column(db.Integer, primary_key=True)
+    region_index = db.Column(db.Integer, nullable=False)
+    # Нормированные координаты внутри области (0..1), для позиционирования иконки на карте
+    pos_x = db.Column(db.Float, nullable=False, default=0.5)
+    pos_y = db.Column(db.Float, nullable=False, default=0.5)
+    health = db.Column(db.Integer, nullable=False, default=10000)
+    max_health = db.Column(db.Integer, nullable=False, default=10000)
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.now, nullable=False)
+    last_damage_tick_at = db.Column(db.DateTime, default=datetime.now, nullable=False)
+    next_move_at = db.Column(db.DateTime, nullable=True)
+
+
+class DemogorgonDamage(db.Model):
+    """Суммарный урон по армии Демогоргонов по кланам."""
+    __tablename__ = 'demogorgon_damage'
+    id = db.Column(db.Integer, primary_key=True)
+    army_id = db.Column(db.Integer, db.ForeignKey('demogorgon_army.id'), nullable=False)
+    clan_id = db.Column(db.Integer, db.ForeignKey('clan.id'), nullable=False)
+    total_damage = db.Column(db.Integer, nullable=False, default=0)
+
+    army = db.relationship('DemogorgonArmy', backref=db.backref('damage_rows', lazy=True, cascade='all, delete-orphan'))
+    clan = db.relationship('Clan', backref=db.backref('demogorgon_damage_rows', lazy=True, cascade='all, delete-orphan'))
 
 
 # Битва за территорию: сооружение на области (одно на область; привязано к области, доход — лидеру клана-владельца)
@@ -1935,6 +2121,16 @@ with app.app_context():
                 if 'special_type' not in columns:
                     conn.execute(text("ALTER TABLE shop_item ADD COLUMN special_type VARCHAR(50)"))
                     print("Добавлена колонка special_type в shop_item")
+        # Создаём таблицы для Демогorgonов и лока планировщика, если их ещё нет
+        if 'demogorgon_army' not in tables or 'demogorgon_damage' not in tables or 'scheduler_instance_lock' not in tables:
+            db.create_all()
+            print("Созданы таблицы demogorgon_army/demogorgon_damage/scheduler_instance_lock (если их не было)")
+        if 'scheduler_instance_lock' in tables:
+            lock_columns = [col['name'] for col in inspector.get_columns('scheduler_instance_lock')]
+            if 'owner_pid' not in lock_columns:
+                with db.engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE scheduler_instance_lock ADD COLUMN owner_pid INTEGER"))
+                    print("Добавлена колонка owner_pid в scheduler_instance_lock")
     except Exception as e:
         print(f"Ошибка при создании таблиц лавки: {e}")
         db.create_all()
@@ -2093,8 +2289,8 @@ with app.app_context():
                 db.session.commit()
                 print(f"Активирована задача недели (все задачи решены): {first_task.title}")
     
-    # Запуск планировщика задач
-    if not scheduler.running:
+    # Запуск планировщика задач: только один живой экземпляр (через распределённый лок)
+    if not scheduler.running and _scheduler_try_acquire_lock():
         scheduler.start()
         
         # Проверяем, не пропущена ли дата обновления задачи
@@ -2131,7 +2327,23 @@ with app.app_context():
             id='update_weekly_task',
             replace_existing=True
         )
-        print("Планировщик задач запущен. Задача недели будет обновляться каждое воскресенье в 09:00")
+        # Тик армии Демогorgonов: раз в DEMOGORGON_DAMAGE_TICK_SECONDS
+        scheduler.add_job(
+            _demogorgon_tick,
+            'interval',
+            seconds=DEMOGORGON_DAMAGE_TICK_SECONDS,
+            id='demogorgon_tick',
+            replace_existing=True
+        )
+        # Продление лока планировщика
+        scheduler.add_job(
+            _scheduler_renew_lock,
+            'interval',
+            seconds=SCHEDULER_LOCK_RENEW_SECONDS,
+            id='scheduler_lock_renew',
+            replace_existing=True
+        )
+        print("Планировщик задач запущен в этом экземпляре. Задача недели будет обновляться каждое воскресенье в 09:00")
 
 # Маршруты авторизации
 @app.route('/login', methods=['GET', 'POST'])
@@ -5538,6 +5750,217 @@ def api_territory_regions():
     """Список областей для выбора (например, при использовании предмета «на область»)."""
     regions = TerritoryRegionConfig.query.order_by(TerritoryRegionConfig.region_index).all()
     return jsonify([{'region_index': r.region_index, 'display_name': r.display_name or f'Область {r.region_index + 1}'} for r in regions])
+
+
+def _get_active_demogorgon() -> DemogorgonArmy | None:
+    return DemogorgonArmy.query.filter_by(is_active=True).first()
+
+
+def _demogorgon_tick():
+    """Фоновая логика Демогоргонов: поедание силы областей, перемещение, завершение."""
+    army = _get_active_demogorgon()
+    if not army:
+        return
+    now = datetime.now()
+    # Поедание силы области раз в DEMOGORGON_DAMAGE_TICK_SECONDS
+    try:
+        current_region_strength = None
+        all_regions_zero = False
+
+        if (now - (army.last_damage_tick_at or army.created_at)).total_seconds() >= DEMOGORGON_DAMAGE_TICK_SECONDS:
+            state = TerritoryRegionState.query.filter_by(region_index=army.region_index).first()
+            if state:
+                state.strength = max(0, int(state.strength or 0) - 1)
+                current_region_strength = int(state.strength or 0)
+            army.last_damage_tick_at = now
+
+        def _choose_next_region_prefer_strongest(current_region_index: int | None) -> int | None:
+            """Выбрать индекс следующей области: предпочтение областям с наибольшей силой владения."""
+            states = TerritoryRegionState.query.order_by(TerritoryRegionState.region_index).all()
+            if not states:
+                return None
+            positives = [s for s in states if int(s.strength or 0) > 0]
+            if not positives:
+                # Все области по нулям
+                return None
+            max_strength = max(int(s.strength or 0) for s in positives)
+            candidates = [s for s in positives if int(s.strength or 0) == max_strength]
+            # Если есть текущая область среди кандидатов — можно остаться, но мы всегда хотим движение,
+            # поэтому фильтруем её, если есть другие варианты.
+            if current_region_index is not None and len(candidates) > 1:
+                non_current = [s for s in candidates if s.region_index != current_region_index]
+                if non_current:
+                    candidates = non_current
+            target_state = random.choice(candidates)
+            return target_state.region_index
+
+        # Если сила текущей области дошла до нуля — немедленно переходим
+        if current_region_strength == 0 and army.is_active:
+            states = TerritoryRegionState.query.order_by(TerritoryRegionState.region_index).all()
+            if states:
+                positives = [s for s in states if int(s.strength or 0) > 0]
+                if not positives:
+                    # Все области по нулям — армия умирает, награды нет
+                    all_regions_zero = True
+                else:
+                    next_idx = _choose_next_region_prefer_strongest(army.region_index)
+                    if next_idx is not None:
+                        army.region_index = next_idx
+                        army.pos_x = random.random()
+                        army.pos_y = random.random()
+                        delay_min = random.randint(DEMOGORGON_MIN_MOVE_MINUTES, DEMOGORGON_MAX_MOVE_MINUTES)
+                        army.next_move_at = now + timedelta(minutes=delay_min)
+
+        # Перемещение в случайное время (если ещё живы области с силой > 0)
+        if army.next_move_at and now >= army.next_move_at and army.is_active and not all_regions_zero:
+            next_idx = _choose_next_region_prefer_strongest(army.region_index)
+            if next_idx is not None:
+                army.region_index = next_idx
+                army.pos_x = random.random()
+                army.pos_y = random.random()
+            delay_min = random.randint(DEMOGORGON_MIN_MOVE_MINUTES, DEMOGORGON_MAX_MOVE_MINUTES)
+            army.next_move_at = now + timedelta(minutes=delay_min)
+
+        # Если все области по нулям — армия умирает без награды
+        if all_regions_zero and army.is_active:
+            army.is_active = False
+
+        # Проверка смерти армии
+        if army.health <= 0 and army.is_active:
+            _demogorgon_finish(army)
+        db.session.commit()
+    except Exception as e:
+        logger.error(f'Ошибка в тике Демогorgon-армии: {e}')
+        db.session.rollback()
+
+
+def _demogorgon_finish(army: DemogorgonArmy) -> None:
+    """Завершение жизни армии Демогorgonov: определение победителя и выдача награды.
+    Вызывать только когда army.health <= 0 и army.is_active.
+    """
+    if not army or not army.is_active:
+        return
+    # Определяем клан-победитель
+    top_row = (
+        DemogorgonDamage.query.filter_by(army_id=army.id)
+        .order_by(DemogorgonDamage.total_damage.desc())
+        .first()
+    )
+    if top_row and top_row.clan_id:
+        clan = Clan.query.get(top_row.clan_id)
+        if clan and clan.owner_id:
+            leader = User.query.get(clan.owner_id)
+            if leader:
+                leader.nums_balance = (leader.nums_balance or 0) + DEMOGORGON_REWARD_NUMS
+    army.is_active = False
+
+
+@app.route('/api/territory/demogorgons', methods=['GET'])
+def api_territory_demogorgons_state():
+    """Состояние армии Демогоргонов для отображения на карте."""
+    # Подстрахуемся: применим тик логики, даже если фонового планировщика нет
+    try:
+        _demogorgon_tick()
+    except Exception:
+        # Ошибку тикера здесь гасим, основное состояние всё равно покажем
+        db.session.rollback()
+
+    army = _get_active_demogorgon()
+    if not army or not army.is_active or army.health <= 0:
+        return jsonify({'active': False})
+    state = TerritoryRegionState.query.filter_by(region_index=army.region_index).first()
+    region_strength = int(state.strength or 0) if state else 0
+    # Топ кланов по урону (по желанию можно показать в UI)
+    top_rows = (
+        DemogorgonDamage.query.filter_by(army_id=army.id)
+        .order_by(DemogorgonDamage.total_damage.desc())
+        .limit(5)
+        .all()
+    )
+    top_clans = []
+    for row in top_rows:
+        clan = row.clan
+        if not clan:
+            continue
+        top_clans.append({
+            'clan_id': clan.id,
+            'name': clan.name,
+            'damage': row.total_damage,
+        })
+    return jsonify({
+        'active': True,
+        'region_index': army.region_index,
+        'pos_x': army.pos_x,
+        'pos_y': army.pos_y,
+        'health': army.health,
+        'max_health': army.max_health,
+        'region_strength': region_strength,
+        'top_clans': top_clans,
+    })
+
+
+@app.route('/api/territory/demogorgons/task', methods=['POST'])
+@login_required
+def api_territory_demogorgons_task():
+    """Выдать задачу для атаки по армии Демогorgonов (энергия не списывается)."""
+    if current_user.is_admin:
+        return jsonify({'success': False, 'error': 'Администратор не участвует'}, 403)
+    if not current_user.clan_id:
+        return jsonify({'success': False, 'error': 'Для атаки нужен клан'}), 400
+    army = _get_active_demogorgon()
+    if not army or not army.is_active:
+        return jsonify({'success': False, 'error': 'Армия Демогorgonов не активна'}), 400
+    # Для простоты используем случайную задачу из TerritoryTask (как в битве)
+    task = TerritoryTask.query.order_by(db.func.random()).first()
+    if not task:
+        return jsonify({'success': False, 'error': 'Нет доступных задач'}), 404
+    return jsonify({'success': True, 'task': task.to_dict_public()})
+
+
+@app.route('/api/territory/demogorgons/answer', methods=['POST'])
+@login_required
+def api_territory_demogorgons_answer():
+    """Проверка ответа на задачу и нанесение урона армии Демогorgonов."""
+    if current_user.is_admin:
+        return jsonify({'success': False, 'error': 'Администратор не участвует'}, 403)
+    if not current_user.clan_id:
+        return jsonify({'success': False, 'error': 'Для атаки нужен клан'}), 400
+    army = _get_active_demogorgon()
+    if not army or not army.is_active:
+        return jsonify({'success': False, 'error': 'Армия Демогorgonов не активна'}), 400
+    data = request.get_json() or {}
+    task_id = data.get('task_id')
+    answer = (data.get('answer') or '').strip()
+    if not task_id:
+        return jsonify({'success': False, 'error': 'task_id required'}), 400
+    task = TerritoryTask.query.get(task_id)
+    if not task:
+        return jsonify({'success': False, 'error': 'Задача не найдена'}), 404
+    # Простейшая проверка ответа (как в битве без дробей/особых случаев)
+    is_correct = (answer.strip() == (task.correct_answer or '').strip())
+    damage_done = 0
+    if is_correct and army.is_active and army.health > 0:
+        # 50% от урона атакующего
+        attacker_damage = int(current_user.damage or 0)
+        damage_done = max(0, int(attacker_damage * 0.5))
+        if damage_done > 0:
+            army.health = max(0, army.health - damage_done)
+            row = DemogorgonDamage.query.filter_by(army_id=army.id, clan_id=current_user.clan_id).first()
+            if not row:
+                row = DemogorgonDamage(army_id=army.id, clan_id=current_user.clan_id, total_damage=0)
+                db.session.add(row)
+            row.total_damage = (row.total_damage or 0) + damage_done
+            # Если здоровье упало до нуля — сразу завершаем армию (награждение и деактивация)
+            if army.health <= 0 and army.is_active:
+                _demogorgon_finish(army)
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'correct': is_correct,
+        'damage_done': damage_done,
+        'army_health': army.health,
+        'army_max_health': army.max_health,
+    })
 
 
 @app.route('/api/territory-battle/clan-marker', methods=['POST'])
