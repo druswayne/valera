@@ -2914,11 +2914,13 @@ window.territoryFocusProtection = (function() {
         pos_x: 0.5,
         pos_y: 0.5,
         health: 0,
-        max_health: 0
+        max_health: 0,
+        icon_url: null
     };
     var demogorgonSvgNodes = {
         group: null,
-        icon: null,
+        iconCircle: null,
+        iconImage: null,
         hpBg: null,
         hpText: null
     };
@@ -2946,7 +2948,7 @@ window.territoryFocusProtection = (function() {
         // Очистка, если нет армии
         if (!demogorgonState.active) {
             while (layer.firstChild) layer.removeChild(layer.firstChild);
-            demogorgonSvgNodes = { group: null, icon: null, hpBg: null, hpText: null };
+            demogorgonSvgNodes = { group: null, iconCircle: null, iconImage: null, hpBg: null, hpText: null };
             return;
         }
         // Пытаемся использовать заранее посчитанный центр области, чтобы иконка была хорошо видна
@@ -2975,12 +2977,12 @@ window.territoryFocusProtection = (function() {
             iconCircle.setAttribute('fill', '#4b1d3f');
             iconCircle.setAttribute('stroke', '#f97316');
             iconCircle.setAttribute('stroke-width', '3');
-            var iconText = document.createElementNS(svg.namespaceURI, 'text');
-            iconText.setAttribute('text-anchor', 'middle');
-            iconText.setAttribute('dominant-baseline', 'central');
-            iconText.setAttribute('fill', '#fff');
-            iconText.setAttribute('font-size', '18');
-            iconText.textContent = '👾';
+            var iconImage = document.createElementNS(svg.namespaceURI, 'image');
+            iconImage.setAttribute('width', 32);
+            iconImage.setAttribute('height', 32);
+            iconImage.setAttribute('x', -16);
+            iconImage.setAttribute('y', -16);
+            iconImage.style.pointerEvents = 'none';
             var hpBg = document.createElementNS(svg.namespaceURI, 'rect');
             hpBg.setAttribute('class', 'demogorgon-hp-bg');
             var hpText = document.createElementNS(svg.namespaceURI, 'text');
@@ -2988,17 +2990,31 @@ window.territoryFocusProtection = (function() {
             hpText.setAttribute('text-anchor', 'middle');
             // Собираем
             g.appendChild(iconCircle);
-            g.appendChild(iconText);
+            g.appendChild(iconImage);
             g.appendChild(hpBg);
             g.appendChild(hpText);
             layer.appendChild(g);
             demogorgonSvgNodes.group = g;
-            demogorgonSvgNodes.icon = iconCircle;
+            demogorgonSvgNodes.iconCircle = iconCircle;
+            demogorgonSvgNodes.iconImage = iconImage;
             demogorgonSvgNodes.hpBg = hpBg;
             demogorgonSvgNodes.hpText = hpText;
         }
         var g = demogorgonSvgNodes.group;
         g.setAttribute('transform', 'translate(' + cx + ',' + cy + ')');
+        // Обновляем изображение / круг
+        var iconImg = demogorgonSvgNodes.iconImage;
+        var iconCircle = demogorgonSvgNodes.iconCircle;
+        if (iconImg && iconCircle) {
+            if (demogorgonState.icon_url) {
+                iconImg.setAttributeNS('http://www.w3.org/1999/xlink', 'href', demogorgonState.icon_url);
+                iconImg.style.display = 'block';
+                iconCircle.style.display = 'none';
+            } else {
+                iconImg.style.display = 'none';
+                iconCircle.style.display = 'block';
+            }
+        }
         // HP
         var hpTextEl = demogorgonSvgNodes.hpText;
         var hpBgEl = demogorgonSvgNodes.hpBg;
@@ -3032,6 +3048,7 @@ window.territoryFocusProtection = (function() {
                 demogorgonState.pos_y = data.pos_y;
                 demogorgonState.health = data.health;
                 demogorgonState.max_health = data.max_health || data.health || 0;
+                demogorgonState.icon_url = data.icon_url || null;
                 // Обновляем силу владения области в клиентском состоянии, если пришла
                 if (typeof data.region_strength === 'number' && state.regions && state.regions[demogorgonState.region_index]) {
                     state.regions[demogorgonState.region_index].strength = data.region_strength;
@@ -3067,10 +3084,20 @@ window.territoryFocusProtection = (function() {
                     window._currentDemogorgonTask = t;
                     document.getElementById('taskModalTitle').textContent = t.title || 'Задание';
                     var textEl = document.getElementById('taskModalText');
-                    if (t.text && t.text.indexOf('<span') !== -1) {
-                        textEl.innerHTML = t.text;
+                    var exprDispEl = document.getElementById('taskExpressionDisplay');
+                    var isMultiFracExpr = t.multi_frac_expression && t.display_frac1;
+                    if (isMultiFracExpr) {
+                        textEl.textContent = t.text || 'Вычислите выражение ниже. В ответе укажите несократимую дробь и выделите целую часть, если это возможно.';
+                        exprDispEl.innerHTML = t.display_frac1;
+                        exprDispEl.style.display = 'block';
                     } else {
-                        textEl.textContent = t.text || '';
+                        exprDispEl.style.display = 'none';
+                        exprDispEl.innerHTML = '';
+                        if ((t.answer_type === 'fraction' || t.answer_type === 'common_denominator' || t.title === 'Правильные/неправильные дроби') && t.text && t.text.indexOf('<span') !== -1) {
+                            textEl.innerHTML = t.text;
+                        } else {
+                            textEl.textContent = t.text || '';
+                        }
                     }
                     var img = document.getElementById('taskModalImage');
                     if (t.image_url) {
@@ -3079,15 +3106,93 @@ window.territoryFocusProtection = (function() {
                     } else {
                         img.style.display = 'none';
                     }
-                    document.getElementById('taskAnswerWrapDefault').style.display = 'block';
-                    document.getElementById('taskAnswerWrapFraction').style.display = 'none';
-                    document.getElementById('taskAnswerWrapCommonDenom').style.display = 'none';
-                    document.getElementById('taskAnswerWrapMixedFraction').style.display = 'none';
+                    var isFraction = t.answer_type === 'fraction';
+                    var isCommonDenom = t.answer_type === 'common_denominator';
+                    var isMixedFraction = t.answer_type === 'mixed_fraction' || t.answer_type === 'add_sub_fractions';
+                    var isSpecial = isFraction || isCommonDenom || isMixedFraction;
+                    document.getElementById('taskAnswerWrapDefault').style.display = isSpecial ? 'none' : 'block';
+                    document.getElementById('taskAnswerWrapFraction').style.display = isFraction ? 'block' : 'none';
+                    document.getElementById('taskAnswerWrapCommonDenom').style.display = isCommonDenom ? 'block' : 'none';
+                    document.getElementById('taskAnswerWrapMixedFraction').style.display = isMixedFraction ? 'block' : 'none';
                     document.getElementById('taskAnswerInput').value = '';
-                    document.getElementById('taskAnswerInput').focus();
+                    document.getElementById('taskAnswerNum').value = '';
+                    document.getElementById('taskAnswerDen').value = '';
+                    document.getElementById('taskAnswerNum1').value = '';
+                    document.getElementById('taskAnswerDenCommon').value = '';
+                    document.getElementById('taskAnswerNum2').value = '';
+                    document.getElementById('taskAnswerDenCommon2').value = '';
+                    document.getElementById('taskAnswerIntPart').value = '';
+                    document.getElementById('taskAnswerNumMixed').value = '';
+                    document.getElementById('taskAnswerDenMixed').value = '';
+                    resizeAllTaskAnswerInputs();
+                    if (isCommonDenom) {
+                        document.getElementById('taskCommonDenomFrac1').innerHTML = t.display_frac1 || '';
+                        document.getElementById('taskCommonDenomFrac2').innerHTML = t.display_frac2 || '';
+                    }
+                    if (isMixedFraction) {
+                        var mixedDisp = document.getElementById('taskMixedFracDisplay');
+                        var addSubDisp = document.getElementById('taskAddSubFracDisplay');
+                        var mixedLabel = document.getElementById('taskMixedFractionLabel');
+                        if (t.answer_type === 'add_sub_fractions') {
+                            if (isMultiFracExpr) {
+                                addSubDisp.style.display = 'none';
+                                addSubDisp.innerHTML = '';
+                            } else {
+                                addSubDisp.style.display = '';
+                                addSubDisp.innerHTML = (t.display_frac1 || '') + ' <span class="task-add-sub-op">' + (t.display_operator || '+') + '</span> ' + (t.display_frac2 || '');
+                            }
+                            mixedDisp.style.display = 'none';
+                            mixedDisp.innerHTML = '';
+                            if (mixedLabel) mixedLabel.textContent = 'Ваш ответ (несократимая дробь, целая часть если есть):';
+                            var intPartInput = document.getElementById('taskAnswerIntPart');
+                            if (t.int_part_zero) {
+                                intPartInput.disabled = true;
+                                intPartInput.value = '0';
+                                intPartInput.setAttribute('readonly', 'readonly');
+                                intPartInput.classList.add('task-int-part-disabled');
+                            } else {
+                                intPartInput.disabled = false;
+                                intPartInput.removeAttribute('readonly');
+                                intPartInput.classList.remove('task-int-part-disabled');
+                            }
+                        } else {
+                            addSubDisp.style.display = 'none';
+                            addSubDisp.innerHTML = '';
+                            mixedDisp.style.display = '';
+                            mixedDisp.innerHTML = t.display_frac ? ('Дробь: ' + t.display_frac) : '';
+                            if (mixedLabel) mixedLabel.textContent = 'Ваш ответ (смешанное число):';
+                            var intPartInput2 = document.getElementById('taskAnswerIntPart');
+                            intPartInput2.disabled = false;
+                            intPartInput2.removeAttribute('readonly');
+                            intPartInput2.classList.remove('task-int-part-disabled');
+                        }
+                    }
+                    if (isFraction) {
+                        document.getElementById('taskAnswerNum').focus();
+                    } else if (isCommonDenom) {
+                        document.getElementById('taskAnswerNum1').focus();
+                    } else if (isMixedFraction) {
+                        if (t.answer_type === 'add_sub_fractions' && t.int_part_zero) {
+                            document.getElementById('taskAnswerNumMixed').focus();
+                        } else {
+                            document.getElementById('taskAnswerIntPart').focus();
+                        }
+                    } else {
+                        document.getElementById('taskAnswerInput').focus();
+                    }
+                    if (data.current_energy !== undefined) {
+                        var ed = document.getElementById('energyDisplay');
+                        if (ed) ed.textContent = data.current_energy;
+                    }
+                    window.territoryFocusProtection && window.territoryFocusProtection.arm();
                 } else {
-                    document.getElementById('taskModalTitle').textContent = 'Ошибка';
-                    document.getElementById('taskModalText').textContent = data.error || 'Не удалось загрузить задачу.';
+                    if (data && data.error && (data.current_energy === undefined) && data.error.indexOf('энерг') !== -1) {
+                        closeTaskModal();
+                        showEnergyModal(data.error);
+                    } else {
+                        document.getElementById('taskModalTitle').textContent = 'Ошибка';
+                        document.getElementById('taskModalText').textContent = (data && data.error) || 'Не удалось загрузить задачу.';
+                    }
                 }
             })
             .catch(function() {

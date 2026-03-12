@@ -404,7 +404,7 @@ XP_BASE_PER_LEVEL = 128
 # Ускоренная прокачка до 10 уровня
 XP_BASE_PER_LEVEL_BELOW_10 = 80
 
-# Демогorgonы (особый предмет)
+# Демогоргоны (особый предмет)
 DEMOGORGON_MAX_HEALTH = 100_000
 DEMOGORGON_DAMAGE_TICK_SECONDS = 2
 DEMOGORGON_MIN_MOVE_MINUTES = 10
@@ -947,6 +947,7 @@ def _use_special_shop_item(purchase: 'UserShopPurchase', item: 'ShopItem'):
         move_delay_min = random.randint(DEMOGORGON_MIN_MOVE_MINUTES, DEMOGORGON_MAX_MOVE_MINUTES)
         army = DemogorgonArmy(
             region_index=region.region_index,
+            shop_item_id=item.id,
             pos_x=pos_x,
             pos_y=pos_y,
             health=DEMOGORGON_MAX_HEALTH,
@@ -1351,6 +1352,8 @@ class DemogorgonArmy(db.Model):
     __tablename__ = 'demogorgon_army'
     id = db.Column(db.Integer, primary_key=True)
     region_index = db.Column(db.Integer, nullable=False)
+    # ID предмета-источника (товар лавки), чтобы использовать ту же иконку
+    shop_item_id = db.Column(db.Integer, db.ForeignKey('shop_item.id'), nullable=True)
     # Нормированные координаты внутри области (0..1), для позиционирования иконки на карте
     pos_x = db.Column(db.Float, nullable=False, default=0.5)
     pos_y = db.Column(db.Float, nullable=False, default=0.5)
@@ -1360,6 +1363,8 @@ class DemogorgonArmy(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.now, nullable=False)
     last_damage_tick_at = db.Column(db.DateTime, default=datetime.now, nullable=False)
     next_move_at = db.Column(db.DateTime, nullable=True)
+
+    shop_item = db.relationship('ShopItem', backref=db.backref('demogorgon_armies', lazy=True))
 
 
 class DemogorgonDamage(db.Model):
@@ -2131,6 +2136,12 @@ with app.app_context():
                 with db.engine.begin() as conn:
                     conn.execute(text("ALTER TABLE scheduler_instance_lock ADD COLUMN owner_pid INTEGER"))
                     print("Добавлена колонка owner_pid в scheduler_instance_lock")
+        if 'demogorgon_army' in tables:
+            army_columns = [col['name'] for col in inspector.get_columns('demogorgon_army')]
+            if 'shop_item_id' not in army_columns:
+                with db.engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE demogorgon_army ADD COLUMN shop_item_id INTEGER"))
+                    print("Добавлена колонка shop_item_id в demogorgon_army")
     except Exception as e:
         print(f"Ошибка при создании таблиц лавки: {e}")
         db.create_all()
@@ -3305,7 +3316,9 @@ def api_clan_join_request():
         return jsonify({
             'success': False,
             'error': 'Штрафное время ещё не прошло. Вы не можете вступать в клан и подавать заявки.',
-            'penalty_until': current_user.clan_join_ban_until.isoformat() + 'Z',
+            # Отправляем локальное время без принудительного UTC-смещения,
+            # чтобы клиент просто посчитал разницу относительно своего now().
+            'penalty_until': current_user.clan_join_ban_until.isoformat(),
         }), 400
     data = request.get_json() or {}
     clan_id_raw = data.get('clan_id')
@@ -3358,7 +3371,7 @@ def api_clan_accept_request(clan_id, request_id):
         return jsonify({
             'success': False,
             'error': 'Штрафное время ещё не прошло. Приём участников временно недоступен.',
-            'penalty_until': clan.accept_ban_until.isoformat() + 'Z',
+            'penalty_until': clan.accept_ban_until.isoformat(),
         }), 400
     member_count = User.query.filter_by(clan_id=clan.id).count()
     if member_count >= clan.max_members:
@@ -5770,7 +5783,8 @@ def _demogorgon_tick():
         if (now - (army.last_damage_tick_at or army.created_at)).total_seconds() >= DEMOGORGON_DAMAGE_TICK_SECONDS:
             state = TerritoryRegionState.query.filter_by(region_index=army.region_index).first()
             if state:
-                state.strength = max(0, int(state.strength or 0) - 1)
+                # За каждый тик (раз в DEMOGORGON_DAMAGE_TICK_SECONDS) армия съедает 2 единицы силы
+                state.strength = max(0, int(state.strength or 0) - 2)
                 current_region_strength = int(state.strength or 0)
             army.last_damage_tick_at = now
 
@@ -5870,6 +5884,14 @@ def api_territory_demogorgons_state():
         return jsonify({'active': False})
     state = TerritoryRegionState.query.filter_by(region_index=army.region_index).first()
     region_strength = int(state.strength or 0) if state else 0
+    icon_url = None
+    try:
+        if getattr(army, 'shop_item', None) and army.shop_item.image_filename:
+            static_path = _avatar_static_filename(army.shop_item.image_filename)
+            if static_path:
+                icon_url = url_for('static', filename=static_path)
+    except Exception:
+        icon_url = None
     # Топ кланов по урону (по желанию можно показать в UI)
     top_rows = (
         DemogorgonDamage.query.filter_by(army_id=army.id)
@@ -5895,6 +5917,7 @@ def api_territory_demogorgons_state():
         'health': army.health,
         'max_health': army.max_health,
         'region_strength': region_strength,
+        'icon_url': icon_url,
         'top_clans': top_clans,
     })
 
@@ -5902,19 +5925,36 @@ def api_territory_demogorgons_state():
 @app.route('/api/territory/demogorgons/task', methods=['POST'])
 @login_required
 def api_territory_demogorgons_task():
-    """Выдать задачу для атаки по армии Демогorgonов (энергия не списывается)."""
+    """Выдать задачу для атаки по армии Демогorgonов. Списывает 1 энергию как при нападении на область."""
     if current_user.is_admin:
         return jsonify({'success': False, 'error': 'Администратор не участвует'}, 403)
+    # Ограничиваем атакующих теми же настройками, что и битву за территорию
+    if not get_territory_registration_enabled():
+        return jsonify({'success': False, 'error': 'Регистрация участников отключена'}), 403
+    capture_enabled, _, _ = get_territory_capture_settings()
+    if not capture_enabled:
+        return jsonify({'success': False, 'error': 'Захват областей отключён. Ожидайте времени старта.'}), 403
     if not current_user.clan_id:
         return jsonify({'success': False, 'error': 'Для атаки нужен клан'}), 400
+
     army = _get_active_demogorgon()
     if not army or not army.is_active:
         return jsonify({'success': False, 'error': 'Армия Демогorgonов не активна'}), 400
+
+    # Списываем 1 энергию (как в api_territory_task)
+    current_user.ensure_energy_refill()
+    energy_now = _user_current_energy_cached(current_user)
+    if energy_now < 1:
+        return jsonify({'success': False, 'error': 'Недостаточно энергии. Восстанавливается каждые 30 мин (+20% от макс.).'}), 400
+    current_user.current_energy = energy_now - 1
+    db.session.commit()
+    energy_after = energy_now - 1
+
     # Для простоты используем случайную задачу из TerritoryTask (как в битве)
     task = TerritoryTask.query.order_by(db.func.random()).first()
     if not task:
         return jsonify({'success': False, 'error': 'Нет доступных задач'}), 404
-    return jsonify({'success': True, 'task': task.to_dict_public()})
+    return jsonify({'success': True, 'task': task.to_dict_public(), 'current_energy': energy_after})
 
 
 @app.route('/api/territory/demogorgons/answer', methods=['POST'])
