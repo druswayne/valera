@@ -5884,10 +5884,24 @@ def api_territory_demogorgons_state():
         return jsonify({'active': False})
     state = TerritoryRegionState.query.filter_by(region_index=army.region_index).first()
     region_strength = int(state.strength or 0) if state else 0
+
+    # Иконка армии: сначала пробуем использовать изображение товара, которым она была призвана.
+    # Если привязки нет (старые записи) — ищем любой товар типа special/demogorgons и берём его иконку.
     icon_url = None
     try:
-        if getattr(army, 'shop_item', None) and army.shop_item.image_filename:
-            static_path = _avatar_static_filename(army.shop_item.image_filename)
+        source_item = None
+        if getattr(army, 'shop_item', None):
+            source_item = army.shop_item
+        if not source_item:
+            source_item = (
+                ShopItem.query.filter(
+                    ShopItem.shop_context == SHOP_CONTEXT_TERRITORY,
+                    ShopItem.category == SHOP_CATEGORY_SPECIAL,
+                    ShopItem.special_type == 'demogorgons',
+                ).first()
+            )
+        if source_item and source_item.image_filename:
+            static_path = _avatar_static_filename(source_item.image_filename)
             if static_path:
                 icon_url = url_for('static', filename=static_path)
     except Exception:
