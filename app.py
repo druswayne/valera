@@ -407,8 +407,8 @@ XP_BASE_PER_LEVEL_BELOW_10 = 80
 # Демогоргоны (особый предмет)
 DEMOGORGON_MAX_HEALTH = 100_000
 DEMOGORGON_DAMAGE_TICK_SECONDS = 2
-DEMOGORGON_MIN_MOVE_MINUTES = 10
-DEMOGORGON_MAX_MOVE_MINUTES = 30
+DEMOGORGON_MIN_MOVE_MINUTES = 5
+DEMOGORGON_MAX_MOVE_MINUTES = 10
 DEMOGORGON_REWARD_NUMS = 100_000
 
 # Лок планировщика (распределённый)
@@ -5783,8 +5783,8 @@ def _demogorgon_tick():
         if (now - (army.last_damage_tick_at or army.created_at)).total_seconds() >= DEMOGORGON_DAMAGE_TICK_SECONDS:
             state = TerritoryRegionState.query.filter_by(region_index=army.region_index).first()
             if state:
-                # За каждый тик (раз в DEMOGORGON_DAMAGE_TICK_SECONDS) армия съедает 2 единицы силы
-                state.strength = max(0, int(state.strength or 0) - 2)
+                # За каждый тик (раз в DEMOGORGON_DAMAGE_TICK_SECONDS) армия съедает 4 единицы силы
+                state.strength = max(0, int(state.strength or 0) - 4)
                 current_region_strength = int(state.strength or 0)
             army.last_damage_tick_at = now
 
@@ -5964,11 +5964,13 @@ def api_territory_demogorgons_task():
     db.session.commit()
     energy_after = energy_now - 1
 
-    # Для простоты используем случайную задачу из TerritoryTask (как в битве)
-    task = TerritoryTask.query.order_by(db.func.random()).first()
-    if not task:
+    # Берём задачу тем же способом, что и для дуэлей, чтобы корректно работали дроби и спец. форматы
+    difficulty = _territory_difficulty_from_level(max(1, current_user.level or 1))
+    task, task_dict = _pvp_random_task(difficulty)
+    if not task or not task_dict:
         return jsonify({'success': False, 'error': 'Нет доступных задач'}), 404
-    return jsonify({'success': True, 'task': task.to_dict_public(), 'current_energy': energy_after})
+    db.session.commit()
+    return jsonify({'success': True, 'task': task_dict, 'current_energy': energy_after})
 
 
 @app.route('/api/territory/demogorgons/answer', methods=['POST'])
@@ -6739,13 +6741,15 @@ def api_territory_task():
                     except Exception as e:
                         logger.exception('Ошибка генерации задачи для области %s (генератор %s): %s',
                                          region_index, gen.name, e)
-    # Иначе — случайная задача из БД
-    task = TerritoryTask.query.order_by(db.func.random()).first()
-    if not task:
+    # Иначе — используем тот же механизм генерации, что и для PvP-дуэлей
+    task, task_dict = _pvp_random_task(difficulty)
+    if not task or not task_dict:
         return jsonify({'success': False, 'error': 'Нет доступных задач'}), 404
+    # _pvp_random_task делает flush, здесь фиксируем сохранение задачи вместе с уже списанной энергией
+    db.session.commit()
     return jsonify({
         'success': True,
-        'task': task.to_dict_public(),
+        'task': task_dict,
         'current_energy': energy_after
     })
 
