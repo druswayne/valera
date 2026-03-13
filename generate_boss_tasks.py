@@ -1526,9 +1526,9 @@ def generate_add_sub_fractions_task(difficulty: int) -> Dict[str, Any]:
     Сумма или разность двух обыкновенных дробей. Разность — только положительная.
     Ответ: несократимая дробь с выделенной целой частью (int|num|den).
     На каждом шаге числитель и знаменатель не более двух знаков (≤ 99).
-    1 уровень: одинаковые знаменатели (2–99).
-    2 уровень: взаимно простые знаменатели, b*d ≤ 99.
-    3 уровень: разные не взаимно простые знаменатели, b*d ≤ 99.
+    1 уровень: одинаковые знаменатели (2–20).
+    2 уровень: взаимно простые знаменатели, b,d до 9, b*d ≤ 99.
+    3 уровень: разные не взаимно простые знаменатели, b,d до 11, b*d ≤ 99.
     """
     instruction = "Вычислите выражение выше. В ответе укажите несократимую дробь и выделите целую часть, если это возможно."
     points = 12 + difficulty * 4
@@ -1548,11 +1548,12 @@ def generate_add_sub_fractions_task(difficulty: int) -> Dict[str, Any]:
             num = a - c
         den = b
     elif difficulty == 2:
-        # Взаимно простые знаменатели: b*d ≤ 99, a*d + c*b ≤ 99 (или разность ≤ 99)
+        # Взаимно простые знаменатели: b*d ≤ 99, a*d + c*b ≤ 99. Уровень 2 — знаменатели до 9.
         ok = False
+        den_max = 9
         for _ in range(100):
-            b = random.randint(2, 9)
-            d = random.randint(2, 9)
+            b = random.randint(2, den_max)
+            d = random.randint(2, den_max)
             if gcd(b, d) != 1 or b * d > MAX_FRAC_NUM_DEN:
                 continue
             a = random.randint(1, b - 1)
@@ -1587,11 +1588,11 @@ def generate_add_sub_fractions_task(difficulty: int) -> Dict[str, Any]:
                 num = a * d - c * b
                 den = b * d
     else:
-        # Разные не взаимно простые: b*d ≤ 99, результат num/den с num, den ≤ 99
+        # Разные не взаимно простые: b*d ≤ 99. Уровень 3 — знаменатели до 11 (например 9×11=99).
         ok = False
         for _ in range(100):
-            b = random.randint(2, 9)
-            d = random.randint(2, 9)
+            b = random.randint(2, 11)
+            d = random.randint(2, 11)
             if b == d or gcd(b, d) == 1 or b * d > MAX_FRAC_NUM_DEN:
                 continue
             a = random.randint(1, b - 1)
@@ -1651,14 +1652,19 @@ def generate_mul_div_fractions_task(difficulty: int) -> Dict[str, Any]:
     Умножение или деление двух обыкновенных дробей.
     Ответ: несократимая правильная дробь с целой частью, если есть (int|num|den).
     На каждом шаге числитель и знаменатель не более двух знаков (≤ 99).
-    Уровни 1–3: множители в диапазоне 2–9, чтобы a*c, b*d (умножение) и a*d, b*c (деление) ≤ 99.
+    Распределение по сложности: уровень 1 — множители 2–5, уровень 2 — 2–7, уровень 3 — 2–9 (все произведения ≤ 99).
     """
     instruction = "Вычислите выражение выше. В ответе укажите несократимую дробь и выделите целую часть, если это возможно."
     points = 12 + difficulty * 4
     is_mul = random.choice([True, False])
 
-    # Один знак: 2–9, тогда произведение ≤ 81 ≤ 99
-    low, high = 2, 9
+    # Градация по уровням при сохранении произведений ≤ 99
+    if difficulty == 1:
+        low, high = 2, 5   # макс. произведение 25
+    elif difficulty == 2:
+        low, high = 2, 7   # макс. произведение 49
+    else:
+        low, high = 2, 9   # макс. произведение 81
 
     for _ in range(100):
         a = random.randint(low, high)
