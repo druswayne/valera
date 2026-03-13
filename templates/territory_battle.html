@@ -2973,7 +2973,7 @@ window.territoryFocusProtection = (function() {
                 openDemogorgonTaskModal();
             });
             var iconCircle = document.createElementNS(svg.namespaceURI, 'circle');
-            iconCircle.setAttribute('r', 20);
+            iconCircle.setAttribute('r', 22);
             iconCircle.setAttribute('fill', '#4b1d3f');
             iconCircle.setAttribute('stroke', '#f97316');
             iconCircle.setAttribute('stroke-width', '3');
@@ -2982,7 +2982,8 @@ window.territoryFocusProtection = (function() {
             iconImage.setAttribute('height', 32);
             iconImage.setAttribute('x', -16);
             iconImage.setAttribute('y', -16);
-            iconImage.style.pointerEvents = 'none';
+            // Иконка тоже кликабельна, как и круг/HP
+            iconImage.style.pointerEvents = 'visiblePainted';
             var hpBg = document.createElementNS(svg.namespaceURI, 'rect');
             hpBg.setAttribute('class', 'demogorgon-hp-bg');
             var hpText = document.createElementNS(svg.namespaceURI, 'text');
