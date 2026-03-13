@@ -157,6 +157,9 @@ CLAN_RENAME_PRICE = 100_000
 # Максимальное число участников клана по умолчанию (включая создателя)
 CLAN_DEFAULT_MAX_MEMBERS = 10
 
+# Верхний предел: создатель не может увеличить размер клана больше чем до этого числа
+CLAN_MAX_MEMBERS_LIMIT = 20
+
 # Стоимость одного дополнительного места в клане (в Нумах)
 CLAN_EXTRA_SLOT_PRICE = 30_000
 
@@ -2514,6 +2517,7 @@ def cabinet():
         clan_gif_flag_price=CLAN_GIF_FLAG_PRICE,
         clan_rename_price=CLAN_RENAME_PRICE,
         clan_extra_slot_price=CLAN_EXTRA_SLOT_PRICE,
+        clan_max_members_limit=CLAN_MAX_MEMBERS_LIMIT,
         character_rename_price=CHARACTER_RENAME_PRICE,
     )
 
@@ -2837,12 +2841,29 @@ def _consume_one_shot_buffs(user_id, clan_id, region_index):
 SHOP_EQUIPMENT_GRADE_ORDER = {'d': 0, 'c': 1, 'b': 2, 's': 3}
 
 
+def _shop_enhancement_curse_price_multiplier(level):
+    """Множитель цены для товаров усиления и проклятий от уровня: <=10 → 1, <=15 → 2, >15 → 3."""
+    if level <= 10:
+        return 1
+    if level <= 15:
+        return 2
+    return 3
+
+
+def _shop_item_effective_price(item, level):
+    """Цена товара с учётом уровня: для enhancement/curse — базовая цена * множитель уровня."""
+    if item.category not in (SHOP_CATEGORY_ENHANCEMENT, SHOP_CATEGORY_CURSE):
+        return item.price or 0
+    return (item.price or 0) * _shop_enhancement_curse_price_multiplier(level or 1)
+
+
 @app.route('/api/shop/items')
 @login_required
 def api_shop_items():
-    """Список товаров лавки по категориям (для блока «Лавка предметов» в битве за территорию). Снаряжение отсортировано по грейду (d, c, b, s)."""
+    """Список товаров лавки по категориям (для блока «Лавка предметов» в битве за территорию). Снаряжение отсортировано по грейду (d, c, b, s). Цена усиления/проклятий зависит от уровня."""
     items = ShopItem.query.filter_by(shop_context=SHOP_CONTEXT_TERRITORY).order_by(ShopItem.category, ShopItem.sort_order, ShopItem.id).all()
     by_category = {'enhancement': [], 'curse': [], 'equipment': [], 'special': []}
+    level = current_user.level or 1
     eq_items = []
     for item in items:
         if item.category == SHOP_CATEGORY_EQUIPMENT:
@@ -2850,7 +2871,10 @@ def api_shop_items():
         elif item.category == SHOP_CATEGORY_SPECIAL:
             by_category.setdefault('special', []).append(_shop_item_to_dict(item))
         else:
-            by_category.setdefault(item.category, []).append(_shop_item_to_dict(item))
+            d = _shop_item_to_dict(item)
+            if item.category in (SHOP_CATEGORY_ENHANCEMENT, SHOP_CATEGORY_CURSE):
+                d['price'] = _shop_item_effective_price(item, level)
+            by_category.setdefault(item.category, []).append(d)
     # Снаряжение: сортировка по грейду (d, c, b, s), затем sort_order, id
     eq_items_sorted = sorted(
         eq_items,
@@ -2867,17 +2891,20 @@ def api_shop_items():
 @app.route('/api/shop/item/<int:item_id>')
 @login_required
 def api_shop_item_detail(item_id):
-    """Один товар для модалки (с эффектами для отображения). Только лавка территории."""
+    """Один товар для модалки (с эффектами для отображения). Только лавка территории. Цена усиления/проклятий — по уровню."""
     item = ShopItem.query.get(item_id)
     if not item or item.shop_context != SHOP_CONTEXT_TERRITORY:
         return jsonify({'success': False, 'error': 'Товар не найден'}), 404
-    return jsonify({'success': True, 'item': _shop_item_to_dict(item, include_effects=True)})
+    d = _shop_item_to_dict(item, include_effects=True)
+    if item.category in (SHOP_CATEGORY_ENHANCEMENT, SHOP_CATEGORY_CURSE):
+        d['price'] = _shop_item_effective_price(item, current_user.level or 1)
+    return jsonify({'success': True, 'item': d})
 
 
 @app.route('/api/shop/purchase', methods=['POST'])
 @login_required
 def api_shop_purchase():
-    """Покупка товара за Нумы."""
+    """Покупка товара за Нумы. Для усиления и проклятий цена зависит от уровня."""
     if current_user.is_admin:
         return jsonify({'success': False, 'error': 'Администратор не участвует'}), 403
     data = request.get_json() or {}
@@ -2887,10 +2914,11 @@ def api_shop_purchase():
     item = ShopItem.query.get(item_id)
     if not item or item.shop_context != SHOP_CONTEXT_TERRITORY:
         return jsonify({'success': False, 'error': 'Товар не найден'}), 404
+    price = _shop_item_effective_price(item, current_user.level or 1)
     balance = current_user.nums_balance or 0
-    if balance < item.price:
-        return jsonify({'success': False, 'error': 'Недостаточно Нумов', 'balance': balance, 'price': item.price}), 400
-    current_user.nums_balance = balance - item.price
+    if balance < price:
+        return jsonify({'success': False, 'error': 'Недостаточно Нумов', 'balance': balance, 'price': price}), 400
+    current_user.nums_balance = balance - price
     purchase = UserShopPurchase(user_id=current_user.id, shop_item_id=item.id)
     db.session.add(purchase)
     db.session.commit()
@@ -3436,6 +3464,13 @@ def api_clan_expand_slot(clan_id):
         return jsonify({'success': False, 'error': 'Вы не состоите в этом клане'}), 403
     if clan.owner_id != current_user.id:
         return jsonify({'success': False, 'error': 'Только владелец клана может расширить место'}), 403
+    current_max = clan.max_members or CLAN_DEFAULT_MAX_MEMBERS
+    if current_max >= CLAN_MAX_MEMBERS_LIMIT:
+        return jsonify({
+            'success': False,
+            'error': f'Достигнут лимит: в клане не может быть больше {CLAN_MAX_MEMBERS_LIMIT} человек',
+            'max_members': current_max,
+        }), 400
     balance = current_user.nums_balance or 0
     if balance < CLAN_EXTRA_SLOT_PRICE:
         return jsonify({
@@ -3445,7 +3480,7 @@ def api_clan_expand_slot(clan_id):
             'price': CLAN_EXTRA_SLOT_PRICE,
         }), 400
     current_user.nums_balance = balance - CLAN_EXTRA_SLOT_PRICE
-    clan.max_members = (clan.max_members or CLAN_DEFAULT_MAX_MEMBERS) + 1
+    clan.max_members = current_max + 1
     db.session.commit()
     return jsonify({
         'success': True,

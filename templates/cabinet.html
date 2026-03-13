@@ -1936,7 +1936,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
             <p class="clan-members-count" style="margin:4px 0 8px; font-size:0.9rem; color:#8a7355;">
                 Мест: {{ clan_data.members|length }} / {{ clan_data.clan.max_members }}
             </p>
-            {% if user.id == clan_data.clan.owner_id %}
+            {% if user.id == clan_data.clan.owner_id and clan_data.clan.max_members < clan_max_members_limit %}
             <button type="button" id="clanExpandSlotBtn" class="clan-btn" style="margin-bottom:8px;">Расширить место</button>
             {% endif %}
             <button type="button" class="clan-members-toggle" onclick="document.getElementById('membersList').classList.toggle('open')">

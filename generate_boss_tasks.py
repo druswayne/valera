@@ -1525,21 +1525,22 @@ def generate_add_sub_fractions_task(difficulty: int) -> Dict[str, Any]:
     """Генератор «Сложение и вычитание дробей» для битвы за территорию.
     Сумма или разность двух обыкновенных дробей. Разность — только положительная.
     Ответ: несократимая дробь с выделенной целой частью (int|num|den).
-    1 уровень: одинаковые знаменатели (2–20).
-    2 уровень: взаимно простые знаменатели (2–20).
-    3 уровень: разные не взаимно простые знаменатели.
+    На каждом шаге числитель и знаменатель не более двух знаков (≤ 99).
+    1 уровень: одинаковые знаменатели (2–99).
+    2 уровень: взаимно простые знаменатели, b*d ≤ 99.
+    3 уровень: разные не взаимно простые знаменатели, b*d ≤ 99.
     """
     instruction = "Вычислите выражение выше. В ответе укажите несократимую дробь и выделите целую часть, если это возможно."
     points = 12 + difficulty * 4
     is_sum = random.choice([True, False])
 
     if difficulty == 1:
-        # Одинаковые знаменатели
-        b = random.randint(2, 20)
+        # Одинаковые знаменатели: результат (a±c)/b, нужны a±c ≤ 99 и b ≤ 99
+        b = random.randint(2, min(20, MAX_FRAC_NUM_DEN))
         d = b
         if is_sum:
-            a = random.randint(1, max(1, b - 2))
-            c = random.randint(1, max(1, b - 1 - a))
+            a = random.randint(1, max(1, min(b - 1, MAX_FRAC_NUM_DEN - 1)))
+            c = random.randint(1, max(1, min(b - 1, MAX_FRAC_NUM_DEN - a)))
             num = a + c
         else:
             a = random.randint(2, b - 1)
@@ -1547,51 +1548,82 @@ def generate_add_sub_fractions_task(difficulty: int) -> Dict[str, Any]:
             num = a - c
         den = b
     elif difficulty == 2:
-        # Взаимно простые знаменатели (2–20)
-        b = random.randint(2, 20)
-        d = random.randint(2, 20)
-        attempts = 0
-        while gcd(b, d) != 1 and attempts < 50:
-            b = random.randint(2, 20)
-            d = random.randint(2, 20)
-            attempts += 1
-        if gcd(b, d) != 1:
-            b, d = 4, 9  # гарантированно взаимно простые
-        a = random.randint(1, b - 1)
-        c = random.randint(1, d - 1)
-        if is_sum:
-            num = a * d + c * b
+        # Взаимно простые знаменатели: b*d ≤ 99, a*d + c*b ≤ 99 (или разность ≤ 99)
+        ok = False
+        for _ in range(100):
+            b = random.randint(2, 9)
+            d = random.randint(2, 9)
+            if gcd(b, d) != 1 or b * d > MAX_FRAC_NUM_DEN:
+                continue
+            a = random.randint(1, b - 1)
+            c = random.randint(1, d - 1)
+            if is_sum:
+                num = a * d + c * b
+                if num > MAX_FRAC_NUM_DEN:
+                    continue
+            else:
+                if a * d <= c * b:
+                    a, c = c, a
+                    b, d = d, b
+                num = a * d - c * b
+                if num > MAX_FRAC_NUM_DEN or num <= 0:
+                    continue
             den = b * d
-        else:
-            if a * d <= c * b:
-                a, c = c, a
-                b, d = d, b
-            num = a * d - c * b
-            den = b * d
+            ok = True
+            break
+        if not ok:
+            b, d = 4, 9
+            a_max = min(b - 1, (MAX_FRAC_NUM_DEN - b) // d)
+            a = random.randint(1, max(1, a_max))
+            c_max = min(d - 1, (MAX_FRAC_NUM_DEN - a * d) // b)
+            c = random.randint(1, max(1, c_max))
+            if is_sum:
+                num = a * d + c * b
+                den = b * d
+            else:
+                if a * d <= c * b:
+                    a, c = c, a
+                    b, d = d, b
+                num = a * d - c * b
+                den = b * d
     else:
-        # Разные не взаимно простые знаменатели
-        b = random.randint(2, 20)
-        d = random.randint(2, 20)
-        attempts = 0
-        while (b == d or gcd(b, d) == 1) and attempts < 100:
-            b = random.randint(2, 20)
-            d = random.randint(2, 20)
-            attempts += 1
-        if b == d:
+        # Разные не взаимно простые: b*d ≤ 99, результат num/den с num, den ≤ 99
+        ok = False
+        for _ in range(100):
+            b = random.randint(2, 9)
+            d = random.randint(2, 9)
+            if b == d or gcd(b, d) == 1 or b * d > MAX_FRAC_NUM_DEN:
+                continue
+            a = random.randint(1, b - 1)
+            c = random.randint(1, d - 1)
+            if is_sum:
+                num = a * d + c * b
+                if num > MAX_FRAC_NUM_DEN:
+                    continue
+            else:
+                if a * d <= c * b:
+                    a, c = c, a
+                    b, d = d, b
+                num = a * d - c * b
+                if num > MAX_FRAC_NUM_DEN or num <= 0:
+                    continue
+            den = b * d
+            ok = True
+            break
+        if not ok:
             b, d = 6, 9
-        if gcd(b, d) == 1:
-            b, d = 6, 10
-        a = random.randint(1, b - 1)
-        c = random.randint(1, d - 1)
-        if is_sum:
-            num = a * d + c * b
-            den = b * d
-        else:
-            if a * d <= c * b:
-                a, c = c, a
-                b, d = d, b
-            num = a * d - c * b
-            den = b * d
+            a = random.randint(1, b - 1)
+            c_max = min(d - 1, (MAX_FRAC_NUM_DEN - 1) // b)
+            c = random.randint(1, max(1, c_max))
+            if is_sum:
+                num = a * d + c * b
+                den = b * d
+            else:
+                if a * d <= c * b:
+                    a, c = c, a
+                    b, d = d, b
+                num = a * d - c * b
+                den = b * d
 
     int_part, rem_num, rem_den = _to_mixed_irreducible(num, den)
     correct_answer = f"{int_part}|{rem_num}|{rem_den}"
@@ -1618,33 +1650,37 @@ def generate_mul_div_fractions_task(difficulty: int) -> Dict[str, Any]:
     """Генератор «Умножение и деление дробей» для битвы за территорию.
     Умножение или деление двух обыкновенных дробей.
     Ответ: несократимая правильная дробь с целой частью, если есть (int|num|den).
-    1 уровень: числители и знаменатели от 2 до 10.
-    2 уровень: числители и знаменатели от 11 до 20.
-    3 уровень: числители и знаменатели от 21 до 50.
+    На каждом шаге числитель и знаменатель не более двух знаков (≤ 99).
+    Уровни 1–3: множители в диапазоне 2–9, чтобы a*c, b*d (умножение) и a*d, b*c (деление) ≤ 99.
     """
     instruction = "Вычислите выражение выше. В ответе укажите несократимую дробь и выделите целую часть, если это возможно."
     points = 12 + difficulty * 4
     is_mul = random.choice([True, False])
 
-    if difficulty == 1:
-        low, high = 2, 10
-    elif difficulty == 2:
-        low, high = 11, 20
-    else:
-        low, high = 21, 50
+    # Один знак: 2–9, тогда произведение ≤ 81 ≤ 99
+    low, high = 2, 9
 
-    a = random.randint(2, high)
-    b = random.randint(2, high)
-    c = random.randint(2, high)
-    d = random.randint(2, high)
-
-    if is_mul:
-        num = a * c
-        den = b * d
+    for _ in range(100):
+        a = random.randint(low, high)
+        b = random.randint(low, high)
+        c = random.randint(low, high)
+        d = random.randint(low, high)
+        if is_mul:
+            num = a * c
+            den = b * d
+        else:
+            num = a * d
+            den = b * c
+        if num <= MAX_FRAC_NUM_DEN and den <= MAX_FRAC_NUM_DEN and den > 0:
+            break
     else:
-        # (a/b) : (c/d) = (a*d)/(b*c)
-        num = a * d
-        den = b * c
+        a, b, c, d = 2, 3, 4, 5
+        if is_mul:
+            num, den = a * c, b * d
+        else:
+            num, den = a * d, b * c
+        if den <= 0:
+            den = 1
 
     if den <= 0:
         den = 1
@@ -3328,6 +3364,10 @@ def _mixed_display(int_part: int, num: int, den: int) -> str:
     return f"{num}/{den}"
 
 
+# Максимум числитель/знаменатель в дробях (не больше двух знаков) для генераторов 4, 5, 7
+MAX_FRAC_NUM_DEN = 99
+
+
 def _eval_chain(operands: List[Fraction], ops: List[str]) -> Fraction:
     """Вычисление цепочки с приоритетом: сначала * и :, затем + и - (слева направо)."""
     if not operands:
@@ -3364,6 +3404,57 @@ def _eval_chain(operands: List[Fraction], ops: List[str]) -> Fraction:
         else:
             result -= terms[j + 1]
     return result
+
+
+def _eval_chain_check_max_digits(
+    operands: List[Fraction], ops: List[str], max_num_den: int = MAX_FRAC_NUM_DEN
+) -> Tuple[Fraction, bool]:
+    """Как _eval_chain, но проверяет: на каждом шаге числитель и знаменатель ≤ max_num_den. Возвращает (результат, True) или (Fraction(0), False)."""
+    if not operands:
+        return Fraction(0), True
+    if len(operands) == 1:
+        f = operands[0]
+        if f.numerator <= max_num_den and f.denominator <= max_num_den:
+            return f, True
+        return Fraction(0), False
+    terms: List[Fraction] = []
+    term_ops: List[str] = []
+    i = 0
+    current = operands[0]
+    if current.numerator > max_num_den or current.denominator > max_num_den:
+        return Fraction(0), False
+    while i < len(ops):
+        op = ops[i]
+        if op in ("*", ":"):
+            next_val = operands[i + 1]
+            if next_val.numerator > max_num_den or next_val.denominator > max_num_den:
+                return Fraction(0), False
+            if op == "*":
+                current = current * next_val
+            else:
+                if next_val == 0:
+                    raise ZeroDivisionError
+                current = current / next_val
+            if current.numerator > max_num_den or current.denominator > max_num_den:
+                return Fraction(0), False
+            i += 1
+        else:
+            terms.append(current)
+            term_ops.append(op)
+            current = operands[i + 1]
+            if current.numerator > max_num_den or current.denominator > max_num_den:
+                return Fraction(0), False
+            i += 1
+    terms.append(current)
+    result = terms[0]
+    for j, op in enumerate(term_ops):
+        if op == "+":
+            result += terms[j + 1]
+        else:
+            result -= terms[j + 1]
+        if result.numerator > max_num_den or result.denominator > max_num_den:
+            return Fraction(0), False
+    return result, True
 
 
 def _build_multi_frac_expr_display(operands_display: List[str], ops: List[str]) -> str:
@@ -3575,28 +3666,28 @@ def generate_territory_multi_frac_task(difficulty: int) -> Dict[str, Any]:
 
     Выражения из дробей/смешанных чисел с операциями +, −, ×, : и скобками.
     Все результаты положительные. Ответ: несократимая дробь с целой частью (int|num|den).
+    На каждом шаге вычисления числитель и знаменатель не более двух знаков (≤ 99).
 
-    Уровень 1: только + и −, 3–4 действия, знаменатели 2–10, смешанные числа.
-    Уровень 2: +, −, × и скобки, 3–5 действий, знаменатели 2–10.
-    Уровень 3: +, −, ×, : и скобки, 4–6 действий, знаменатели 2–20.
+    Уровень 1: только + и −, 3–4 действия, знаменатели 2–9, смешанные числа.
+    Уровень 2: +, −, × и скобки, 3–5 действий, знаменатели 2–9.
+    Уровень 3: +, −, ×, : и скобки, 4–6 действий, знаменатели 2–9.
     """
     difficulty = max(1, min(3, difficulty))
     points = 12 + difficulty * 4
     title = random.choice(MULTI_FRAC_TITLES) + f" #{random.randint(1, 1000)}"
     instruction = "Вычислите выражение ниже. В ответе укажите несократимую дробь и выделите целую часть, если это возможно."
 
+    # Знаменатели 2–9, чтобы промежуточные дроби укладывались в ≤ 99
+    den_lo, den_hi = 2, 9
     if difficulty == 1:
-        den_lo, den_hi = 2, 10
         ops_min, ops_max = 3, 4
         allowed_ops = ["+", "-"]
         int_max = 3
     elif difficulty == 2:
-        den_lo, den_hi = 2, 10
         ops_min, ops_max = 3, 5
         allowed_ops = ["+", "-", "*"]
         int_max = 4
     else:
-        den_lo, den_hi = 2, 20
         ops_min, ops_max = 4, 6
         allowed_ops = ["+", "-", "*", ":"]
         int_max = 5
@@ -3629,10 +3720,12 @@ def generate_territory_multi_frac_task(difficulty: int) -> Dict[str, Any]:
 
         operands_frac = [_mixed_to_fraction(i, n, d) for i, n, d in operands_mixed]
         try:
-            result = _eval_chain(operands_frac, ops)
+            result, within_limit = _eval_chain_check_max_digits(
+                operands_frac, ops, max_num_den=MAX_FRAC_NUM_DEN
+            )
         except ZeroDivisionError:
             continue
-        if result <= 0 or result.denominator > 10000:
+        if not within_limit or result <= 0 or result.denominator > MAX_FRAC_NUM_DEN:
             continue
 
         # Приводим к смешанному несократимому виду
