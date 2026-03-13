@@ -5995,9 +5995,9 @@ def api_territory_demogorgons_answer():
     # Простейшая проверка ответа (как в битве без дробей/особых случаев)
     is_correct = (answer.strip() == (task.correct_answer or '').strip())
     damage_done = 0
+    attacker_damage = int(current_user.damage or 0)
     if is_correct and army.is_active and army.health > 0:
-        # 50% от урона атакующего
-        attacker_damage = int(current_user.damage or 0)
+        # 50% от урона атакующего — урон по армии
         damage_done = max(0, int(attacker_damage * 0.5))
         if damage_done > 0:
             army.health = max(0, army.health - damage_done)
@@ -6009,6 +6009,11 @@ def api_territory_demogorgons_answer():
             # Если здоровье упало до нуля — сразу завершаем армию (награждение и деактивация)
             if army.health <= 0 and army.is_active:
                 _demogorgon_finish(army)
+    elif not is_correct and army.is_active and army.health > 0 and attacker_damage > 0:
+        # Неверный ответ — армия лечится на 30% урона атакующего, но не выше максимума
+        heal = max(0, int(attacker_damage * 0.3))
+        if heal > 0:
+            army.health = min(int(army.max_health or army.health), int(army.health or 0) + heal)
     db.session.commit()
     return jsonify({
         'success': True,
