@@ -5783,8 +5783,8 @@ def _demogorgon_tick():
         if (now - (army.last_damage_tick_at or army.created_at)).total_seconds() >= DEMOGORGON_DAMAGE_TICK_SECONDS:
             state = TerritoryRegionState.query.filter_by(region_index=army.region_index).first()
             if state:
-                # За каждый тик (раз в DEMOGORGON_DAMAGE_TICK_SECONDS) армия съедает 4 единицы силы
-                state.strength = max(0, int(state.strength or 0) - 4)
+                # За каждый тик (раз в DEMOGORGON_DAMAGE_TICK_SECONDS) армия съедает 20 единиц силы
+                state.strength = max(0, int(state.strength or 0) - 20)
                 current_region_strength = int(state.strength or 0)
             army.last_damage_tick_at = now
 
