@@ -410,6 +410,7 @@ XP_BASE_PER_LEVEL_BELOW_10 = 80
 # Демогоргоны (особый предмет)
 DEMOGORGON_MAX_HEALTH = 100_000
 DEMOGORGON_DAMAGE_TICK_SECONDS = 2
+DEMOGORGON_DAMAGE_PER_TICK = 200  # урон по силе области за один тик
 DEMOGORGON_MIN_MOVE_MINUTES = 5
 DEMOGORGON_MAX_MOVE_MINUTES = 10
 DEMOGORGON_REWARD_NUMS = 100_000
@@ -5818,8 +5819,8 @@ def _demogorgon_tick():
         if (now - (army.last_damage_tick_at or army.created_at)).total_seconds() >= DEMOGORGON_DAMAGE_TICK_SECONDS:
             state = TerritoryRegionState.query.filter_by(region_index=army.region_index).first()
             if state:
-                # За каждый тик (раз в DEMOGORGON_DAMAGE_TICK_SECONDS) армия съедает 50 единиц силы
-                state.strength = max(0, int(state.strength or 0) - 50)
+                # За каждый тик (раз в DEMOGORGON_DAMAGE_TICK_SECONDS) армия съедает DEMOGORGON_DAMAGE_PER_TICK единиц силы
+                state.strength = max(0, int(state.strength or 0) - DEMOGORGON_DAMAGE_PER_TICK)
                 current_region_strength = int(state.strength or 0)
             army.last_damage_tick_at = now
 
