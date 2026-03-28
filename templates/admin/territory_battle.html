@@ -869,12 +869,13 @@ body {
                 </select>
             </div>
             <div class="form-group" id="shopItemGradeGroup">
-                <label>Грейд (для категории «Снаряжение»: D, C, B, S)</label>
+                <label>Грейд (для категории «Снаряжение»: D, C, B, A, S)</label>
                 <select id="shopItemEditorGrade" name="grade" style="min-width:100px;">
                     <option value="">— не задан —</option>
                     <option value="d">D</option>
                     <option value="c">C</option>
                     <option value="b">B</option>
+                    <option value="a">A</option>
                     <option value="s">S</option>
                 </select>
             </div>
@@ -941,7 +942,7 @@ body {
 <div class="territory-reset-modal-overlay" id="territoryResetModal">
     <div class="territory-reset-modal">
         <h3>Сброс битвы за территорию</h3>
-        <p>Все области будут сброшены: без владельца, сила 0. Названия и блокировки областей — по умолчанию (Prague — заблокирована). Статистика пользователей будет обнулена (уровень 1, опыт 0, навыки 0). Статистика кланов по территориям обнулится (кланы не удаляются). Для подтверждения введите пароль администратора.</p>
+        <p>Все области — без владельца, сила 0; сооружения на карте сняты; армии Демогоргонов и метки кланов удалены. Все кланы удаляются (чаты, заявки, объявления). У каждого игрока (кроме администраторов): уровень 1, опыт и навыки 0, энергия как при регистрации, нумы 0; из лавки битвы удаляются все купленные предметы и выдаётся только стартовый набор, как при регистрации. Аккаунты администраторов: сброс клана и карты, инвентарь и уровень не меняются. Для подтверждения введите пароль администратора.</p>
         <div class="form-group">
             <label for="territoryResetPassword">Пароль администратора:</label>
             <input type="password" id="territoryResetPassword" placeholder="Пароль" autocomplete="current-password">

@@ -3793,8 +3793,8 @@ var CURRENT_USER_ID = {{ user.id }};
             (items.special || []).forEach(function(it) { sp.appendChild(createTile(it)); });
         }
         if (eq && items.equipment) {
-            var gradeOrder = ['d', 'c', 'b', 's', ''];
-            var gradeLabels = { 'd': 'Грейд D', 'c': 'Грейд C', 'b': 'Грейд B', 's': 'Грейд S', '': 'Прочее' };
+            var gradeOrder = ['d', 'c', 'b', 'a', 's', ''];
+            var gradeLabels = { 'd': 'Грейд D', 'c': 'Грейд C', 'b': 'Грейд B', 'a': 'Грейд A', 's': 'Грейд S', '': 'Прочее' };
             var byGrade = {};
             (items.equipment || []).forEach(function(it) {
                 var g = (it.grade || '').toLowerCase() || '';

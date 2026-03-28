@@ -705,7 +705,7 @@ class ShopItem(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.now)
     # Для предметов категории equipment: слот снаряжения (helmet, chest, pants, gloves, boots, weapon)
     equipment_slot = db.Column(db.String(20), nullable=True)
-    # Для снаряжения: грейд (d, c, b, s) — для группировки и сортировки в лавке
+    # Для снаряжения: грейд (d, c, b, a, s) — для группировки и сортировки в лавке
     grade = db.Column(db.String(5), nullable=True)
     # Для категории special: тип особого предмета (например, очистка карты)
     special_type = db.Column(db.String(50), nullable=True)
@@ -2838,8 +2838,8 @@ def _consume_one_shot_buffs(user_id, clan_id, region_index):
         db.session.delete(b)
 
 
-# Порядок грейдов снаряжения для сортировки в лавке (d → c → b → s)
-SHOP_EQUIPMENT_GRADE_ORDER = {'d': 0, 'c': 1, 'b': 2, 's': 3}
+# Порядок грейдов снаряжения для сортировки в лавке (d → c → b → a → s)
+SHOP_EQUIPMENT_GRADE_ORDER = {'d': 0, 'c': 1, 'b': 2, 'a': 3, 's': 4}
 
 
 def _shop_enhancement_curse_price_multiplier(level):
@@ -2861,7 +2861,7 @@ def _shop_item_effective_price(item, level):
 @app.route('/api/shop/items')
 @login_required
 def api_shop_items():
-    """Список товаров лавки по категориям (для блока «Лавка предметов» в битве за территорию). Снаряжение отсортировано по грейду (d, c, b, s). Цена усиления/проклятий зависит от уровня."""
+    """Список товаров лавки по категориям (для блока «Лавка предметов» в битве за территорию). Снаряжение отсортировано по грейду (d, c, b, a, s). Цена усиления/проклятий зависит от уровня."""
     items = ShopItem.query.filter_by(shop_context=SHOP_CONTEXT_TERRITORY).order_by(ShopItem.category, ShopItem.sort_order, ShopItem.id).all()
     by_category = {'enhancement': [], 'curse': [], 'equipment': [], 'special': []}
     level = current_user.level or 1
@@ -2876,7 +2876,7 @@ def api_shop_items():
             if item.category in (SHOP_CATEGORY_ENHANCEMENT, SHOP_CATEGORY_CURSE):
                 d['price'] = _shop_item_effective_price(item, level)
             by_category.setdefault(item.category, []).append(d)
-    # Снаряжение: сортировка по грейду (d, c, b, s), затем sort_order, id
+    # Снаряжение: сортировка по грейду (d, c, b, a, s), затем sort_order, id
     eq_items_sorted = sorted(
         eq_items,
         key=lambda i: (
@@ -4938,28 +4938,17 @@ TERRITORY_DEFAULT_NAMES = [
 @app.route('/admin/territory-battle/reset', methods=['POST'])
 @admin_required
 def admin_territory_reset():
-    """Сброс битвы за территорию: области без владельца, статистика пользователей и кланов — обнуление. Названия областей, описания и генераторы не меняются. Требуется пароль администратора."""
+    """Сброс битвы за территорию: карта и сооружения, все кланы, участники без клана; не-админы — как после регистрации (уровень 1, навыки, нумы, только стартовый набор лавки территории). Админы: только сброс клана/карты/статистики территории, прогресс и инвентарь не трогаются. Требуется пароль администратора."""
     data = request.get_json() or {}
     password = (data.get('password') or '').strip()
     if not password:
         return jsonify({'success': False, 'error': 'Введите пароль администратора'}), 400
     if not current_user.check_password(password):
         return jsonify({'success': False, 'error': 'Неверный пароль'}), 403
-    for state in TerritoryRegionState.query.all():
-        state.owner_class_id = None
-        state.owner_clan_id = None
-        state.strength = 0
-    for stats in UserTerritoryStats.query.all():
-        stats.total_damage_dealt = 0
-        stats.total_influence_points = 0
-    for u in User.query.all():
-        u.level = 1
-        u.experience = 0
-        u.damage_skill = 0
-        u.defense_skill = 0
-        u.energy_skill = 0
-        u.current_energy = None
-        u.energy_last_refill_at = None
+
+    non_admin_users = User.query.filter_by(is_admin=False).all()
+    non_admin_ids = [u.id for u in non_admin_users]
+
     for i in range(28):
         st = TerritoryRegionState.query.filter_by(region_index=i).first()
         if st:
@@ -4968,7 +4957,57 @@ def admin_territory_reset():
             st.strength = 0
         else:
             db.session.add(TerritoryRegionState(region_index=i, owner_class_id=None, owner_clan_id=None, strength=0))
-    ClanTerritoryMarker.query.delete()
+    for stats in UserTerritoryStats.query.all():
+        stats.total_damage_dealt = 0
+        stats.total_influence_points = 0
+
+    TerritoryRegionStructure.query.delete(synchronize_session=False)
+    DemogorgonDamage.query.delete(synchronize_session=False)
+    DemogorgonArmy.query.delete(synchronize_session=False)
+    ClanTerritoryMarker.query.delete(synchronize_session=False)
+    ActiveItemBuff.query.delete(synchronize_session=False)
+    ClanChatMessage.query.delete(synchronize_session=False)
+    ClanJoinRequest.query.delete(synchronize_session=False)
+    ClanRecruitmentAd.query.delete(synchronize_session=False)
+
+    User.query.update({User.clan_id: None, User.clan_rank: None}, synchronize_session=False)
+    Clan.query.delete(synchronize_session=False)
+
+    if non_admin_ids:
+        pur_rows = (
+            db.session.query(UserShopPurchase.id)
+            .join(ShopItem, UserShopPurchase.shop_item_id == ShopItem.id)
+            .filter(
+                UserShopPurchase.user_id.in_(non_admin_ids),
+                ShopItem.shop_context == SHOP_CONTEXT_TERRITORY,
+            )
+            .all()
+        )
+        pur_ids = [r[0] for r in pur_rows]
+        if pur_ids:
+            UserEquipment.query.filter(UserEquipment.purchase_id.in_(pur_ids)).delete(synchronize_session=False)
+            PvPDuel.query.filter(PvPDuel.reward_purchase_id.in_(pur_ids)).update(
+                {PvPDuel.reward_purchase_id: None}, synchronize_session=False
+            )
+            UserShopPurchase.query.filter(UserShopPurchase.id.in_(pur_ids)).delete(synchronize_session=False)
+
+        User.query.filter_by(is_admin=False).update(
+            {
+                User.level: 1,
+                User.experience: 0,
+                User.damage_skill: 0,
+                User.defense_skill: 0,
+                User.energy_skill: 0,
+                User.current_energy: None,
+                User.energy_last_refill_at: None,
+                User.nums_balance: 0,
+                User.clan_join_ban_until: None,
+            },
+            synchronize_session=False,
+        )
+        for u in non_admin_users:
+            grant_default_territory_shop_items(u)
+
     db.session.commit()
     return jsonify({'success': True})
 
@@ -5184,7 +5223,7 @@ def api_admin_shop_item_create():
         effects_list = []
     equipment_slot = (request.form.get('equipment_slot') or '').strip().lower() or None
     grade = (request.form.get('grade') or '').strip().lower() or None
-    if grade not in ('d', 'c', 'b', 's'):
+    if grade not in ('d', 'c', 'b', 'a', 's'):
         grade = None
     special_type = (request.form.get('special_type') or '').strip().lower() or None
     if category != SHOP_CATEGORY_SPECIAL:
@@ -5252,7 +5291,7 @@ def api_admin_shop_item_update_delete(item_id):
     grade = request.form.get('grade')
     if grade is not None:
         grade = grade.strip().lower() or None
-        if grade not in ('d', 'c', 'b', 's'):
+        if grade not in ('d', 'c', 'b', 'a', 's'):
             grade = None
         item.grade = grade
     # special_type задаётся только для категории special
