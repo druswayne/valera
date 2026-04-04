@@ -401,6 +401,7 @@ USER_BASE_DEFENSE = 5
 USER_BASE_ENERGY = 15
 INITIAL_SKILL_POINTS = 10
 SKILL_POINTS_PER_LEVEL = 3
+USER_MAX_LEVEL = 1000
 
 # Базовый XP за уровень после 10-го (удвоено от базовых 64/40)
 XP_BASE_PER_LEVEL = 128
@@ -442,7 +443,7 @@ def xp_to_next_level(current_level):
     на границе 10+ уровней.
     """
     current_level = max(1, int(current_level or 1))
-    if current_level >= 100:
+    if current_level >= USER_MAX_LEVEL:
         return 0
     return xp_required_for_level(current_level + 1) - xp_required_for_level(current_level)
 
@@ -451,7 +452,7 @@ def level_from_experience(experience):
     exp = max(0, int(experience or 0))
     if exp <= 0:
         return 1
-    for n in range(100, 0, -1):
+    for n in range(USER_MAX_LEVEL, 0, -1):
         if xp_required_for_level(n) <= exp:
             return n
     return 1
@@ -467,7 +468,7 @@ def skill_points_total_for_level(level):
 
 def nums_reward_range_for_level(level):
     """Диапазон награды в Нумах за правильное решение задачи в зависимости от уровня. Возвращает (min_nums, max_nums)."""
-    level = max(1, min(100, int(level or 1)))
+    level = max(1, min(USER_MAX_LEVEL, int(level or 1)))
     base = 40 + level * 5
     spread = 5 + level // 3
     low = max(10, base - spread)
@@ -569,7 +570,7 @@ class User(UserMixin, db.Model):
         """Добавить опыт; возвращает (new_level, leveled_up)."""
         self.experience = (self.experience or 0) + xp
         new_level = self.level or 1
-        while new_level < 100 and self.experience >= xp_required_for_level(new_level + 1):
+        while new_level < USER_MAX_LEVEL and self.experience >= xp_required_for_level(new_level + 1):
             new_level += 1
         old_level = self.level or 1
         self.level = new_level
