@@ -4244,7 +4244,11 @@ window.territoryFocusProtection = (function() {
                     }
                     var dmg = data.damage_done || 0;
                     if (data.correct) {
-                        showToast('Верно! Урон по Демогоргону: ' + dmg, true);
+                        var dmgMsg = 'Верно! Урон по Демогоргону: ' + dmg;
+                        if (data.reward_item && data.reward_item.name) {
+                            dmgMsg += '. Случайный приз: «' + data.reward_item.name + '»';
+                        }
+                        showToast(dmgMsg, true);
                     } else {
                         showToast('Ответ неверный.', false);
                     }

@@ -2656,6 +2656,27 @@ def _is_buff_effect_active(effect, used_at, one_shot, now):
     return now <= expires
 
 
+def _territory_shop_buff_still_active(buff, now):
+    """Запись active_item_buff ещё действует (таймер) или ждёт разового срабатывания в бою."""
+    item = buff.shop_item
+    if not item:
+        return False
+    effects = list(item.effects)
+    if not effects:
+        return False
+    if buff.one_shot:
+        return True
+    max_end = None
+    for e in effects:
+        if e.duration_minutes is not None:
+            end = buff.used_at + timedelta(minutes=e.duration_minutes)
+            if max_end is None or end > max_end:
+                max_end = end
+    if max_end is None:
+        return True
+    return now <= max_end
+
+
 def _single_buff_to_display(b, now):
     """Один активный бафф в формат для отображения или None (если не подходит по длительности)."""
     from datetime import timedelta
@@ -3066,6 +3087,15 @@ def api_cabinet_equipment_equip():
     # Нельзя надеть один и тот же предмет в два слота
     existing_for_purchase = UserEquipment.query.filter_by(purchase_id=purchase.id).first()
     if existing_for_purchase:
+        # При переносе уже надетого предмета тоже освобождаем целевой слот (иначе два purchase_id в одном slot)
+        for prev in (
+            UserEquipment.query.filter(
+                UserEquipment.user_id == current_user.id,
+                UserEquipment.slot == slot,
+                UserEquipment.purchase_id != purchase.id,
+            ).all()
+        ):
+            db.session.delete(prev)
         existing_for_purchase.slot = slot
     else:
         # Снимаем предыдущий предмет из этого слота (если был)
@@ -3193,6 +3223,25 @@ def api_cabinet_inventory_use(purchase_id):
     # Разовые (без длительности) = one_shot: сработает один раз при следующем действии
     has_duration = any(e.duration_minutes is not None for e in effects)
     one_shot = not has_duration
+
+    # Один и тот же бафф/дебафф нельзя наложить дважды на одну цель (себя / клан / область).
+    # Мгновенный предмет — у эффектов не задано время действия (duration_minutes), дубликаты разрешены.
+    if has_duration:
+        now = datetime.now()
+        for b in ActiveItemBuff.query.filter_by(
+            shop_item_id=item.id,
+            user_id=user_id,
+            clan_id=clan_id,
+            region_index=reg_idx,
+        ).all():
+            if _territory_shop_buff_still_active(b, now):
+                return jsonify({
+                    'success': False,
+                    'error': (
+                        'Этот предмет уже действует на выбранную цель. '
+                        'Дождитесь окончания эффекта или выберите другую цель.'
+                    ),
+                }), 400
 
     # Мгновенные эффекты при использовании (улучшения — плюс, проклятия — минус)
     for e in effects:
@@ -6061,15 +6110,15 @@ def api_territory_demogorgons_answer():
         return jsonify({'success': False, 'error': 'Армия Демогorgonов не активна'}), 400
     data = request.get_json() or {}
     task_id = data.get('task_id')
-    answer = (data.get('answer') or '').strip()
+    answer = data.get('answer')
     if not task_id:
         return jsonify({'success': False, 'error': 'task_id required'}), 400
     task = TerritoryTask.query.get(task_id)
     if not task:
         return jsonify({'success': False, 'error': 'Задача не найдена'}), 404
-    # Простейшая проверка ответа (как в битве без дробей/особых случаев)
-    is_correct = (answer.strip() == (task.correct_answer or '').strip())
+    is_correct = _check_task_answer(task, answer)
     damage_done = 0
+    reward_item = None
     attacker_damage = int(current_user.damage or 0)
     if is_correct and army.is_active and army.health > 0:
         # 50% от урона атакующего — урон по армии
@@ -6081,6 +6130,18 @@ def api_territory_demogorgons_answer():
                 row = DemogorgonDamage(army_id=army.id, clan_id=current_user.clan_id, total_damage=0)
                 db.session.add(row)
             row.total_damage = (row.total_damage or 0) + damage_done
+            if random.random() < DEMOGORGON_DAMAGE_DROP_CHANCE:
+                drop_purchase = _award_pvp_style_random_shop_item_to_user(current_user)
+                if drop_purchase:
+                    try:
+                        si = drop_purchase.shop_item
+                        reward_item = {'id': si.id, 'name': si.name, 'image_filename': si.image_filename}
+                        logger.info(
+                            "Demogorgon damage drop: user %s awarded item %s (price=%s)",
+                            current_user.id, si.id, si.price,
+                        )
+                    except Exception:
+                        pass
             # Если здоровье упало до нуля — сразу завершаем армию (награждение и деактивация)
             if army.health <= 0 and army.is_active:
                 _demogorgon_finish(army)
@@ -6096,6 +6157,7 @@ def api_territory_demogorgons_answer():
         'damage_done': damage_done,
         'army_health': army.health,
         'army_max_health': army.max_health,
+        'reward_item': reward_item,
     })
 
 
@@ -7052,6 +7114,9 @@ PVP_REWARD_PROB_MED = 0.2    # 500–1000
 PVP_REWARD_PROB_HIGH = 0.08  # 1000–5000
 # оставшиеся 0.02 — очень дорогие предметы > 500
 
+# Урон по армии Демогоргонов при верном ответе: шанс того же случайного приза, что в дуэли
+DEMOGORGON_DAMAGE_DROP_CHANCE = 0.2
+
 _pvp_last_seen_column_ensured = False
 _pvp_wager_columns_ensured = False
 
@@ -7514,6 +7579,22 @@ def _pvp_choose_random_reward_item():
     return random.choice(items)
 
 
+def _award_pvp_style_random_shop_item_to_user(user):
+    """
+    Случайный предмет лавки территории (та же выборка и веса цен, что приз за победу в дуэли).
+    Возвращает UserShopPurchase или None.
+    """
+    if not user:
+        return None
+    item = _pvp_choose_random_reward_item()
+    if not item:
+        return None
+    purchase = UserShopPurchase(user_id=user.id, shop_item_id=item.id)
+    db.session.add(purchase)
+    db.session.flush()
+    return purchase
+
+
 def _pvp_duel_award_random_item(duel):
     """
     Начислить победителю дуэли случайный предмет (UserShopPurchase).
@@ -7524,19 +7605,17 @@ def _pvp_duel_award_random_item(duel):
     winner = duel.winner
     if not winner:
         return None
-    item = _pvp_choose_random_reward_item()
-    if not item:
+    purchase = _award_pvp_style_random_shop_item_to_user(winner)
+    if not purchase:
         return None
-    purchase = UserShopPurchase(user_id=winner.id, shop_item_id=item.id)
-    db.session.add(purchase)
-    db.session.flush()
     try:
         duel.reward_purchase_id = purchase.id
     except Exception:
         # Даже если что-то пошло не так при сохранении ссылки, награду всё равно выдаём
         pass
     try:
-        logger.info("PvP duel %s: winner %s awarded item %s (price=%s)", duel.id, winner.id, item.id, item.price)
+        si = purchase.shop_item
+        logger.info("PvP duel %s: winner %s awarded item %s (price=%s)", duel.id, winner.id, si.id, si.price)
     except Exception:
         # Логирование не должно ломать транзакцию
         pass
