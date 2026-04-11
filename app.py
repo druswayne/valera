@@ -10,6 +10,7 @@ from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.executors.pool import ThreadPoolExecutor
 from sqlalchemy import case, cast, Float, Index, and_, func, text
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import joinedload
 import json
 import random
 import os
@@ -688,8 +689,25 @@ SHOP_CATEGORY_CURSE = 'curse'
 SHOP_CATEGORY_EQUIPMENT = 'equipment'
 # Особые предметы (кастомные эффекты, не завязанные на таблицу эффектов)
 SHOP_CATEGORY_SPECIAL = 'special'
+SHOP_CATEGORY_CHEST = 'chest'
 
 SHOP_EFFECT_TYPES = ['damage', 'defense', 'current_energy', 'max_energy', 'xp_reward', 'nums_reward']
+
+# Тип сундука (лавка): влияет только на визуальную тему анимации открытия
+CHEST_TYPE_VERY_RARE = 'very_rare'
+CHEST_TYPE_RARE = 'rare'
+CHEST_TYPE_NORMAL = 'normal'
+CHEST_TYPES = (CHEST_TYPE_VERY_RARE, CHEST_TYPE_RARE, CHEST_TYPE_NORMAL)
+
+# Веса вариантов дропа при розыгрыше (отдельно от типа сундука)
+CHEST_DROP_CHANCE_TIER_VERY_LOW = 'very_low'
+CHEST_DROP_CHANCE_TIER_MEDIUM = 'medium'
+CHEST_DROP_CHANCE_TIER_HIGH = 'high'
+CHEST_DROP_CHANCE_WEIGHTS = {
+    CHEST_DROP_CHANCE_TIER_VERY_LOW: 1,
+    CHEST_DROP_CHANCE_TIER_MEDIUM: 5,
+    CHEST_DROP_CHANCE_TIER_HIGH: 25,
+}
 
 
 # Контекст лавки: territory = битва за территорию (кабинет), game = лавка призов на странице игры
@@ -716,7 +734,18 @@ class ShopItem(db.Model):
     grade = db.Column(db.String(5), nullable=True)
     # Для категории special: тип особого предмета (например, очистка карты)
     special_type = db.Column(db.String(50), nullable=True)
+    # --- Сундуки (category=chest): тип сундука и картинка «открытого» состояния
+    chest_type = db.Column(db.String(20), nullable=True)  # very_rare | rare | normal
+    chest_image_open_filename = db.Column(db.String(255), nullable=True)
     effects = db.relationship('ShopItemEffect', backref='shop_item', lazy=True, cascade='all, delete-orphan')
+    chest_drop_options = db.relationship(
+        'ShopChestDropOption',
+        foreign_keys='ShopChestDropOption.shop_item_id',
+        back_populates='chest_shop_item',
+        lazy=True,
+        cascade='all, delete-orphan',
+        order_by='ShopChestDropOption.sort_order',
+    )
 
     def to_dict(self):
         """Для совместимости со старым API (game, api/shop-items)."""
@@ -748,8 +777,44 @@ class UserShopPurchase(db.Model):
     shop_item_id = db.Column(db.Integer, db.ForeignKey('shop_item.id'), nullable=False)
     purchased_at = db.Column(db.DateTime, default=datetime.now)
     used_at = db.Column(db.DateTime, nullable=True)  # когда активирован (пока не используется)
+    # Сундук: после открытия фиксируется вариант дропа
+    chest_opened_at = db.Column(db.DateTime, nullable=True)
+    chest_drop_option_id = db.Column(db.Integer, db.ForeignKey('shop_chest_drop_option.id'), nullable=True)
     user = db.relationship('User', backref=db.backref('shop_purchases', lazy=True))
     shop_item = db.relationship('ShopItem', backref=db.backref('purchases', lazy=True))
+    chest_drop_option = db.relationship('ShopChestDropOption', foreign_keys=[chest_drop_option_id], lazy=True)
+
+
+class ShopChestDropOption(db.Model):
+    """Вариант дропа для сундука лавки (category=chest)."""
+    __tablename__ = 'shop_chest_drop_option'
+    id = db.Column(db.Integer, primary_key=True)
+    shop_item_id = db.Column(db.Integer, db.ForeignKey('shop_item.id'), nullable=False)
+    # Короткое имя для админки / заголовка; может быть пустым, если задано только description
+    title = db.Column(db.String(200), nullable=True)
+    # Текст для игрока (в т.ч. неигровые призы); при наличии товара-награды можно оставить пустым
+    description = db.Column(db.Text, nullable=True)
+    chance_tier = db.Column(db.String(20), nullable=False, default=CHEST_DROP_CHANCE_TIER_HIGH)
+    max_per_user = db.Column(db.Integer, nullable=False, default=1)
+    grant_shop_item_id = db.Column(db.Integer, db.ForeignKey('shop_item.id'), nullable=True)
+    sort_order = db.Column(db.Integer, default=0, nullable=False)
+    chest_shop_item = db.relationship(
+        'ShopItem',
+        foreign_keys=[shop_item_id],
+        back_populates='chest_drop_options',
+    )
+    grant_shop_item = db.relationship('ShopItem', foreign_keys=[grant_shop_item_id], lazy=True)
+
+
+class UserChestDropGrant(db.Model):
+    """Факт получения дропа из сундука (для лимита max_per_user), сохраняется после «Использовать»."""
+    __tablename__ = 'user_chest_drop_grant'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    drop_option_id = db.Column(db.Integer, db.ForeignKey('shop_chest_drop_option.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.now, nullable=False)
+    user = db.relationship('User', backref=db.backref('chest_drop_grants', lazy=True))
+    drop_option = db.relationship('ShopChestDropOption', lazy=True)
 
 
 class UserEquipment(db.Model):
@@ -2160,6 +2225,88 @@ with app.app_context():
                 if 'special_type' not in columns:
                     conn.execute(text("ALTER TABLE shop_item ADD COLUMN special_type VARCHAR(50)"))
                     print("Добавлена колонка special_type в shop_item")
+                if 'chest_type' not in columns:
+                    conn.execute(text('ALTER TABLE shop_item ADD COLUMN chest_type VARCHAR(20)'))
+                    print("Добавлена колонка chest_type в shop_item")
+                if 'chest_image_open_filename' not in columns:
+                    conn.execute(text('ALTER TABLE shop_item ADD COLUMN chest_image_open_filename VARCHAR(255)'))
+                    print("Добавлена колонка chest_image_open_filename в shop_item")
+        tables = inspector.get_table_names()
+        if 'shop_chest_drop_option' not in tables or 'user_chest_drop_grant' not in tables:
+            db.create_all()
+            print("Созданы таблицы shop_chest_drop_option и/или user_chest_drop_grant")
+        tables = inspector.get_table_names()
+        if 'shop_chest_drop_option' in tables:
+            sco_col_names = {c['name'] for c in inspector.get_columns('shop_chest_drop_option')}
+            with db.engine.begin() as conn:
+                if 'description' not in sco_col_names:
+                    conn.execute(text('ALTER TABLE shop_chest_drop_option ADD COLUMN description TEXT'))
+                    print("Добавлена колонка description в shop_chest_drop_option")
+            if is_pg:
+                with db.engine.begin() as conn:
+                    for stmt in (
+                        'ALTER TABLE shop_chest_drop_option ALTER COLUMN title DROP NOT NULL',
+                        'ALTER TABLE shop_chest_drop_option ALTER COLUMN grant_shop_item_id DROP NOT NULL',
+                    ):
+                        try:
+                            conn.execute(text(stmt))
+                        except Exception as _e:
+                            print(f"Пропуск миграции shop_chest_drop_option ({stmt}): {_e}")
+            else:
+                # SQLite: PRAGMA показывает NOT NULL; пересоздаём таблицу один раз при жёстких ограничениях
+                try:
+                    with db.engine.connect() as c2:
+                        pragma_rows = c2.execute(text('PRAGMA table_info(shop_chest_drop_option)')).fetchall()
+                    need_rebuild = any(
+                        (r[1] in ('title', 'grant_shop_item_id') and int(r[3] or 0) == 1)
+                        for r in pragma_rows
+                    )
+                    if need_rebuild:
+                        with db.engine.begin() as conn:
+                            conn.execute(text('DROP TABLE IF EXISTS shop_chest_drop_option__new'))
+                            conn.execute(text(
+                                'CREATE TABLE shop_chest_drop_option__new ('
+                                'id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, '
+                                'shop_item_id INTEGER NOT NULL, '
+                                'title VARCHAR(200), '
+                                'description TEXT, '
+                                'chance_tier VARCHAR(20) NOT NULL, '
+                                'max_per_user INTEGER NOT NULL, '
+                                'grant_shop_item_id INTEGER, '
+                                'sort_order INTEGER NOT NULL, '
+                                'FOREIGN KEY(shop_item_id) REFERENCES shop_item (id), '
+                                'FOREIGN KEY(grant_shop_item_id) REFERENCES shop_item (id))'
+                            ))
+                            has_desc = any(r[1] == 'description' for r in pragma_rows)
+                            if has_desc:
+                                conn.execute(text(
+                                    'INSERT INTO shop_chest_drop_option__new '
+                                    '(id, shop_item_id, title, description, chance_tier, max_per_user, grant_shop_item_id, sort_order) '
+                                    'SELECT id, shop_item_id, title, description, chance_tier, max_per_user, grant_shop_item_id, sort_order '
+                                    'FROM shop_chest_drop_option'
+                                ))
+                            else:
+                                conn.execute(text(
+                                    'INSERT INTO shop_chest_drop_option__new '
+                                    '(id, shop_item_id, title, description, chance_tier, max_per_user, grant_shop_item_id, sort_order) '
+                                    'SELECT id, shop_item_id, title, NULL, chance_tier, max_per_user, grant_shop_item_id, sort_order '
+                                    'FROM shop_chest_drop_option'
+                                ))
+                            conn.execute(text('DROP TABLE shop_chest_drop_option'))
+                            conn.execute(text('ALTER TABLE shop_chest_drop_option__new RENAME TO shop_chest_drop_option'))
+                        print("Таблица shop_chest_drop_option пересоздана (SQLite: NULL для title и grant_shop_item_id)")
+                except Exception as _e:
+                    print(f"Миграция shop_chest_drop_option (SQLite): {_e}")
+        tables = inspector.get_table_names()
+        if 'user_shop_purchase' in tables:
+            usp_cols = [c['name'] for c in inspector.get_columns('user_shop_purchase')]
+            with db.engine.begin() as conn:
+                if 'chest_opened_at' not in usp_cols:
+                    conn.execute(text(f'ALTER TABLE user_shop_purchase ADD COLUMN chest_opened_at {_datetime_type}'))
+                    print("Добавлена колонка chest_opened_at в user_shop_purchase")
+                if 'chest_drop_option_id' not in usp_cols:
+                    conn.execute(text('ALTER TABLE user_shop_purchase ADD COLUMN chest_drop_option_id INTEGER'))
+                    print("Добавлена колонка chest_drop_option_id в user_shop_purchase")
         # Создаём таблицы для Демогorgonов и лока планировщика, если их ещё нет
         if 'demogorgon_army' not in tables or 'demogorgon_damage' not in tables or 'scheduler_instance_lock' not in tables:
             db.create_all()
@@ -2653,13 +2800,233 @@ def _shop_item_to_dict(item, include_effects=False):
         'equipment_slot': item.equipment_slot,
         'grade': (item.grade or '').strip().lower() or None,
         'special_type': (item.special_type or '').strip().lower() or None,
+        'chest_type': (item.chest_type or '').strip().lower() or None,
+        'chest_image_open_url': (
+            url_for('static', filename=_avatar_static_filename(item.chest_image_open_filename))
+            if getattr(item, 'chest_image_open_filename', None)
+            else None
+        ),
     }
     if include_effects:
         d['effects'] = [
             {'effect_type': e.effect_type, 'percent_change': e.percent_change, 'target': e.target, 'duration_minutes': e.duration_minutes}
             for e in item.effects
         ]
+    if item.category == SHOP_CATEGORY_CHEST and include_effects:
+        d['chest_drop_options'] = [
+            {
+                'id': o.id,
+                'title': o.title,
+                'description': (getattr(o, 'description', None) or '').strip() or None,
+                'chance_tier': (o.chance_tier or CHEST_DROP_CHANCE_TIER_HIGH).strip().lower(),
+                'max_per_user': int(o.max_per_user or 1),
+                'grant_shop_item_id': o.grant_shop_item_id,
+                'sort_order': o.sort_order,
+            }
+            for o in (item.chest_drop_options or [])
+        ]
     return d
+
+
+def _chest_drop_player_label(opt: ShopChestDropOption | None) -> str:
+    """Текст дропа для игрока: при неигровой награде — description; иначе заголовок."""
+    if not opt:
+        return 'Награда'
+    desc = (getattr(opt, 'description', None) or '').strip()
+    if desc:
+        return desc
+    return (opt.title or '').strip() or 'Награда'
+
+
+def _chest_animation_theme(chest_type: str | None) -> str:
+    """Тема 3D-сундука: очень редкий → алмазный (very_low), редкий → средний, обычный → высокий."""
+    t = (chest_type or '').strip().lower()
+    if t == CHEST_TYPE_VERY_RARE:
+        return CHEST_DROP_CHANCE_TIER_VERY_LOW
+    if t == CHEST_TYPE_RARE:
+        return CHEST_DROP_CHANCE_TIER_MEDIUM
+    return CHEST_DROP_CHANCE_TIER_HIGH
+
+
+def _chest_drop_icons_by_tier(item: ShopItem) -> dict:
+    """Для сундука: иконки возможных товаров-наград по уровню шанса (лавка/инвентарь)."""
+    empty = {'high': [], 'medium': [], 'very_low': []}
+    if not item or item.category != SHOP_CATEGORY_CHEST:
+        return empty
+    seen: dict[str, set[int]] = {k: set() for k in empty}
+    out = {k: [] for k in empty}
+    for o in item.chest_drop_options or []:
+        if not o.grant_shop_item_id:
+            continue
+        gi = o.grant_shop_item
+        if not gi:
+            continue
+        tier = (o.chance_tier or CHEST_DROP_CHANCE_TIER_HIGH).strip().lower()
+        if tier not in out:
+            tier = CHEST_DROP_CHANCE_TIER_HIGH
+        gid = int(gi.id)
+        if gid in seen[tier]:
+            continue
+        seen[tier].add(gid)
+        img = _avatar_static_filename(gi.image_filename) if gi.image_filename else None
+        out[tier].append(
+            {
+                'item_id': gid,
+                'name': gi.name,
+                'image_url': url_for('static', filename=img) if img else None,
+            }
+        )
+    return out
+
+
+def _chest_drop_assigned_count(user_id: int, drop_option_id: int) -> int:
+    """Сколько раз у пользователя «занят» этот вариант дропа: уже получено + открытые, ещё не использованные сундуки."""
+    g = UserChestDropGrant.query.filter_by(user_id=user_id, drop_option_id=drop_option_id).count()
+    pending = (
+        UserShopPurchase.query.join(ShopItem, UserShopPurchase.shop_item_id == ShopItem.id)
+        .filter(
+            UserShopPurchase.user_id == user_id,
+            UserShopPurchase.chest_drop_option_id == drop_option_id,
+            UserShopPurchase.chest_opened_at.isnot(None),
+            ShopItem.category == SHOP_CATEGORY_CHEST,
+        )
+        .count()
+    )
+    return g + pending
+
+
+def _roll_shop_chest_drop_option(user_id: int, chest_item: ShopItem) -> ShopChestDropOption | None:
+    options = list(chest_item.chest_drop_options or [])
+    eligible: list[ShopChestDropOption] = []
+    for opt in options:
+        mx = max(1, int(opt.max_per_user or 1))
+        if _chest_drop_assigned_count(user_id, opt.id) < mx:
+            eligible.append(opt)
+    if not eligible:
+        return None
+    weights = [
+        CHEST_DROP_CHANCE_WEIGHTS.get(
+            (opt.chance_tier or '').strip().lower(),
+            CHEST_DROP_CHANCE_WEIGHTS[CHEST_DROP_CHANCE_TIER_HIGH],
+        )
+        for opt in eligible
+    ]
+    total = sum(weights)
+    if total <= 0:
+        return random.choice(eligible)
+    r = random.random() * total
+    acc = 0.0
+    for opt, w in zip(eligible, weights):
+        acc += float(w)
+        if r <= acc:
+            return opt
+    return eligible[-1]
+
+
+def _parse_chest_drop_options_json(raw) -> list[dict]:
+    if raw is None:
+        return []
+    if isinstance(raw, list):
+        return raw
+    if isinstance(raw, str):
+        try:
+            data = json.loads(raw)
+            return data if isinstance(data, list) else []
+        except Exception:
+            return []
+    return []
+
+
+def _detach_and_delete_shop_chest_drop_options(shop_item_id: int) -> None:
+    """Удаляет варианты дропа сундука после очистки ссылок (FK user_chest_drop_grant, user_shop_purchase)."""
+    opt_ids = [o.id for o in ShopChestDropOption.query.filter_by(shop_item_id=shop_item_id).all()]
+    if opt_ids:
+        UserChestDropGrant.query.filter(UserChestDropGrant.drop_option_id.in_(opt_ids)).delete(synchronize_session=False)
+        UserShopPurchase.query.filter(UserShopPurchase.chest_drop_option_id.in_(opt_ids)).update(
+            {
+                UserShopPurchase.chest_drop_option_id: None,
+                UserShopPurchase.chest_opened_at: None,
+            },
+            synchronize_session=False,
+        )
+    ShopChestDropOption.query.filter_by(shop_item_id=shop_item_id).delete()
+
+
+def _purge_shop_item_before_delete(shop_item_id: int) -> None:
+    """Снимает ссылки и удаляет строки, мешающие удалить товар лавки (инвентарь, баффы, дроп других сундуков)."""
+    ShopChestDropOption.query.filter(ShopChestDropOption.grant_shop_item_id == shop_item_id).update(
+        {ShopChestDropOption.grant_shop_item_id: None},
+        synchronize_session=False,
+    )
+    _detach_and_delete_shop_chest_drop_options(shop_item_id)
+    purchase_ids = [
+        row[0]
+        for row in db.session.query(UserShopPurchase.id).filter(UserShopPurchase.shop_item_id == shop_item_id).all()
+    ]
+    if purchase_ids:
+        UserEquipment.query.filter(UserEquipment.purchase_id.in_(purchase_ids)).delete(synchronize_session=False)
+        PvPDuel.query.filter(PvPDuel.reward_purchase_id.in_(purchase_ids)).update(
+            {PvPDuel.reward_purchase_id: None},
+            synchronize_session=False,
+        )
+        UserShopPurchase.query.filter(UserShopPurchase.id.in_(purchase_ids)).delete(synchronize_session=False)
+    ActiveItemBuff.query.filter_by(shop_item_id=shop_item_id).delete(synchronize_session=False)
+    DemogorgonArmy.query.filter(DemogorgonArmy.shop_item_id == shop_item_id).update(
+        {DemogorgonArmy.shop_item_id: None},
+        synchronize_session=False,
+    )
+    ShopItemEffect.query.filter_by(shop_item_id=shop_item_id).delete(synchronize_session=False)
+
+
+def _replace_shop_chest_drop_options(shop_item_id: int, rows: list[dict]) -> None:
+    _detach_and_delete_shop_chest_drop_options(shop_item_id)
+    sort_i = 0
+    for row in rows:
+        title = (row.get('title') or '').strip() or None
+        description = (row.get('description') or '').strip() or None
+        if not title and not description:
+            continue
+        gid = None
+        raw_gid = row.get('grant_shop_item_id')
+        if raw_gid not in (None, '', 0, '0'):
+            try:
+                gid = int(raw_gid)
+            except (TypeError, ValueError):
+                gid = None
+        if gid is not None and (gid <= 0 or gid == shop_item_id):
+            gid = None
+        if gid is not None:
+            grant_it = db.session.get(ShopItem, gid)
+            if (
+                not grant_it
+                or grant_it.shop_context != SHOP_CONTEXT_TERRITORY
+                or grant_it.category == SHOP_CATEGORY_CHEST
+            ):
+                gid = None
+        tier = (row.get('chance_tier') or CHEST_DROP_CHANCE_TIER_HIGH).strip().lower()
+        if tier not in CHEST_DROP_CHANCE_WEIGHTS:
+            tier = CHEST_DROP_CHANCE_TIER_HIGH
+        try:
+            mx = int(row.get('max_per_user') or 1)
+        except (TypeError, ValueError):
+            mx = 1
+        mx = max(1, mx)
+        sort_i += 1
+        try:
+            so = int(row.get('sort_order') or sort_i)
+        except (TypeError, ValueError):
+            so = sort_i
+        db.session.add(
+            ShopChestDropOption(
+                shop_item_id=shop_item_id,
+                title=title,
+                description=description,
+                chance_tier=tier,
+                max_per_user=mx,
+                grant_shop_item_id=gid,
+                sort_order=so,
+            )
+        )
 
 
 def _active_buffs_query(user_id=None, clan_id=None, region_index=None):
@@ -2914,7 +3281,7 @@ def _shop_item_effective_price(item, level):
 def api_shop_items():
     """Список товаров лавки по категориям (для блока «Лавка предметов» в битве за территорию). Снаряжение отсортировано по грейду (d, c, b, a, s). Цена усиления/проклятий зависит от уровня."""
     items = ShopItem.query.filter_by(shop_context=SHOP_CONTEXT_TERRITORY).order_by(ShopItem.category, ShopItem.sort_order, ShopItem.id).all()
-    by_category = {'enhancement': [], 'curse': [], 'equipment': [], 'special': []}
+    by_category = {'enhancement': [], 'curse': [], 'equipment': [], 'special': [], 'chest': []}
     level = current_user.level or 1
     eq_items = []
     for item in items:
@@ -2922,6 +3289,8 @@ def api_shop_items():
             eq_items.append(item)
         elif item.category == SHOP_CATEGORY_SPECIAL:
             by_category.setdefault('special', []).append(_shop_item_to_dict(item))
+        elif item.category == SHOP_CATEGORY_CHEST:
+            by_category.setdefault('chest', []).append(_shop_item_to_dict(item))
         else:
             d = _shop_item_to_dict(item)
             if item.category in (SHOP_CATEGORY_ENHANCEMENT, SHOP_CATEGORY_CURSE):
@@ -2944,12 +3313,16 @@ def api_shop_items():
 @login_required
 def api_shop_item_detail(item_id):
     """Один товар для модалки (с эффектами для отображения). Только лавка территории. Цена усиления/проклятий — по уровню."""
-    item = ShopItem.query.get(item_id)
+    item = db.session.get(ShopItem, item_id)
     if not item or item.shop_context != SHOP_CONTEXT_TERRITORY:
         return jsonify({'success': False, 'error': 'Товар не найден'}), 404
     d = _shop_item_to_dict(item, include_effects=True)
     if item.category in (SHOP_CATEGORY_ENHANCEMENT, SHOP_CATEGORY_CURSE):
         d['price'] = _shop_item_effective_price(item, current_user.level or 1)
+    # Полный JSON вариантов дропа в лавке не отдаём; только превью иконок по шансам
+    if item.category == SHOP_CATEGORY_CHEST:
+        d.pop('chest_drop_options', None)
+        d['chest_drop_icons_by_tier'] = _chest_drop_icons_by_tier(item)
     return jsonify({'success': True, 'item': d})
 
 
@@ -2963,7 +3336,7 @@ def api_shop_purchase():
     item_id = data.get('item_id')
     if not item_id:
         return jsonify({'success': False, 'error': 'Укажите item_id'}), 400
-    item = ShopItem.query.get(item_id)
+    item = db.session.get(ShopItem, item_id)
     if not item or item.shop_context != SHOP_CONTEXT_TERRITORY:
         return jsonify({'success': False, 'error': 'Товар не найден'}), 404
     price = _shop_item_effective_price(item, current_user.level or 1)
@@ -3019,18 +3392,27 @@ def api_nums_transfer():
 @login_required
 def api_cabinet_inventory():
     """Список купленных товаров лавки территории (инвентарь)."""
-    purchases = UserShopPurchase.query.filter(
-        UserShopPurchase.user_id == current_user.id
-    ).join(ShopItem, UserShopPurchase.shop_item_id == ShopItem.id).filter(
-        ShopItem.shop_context == SHOP_CONTEXT_TERRITORY
-    ).order_by(UserShopPurchase.purchased_at.desc()).all()
+    purchases = (
+        UserShopPurchase.query.filter(
+            UserShopPurchase.user_id == current_user.id
+        )
+        .join(ShopItem, UserShopPurchase.shop_item_id == ShopItem.id)
+        .filter(ShopItem.shop_context == SHOP_CONTEXT_TERRITORY)
+        .options(
+            joinedload(UserShopPurchase.shop_item)
+            .joinedload(ShopItem.chest_drop_options)
+            .joinedload(ShopChestDropOption.grant_shop_item)
+        )
+        .order_by(UserShopPurchase.purchased_at.desc())
+        .all()
+    )
     out = []
     equipped = {
         e.purchase_id: e.slot
         for e in UserEquipment.query.filter(UserEquipment.user_id == current_user.id).all()
     }
     for p in purchases:
-        out.append({
+        row = {
             'id': p.id,
             'item_id': p.shop_item_id,
             'name': p.shop_item.name,
@@ -3041,7 +3423,37 @@ def api_cabinet_inventory():
             'grade': (p.shop_item.grade or '').strip().lower() or None,
             'equipped_slot': equipped.get(p.id),
             'special_type': (p.shop_item.special_type or '').strip().lower() if getattr(p.shop_item, 'special_type', None) else None,
-        })
+        }
+        if p.shop_item.category == SHOP_CATEGORY_CHEST:
+            opened = bool(p.chest_opened_at)
+            row['chest_opened'] = opened
+            row['item_description'] = (p.shop_item.description or '').strip()
+            row['chest_type'] = (p.shop_item.chest_type or CHEST_TYPE_NORMAL).strip().lower()
+            row['chest_drop_icons_by_tier'] = _chest_drop_icons_by_tier(p.shop_item)
+            if opened and p.chest_drop_option:
+                opt = p.chest_drop_option
+                row['chest_drop_title'] = (opt.title or '').strip() or None
+                row['chest_drop_description'] = (getattr(opt, 'description', None) or '').strip() or None
+                row['chest_drop_display'] = _chest_drop_player_label(opt)
+                row['chest_drop_max'] = int(opt.max_per_user or 1)
+                # Сколько раз уже забрали этот вариант дропа (после «Использовать»)
+                row['chest_times_received'] = UserChestDropGrant.query.filter_by(
+                    user_id=current_user.id, drop_option_id=p.chest_drop_option_id
+                ).count()
+                gi = opt.grant_shop_item
+                row['chest_grant_item_name'] = gi.name if gi else ''
+                row['chest_has_grant_item'] = bool(opt.grant_shop_item_id)
+                row['chest_grant_image_url'] = (
+                    url_for('static', filename=_avatar_static_filename(gi.image_filename))
+                    if gi and gi.image_filename
+                    else None
+                )
+                open_fn = getattr(p.shop_item, 'chest_image_open_filename', None)
+                if open_fn:
+                    row['image_url'] = url_for('static', filename=_avatar_static_filename(open_fn))
+            else:
+                row['chest_drop_title'] = None
+        out.append(row)
     return jsonify({'success': True, 'inventory': out})
 
 
@@ -3176,6 +3588,8 @@ def api_cabinet_inventory_sell(purchase_id):
     item = purchase.shop_item
     if not item or item.shop_context != SHOP_CONTEXT_TERRITORY:
         return jsonify({'success': False, 'error': 'Предмет не найден'}), 404
+    if item.category == SHOP_CATEGORY_CHEST and purchase.chest_opened_at:
+        return jsonify({'success': False, 'error': 'Открытый сундук нельзя продать. Используйте дроп или оставьте в инвентаре.'}), 400
     # Если предмет надет, снимаем его
     removed_any = False
     for ue in UserEquipment.query.filter_by(user_id=current_user.id, purchase_id=purchase.id).all():
@@ -3211,6 +3625,8 @@ def api_cabinet_inventory_use(purchase_id):
     item = purchase.shop_item
     if not item or item.shop_context != SHOP_CONTEXT_TERRITORY:
         return jsonify({'success': False, 'error': 'Предмет не найден'}), 404
+    if item.category == SHOP_CATEGORY_CHEST:
+        return jsonify({'success': False, 'error': 'Сундук открывается отдельной кнопкой в инвентаре.'}), 400
     # Особые предметы обрабатываются отдельной логикой
     if item.category == SHOP_CATEGORY_SPECIAL:
         return _use_special_shop_item(purchase, item)
@@ -3315,6 +3731,116 @@ def api_cabinet_inventory_use(purchase_id):
         'message': 'Предмет использован',
         'buff_id': buff.id,
         'one_shot': one_shot,
+    })
+
+
+@app.route('/api/cabinet/inventory/<int:purchase_id>/chest/open', methods=['POST'])
+@login_required
+def api_cabinet_chest_open(purchase_id):
+    """Открыть сундук: серверный розыгрыш дропа, клиент показывает анимацию по типу сундука."""
+    if current_user.is_admin:
+        return jsonify({'success': False, 'error': 'Администратор не участвует'}), 403
+    purchase = UserShopPurchase.query.filter_by(id=purchase_id, user_id=current_user.id).first()
+    if not purchase:
+        return jsonify({'success': False, 'error': 'Покупка не найдена'}), 404
+    item = purchase.shop_item
+    if not item or item.shop_context != SHOP_CONTEXT_TERRITORY or item.category != SHOP_CATEGORY_CHEST:
+        return jsonify({'success': False, 'error': 'Это не сундук'}), 400
+    if purchase.chest_opened_at:
+        opt = purchase.chest_drop_option
+        theme = _chest_animation_theme(item.chest_type)
+        gi_open = opt.grant_shop_item if opt else None
+        grant_item_image_url = (
+            url_for('static', filename=_avatar_static_filename(gi_open.image_filename))
+            if gi_open and gi_open.image_filename
+            else None
+        )
+        return jsonify({
+            'success': True,
+            'already_open': True,
+            'animation_theme': theme,
+            'drop_title': _chest_drop_player_label(opt),
+            'grant_item_name': (gi_open.name if gi_open else ''),
+            'grant_item_image_url': grant_item_image_url,
+            'max_per_user': int(opt.max_per_user or 1) if opt else 1,
+            'times_received': (
+                UserChestDropGrant.query.filter_by(
+                    user_id=current_user.id, drop_option_id=purchase.chest_drop_option_id
+                ).count()
+                if purchase.chest_drop_option_id
+                else 0
+            ),
+        })
+    chosen = _roll_shop_chest_drop_option(current_user.id, item)
+    if chosen is None:
+        # Нет доступного дропа: анимация «пустой сундук», покупка снимается с инвентаря
+        theme = _chest_animation_theme(item.chest_type)
+        db.session.delete(purchase)
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'chest_empty': True,
+            'animation_theme': theme,
+            'drop_title': 'Сундук оказался пустым.',
+        })
+    purchase.chest_opened_at = datetime.now()
+    purchase.chest_drop_option_id = chosen.id
+    db.session.commit()
+    theme = _chest_animation_theme(item.chest_type)
+    gid = chosen.grant_shop_item_id
+    gi = db.session.get(ShopItem, int(gid)) if gid else None
+    grant_item_image_url = (
+        url_for('static', filename=_avatar_static_filename(gi.image_filename))
+        if gi and gi.image_filename
+        else None
+    )
+    return jsonify({
+        'success': True,
+        'already_open': False,
+        'animation_theme': theme,
+        'drop_title': _chest_drop_player_label(chosen),
+        'grant_item_name': gi.name if gi else '',
+        'grant_item_image_url': grant_item_image_url,
+        'max_per_user': int(chosen.max_per_user or 1),
+        'times_received': UserChestDropGrant.query.filter_by(
+            user_id=current_user.id, drop_option_id=chosen.id
+        ).count(),
+    })
+
+
+@app.route('/api/cabinet/inventory/<int:purchase_id>/chest/consume', methods=['POST'])
+@login_required
+def api_cabinet_chest_consume(purchase_id):
+    """Забрать награду из открытого сундука: при наличии товара — в инвентарь; иначе только фиксация дропа. Сундук удаляется."""
+    if current_user.is_admin:
+        return jsonify({'success': False, 'error': 'Администратор не участвует'}), 403
+    purchase = UserShopPurchase.query.filter_by(id=purchase_id, user_id=current_user.id).first()
+    if not purchase:
+        return jsonify({'success': False, 'error': 'Покупка не найдена'}), 404
+    item = purchase.shop_item
+    if not item or item.shop_context != SHOP_CONTEXT_TERRITORY or item.category != SHOP_CATEGORY_CHEST:
+        return jsonify({'success': False, 'error': 'Это не сундук'}), 400
+    if not purchase.chest_opened_at or not purchase.chest_drop_option_id:
+        return jsonify({'success': False, 'error': 'Сначала откройте сундук.'}), 400
+    opt = purchase.chest_drop_option
+    if not opt:
+        return jsonify({'success': False, 'error': 'Вариант дропа не найден'}), 400
+    if opt.grant_shop_item_id:
+        grant_item = db.session.get(ShopItem, opt.grant_shop_item_id)
+        if not grant_item or grant_item.shop_context != SHOP_CONTEXT_TERRITORY:
+            return jsonify({'success': False, 'error': 'Награда-товар не найдена или недоступна'}), 400
+        if grant_item.category == SHOP_CATEGORY_CHEST:
+            return jsonify({'success': False, 'error': 'Нельзя выдавать сундук как награду из сундука'}), 400
+    db.session.add(UserChestDropGrant(user_id=current_user.id, drop_option_id=opt.id))
+    if opt.grant_shop_item_id:
+        db.session.add(UserShopPurchase(user_id=current_user.id, shop_item_id=int(opt.grant_shop_item_id)))
+    db.session.delete(purchase)
+    db.session.commit()
+    if opt.grant_shop_item_id:
+        return jsonify({'success': True, 'message': 'Награда добавлена в инвентарь.'})
+    return jsonify({
+        'success': True,
+        'message': 'Сундук убран из инвентаря. Это неигровая награда — детали указаны в описании дропа.',
     })
 
 
@@ -5292,7 +5818,13 @@ def api_admin_shop_item_create():
     except (TypeError, ValueError):
         price = 0
     category = (request.form.get('category') or '').strip().lower()
-    if category not in (SHOP_CATEGORY_ENHANCEMENT, SHOP_CATEGORY_CURSE, SHOP_CATEGORY_EQUIPMENT, SHOP_CATEGORY_SPECIAL):
+    if category not in (
+        SHOP_CATEGORY_ENHANCEMENT,
+        SHOP_CATEGORY_CURSE,
+        SHOP_CATEGORY_EQUIPMENT,
+        SHOP_CATEGORY_SPECIAL,
+        SHOP_CATEGORY_CHEST,
+    ):
         category = SHOP_CATEGORY_ENHANCEMENT
     description = (request.form.get('description') or '').strip() or None
     effects_json = request.form.get('effects', '[]')
@@ -5307,15 +5839,21 @@ def api_admin_shop_item_create():
     special_type = (request.form.get('special_type') or '').strip().lower() or None
     if category != SHOP_CATEGORY_SPECIAL:
         special_type = None
+    chest_type = (request.form.get('chest_type') or CHEST_TYPE_NORMAL).strip().lower()
+    if chest_type not in CHEST_TYPES:
+        chest_type = CHEST_TYPE_NORMAL
+    if category != SHOP_CATEGORY_CHEST:
+        chest_type = None
     item = ShopItem(
         name=name,
         description=description,
         price=price,
         category=category,
         shop_context=SHOP_CONTEXT_TERRITORY,
-        equipment_slot=equipment_slot,
-        grade=grade,
+        equipment_slot=equipment_slot if category == SHOP_CATEGORY_EQUIPMENT else None,
+        grade=grade if category == SHOP_CATEGORY_EQUIPMENT else None,
         special_type=special_type,
+        chest_type=chest_type,
     )
     db.session.add(item)
     db.session.flush()
@@ -5323,30 +5861,48 @@ def api_admin_shop_item_create():
         path = _shop_save_image(request.files['image'], item.id)
         if path:
             item.image_filename = path
-    _valid_targets = (SHOP_EFFECT_TARGET_SELF, SHOP_EFFECT_TARGET_CLAN, SHOP_EFFECT_TARGET_REGION)
-    for e in effects_list:
-        t = (e.get('target') or '').strip().lower()
-        target = t if t in _valid_targets else SHOP_EFFECT_TARGET_SELF
-        eff = ShopItemEffect(
-            shop_item_id=item.id,
-            effect_type=e.get('effect_type') or 'damage',
-            percent_change=float(e.get('percent_change', 0)),
-            target=target,
-            duration_minutes=int(e['duration_minutes']) if e.get('duration_minutes') not in (None, '') else None,
-        )
-        db.session.add(eff)
+    if 'chest_image_open' in request.files and request.files['chest_image_open'].filename:
+        p2 = _shop_save_image(request.files['chest_image_open'], item.id)
+        if p2:
+            item.chest_image_open_filename = p2
+    if category == SHOP_CATEGORY_CHEST:
+        chest_rows = _parse_chest_drop_options_json(request.form.get('chest_drop_options', '[]'))
+        _replace_shop_chest_drop_options(item.id, chest_rows)
+        if not ShopChestDropOption.query.filter_by(shop_item_id=item.id).count():
+            db.session.rollback()
+            return jsonify({'success': False, 'error': 'Добавьте хотя бы один вариант дропа с наградой'}), 400
+    else:
+        _valid_targets = (SHOP_EFFECT_TARGET_SELF, SHOP_EFFECT_TARGET_CLAN, SHOP_EFFECT_TARGET_REGION)
+        for e in effects_list:
+            t = (e.get('target') or '').strip().lower()
+            target = t if t in _valid_targets else SHOP_EFFECT_TARGET_SELF
+            eff = ShopItemEffect(
+                shop_item_id=item.id,
+                effect_type=e.get('effect_type') or 'damage',
+                percent_change=float(e.get('percent_change', 0)),
+                target=target,
+                duration_minutes=int(e['duration_minutes']) if e.get('duration_minutes') not in (None, '') else None,
+            )
+            db.session.add(eff)
     db.session.commit()
+    item = db.session.get(ShopItem, item.id)
     return jsonify({'success': True, 'item': _shop_item_to_dict(item, include_effects=True)})
 
 
 @app.route('/api/admin/shop/item/<int:item_id>', methods=['POST', 'PUT', 'DELETE'])
 @admin_required
 def api_admin_shop_item_update_delete(item_id):
-    item = ShopItem.query.get(item_id)
+    item = db.session.get(ShopItem, item_id)
     if not item or item.shop_context != SHOP_CONTEXT_TERRITORY:
         return jsonify({'success': False, 'error': 'Товар не найден'}), 404
     if request.method == 'DELETE':
-        db.session.delete(item)
+        # После bulk-delete дропа у объекта item в сессии остаётся устаревшая коллекция
+        # chest_drop_options — каскадное delete(item) даёт 500. Берём строку заново.
+        _purge_shop_item_before_delete(item_id)
+        db.session.flush()
+        row = db.session.get(ShopItem, item_id)
+        if row:
+            db.session.delete(row)
         db.session.commit()
         return jsonify({'success': True})
     name = (request.form.get('name') or '').strip()
@@ -5361,7 +5917,13 @@ def api_admin_shop_item_update_delete(item_id):
     except (TypeError, ValueError):
         pass
     category = (request.form.get('category') or '').strip().lower()
-    if category in (SHOP_CATEGORY_ENHANCEMENT, SHOP_CATEGORY_CURSE, SHOP_CATEGORY_EQUIPMENT, SHOP_CATEGORY_SPECIAL):
+    if category in (
+        SHOP_CATEGORY_ENHANCEMENT,
+        SHOP_CATEGORY_CURSE,
+        SHOP_CATEGORY_EQUIPMENT,
+        SHOP_CATEGORY_SPECIAL,
+        SHOP_CATEGORY_CHEST,
+    ):
         item.category = category
     equipment_slot = request.form.get('equipment_slot')
     if equipment_slot is not None:
@@ -5382,6 +5944,16 @@ def api_admin_shop_item_update_delete(item_id):
         else:
             item.special_type = None
 
+    chest_type_raw = request.form.get('chest_type')
+    if chest_type_raw is not None:
+        ct = (chest_type_raw or '').strip().lower()
+        item.chest_type = ct if ct in CHEST_TYPES else CHEST_TYPE_NORMAL
+    if item.category != SHOP_CATEGORY_CHEST:
+        item.chest_type = None
+        item.chest_image_open_filename = None
+    if request.form.get('delete_chest_open_image') in ('1', 'true', 'yes'):
+        item.chest_image_open_filename = None
+
     effects_json = request.form.get('effects', '[]')
     try:
         effects_list = json.loads(effects_json) if isinstance(effects_json, str) else (effects_json if isinstance(effects_json, list) else [])
@@ -5393,20 +5965,36 @@ def api_admin_shop_item_update_delete(item_id):
             item.image_filename = path
     if request.form.get('delete_image') in ('1', 'true', 'yes'):
         item.image_filename = None
+    if 'chest_image_open' in request.files and request.files['chest_image_open'].filename:
+        p_open = _shop_save_image(request.files['chest_image_open'], item.id)
+        if p_open:
+            item.chest_image_open_filename = p_open
     ShopItemEffect.query.filter_by(shop_item_id=item.id).delete()
-    _valid_targets = (SHOP_EFFECT_TARGET_SELF, SHOP_EFFECT_TARGET_CLAN, SHOP_EFFECT_TARGET_REGION)
-    for e in effects_list:
-        t = (e.get('target') or '').strip().lower()
-        target = t if t in _valid_targets else SHOP_EFFECT_TARGET_SELF
-        eff = ShopItemEffect(
-            shop_item_id=item.id,
-            effect_type=e.get('effect_type') or 'damage',
-            percent_change=float(e.get('percent_change', 0)),
-            target=target,
-            duration_minutes=int(e['duration_minutes']) if e.get('duration_minutes') not in (None, '') else None,
-        )
-        db.session.add(eff)
+    if item.category == SHOP_CATEGORY_CHEST:
+        item.equipment_slot = None
+        item.grade = None
+        item.special_type = None
+        chest_rows = _parse_chest_drop_options_json(request.form.get('chest_drop_options', '[]'))
+        _replace_shop_chest_drop_options(item.id, chest_rows)
+        if not ShopChestDropOption.query.filter_by(shop_item_id=item.id).count():
+            db.session.rollback()
+            return jsonify({'success': False, 'error': 'Добавьте хотя бы один вариант дропа с наградой'}), 400
+    else:
+        _detach_and_delete_shop_chest_drop_options(item.id)
+        _valid_targets = (SHOP_EFFECT_TARGET_SELF, SHOP_EFFECT_TARGET_CLAN, SHOP_EFFECT_TARGET_REGION)
+        for e in effects_list:
+            t = (e.get('target') or '').strip().lower()
+            target = t if t in _valid_targets else SHOP_EFFECT_TARGET_SELF
+            eff = ShopItemEffect(
+                shop_item_id=item.id,
+                effect_type=e.get('effect_type') or 'damage',
+                percent_change=float(e.get('percent_change', 0)),
+                target=target,
+                duration_minutes=int(e['duration_minutes']) if e.get('duration_minutes') not in (None, '') else None,
+            )
+            db.session.add(eff)
     db.session.commit()
+    item = db.session.get(ShopItem, item_id)
     return jsonify({'success': True, 'item': _shop_item_to_dict(item, include_effects=True)})
 
 

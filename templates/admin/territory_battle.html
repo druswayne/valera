@@ -695,10 +695,11 @@ body {
 
     <section class="admin-section">
         <h2>Редактор лавки</h2>
-        <p>Товары лавки отображаются в личном кабинете в блоке «Баланс и Лавка предметов». Категории: Усиления (улучшают характеристики), Проклятия (ухудшают у всего клана), Снаряжение (долговременные предметы экипировки) и Особое (уникальные эффекты).</p>
+        <p>Товары лавки отображаются в личном кабинете в блоке «Баланс и Лавка предметов». Категории: Усиления, Проклятия, Снаряжение, Особое и Сундуки (покупка → инвентарь → открытие с наградой).</p>
         <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
             <button type="button" class="edit-btn" id="shopItemAddBtn">Добавить товар</button>
             <button type="button" class="edit-btn" id="shopEquipmentAddBtn">Добавить предмет</button>
+            <button type="button" class="edit-btn" id="shopChestAddBtn">Добавить сундук</button>
         </div>
         <div class="admin-table-wrap" style="margin-top: 12px;">
             <table class="admin-table" id="shopItemsTable">
@@ -713,7 +714,7 @@ body {
                 </thead>
                 <tbody id="shopItemsTbody">
                     {% for item in shop_items or [] %}
-                    <tr data-item-id="{{ item.id }}">
+                    <tr data-item-id="{{ item.id }}" data-category="{{ item.category }}">
                         <td>{{ item.name }}</td>
                         <td>
                             {% if item.category == 'enhancement' %}
@@ -724,6 +725,8 @@ body {
                                 Снаряжение
                             {% elif item.category == 'special' %}
                                 Особое
+                            {% elif item.category == 'chest' %}
+                                Сундуки
                             {% else %}
                                 {{ item.category }}
                             {% endif %}
@@ -896,6 +899,53 @@ body {
         <div class="modal-buttons" style="margin-top: 16px;">
             <button type="button" class="btn-cancel" id="shopItemEditorCancel">Отмена</button>
             <button type="button" class="btn-confirm" id="shopItemEditorSave">Сохранить</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="shopChestEditorModal">
+    <div class="modal-box" style="max-width: 640px;">
+        <h3 id="shopChestEditorTitle">Добавить сундук</h3>
+        <form id="shopChestEditorForm">
+            <input type="hidden" id="shopChestEditorId" name="id">
+            <div class="form-group">
+                <label>Название сундука</label>
+                <input type="text" id="shopChestEditorName" name="name" required maxlength="200" style="width:100%;">
+            </div>
+            <div class="form-group">
+                <label>Изображение (закрытый сундук)</label>
+                <input type="file" id="shopChestEditorImage" name="image" accept=".jpg,.jpeg,.png,.gif,.webp">
+            </div>
+            <div class="form-group">
+                <label>Изображение открытого сундука</label>
+                <input type="file" id="shopChestEditorImageOpen" name="chest_image_open" accept=".jpg,.jpeg,.png,.gif,.webp">
+                <label style="margin-top:6px; font-weight:normal;"><input type="checkbox" id="shopChestDeleteOpenImage" value="1"> удалить текущее изображение открытого</label>
+            </div>
+            <div class="form-group">
+                <label>Описание</label>
+                <textarea id="shopChestEditorDesc" name="description" rows="2" style="width:100%;"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Стоимость (Нумы)</label>
+                <input type="number" id="shopChestEditorPrice" name="price" min="0" value="0" style="width:120px;">
+            </div>
+            <div class="form-group">
+                <label>Тип сундука (анимация)</label>
+                <select id="shopChestEditorType" name="chest_type" style="min-width:220px;">
+                    <option value="very_rare">Очень редкий (алмазный сундук)</option>
+                    <option value="rare">Редкий (средний шанс)</option>
+                    <option value="normal">Обычный (высокий шанс)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Варианты дропа (название, шанс выпадения между вариантами, макс. на игрока, награда из лавки)</label>
+                <div id="shopChestDropRows"></div>
+                <button type="button" class="edit-btn" id="shopChestAddDropRowBtn" style="margin-top:8px;">+ Вариант дропа</button>
+            </div>
+        </form>
+        <div class="modal-buttons" style="margin-top: 16px;">
+            <button type="button" class="btn-cancel" id="shopChestEditorCancel">Отмена</button>
+            <button type="button" class="btn-confirm" id="shopChestEditorSave">Сохранить</button>
         </div>
     </div>
 </div>
@@ -1430,6 +1480,8 @@ document.getElementById('clanDeleteConfirm').addEventListener('click', function(
 
     document.querySelectorAll('.shop-item-edit-btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
+            var tr = this.closest('tr');
+            if (tr && tr.getAttribute('data-category') === 'chest') return;
             var id = this.getAttribute('data-item-id');
             fetch('/api/admin/shop/items').then(function(r) { return r.json(); }).then(function(data) {
                 if (!data.success || !data.items) return;
@@ -1503,12 +1555,186 @@ document.getElementById('clanDeleteConfirm').addEventListener('click', function(
             var id = this.getAttribute('data-item-id');
             if (!confirm('Удалить этот товар?')) return;
             fetch('/api/admin/shop/item/' + id, { method: 'DELETE' })
-                .then(function(r) { return r.json(); })
+                .then(function(r) {
+                    return r.text().then(function(t) {
+                        try { return JSON.parse(t); } catch (e) {
+                            throw new Error(t ? (t.slice(0, 240) + (t.length > 240 ? '…' : '')) : ('HTTP ' + r.status));
+                        }
+                    });
+                })
                 .then(function(data) {
                     if (data.success) window.location.reload();
                     else alert(data.error || 'Ошибка удаления.');
                 })
-                .catch(function() { alert('Ошибка соединения.'); });
+                .catch(function(err) {
+                    alert(err && err.message ? err.message : 'Ошибка соединения.');
+                });
+        });
+    });
+})();
+
+(function() {
+    var chestModal = document.getElementById('shopChestEditorModal');
+    var dropRows = document.getElementById('shopChestDropRows');
+    var grantCatalog = [];
+
+    function fetchGrantCatalog(cb) {
+        fetch('/api/admin/shop/items').then(function(r) { return r.json(); }).then(function(data) {
+            grantCatalog = (data.success && data.items) ? data.items.filter(function(it) {
+                return it.category !== 'chest';
+            }) : [];
+            if (cb) cb();
+        }).catch(function() { grantCatalog = []; if (cb) cb(); });
+    }
+
+    function grantOptionsHtml(selectedId) {
+        var sel = selectedId != null ? String(selectedId) : '';
+        var opts = '<option value="">— без товара (только описание) —</option>';
+        grantCatalog.forEach(function(it) {
+            opts += '<option value="' + it.id + '"' + (String(it.id) === sel ? ' selected' : '') + '>' +
+                (it.name || ('#' + it.id)) + ' (' + (it.category || '') + ')</option>';
+        });
+        return opts;
+    }
+
+    function addDropRow(data) {
+        data = data || {};
+        var row = document.createElement('div');
+        row.className = 'shop-chest-drop-row';
+        row.style.cssText = 'display:flex; flex-wrap:wrap; gap:8px; align-items:flex-start; margin-bottom:8px; border-bottom:1px solid #ddd; padding-bottom:8px;';
+        var descVal = (data.description || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+        row.innerHTML = '' +
+            '<div style="display:flex; flex-direction:column; gap:6px; flex:1; min-width:200px;">' +
+            '<input type="text" class="chest-drop-title" placeholder="Краткое название (необязательно)" style="width:100%;" value="' +
+            (data.title || '').replace(/"/g, '&quot;') + '">' +
+            '<textarea class="chest-drop-desc" rows="2" placeholder="Описание для игрока (обязательно, если нет товара-награды)" style="width:100%; resize:vertical;">' + descVal + '</textarea>' +
+            '</div>' +
+            '<select class="chest-drop-tier" style="min-width:160px;">' +
+            '<option value="very_low"' + (data.chance_tier === 'very_low' ? ' selected' : '') + '>Очень маленький шанс</option>' +
+            '<option value="medium"' + (data.chance_tier === 'medium' ? ' selected' : '') + '>Средний шанс</option>' +
+            '<option value="high"' + ((data.chance_tier === 'high' || !data.chance_tier) ? ' selected' : '') + '>Высокий шанс</option>' +
+            '</select>' +
+            '<input type="number" class="chest-drop-max" min="1" value="' + (data.max_per_user != null ? data.max_per_user : 1) + '" style="width:90px;" title="Макс. на игрока">' +
+            '<select class="chest-drop-grant" style="min-width:200px;" title="Необязательно: товар из лавки. Без выбора — только описание (неигровая награда).">' +
+            grantOptionsHtml(data.grant_shop_item_id) + '</select>' +
+            '<button type="button" class="territory-reset-btn chest-drop-del" style="padding:4px 10px;">×</button>';
+        row.querySelector('.chest-drop-del').onclick = function() { row.remove(); };
+        dropRows.appendChild(row);
+    }
+
+    function clearDropRows() {
+        dropRows.innerHTML = '';
+    }
+
+    function collectDropRowsJson() {
+        var arr = [];
+        dropRows.querySelectorAll('.shop-chest-drop-row').forEach(function(row) {
+            var title = (row.querySelector('.chest-drop-title') && row.querySelector('.chest-drop-title').value || '').trim();
+            var desc = (row.querySelector('.chest-drop-desc') && row.querySelector('.chest-drop-desc').value || '').trim();
+            var tier = row.querySelector('.chest-drop-tier') ? row.querySelector('.chest-drop-tier').value : 'high';
+            var maxV = row.querySelector('.chest-drop-max') ? parseInt(row.querySelector('.chest-drop-max').value, 10) : 1;
+            var gidRaw = row.querySelector('.chest-drop-grant') ? row.querySelector('.chest-drop-grant').value : '';
+            if (!title && !desc) return;
+            var obj = {
+                title: title || null,
+                description: desc || null,
+                chance_tier: tier,
+                max_per_user: isNaN(maxV) ? 1 : Math.max(1, maxV)
+            };
+            if (gidRaw) {
+                var gid = parseInt(gidRaw, 10);
+                if (!isNaN(gid) && gid > 0) obj.grant_shop_item_id = gid;
+            }
+            arr.push(obj);
+        });
+        return arr;
+    }
+
+    function openChestModalEmpty() {
+        document.getElementById('shopChestEditorTitle').textContent = 'Добавить сундук';
+        document.getElementById('shopChestEditorId').value = '';
+        document.getElementById('shopChestEditorName').value = '';
+        document.getElementById('shopChestEditorDesc').value = '';
+        document.getElementById('shopChestEditorPrice').value = '0';
+        document.getElementById('shopChestEditorType').value = 'normal';
+        document.getElementById('shopChestEditorImage').value = '';
+        document.getElementById('shopChestEditorImageOpen').value = '';
+        document.getElementById('shopChestDeleteOpenImage').checked = false;
+        clearDropRows();
+        fetchGrantCatalog(function() { addDropRow({}); });
+        chestModal.classList.add('show');
+    }
+
+    document.getElementById('shopChestAddBtn').addEventListener('click', openChestModalEmpty);
+    document.getElementById('shopChestAddDropRowBtn').addEventListener('click', function() { addDropRow({}); });
+
+    document.getElementById('shopChestEditorCancel').addEventListener('click', function() {
+        chestModal.classList.remove('show');
+    });
+    chestModal.addEventListener('click', function(e) {
+        if (e.target === chestModal) chestModal.classList.remove('show');
+    });
+
+    document.getElementById('shopChestEditorSave').addEventListener('click', function() {
+        var id = document.getElementById('shopChestEditorId').value;
+        var fd = new FormData();
+        fd.append('name', document.getElementById('shopChestEditorName').value.trim());
+        fd.append('description', document.getElementById('shopChestEditorDesc').value.trim());
+        fd.append('price', document.getElementById('shopChestEditorPrice').value);
+        fd.append('category', 'chest');
+        fd.append('chest_type', document.getElementById('shopChestEditorType').value);
+        fd.append('chest_drop_options', JSON.stringify(collectDropRowsJson()));
+        if (document.getElementById('shopChestDeleteOpenImage').checked) {
+            fd.append('delete_chest_open_image', '1');
+        }
+        var img = document.getElementById('shopChestEditorImage');
+        if (img.files && img.files[0]) fd.append('image', img.files[0]);
+        var imgOpen = document.getElementById('shopChestEditorImageOpen');
+        if (imgOpen.files && imgOpen.files[0]) fd.append('chest_image_open', imgOpen.files[0]);
+        var url = id ? '/api/admin/shop/item/' + id : '/api/admin/shop/item';
+        var saveBtn = this;
+        saveBtn.disabled = true;
+        fetch(url, { method: 'POST', body: fd })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    chestModal.classList.remove('show');
+                    window.location.reload();
+                } else {
+                    alert(data.error || 'Ошибка сохранения.');
+                }
+            })
+            .catch(function() { alert('Ошибка соединения.'); })
+            .finally(function() { saveBtn.disabled = false; });
+    });
+
+    document.querySelectorAll('.shop-item-edit-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var tr = btn.closest('tr');
+            var cat = tr ? tr.getAttribute('data-category') : '';
+            if (cat !== 'chest') return;
+            var id = btn.getAttribute('data-item-id');
+            fetch('/api/admin/shop/items').then(function(r) { return r.json(); }).then(function(data) {
+                if (!data.success || !data.items) return;
+                var item = data.items.find(function(i) { return i.id === parseInt(id, 10); });
+                if (!item) return;
+                document.getElementById('shopChestEditorTitle').textContent = 'Редактировать сундук';
+                document.getElementById('shopChestEditorId').value = item.id;
+                document.getElementById('shopChestEditorName').value = item.name || '';
+                document.getElementById('shopChestEditorDesc').value = item.description || '';
+                document.getElementById('shopChestEditorPrice').value = item.price != null ? item.price : 0;
+                document.getElementById('shopChestEditorType').value = item.chest_type || 'normal';
+                document.getElementById('shopChestEditorImage').value = '';
+                document.getElementById('shopChestEditorImageOpen').value = '';
+                document.getElementById('shopChestDeleteOpenImage').checked = false;
+                clearDropRows();
+                fetchGrantCatalog(function() {
+                    var drops = item.chest_drop_options || [];
+                    if (drops.length === 0) addDropRow({});
+                    else drops.forEach(function(d) { addDropRow(d); });
+                    chestModal.classList.add('show');
+                });
+            });
         });
     });
 })();

@@ -1546,6 +1546,50 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     #clanChatModal .clan-chat-messages { max-height: 200px; min-height: 100px; }
     #clanChatModal .modal-chat-close { top: 8px; right: 8px; width: 32px; height: 32px; }
 }
+
+/* Сундук: модалка анимации (как рейд-босс) */
+#dropModal.cabinet-drop-modal .modal-box { max-width: 520px; background: linear-gradient(145deg, #fdf6e3 0%, #f5f0e6 100%); color: #2c1810; }
+#dropModal.cabinet-drop-modal .modal-box-header { justify-content: flex-start; }
+#dropModal.cabinet-drop-modal .modal-box-header .modal-title { flex: 1; min-width: 0; margin-bottom: 0; }
+#dropModal.cabinet-drop-modal .modal-box-close { margin-left: auto; flex-shrink: 0; }
+#dropModal.cabinet-drop-modal .modal-title { color: #5c4033; }
+.drop-modal-content { max-width: 520px; }
+.drop-chest-stage { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 10px 0 0 0; }
+.drop-chest-wrap { position: relative; width: 260px; max-width: 70vw; display: grid; place-items: center; padding: 10px; }
+.drop-fireworks { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
+.drop-chest-wrap.drop-theme-medium img.drop-chest-fallback { filter: hue-rotate(250deg) saturate(1.55) brightness(1.06) contrast(1.08); }
+.drop-chest-wrap.drop-theme-very-low img.drop-chest-fallback { filter: hue-rotate(195deg) saturate(2.25) brightness(1.18) contrast(1.12); }
+.drop-chest { width: 100%; height: auto; image-rendering: pixelated; transform-origin: 50% 80%; user-select: none; }
+.drop-chest.opening { animation: cabinetDropChestPop 2000ms ease-in-out; }
+.drop-chest.opened { transform: translateY(-4px) scale(1.03); filter: drop-shadow(0 10px 25px rgba(255, 215, 0, 0.35)) brightness(1.08); }
+.drop-result { width: 100%; max-width: 420px; margin: 0 auto; position: relative; z-index: 4; font-size: 1rem; font-weight: bold; color: #3d2914; text-align: center; opacity: 0; transform: translateY(8px) scale(0.98); transition: opacity 300ms ease, transform 300ms ease; line-height: 1.4; padding: 10px 12px; border-radius: 14px; background: linear-gradient(135deg, rgba(255, 215, 0, 0.25) 0%, rgba(255, 237, 78, 0.25) 100%); border: 2px solid rgba(255, 140, 0, 0.45); box-sizing: border-box; }
+.drop-result.show { opacity: 1; transform: translateY(0) scale(1); }
+.drop-result-line { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.drop-result-grant-icon { width: 72px; height: 72px; display: block; object-fit: contain; border-radius: 10px; border: 2px solid rgba(255, 140, 0, 0.5); background: rgba(255, 255, 255, 0.35); box-sizing: border-box; }
+.drop-result-caption { font-size: 1rem; font-weight: bold; color: #3d2914; line-height: 1.35; }
+.chest-opened-desc-inline { display: flex; flex-direction: row; align-items: flex-start; gap: 12px; }
+.chest-opened-grant-icon { width: 56px; height: 56px; flex-shrink: 0; object-fit: contain; border-radius: 8px; border: 2px solid #5c4033; background: rgba(255, 255, 255, 0.4); box-sizing: border-box; }
+.chest-opened-desc-text { flex: 1; min-width: 0; text-align: left; }
+.chest-drop-tier-preview-wrap { margin: 10px 0 0; text-align: left; }
+.chest-drop-tier-block { margin-bottom: 12px; }
+.chest-drop-tier-label { font-size: 0.82rem; font-weight: bold; color: #5c4033; margin-bottom: 6px; }
+.chest-drop-tier-icons { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chest-drop-tier-icons img {
+    width: 44px; height: 44px; object-fit: contain; border-radius: 8px;
+    border: 2px solid #5c4033; background: rgba(255,255,255,0.5); box-sizing: border-box;
+}
+.chest-drop-tier-icons .chest-drop-icon-ph {
+    width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+    border-radius: 8px; border: 2px dashed #8b7355; font-size: 1.1rem; color: #5c4033; background: rgba(255,255,255,0.35);
+}
+.drop-subhint { margin-top: 10px; text-align: center; color: #666; font-size: 14px; }
+.drop-chest-3d { width: 100%; height: 280px; display: block; }
+.drop-chest-3d canvas { width: 100% !important; height: 100% !important; display: block; border-radius: 12px; }
+.drop-chest-fallback { display: none; }
+#dropChestFallback.waiting { display: block; animation: cabinetDropChestSpin 2000ms linear forwards; }
+#dropChestFallback.opening { display: block; animation: cabinetDropChestPop 2000ms ease-in-out; }
+@keyframes cabinetDropChestSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+@keyframes cabinetDropChestPop { 0% { filter: drop-shadow(0 0 0 rgba(255, 215, 0, 0)) brightness(1); } 60% { filter: drop-shadow(0 14px 30px rgba(255, 215, 0, 0.25)) brightness(1.05); } 100% { filter: drop-shadow(0 10px 25px rgba(255, 215, 0, 0.35)) brightness(1.08); } }
 </style>
 {% endblock %}
 
@@ -1813,6 +1857,13 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                     </div>
                     <div class="shop-tiles" id="shopTilesSpecial"></div>
                 </div>
+                <div class="shop-category-block collapsed" id="shopCategoryChest">
+                    <div class="shop-category-header" data-shop-category-toggle>
+                        <h4>Сундуки</h4>
+                        <button type="button" class="shop-category-toggle" aria-label="Свернуть/развернуть">▼</button>
+                    </div>
+                    <div class="shop-tiles" id="shopTilesChest"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -1850,6 +1901,13 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                     <button type="button" class="inventory-category-toggle" aria-label="Свернуть/развернуть">▼</button>
                 </div>
                 <div class="inventory-tiles" id="inventoryTilesSpecial"></div>
+            </div>
+            <div class="inventory-category collapsed" id="inventoryCategoryChest" style="display:none;">
+                <div class="inventory-category-header" data-inventory-category-toggle>
+                    <h3 class="inventory-category-title">Сундуки</h3>
+                    <button type="button" class="inventory-category-toggle" aria-label="Свернуть/развернуть">▼</button>
+                </div>
+                <div class="inventory-tiles" id="inventoryTilesChest"></div>
             </div>
             <p class="inventory-empty" id="inventoryEmpty" style="display: none;">Пока пусто. Покупайте товары в лавке.</p>
         </div>
@@ -2316,6 +2374,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         </div>
         <div id="shopItemModalImageWrap"></div>
         <p id="shopItemModalDesc" style="margin: 12px 0; color: #2c1810;"></p>
+        <div id="shopItemModalChestDrops" class="chest-drop-tier-preview-wrap" style="display:none;"></div>
         <p id="shopItemModalEffects" style="margin: 4px 0 0; font-size: 0.9rem; color: #5c4033; display: none;"></p>
         <p id="shopItemModalAction" style="margin: 4px 0 0; font-size: 0.9rem; color: #5c4033; display: none;"></p>
         <p id="shopItemModalDuration" style="margin: 4px 0 0; font-size: 0.9rem; color: #5c4033; display: none;"></p>
@@ -2384,9 +2443,75 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         </div>
     </div>
 </div>
+
+<!-- Сундук: закрытый — предпросмотр перед открытием -->
+<div class="modal-overlay inventory-item-modal" id="chestClosedPreviewModal" style="display:none; visibility:hidden; align-items:center; justify-content:center;">
+    <div class="modal-box">
+        <div class="modal-box-header">
+            <h3 id="chestClosedPreviewTitle">Сундук</h3>
+            <button type="button" class="modal-box-close" id="chestClosedPreviewCloseTop" aria-label="Закрыть">×</button>
+        </div>
+        <p id="chestClosedPreviewDesc" class="inventory-item-desc"></p>
+        <div id="chestClosedPreviewDropTiers" class="chest-drop-tier-preview-wrap" style="display:none;"></div>
+        <div class="modal-buttons">
+            <button type="button" class="btn-cancel" id="chestClosedPreviewClose">Закрыть</button>
+            <button type="button" class="btn-confirm inventory-item-use-btn" id="chestClosedPreviewOpenBtn">Открыть</button>
+        </div>
+    </div>
+</div>
+
+<!-- Сундук: анимация открытия -->
+<div class="modal-overlay cabinet-drop-modal cabinet-drop-modal--chest" id="dropModal" style="display: none;">
+    <div class="modal-box drop-modal-content">
+        <div class="modal-box-header">
+            <h3 class="modal-title" id="dropTitle">Сундук</h3>
+            <button type="button" class="modal-box-close" id="dropModalCloseTop" aria-label="Закрыть">×</button>
+        </div>
+        <div class="drop-chest-stage">
+            <div class="drop-chest-wrap" id="dropChestWrap" role="button" tabindex="0" aria-label="Открыть сундук">
+                <div id="dropChest" class="drop-chest drop-chest-3d" aria-hidden="true"></div>
+                <img id="dropChestFallback" class="drop-chest drop-chest-fallback" src="{{ url_for('static', filename='box.png') }}" alt="Сундук">
+                <canvas id="dropFireworks" class="drop-fireworks" aria-hidden="true"></canvas>
+            </div>
+            <div class="drop-result" id="dropResult" aria-live="polite"></div>
+            <div class="drop-subhint">Нажмите на сундук, чтобы открыть сразу…</div>
+        </div>
+        <div class="modal-buttons" style="margin-top:8px;">
+            <button type="button" class="btn-cancel" id="dropModalCloseBtn">Закрыть</button>
+        </div>
+    </div>
+</div>
+
+<!-- Сундук: содержимое после открытия -->
+<div class="modal-overlay inventory-item-modal" id="chestOpenedModal" style="display:none; visibility:hidden; align-items:center; justify-content:center;">
+    <div class="modal-box">
+        <div class="modal-box-header">
+            <h3 id="chestOpenedModalTitle">Сундук открыт</h3>
+            <button type="button" class="modal-box-close" id="chestOpenedModalCloseTop" aria-label="Закрыть">×</button>
+        </div>
+        <p id="chestOpenedModalText" class="inventory-item-desc"></p>
+        <div class="modal-buttons">
+            <button type="button" class="btn-cancel" id="chestOpenedModalClose">Закрыть</button>
+            <button type="button" class="btn-confirm inventory-item-use-btn" id="chestOpenedConsumeBtn">Использовать</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay inventory-item-modal" id="chestConsumeConfirmModal" style="display:none; visibility:hidden; align-items:center; justify-content:center;">
+    <div class="modal-box">
+        <h3>Подтверждение</h3>
+        <p id="chestConsumeConfirmText" class="inventory-item-desc">Сундук с дропом исчезнет из инвентаря безвозвратно. Награда будет добавлена в инвентарь как отдельный предмет. Продолжить?</p>
+        <div class="modal-buttons">
+            <button type="button" class="btn-cancel" id="chestConsumeConfirmCancel">Отмена</button>
+            <button type="button" class="btn-confirm" id="chestConsumeConfirmOk">Подтвердить</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
+<script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+<script src="{{ url_for('static', filename='js/cabinet_chest_drop.js') }}"></script>
 <script>
 (function() {
     var nav = document.getElementById('cabinetTopNav');
@@ -3782,15 +3907,20 @@ var CURRENT_USER_ID = {{ user.id }};
         var cur = document.getElementById('shopTilesCurse');
         var eq = document.getElementById('shopTilesEquipment');
         var sp = document.getElementById('shopTilesSpecial');
+        var ch = document.getElementById('shopTilesChest');
         if (!enh || !cur) return;
         enh.innerHTML = '';
         cur.innerHTML = '';
         if (eq) eq.innerHTML = '';
         if (sp) sp.innerHTML = '';
+        if (ch) ch.innerHTML = '';
         (items.enhancement || []).forEach(function(it) { enh.appendChild(createTile(it)); });
         (items.curse || []).forEach(function(it) { cur.appendChild(createTile(it)); });
         if (sp && items.special) {
             (items.special || []).forEach(function(it) { sp.appendChild(createTile(it)); });
+        }
+        if (ch && items.chest) {
+            (items.chest || []).forEach(function(it) { ch.appendChild(createTile(it)); });
         }
         if (eq && items.equipment) {
             var gradeOrder = ['d', 'c', 'b', 'a', 's', ''];
@@ -3845,6 +3975,169 @@ var CURRENT_USER_ID = {{ user.id }};
             });
     }
     var lastInventoryList = [];
+    var currentChestPurchaseId = null;
+    var currentChestPreviewPurchaseId = null;
+
+    var CHEST_TIER_LABELS = {
+        high: 'С высоким шансом возможны:',
+        medium: 'Со средним шансом возможны:',
+        very_low: 'С очень низким шансом возможны:'
+    };
+
+    function renderChestDropTiersPreview(container, byTier) {
+        if (!container) return;
+        container.innerHTML = '';
+        if (!byTier || typeof byTier !== 'object') {
+            container.style.display = 'none';
+            return;
+        }
+        var order = ['high', 'medium', 'very_low'];
+        var any = false;
+        order.forEach(function(tier) {
+            var arr = byTier[tier];
+            if (!arr || !arr.length) return;
+            any = true;
+            var block = document.createElement('div');
+            block.className = 'chest-drop-tier-block';
+            var lab = document.createElement('div');
+            lab.className = 'chest-drop-tier-label';
+            lab.textContent = CHEST_TIER_LABELS[tier] || tier;
+            block.appendChild(lab);
+            var row = document.createElement('div');
+            row.className = 'chest-drop-tier-icons';
+            arr.forEach(function(entry) {
+                if (entry.image_url) {
+                    var im = document.createElement('img');
+                    im.src = entry.image_url;
+                    im.alt = entry.name || '';
+                    im.title = entry.name || '';
+                    row.appendChild(im);
+                } else {
+                    var ph = document.createElement('div');
+                    ph.className = 'chest-drop-icon-ph';
+                    ph.title = entry.name || '';
+                    ph.textContent = '?';
+                    row.appendChild(ph);
+                }
+            });
+            block.appendChild(row);
+            container.appendChild(block);
+        });
+        container.style.display = any ? 'block' : 'none';
+    }
+
+    function openClosedChestPreviewModal(p) {
+        currentChestPreviewPurchaseId = p.id;
+        var modal = document.getElementById('chestClosedPreviewModal');
+        var titleEl = document.getElementById('chestClosedPreviewTitle');
+        var descEl = document.getElementById('chestClosedPreviewDesc');
+        if (!modal || !descEl) return;
+        if (titleEl) titleEl.textContent = p.name || 'Сундук';
+        var desc = (p.item_description != null && String(p.item_description).trim()) ? String(p.item_description).trim() : '';
+        descEl.textContent = desc || '—';
+        var dropTiers = document.getElementById('chestClosedPreviewDropTiers');
+        renderChestDropTiersPreview(dropTiers, p.chest_drop_icons_by_tier);
+        modal.style.display = 'flex';
+        modal.style.visibility = 'visible';
+        modal.classList.add('open');
+    }
+
+    function closeClosedChestPreviewModal() {
+        var modal = document.getElementById('chestClosedPreviewModal');
+        if (!modal) return;
+        modal.classList.remove('open');
+        modal.style.display = 'none';
+        modal.style.visibility = 'hidden';
+        currentChestPreviewPurchaseId = null;
+        var dropTiers = document.getElementById('chestClosedPreviewDropTiers');
+        if (dropTiers) {
+            dropTiers.innerHTML = '';
+            dropTiers.style.display = 'none';
+        }
+    }
+
+    function startChestOpenAnimation(purchaseId) {
+        fetch('/api/cabinet/inventory/' + purchaseId + '/chest/open', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: '{}'
+        })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.success) {
+                    alert(data.error || 'Не удалось открыть сундук');
+                    return;
+                }
+                var theme = data.animation_theme || 'high';
+                var name = data.drop_title || 'Награда';
+                window.onCabinetDropModalClosed = function() {
+                    window.onCabinetDropModalClosed = null;
+                    loadInventory();
+                };
+                if (typeof showDropChest === 'function') {
+                    showDropChest(name, theme, {
+                        headerTitle: '',
+                        grantItemImageUrl: data.grant_item_image_url || null,
+                        chestEmpty: !!data.chest_empty,
+                    });
+                } else {
+                    alert(data.chest_empty ? name : ('Выпало: ' + name));
+                    loadInventory();
+                }
+            })
+            .catch(function() { alert('Ошибка соединения'); });
+    }
+
+    function openChestOpenedResultModal(p) {
+        currentChestPurchaseId = p.id;
+        var modal = document.getElementById('chestOpenedModal');
+        var title = document.getElementById('chestOpenedModalTitle');
+        var text = document.getElementById('chestOpenedModalText');
+        if (!modal || !text) return;
+        if (title) title.textContent = p.name || 'Сундук';
+        var disp = (p.chest_drop_display != null && String(p.chest_drop_display).trim()) ? String(p.chest_drop_display).trim() : (p.chest_drop_title || '—');
+        var hasItem = !!p.chest_has_grant_item;
+        var msg = 'В сундуке выпало: ' + disp + '.';
+        if (hasItem) {
+            msg += ' Вы получите предмет «' + (p.chest_grant_item_name || '') + '».';
+        }
+        while (text.firstChild) {
+            text.removeChild(text.firstChild);
+        }
+        var wrap = document.createElement('span');
+        wrap.className = 'chest-opened-desc-inline';
+        if (hasItem && p.chest_grant_image_url) {
+            var gimg = document.createElement('img');
+            gimg.src = p.chest_grant_image_url;
+            gimg.className = 'chest-opened-grant-icon';
+            gimg.alt = '';
+            gimg.decoding = 'async';
+            wrap.appendChild(gimg);
+        }
+        var txt = document.createElement('span');
+        txt.className = 'chest-opened-desc-text';
+        txt.textContent = msg;
+        wrap.appendChild(txt);
+        text.appendChild(wrap);
+        var confirmText = document.getElementById('chestConsumeConfirmText');
+        if (confirmText) {
+            confirmText.textContent = hasItem
+                ? 'Сундук исчезнет из инвентаря, предмет-награда будет добавлен в инвентарь. Продолжить?'
+                : 'Сундук исчезнет из инвентаря безвозвратно. Продолжить?';
+        }
+        modal.style.display = 'flex';
+        modal.style.visibility = 'visible';
+        modal.classList.add('open');
+    }
+
+    function closeChestOpenedModal() {
+        var modal = document.getElementById('chestOpenedModal');
+        if (!modal) return;
+        modal.classList.remove('open');
+        modal.style.display = 'none';
+        modal.style.visibility = 'hidden';
+        currentChestPurchaseId = null;
+    }
 
     function loadInventory() {
         fetch('{{ url_for("api_cabinet_inventory") }}')
@@ -3854,20 +4147,24 @@ var CURRENT_USER_ID = {{ user.id }};
                 var curseWrap = document.getElementById('inventoryCategoryCurse');
                 var eqWrap = document.getElementById('inventoryCategoryEquipment');
                 var specWrap = document.getElementById('inventoryCategorySpecial');
+                var chestWrap = document.getElementById('inventoryCategoryChest');
                 var enh = document.getElementById('inventoryTilesEnhancement');
                 var cur = document.getElementById('inventoryTilesCurse');
                 var eq = document.getElementById('inventoryTilesEquipment');
                 var spec = document.getElementById('inventoryTilesSpecial');
+                var chestTiles = document.getElementById('inventoryTilesChest');
                 var empty = document.getElementById('inventoryEmpty');
                 if (!enh || !cur || !eq) return;
                 enh.innerHTML = '';
                 cur.innerHTML = '';
                 eq.innerHTML = '';
                 if (spec) spec.innerHTML = '';
+                if (chestTiles) chestTiles.innerHTML = '';
                 if (enhWrap) enhWrap.style.display = 'none';
                 if (curseWrap) curseWrap.style.display = 'none';
                 if (eqWrap) eqWrap.style.display = 'none';
                 if (specWrap) specWrap.style.display = 'none';
+                if (chestWrap) chestWrap.style.display = 'none';
                 var list = (data.success && data.inventory) ? data.inventory : [];
                 lastInventoryList = list;
                 if (list.length === 0) {
@@ -3903,6 +4200,12 @@ var CURRENT_USER_ID = {{ user.id }};
                         var itemId = parseInt(div.getAttribute('data-item-id'), 10);
                         if (p.category === 'equipment') {
                             openEquipmentItemModal(purchaseId, itemId);
+                        } else if (p.category === 'chest') {
+                            if (p.chest_opened) {
+                                openChestOpenedResultModal(p);
+                            } else {
+                                openClosedChestPreviewModal(p);
+                            }
                         } else {
                             openInventoryItemModal(purchaseId, itemId);
                         }
@@ -3923,6 +4226,11 @@ var CURRENT_USER_ID = {{ user.id }};
                             specWrap.style.display = '';
                         } else if (enhWrap) {
                             enhWrap.style.display = '';
+                        }
+                    } else if (p.category === 'chest') {
+                        targetGrid = chestTiles || enh;
+                        if (chestWrap && chestTiles) {
+                            chestWrap.style.display = '';
                         }
                     } else {
                         targetGrid = enh;
@@ -4549,32 +4857,44 @@ var CURRENT_USER_ID = {{ user.id }};
                     shopItemModalImageWrap.appendChild(ph);
                 }
                 shopItemModalDesc.textContent = item.description || '—';
-                if (shopItemModalEffects) {
-                    var effText = formatItemEffectsText(item);
-                    if (effText) {
-                        shopItemModalEffects.textContent = 'Эффекты: ' + effText;
-                        shopItemModalEffects.style.display = 'block';
-                    } else {
-                        shopItemModalEffects.style.display = 'none';
-                    }
-                }
-                var actionLabels = { 'self': 'Личное', 'clan': 'На весь клан', 'region': 'На область' };
-                var targets = (item.effects || []).map(function(e) { return e.target; }).filter(Boolean);
-                var unique = targets.filter(function(t, i) { return targets.indexOf(t) === i; });
-                if (unique.length) {
-                    shopItemModalAction.textContent = 'Действие: ' + unique.map(function(t) { return actionLabels[t] || t; }).join(', ');
-                    shopItemModalAction.style.display = 'block';
+                var chestDropsEl = document.getElementById('shopItemModalChestDrops');
+                if (item.category === 'chest') {
+                    renderChestDropTiersPreview(chestDropsEl, item.chest_drop_icons_by_tier);
+                    if (shopItemModalEffects) shopItemModalEffects.style.display = 'none';
+                    if (shopItemModalAction) shopItemModalAction.style.display = 'none';
+                    if (shopItemModalDuration) shopItemModalDuration.style.display = 'none';
                 } else {
-                    shopItemModalAction.style.display = 'none';
-                }
-                if (shopItemModalDuration) {
-                    var durs2 = (item.effects || []).map(function(e) { return e.duration_minutes; }).filter(function(v) { return v !== null && v !== undefined; });
-                    if (durs2.length) {
-                        var maxDur2 = Math.max.apply(null, durs2);
-                        shopItemModalDuration.textContent = 'Длительность: ' + maxDur2 + ' мин';
-                        shopItemModalDuration.style.display = 'block';
+                    if (chestDropsEl) {
+                        chestDropsEl.innerHTML = '';
+                        chestDropsEl.style.display = 'none';
+                    }
+                    if (shopItemModalEffects) {
+                        var effText = formatItemEffectsText(item);
+                        if (effText) {
+                            shopItemModalEffects.textContent = 'Эффекты: ' + effText;
+                            shopItemModalEffects.style.display = 'block';
+                        } else {
+                            shopItemModalEffects.style.display = 'none';
+                        }
+                    }
+                    var actionLabels = { 'self': 'Личное', 'clan': 'На весь клан', 'region': 'На область' };
+                    var targets = (item.effects || []).map(function(e) { return e.target; }).filter(Boolean);
+                    var unique = targets.filter(function(t, i) { return targets.indexOf(t) === i; });
+                    if (unique.length) {
+                        shopItemModalAction.textContent = 'Действие: ' + unique.map(function(t) { return actionLabels[t] || t; }).join(', ');
+                        shopItemModalAction.style.display = 'block';
                     } else {
-                        shopItemModalDuration.style.display = 'none';
+                        shopItemModalAction.style.display = 'none';
+                    }
+                    if (shopItemModalDuration) {
+                        var durs2 = (item.effects || []).map(function(e) { return e.duration_minutes; }).filter(function(v) { return v !== null && v !== undefined; });
+                        if (durs2.length) {
+                            var maxDur2 = Math.max.apply(null, durs2);
+                            shopItemModalDuration.textContent = 'Длительность: ' + maxDur2 + ' мин';
+                            shopItemModalDuration.style.display = 'block';
+                        } else {
+                            shopItemModalDuration.style.display = 'none';
+                        }
                     }
                 }
                 shopItemModalPrice.textContent = item.price + ' Нумов';
@@ -4588,6 +4908,11 @@ var CURRENT_USER_ID = {{ user.id }};
         shopItemModal.classList.remove('open');
         shopItemModal.style.display = 'none';
         currentShopItemId = null;
+        var chestDropsEl = document.getElementById('shopItemModalChestDrops');
+        if (chestDropsEl) {
+            chestDropsEl.innerHTML = '';
+            chestDropsEl.style.display = 'none';
+        }
     }
     if (shopItemModalClose) shopItemModalClose.addEventListener('click', closeShopItemModal);
     if (shopItemModalCloseTop) shopItemModalCloseTop.addEventListener('click', closeShopItemModal);
@@ -4616,6 +4941,99 @@ var CURRENT_USER_ID = {{ user.id }};
             })
             .catch(function() { alert('Ошибка соединения'); })
             .finally(function() { shopItemModalBuy.disabled = false; });
+    });
+
+    var chestClosedPreviewModal = document.getElementById('chestClosedPreviewModal');
+    if (document.getElementById('chestClosedPreviewClose')) {
+        document.getElementById('chestClosedPreviewClose').addEventListener('click', closeClosedChestPreviewModal);
+    }
+    if (document.getElementById('chestClosedPreviewCloseTop')) {
+        document.getElementById('chestClosedPreviewCloseTop').addEventListener('click', closeClosedChestPreviewModal);
+    }
+    if (document.getElementById('chestClosedPreviewOpenBtn')) {
+        document.getElementById('chestClosedPreviewOpenBtn').addEventListener('click', function() {
+            var pid = currentChestPreviewPurchaseId;
+            closeClosedChestPreviewModal();
+            if (pid) startChestOpenAnimation(pid);
+        });
+    }
+    if (chestClosedPreviewModal) {
+        chestClosedPreviewModal.addEventListener('click', function(e) {
+            if (e.target === chestClosedPreviewModal) closeClosedChestPreviewModal();
+        });
+    }
+
+    var dropModalCloseTop = document.getElementById('dropModalCloseTop');
+    var dropModalCloseBtn = document.getElementById('dropModalCloseBtn');
+    function closeCabinetDropModalSafe() {
+        if (typeof closeDropModal === 'function') closeDropModal();
+    }
+    if (dropModalCloseTop) dropModalCloseTop.addEventListener('click', closeCabinetDropModalSafe);
+    if (dropModalCloseBtn) dropModalCloseBtn.addEventListener('click', closeCabinetDropModalSafe);
+    var dropModalEl = document.getElementById('dropModal');
+    if (dropModalEl) {
+        dropModalEl.addEventListener('click', function(e) {
+            if (e.target === dropModalEl) closeCabinetDropModalSafe();
+        });
+    }
+
+    document.getElementById('chestOpenedModalClose') && document.getElementById('chestOpenedModalClose').addEventListener('click', closeChestOpenedModal);
+    document.getElementById('chestOpenedModalCloseTop') && document.getElementById('chestOpenedModalCloseTop').addEventListener('click', closeChestOpenedModal);
+    var chestOpenedModal = document.getElementById('chestOpenedModal');
+    if (chestOpenedModal) {
+        chestOpenedModal.addEventListener('click', function(e) {
+            if (e.target === chestOpenedModal) closeChestOpenedModal();
+        });
+    }
+
+    document.getElementById('chestOpenedConsumeBtn') && document.getElementById('chestOpenedConsumeBtn').addEventListener('click', function() {
+        var confirmM = document.getElementById('chestConsumeConfirmModal');
+        if (confirmM) {
+            confirmM.style.display = 'flex';
+            confirmM.style.visibility = 'visible';
+            confirmM.classList.add('open');
+        }
+    });
+
+    function closeChestConsumeConfirm() {
+        var m = document.getElementById('chestConsumeConfirmModal');
+        if (!m) return;
+        m.classList.remove('open');
+        m.style.display = 'none';
+        m.style.visibility = 'hidden';
+    }
+    document.getElementById('chestConsumeConfirmCancel') && document.getElementById('chestConsumeConfirmCancel').addEventListener('click', closeChestConsumeConfirm);
+    var chestConsumeConfirmModal = document.getElementById('chestConsumeConfirmModal');
+    if (chestConsumeConfirmModal) {
+        chestConsumeConfirmModal.addEventListener('click', function(e) {
+            if (e.target === chestConsumeConfirmModal) closeChestConsumeConfirm();
+        });
+    }
+    document.getElementById('chestConsumeConfirmOk') && document.getElementById('chestConsumeConfirmOk').addEventListener('click', function() {
+        if (!currentChestPurchaseId) {
+            closeChestConsumeConfirm();
+            return;
+        }
+        var pid = currentChestPurchaseId;
+        var btn = this;
+        btn.disabled = true;
+        fetch('/api/cabinet/inventory/' + pid + '/chest/consume', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: '{}'
+        })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    closeChestConsumeConfirm();
+                    closeChestOpenedModal();
+                    loadInventory();
+                } else {
+                    alert(data.error || 'Ошибка');
+                }
+            })
+            .catch(function() { alert('Ошибка соединения'); })
+            .finally(function() { btn.disabled = false; });
     });
 })();
 
