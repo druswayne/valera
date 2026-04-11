@@ -317,6 +317,8 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     .rating-nav-wrap.open .rating-nav-links { display: flex; }
     .rating-tabs { justify-content: center; }
     .rating-tabs a { flex: 1; min-width: 100px; text-align: center; }
+    .rating-row { flex-wrap: wrap; }
+    .rating-profile-btn { flex: 1 1 100%; max-width: 100%; margin-top: 4px; }
     .clan-members-row { padding-left: 18px; }
     .clan-row { padding: 12px 14px; }
 }
@@ -419,6 +421,246 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     .clan-chat-modal .modal-box { max-height: 80vh; padding: 14px; }
     .clan-chat-modal .clan-chat-messages { max-height: 200px; min-height: 100px; }
     .clan-chat-modal .modal-chat-close { top: 8px; right: 8px; width: 32px; height: 32px; }
+}
+
+/* Кнопка «Профиль» и модалка просмотра игрока */
+.rating-profile-btn {
+    flex-shrink: 0;
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: 2px solid #5c4033;
+    background: linear-gradient(145deg, #5c4033 0%, #4a3520 100%);
+    color: #d4a84b;
+    font-weight: bold;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.8rem;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+}
+.rating-profile-btn:hover { color: #e8c86a; border-color: #8b6914; }
+
+.rating-profile-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.78);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100100;
+    padding: 16px;
+    overflow-y: auto;
+}
+.rating-profile-overlay.open { display: flex; }
+.rating-profile-box {
+    position: relative;
+    max-width: 520px;
+    width: 100%;
+    max-height: 92vh;
+    overflow-y: auto;
+    padding: 22px 20px 20px;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #4a3520 0%, #3d2914 45%, #2c1810 100%);
+    border: 2px solid #5c4033;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(212,168,75,0.1);
+    color: #e8dcc4;
+}
+.rating-profile-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(92,64,51,0.35);
+    color: #d4a84b;
+    font-size: 1.35rem;
+    line-height: 1;
+    cursor: pointer;
+}
+.rating-profile-close:hover { background: rgba(92,64,51,0.55); color: #e8c86a; }
+.rating-profile-title {
+    font-family: 'Cinzel Decorative', 'Cinzel', Georgia, serif;
+    font-size: 1.25rem;
+    color: #d4a84b;
+    margin: 0 40px 14px 0;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+}
+.rating-profile-head {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+.rating-profile-avatar {
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #5c4033;
+    flex-shrink: 0;
+    background: #2c1810;
+}
+.rating-profile-avatar-ph {
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    border: 3px solid #5c4033;
+    background: #2c1810;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.2rem;
+    flex-shrink: 0;
+}
+.rating-profile-head-meta { flex: 1; min-width: 0; font-size: 0.95rem; line-height: 1.45; }
+.rating-profile-head-meta p { margin: 4px 0; color: #b8a088; }
+.rating-profile-clan-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+}
+.rating-profile-clan-flag {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #5c4033;
+}
+.rating-profile-clan-name { font-weight: bold; color: #e8dcc4; }
+.rating-profile-columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 16px 20px;
+    margin: 14px 0;
+    align-items: stretch;
+}
+.rating-profile-col {
+    padding: 12px 14px;
+    background: rgba(26,15,8,0.55);
+    border-radius: 8px;
+    border: 1px solid rgba(92,64,51,0.6);
+    font-size: 0.9rem;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    box-sizing: border-box;
+}
+.rating-profile-col-title {
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.82rem;
+    color: #d4a84b;
+    margin: 0 0 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(92,64,51,0.45);
+    letter-spacing: 0.06em;
+}
+.rating-profile-stat-row {
+    margin-bottom: 10px;
+    line-height: 1.35;
+}
+.rating-profile-stat-row:last-child { margin-bottom: 0; }
+.rating-profile-stat-row span { color: #b8a088; font-size: 0.85rem; display: block; }
+.rating-profile-stat-row strong { color: #d4a84b; font-size: 1rem; }
+.rating-profile-stat-note {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(92,64,51,0.35);
+    font-size: 0.82rem;
+    color: #b8a088;
+    line-height: 1.4;
+}
+@media (max-width: 520px) {
+    .rating-profile-columns { grid-template-columns: 1fr; }
+}
+.rating-profile-section-title {
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.95rem;
+    color: #d4a84b;
+    margin: 16px 0 8px;
+    letter-spacing: 0.05em;
+}
+.rating-profile-loading, .rating-profile-error {
+    text-align: center;
+    padding: 28px 12px;
+    color: #b8a088;
+}
+.rating-profile-error { color: #e8a090; }
+
+/* Сетка снаряжения — как в кабинете */
+.rating-profile-modal .equipment-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-areas:
+        ". helmet ."
+        "weapon chest offhand"
+        "gloves pants boots";
+    gap: 6px;
+    align-items: stretch;
+    max-width: 260px;
+    margin: 0 auto;
+}
+.rating-profile-modal .equipment-slot {
+    background: linear-gradient(145deg, #3d2914 0%, #2c1810 100%);
+    border-radius: 8px;
+    border: 2px solid #5c4033;
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    box-shadow: inset 0 1px 0 rgba(212,168,75,0.08);
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+}
+.rating-profile-modal .equipment-slot-label { display: none; }
+.rating-profile-modal .equipment-slot-body {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    border-radius: 6px;
+    border: 1px dashed rgba(212,168,75,0.35);
+    background-color: rgba(26,15,8,0.7);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    width: 100%;
+    height: 100%;
+}
+.rating-profile-modal .equipment-slot-body::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: rgba(0, 0, 0, 0.35);
+    pointer-events: none;
+}
+.rating-profile-modal .equipment-slot--inactive { opacity: 0.75; }
+.rating-profile-modal .equipment-slot--equipped { opacity: 1; box-shadow: 0 0 10px rgba(212,168,75,0.45), inset 0 1px 0 rgba(255,255,255,0.15); }
+.rating-profile-modal .equipment-slot--equipped .equipment-slot-body::after { background: none; }
+.rating-profile-modal .equipment-slot--helmet   { grid-area: helmet; }
+.rating-profile-modal .equipment-slot--chest    { grid-area: chest; }
+.rating-profile-modal .equipment-slot--pants    { grid-area: pants; }
+.rating-profile-modal .equipment-slot--gloves   { grid-area: gloves; }
+.rating-profile-modal .equipment-slot--boots    { grid-area: boots; }
+.rating-profile-modal .equipment-slot--weapon   { grid-area: weapon; }
+.rating-profile-modal .equipment-slot--offhand  { grid-area: offhand; }
+.rating-profile-modal .equipment-slot-body--helmet  { background-image: url("{{ url_for('static', filename='item/standart/helmet.png') }}"); }
+.rating-profile-modal .equipment-slot-body--chest   { background-image: url("{{ url_for('static', filename='item/standart/breastplate.png') }}"); }
+.rating-profile-modal .equipment-slot-body--pants   { background-image: url("{{ url_for('static', filename='item/standart/trousers.png') }}"); }
+.rating-profile-modal .equipment-slot-body--gloves  { background-image: url("{{ url_for('static', filename='item/standart/gloves.png') }}"); }
+.rating-profile-modal .equipment-slot-body--weapon  { background-image: url("{{ url_for('static', filename='item/standart/weapon.png') }}"); }
+.rating-profile-modal .equipment-slot-body--offhand { background-image: url("{{ url_for('static', filename='item/standart/weapon.png') }}"); }
+.rating-profile-modal .equipment-slot-body--boots   { background-image: url("{{ url_for('static', filename='item/standart/boots.png') }}"); }
+@media (max-width: 640px) {
+    .rating-profile-modal .equipment-grid {
+        max-width: 200px;
+        gap: 4px;
+    }
 }
 </style>
 {% endblock %}
@@ -523,6 +765,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                 <div class="rating-row-level">Ур. {{ item.level }}</div>
             </div>
             <span class="rating-row-value">{{ item.total_score }}</span>
+            <button type="button" class="rating-profile-btn" data-user-id="{{ item.id }}">Профиль</button>
         </div>
         {% endfor %}
         {% else %}
@@ -571,6 +814,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                 <div class="rating-row-level">Ур. {{ item.level }}</div>
             </div>
             <span class="rating-row-value">{{ item.wins }} побед</span>
+            <button type="button" class="rating-profile-btn" data-user-id="{{ item.id }}">Профиль</button>
         </div>
         {% endfor %}
         {% else %}
@@ -592,6 +836,17 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     </div>
     {% endif %}
 </div>
+
+{% if tab in ('pve', 'pvp') %}
+<div class="rating-profile-overlay" id="ratingProfileOverlay" aria-hidden="true">
+    <div class="rating-profile-box rating-profile-modal" id="ratingProfileBox" role="dialog" aria-modal="true" aria-labelledby="ratingProfileTitle">
+        <button type="button" class="rating-profile-close" id="ratingProfileClose" aria-label="Закрыть">×</button>
+        <h2 class="rating-profile-title" id="ratingProfileTitle">Профиль</h2>
+        <div id="ratingProfileContent"><div class="rating-profile-loading">Загрузка…</div></div>
+    </div>
+</div>
+{% endif %}
+
 {% if current_user.is_authenticated and current_user.clan_id %}
 <button type="button" class="floating-chat-btn" id="battleFloatingChatBtn" aria-label="Чат с кланом" title="Чат с кланом" data-clan-id="{{ current_user.clan_id }}">💬<span class="chat-unread-badge" id="battleClanChatUnreadBadge" aria-hidden="true" title="Есть новые сообщения"></span></button>
 {% endif %}
@@ -636,6 +891,201 @@ function toggleClan(rowEl) {
     if (rowEl && rowEl.classList) rowEl.classList.toggle('expanded');
 }
 </script>
+{% if tab in ('pve', 'pvp') %}
+<script>
+(function() {
+    var overlay = document.getElementById('ratingProfileOverlay');
+    var box = document.getElementById('ratingProfileBox');
+    var content = document.getElementById('ratingProfileContent');
+    var closeBtn = document.getElementById('ratingProfileClose');
+    if (!overlay || !content) return;
+
+    function profileUrl(userId) {
+        return {{ url_for('api_rating_user_profile', user_id=0) | tojson }}.replace(/\/user\/0\//, '/user/' + userId + '/');
+    }
+    function escapeHtml(s) {
+        if (s == null || s === '') return '';
+        var d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+    function fmtDate(iso) {
+        if (!iso) return '—';
+        try {
+            var d = new Date(iso);
+            return d.toLocaleDateString('ru-RU', { day: '2-digit', month: 'long', year: 'numeric' });
+        } catch (e) { return '—'; }
+    }
+
+    function equipmentGridHtml() {
+        return '<div class="equipment-section-body"><div class="equipment-grid">' +
+            '<div class="equipment-slot equipment-slot--helmet equipment-slot--inactive" data-rp-slot="helmet">' +
+            '<div class="equipment-slot-body equipment-slot-body--helmet"></div></div>' +
+            '<div class="equipment-slot equipment-slot--weapon equipment-slot--inactive" data-rp-slot="weapon_main">' +
+            '<div class="equipment-slot-body equipment-slot-body--weapon"></div></div>' +
+            '<div class="equipment-slot equipment-slot--offhand equipment-slot--inactive" data-rp-slot="weapon_off">' +
+            '<div class="equipment-slot-body equipment-slot-body--offhand"></div></div>' +
+            '<div class="equipment-slot equipment-slot--chest equipment-slot--inactive" data-rp-slot="chest">' +
+            '<div class="equipment-slot-body equipment-slot-body--chest"></div></div>' +
+            '<div class="equipment-slot equipment-slot--pants equipment-slot--inactive" data-rp-slot="pants">' +
+            '<div class="equipment-slot-body equipment-slot-body--pants"></div></div>' +
+            '<div class="equipment-slot equipment-slot--gloves equipment-slot--inactive" data-rp-slot="gloves">' +
+            '<div class="equipment-slot-body equipment-slot-body--gloves"></div></div>' +
+            '<div class="equipment-slot equipment-slot--boots equipment-slot--inactive" data-rp-slot="boots">' +
+            '<div class="equipment-slot-body equipment-slot-body--boots"></div></div>' +
+            '</div></div>';
+    }
+
+    function applySlots(slots) {
+        var mapping = {
+            helmet: '.equipment-slot--helmet',
+            chest: '.equipment-slot--chest',
+            pants: '.equipment-slot--pants',
+            gloves: '.equipment-slot--gloves',
+            boots: '.equipment-slot--boots',
+            weapon_main: '.equipment-slot--weapon',
+            weapon_off: '.equipment-slot--offhand'
+        };
+        Object.keys(mapping).forEach(function(key) {
+            var el = content.querySelector(mapping[key]);
+            if (!el) return;
+            var body = el.querySelector('.equipment-slot-body');
+            var info = slots && slots[key];
+            if (info && info.image_url) {
+                el.classList.add('equipment-slot--equipped');
+                el.classList.remove('equipment-slot--inactive');
+                el.setAttribute('title', info.name || '');
+                if (body) body.style.backgroundImage = 'url(' + JSON.stringify(String(info.image_url)) + ')';
+            } else {
+                el.classList.remove('equipment-slot--equipped');
+                el.classList.add('equipment-slot--inactive');
+                el.removeAttribute('title');
+                if (body) body.style.backgroundImage = '';
+            }
+        });
+    }
+
+    function renderProfile(data) {
+        var u = data.user;
+        var st = data.stats || {};
+        var slots = data.slots || {};
+        var xpPct = (st.xp_bonus_pct && Math.abs(st.xp_bonus_pct) > 0.001) ? ('+' + Number(st.xp_bonus_pct).toFixed(1) + '% к опыту') : null;
+        var numsPct = (st.nums_bonus_pct && Math.abs(st.nums_bonus_pct) > 0.001) ? ('+' + Number(st.nums_bonus_pct).toFixed(1) + '% к Нумам') : null;
+        var bonusLine = [xpPct, numsPct].filter(Boolean).join(' · ');
+
+        var avatarBlock = u.avatar_url
+            ? '<img class="rating-profile-avatar" src="' + escapeHtml(u.avatar_url) + '" alt="">'
+            : '<div class="rating-profile-avatar-ph" aria-hidden="true">👤</div>';
+
+        var clanHtml = '';
+        if (u.clan && u.clan.name) {
+            var flag = u.clan.flag_url
+                ? '<img class="rating-profile-clan-flag" src="' + escapeHtml(u.clan.flag_url) + '" alt="">'
+                : '<div class="rating-profile-clan-flag" style="display:flex;align-items:center;justify-content:center;background:#2c1810;font-size:1.2rem;">🏴</div>';
+            clanHtml = '<div class="rating-profile-clan-row">' + flag +
+                '<div><div class="rating-profile-clan-name">' + escapeHtml(u.clan.name) + '</div>' +
+                '<div style="font-size:0.85rem;color:#b8a088;">' + escapeHtml(u.clan_title || '') + '</div></div></div>';
+        } else {
+            clanHtml = '<p style="margin:8px 0 0;color:#b8a088;">Клан: <strong style="color:#8f7a62;">нет</strong></p>';
+        }
+
+        var xpBarNote = 'Опыт: ' + (u.xp_in_current_level != null ? u.xp_in_current_level : '—') + ' / ' +
+            (u.xp_needed_for_next_level != null ? u.xp_needed_for_next_level : '—') + ' до след. уровня';
+
+        content.innerHTML =
+            '<div class="rating-profile-head">' + avatarBlock +
+            '<div class="rating-profile-head-meta">' +
+            '<p style="margin-top:0;color:#e8dcc4;font-weight:bold;font-size:1.05rem;">' + escapeHtml(u.display_name || '') + '</p>' +
+            '<p>Уровень: <strong style="color:#d4a84b;">' + escapeHtml(String(u.level || 1)) + '</strong></p>' +
+            '<p style="font-size:0.85rem;">' + escapeHtml(xpBarNote) + '</p>' +
+            clanHtml +
+            '</div></div>' +
+
+            '<div class="rating-profile-columns">' +
+            '<div class="rating-profile-col">' +
+            '<div class="rating-profile-col-title">Характеристики</div>' +
+            '<div class="rating-profile-stat-row"><span>Урон</span><strong>' + escapeHtml(String(st.damage != null ? st.damage : '—')) + '</strong></div>' +
+            '<div class="rating-profile-stat-row"><span>Защита</span><strong>' + escapeHtml(String(st.defense != null ? st.defense : '—')) + '</strong></div>' +
+            '<div class="rating-profile-stat-row"><span>Макс. энергия</span><strong>' + escapeHtml(String(st.max_energy != null ? st.max_energy : '—')) + '</strong></div>' +
+            '<div class="rating-profile-stat-row"><span>Текущая энергия</span><strong>' + escapeHtml(String(st.current_energy != null ? st.current_energy : '—')) + '</strong></div>' +
+            '<div class="rating-profile-stat-row"><span>Очки навыков (урон / защита / энергия)</span><strong>' +
+            escapeHtml(String(u.damage_skill || 0)) + ' / ' + escapeHtml(String(u.defense_skill || 0)) + ' / ' + escapeHtml(String(u.energy_skill || 0)) +
+            '</strong></div>' +
+            (bonusLine ? '<div class="rating-profile-stat-note">Бонусы от снаряжения: ' + escapeHtml(bonusLine) + '</div>' : '') +
+            '</div>' +
+
+            '<div class="rating-profile-col">' +
+            '<div class="rating-profile-col-title">Статистика</div>' +
+            '<div class="rating-profile-stat-row"><span>Урон по чужим областям (PvE)</span><strong>' + escapeHtml(String(u.territory_damage != null ? u.territory_damage : 0)) + '</strong></div>' +
+            '<div class="rating-profile-stat-row"><span>Очки влияния при защите (PvE)</span><strong>' + escapeHtml(String(u.territory_influence != null ? u.territory_influence : 0)) + '</strong></div>' +
+            '<div class="rating-profile-stat-row"><span>Сумма для рейтинга PvE</span><strong>' + escapeHtml(String(u.territory_score != null ? u.territory_score : 0)) + '</strong></div>' +
+            '<div class="rating-profile-stat-row"><span>Побед в дуэлях PvP</span><strong>' + escapeHtml(String(u.pvp_wins != null ? u.pvp_wins : 0)) + '</strong></div>' +
+            '<div class="rating-profile-stat-row"><span>На сайте с</span><strong>' + escapeHtml(fmtDate(u.created_at)) + '</strong></div>' +
+            '</div>' +
+            '</div>' +
+
+            '<h3 class="rating-profile-section-title">Снаряжение</h3>' +
+            equipmentGridHtml();
+
+        applySlots(slots);
+        var titleEl = document.getElementById('ratingProfileTitle');
+        if (titleEl) titleEl.textContent = u.display_name || 'Профиль';
+    }
+
+    function openModal() {
+        overlay.classList.add('open');
+        overlay.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeModal() {
+        overlay.classList.remove('open');
+        overlay.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+        var titleEl = document.getElementById('ratingProfileTitle');
+        if (titleEl) titleEl.textContent = 'Профиль';
+        content.innerHTML = '<div class="rating-profile-loading">Загрузка…</div>';
+    }
+
+    function loadProfile(userId) {
+        content.innerHTML = '<div class="rating-profile-loading">Загрузка…</div>';
+        openModal();
+        fetch(profileUrl(userId))
+            .then(function(r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(function(data) {
+                if (!data.success) {
+                    content.innerHTML = '<div class="rating-profile-error">' + escapeHtml(data.error || 'Ошибка загрузки') + '</div>';
+                    return;
+                }
+                renderProfile(data);
+            })
+            .catch(function() {
+                content.innerHTML = '<div class="rating-profile-error">Не удалось загрузить профиль</div>';
+            });
+    }
+
+    document.querySelector('.rating-page').addEventListener('click', function(e) {
+        var btn = e.target.closest('.rating-profile-btn');
+        if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        var uid = parseInt(btn.getAttribute('data-user-id'), 10);
+        if (!uid) return;
+        loadProfile(uid);
+    });
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) closeModal();
+    });
+    if (box) box.addEventListener('click', function(e) { e.stopPropagation(); });
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && overlay.classList.contains('open')) closeModal();
+    });
+})();
+</script>
+{% endif %}
 {% if current_user.is_authenticated and current_user.clan_id %}
 <script>
 (function() {

@@ -1347,6 +1347,18 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     font-size: 0.85rem;
     color: #6b5344;
 }
+.territory-structure-card-combat {
+    font-size: 0.78rem;
+    color: #4a3520;
+    line-height: 1.35;
+    margin-top: 2px;
+}
+.territory-structure-combat-hint {
+    font-size: 0.82rem;
+    color: #5c4033;
+    margin: 4px 0 6px;
+    line-height: 1.35;
+}
 .territory-structure-info-header {
     display: flex;
     align-items: flex-start;
@@ -2170,7 +2182,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
             <div class="territory-structure-block" id="territoryStructureBuildBlock" style="display: none;">
                 <div class="territory-structure-block-header">
                     <span class="territory-structure-block-title">Сооружения</span>
-                    <span class="territory-structure-block-desc">Доход лидеру клана каждые два часа</span>
+                    <span class="territory-structure-block-desc">Доход лидеру клана каждые два часа. Крепость и замок усиливают оборону области.</span>
                 </div>
                 <button type="button" class="territory-clan-marker-btn territory-structure-build-btn" id="territoryStructureBuildBtn">🏗 Выбрать тип постройки</button>
                 <div class="territory-structure-choice" id="territoryStructureChoice" style="display: none;">
@@ -2187,6 +2199,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                         <div class="territory-structure-card-body">
                             <span class="territory-structure-card-name">Крепость</span>
                             <span class="territory-structure-card-income">+1 000 Нум каждые 2 ч</span>
+                            <span class="territory-structure-card-combat">В бою: враги бьют по прочности на 10% слабее; защитники дают на 10% больше очков защиты</span>
                             <span class="territory-structure-card-cost">Стоимость: 7 000 Нум</span>
                         </div>
                     </button>
@@ -2195,6 +2208,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                         <div class="territory-structure-card-body">
                             <span class="territory-structure-card-name">Замок</span>
                             <span class="territory-structure-card-income">+2 000 Нум каждые 2 ч</span>
+                            <span class="territory-structure-card-combat">В бою: враги бьют по прочности на 20% слабее; защитники дают на 20% больше очков защиты</span>
                             <span class="territory-structure-card-cost">Стоимость: 10 000 Нум</span>
                         </div>
                     </button>
@@ -2205,6 +2219,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                     <img class="territory-structure-info-icon" id="territoryStructureInfoIcon" src="" alt="" width="36" height="36">
                     <div class="territory-structure-info-text">
                         <span class="territory-structure-info-label" id="territoryStructureInfoLabel"></span>
+                        <p class="territory-structure-combat-hint" id="territoryStructureCombatHint" style="display:none;"></p>
                         <p class="territory-structure-next-payout" id="territoryStructureNextPayout"></p>
                     </div>
                 </div>
@@ -3800,6 +3815,21 @@ window.territoryFocusProtection = (function() {
                 document.getElementById('territoryStructureInfoLabel').textContent = names[r.structureType] || r.structureType;
                 var iconEl = document.getElementById('territoryStructureInfoIcon');
                 if (iconEl && icons[r.structureType]) iconEl.src = icons[r.structureType];
+                var combatHintEl = document.getElementById('territoryStructureCombatHint');
+                var combatByType = {
+                    fortress: 'Оборона: враги наносят по прочности на 10% меньше урона; защитники области добавляют на 10% больше к защите.',
+                    castle: 'Оборона: враги наносят по прочности на 20% меньше урона; защитники области добавляют на 20% больше к защите.'
+                };
+                if (combatHintEl) {
+                    var cht = combatByType[r.structureType] || '';
+                    if (cht) {
+                        combatHintEl.textContent = cht;
+                        combatHintEl.style.display = 'block';
+                    } else {
+                        combatHintEl.textContent = '';
+                        combatHintEl.style.display = 'none';
+                    }
+                }
                 var nextPayoutEl = document.getElementById('territoryStructureNextPayout');
                 function updateStructureCountdown() {
                     if (!nextPayoutEl || !r.lastPayoutAt) return;

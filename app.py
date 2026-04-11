@@ -466,6 +466,11 @@ def skill_points_total_for_level(level):
     return INITIAL_SKILL_POINTS + max(0, level - 1) * SKILL_POINTS_PER_LEVEL
 
 
+# Базовая награда в Нумах за правильное решение задачи на карте (до баффов/дебаффов региона).
+# 0.8 = на 20% меньше относительно прежней формулы.
+TASK_NUMS_REWARD_MULTIPLIER = 0.8
+
+
 def nums_reward_range_for_level(level):
     """Диапазон награды в Нумах за правильное решение задачи в зависимости от уровня. Возвращает (min_nums, max_nums)."""
     level = max(1, min(USER_MAX_LEVEL, int(level or 1)))
@@ -477,9 +482,10 @@ def nums_reward_range_for_level(level):
 
 
 def roll_nums_reward(level):
-    """Случайная награда в Нумах за правильное решение с разбросом по уровню."""
+    """Случайная награда в Нумах за правильное решение с разбросом по уровню (с учётом TASK_NUMS_REWARD_MULTIPLIER)."""
     low, high = nums_reward_range_for_level(level)
-    return random.randint(low, high)
+    raw = random.randint(low, high)
+    return max(0, int(round(raw * TASK_NUMS_REWARD_MULTIPLIER)))
 
 
 class TerritoryTask(db.Model):
@@ -1393,6 +1399,29 @@ TERRITORY_STRUCTURE_BUILD_COST = {TERRITORY_STRUCTURE_VILLAGE: 4000, TERRITORY_S
 TERRITORY_STRUCTURE_PAYOUT_AMOUNT = {TERRITORY_STRUCTURE_VILLAGE: 500, TERRITORY_STRUCTURE_FORTRESS: 1000, TERRITORY_STRUCTURE_CASTLE: 2000}
 # Интервал начисления дохода с сооружений — ровно 2 часа
 TERRITORY_STRUCTURE_PAYOUT_INTERVAL_HOURS = 2
+# Боевой эффект сооружения на области: атакующие по прочности бьют слабее; защитники усиливают область сильнее.
+TERRITORY_STRUCTURE_ATTACK_DAMAGE_MULT = {
+    TERRITORY_STRUCTURE_VILLAGE: 1.0,
+    TERRITORY_STRUCTURE_FORTRESS: 0.9,  # на 10% меньше урона по прочности
+    TERRITORY_STRUCTURE_CASTLE: 0.8,   # на 20% меньше
+}
+TERRITORY_STRUCTURE_DEFENSE_POWER_MULT = {
+    TERRITORY_STRUCTURE_VILLAGE: 1.0,
+    TERRITORY_STRUCTURE_FORTRESS: 1.1,  # на 10% больше очков защиты (прочность + влияние)
+    TERRITORY_STRUCTURE_CASTLE: 1.2,   # на 20% больше
+}
+
+
+def _structure_combat_multipliers_for_region(region_index):
+    """Множители (урон атакующего по области, сила защитника) с учётом сооружения на клетке region_index."""
+    struct = TerritoryRegionStructure.query.filter_by(region_index=region_index).first()
+    if not struct:
+        return (1.0, 1.0)
+    st = struct.structure_type
+    return (
+        float(TERRITORY_STRUCTURE_ATTACK_DAMAGE_MULT.get(st, 1.0)),
+        float(TERRITORY_STRUCTURE_DEFENSE_POWER_MULT.get(st, 1.0)),
+    )
 
 
 class TerritoryRegionStructure(db.Model):
@@ -6493,6 +6522,99 @@ def api_territory_clan_search_chat_send():
 RATING_PAGE_SIZE = 20
 
 
+def _equipment_slots_public_dict(user_id: int) -> dict:
+    """Надетое снаряжение пользователя для публичного профиля (как в api_cabinet_equipment_state)."""
+    slots: dict[str, dict] = {}
+    rows = (
+        UserEquipment.query
+        .join(UserShopPurchase, UserEquipment.purchase_id == UserShopPurchase.id)
+        .join(ShopItem, UserShopPurchase.shop_item_id == ShopItem.id)
+        .filter(
+            UserEquipment.user_id == user_id,
+            ShopItem.category == SHOP_CATEGORY_EQUIPMENT,
+        )
+        .all()
+    )
+    for ue in rows:
+        item = ue.purchase.shop_item if ue.purchase else None
+        if not item:
+            continue
+        static_path = _avatar_static_filename(item.image_filename) if item.image_filename else None
+        slots[ue.slot] = {
+            'purchase_id': ue.purchase_id,
+            'item_id': item.id,
+            'name': item.name,
+            'image_url': url_for('static', filename=static_path) if static_path else None,
+        }
+    return slots
+
+
+@app.route('/api/rating/user/<int:user_id>/profile')
+def api_rating_user_profile(user_id):
+    """Публичный профиль игрока для страницы рейтинга (без логина)."""
+    u = User.query.get(user_id)
+    if not u:
+        return jsonify({'success': False, 'error': 'Пользователь не найден'}), 404
+
+    slots = _equipment_slots_public_dict(u.id)
+    stats_row = UserTerritoryStats.query.filter_by(user_id=u.id).first()
+    t_dmg = (stats_row.total_damage_dealt or 0) if stats_row else 0
+    t_inf = (stats_row.total_influence_points or 0) if stats_row else 0
+    pvp_wins = db.session.query(func.count(PvPDuel.id)).filter(
+        PvPDuel.status == 'finished',
+        PvPDuel.winner_id == u.id,
+    ).scalar() or 0
+
+    clan_payload = None
+    if u.clan_id:
+        clan = u.clan_obj
+        if clan:
+            clan_payload = {
+                'id': clan.id,
+                'name': clan.name,
+                'flag_url': url_for('static', filename=_avatar_static_filename(clan.flag_filename)) if clan.flag_filename else None,
+            }
+
+    avatar_url = url_for('static', filename=_avatar_static_filename(u.avatar_filename)) if getattr(u, 'avatar_filename', None) else None
+    try:
+        bonuses = _get_equipment_bonuses(u.id)
+    except Exception:
+        bonuses = {}
+
+    return jsonify({
+        'success': True,
+        'user': {
+            'id': u.id,
+            'display_name': u.character_name or u.username,
+            'avatar_url': avatar_url,
+            'level': u.level or 1,
+            'experience': u.experience or 0,
+            'xp_in_current_level': u.xp_in_current_level,
+            'xp_needed_for_next_level': u.xp_needed_for_next_level,
+            'damage_skill': u.damage_skill or 0,
+            'defense_skill': u.defense_skill or 0,
+            'energy_skill': u.energy_skill or 0,
+            'clan': clan_payload,
+            'clan_rank': u.clan_rank,
+            'clan_title': u.clan_title,
+            'territory_damage': int(t_dmg),
+            'territory_influence': int(t_inf),
+            'territory_score': int(t_dmg + t_inf),
+            'pvp_wins': int(pvp_wins),
+            'created_at': u.created_at.isoformat() if u.created_at else None,
+        },
+        'slots': slots,
+        'stats': {
+            'damage': u.damage,
+            'defense': u.defense,
+            'max_energy': u.energy,
+            'current_energy': u.current_energy_value,
+            'xp_bonus_pct': float(bonuses.get('xp_pct', 0.0) or 0.0) if isinstance(bonuses, dict) else 0.0,
+            'nums_bonus_pct': float(bonuses.get('nums_pct', 0.0) or 0.0) if isinstance(bonuses, dict) else 0.0,
+        },
+    })
+
+
 @app.route('/game-rating')
 def game_rating_page():
     """Рейтинг: выбор вкладки (топ кланов / топ PvE / топ PvP) с пагинацией по 20 записей."""
@@ -7047,6 +7169,11 @@ def api_territory_apply_action():
     mult = _get_multipliers_for_action(current_user.id, clan_id, region_index, is_attack=not is_own_region)
     power_pct = mult['defense_pct'] if is_own_region else mult['damage_pct']
     power = max(1, int(round(base_power * (1 + power_pct / 100.0))))
+    attack_struct_mult, defend_struct_mult = _structure_combat_multipliers_for_region(region_index)
+    if is_own_region:
+        power = max(1, int(round(power * defend_struct_mult)))
+    else:
+        power = max(1, int(round(power * attack_struct_mult)))
     if not correct:
         db.session.commit()
         return jsonify({
