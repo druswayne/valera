@@ -692,7 +692,8 @@ SHOP_CATEGORY_SPECIAL = 'special'
 SHOP_CATEGORY_CHEST = 'chest'
 # special_type: свиток заточки оружия (обрабатывается в кабинете, не через _use_special_shop_item)
 SPECIAL_TYPE_WEAPON_ENCHANT_SCROLL = 'weapon_enchant_scroll'
-# Множитель к числовым бонусам оружия за каждый уровень заточки: итог = 1 + уровень * это значение (+20% за уровень → 0.2)
+# Заточка оружия: к каждому числовому бонусу оружия добавляется level * это значение * база
+# (напр. атака 5 и +4 → 5 + 4 * 0.2 * 5 = 9). Эквивалентно: база * (1 + level * это значение).
 WEAPON_ENCHANT_STAT_MULT_PER_LEVEL = 0.20
 
 SHOP_EFFECT_TYPES = ['damage', 'defense', 'current_energy', 'max_energy', 'xp_reward', 'nums_reward']
@@ -987,9 +988,11 @@ def _weapon_enchant_level_clamped(level) -> int:
         return 0
 
 
-def _weapon_enchant_multiplier(level) -> float:
-    """Все числовые эффекты заточенного оружия умножаются на (1 + уровень * WEAPON_ENCHANT_STAT_MULT_PER_LEVEL)."""
-    return 1.0 + WEAPON_ENCHANT_STAT_MULT_PER_LEVEL * _weapon_enchant_level_clamped(level)
+def _weapon_enchant_effective_effect_value(base_val: float, level: int) -> float:
+    """Числовой эффект оружия с заточкой: base + level * r * base (см. WEAPON_ENCHANT_STAT_MULT_PER_LEVEL)."""
+    b = float(base_val or 0.0)
+    lv = _weapon_enchant_level_clamped(level)
+    return b + lv * WEAPON_ENCHANT_STAT_MULT_PER_LEVEL * b
 
 
 def _weapon_enchant_success_chance_before_attempt(current_level: int) -> float:
@@ -3226,11 +3229,14 @@ def _get_equipment_bonuses(user_id: int | None):
     for _ue, purchase, item in rows:
         if not item:
             continue
-        mult = 1.0
-        if (item.equipment_slot or '').strip().lower() == 'weapon' and purchase is not None:
-            mult = _weapon_enchant_multiplier(getattr(purchase, 'weapon_enchant_level', 0))
+        is_wpn = (item.equipment_slot or '').strip().lower() == 'weapon' and purchase is not None
+        w_lv = _weapon_enchant_level_clamped(getattr(purchase, 'weapon_enchant_level', 0)) if is_wpn else 0
         for e in item.effects:
-            val = (e.percent_change or 0) * mult
+            raw = float(e.percent_change or 0)
+            if is_wpn:
+                val = _weapon_enchant_effective_effect_value(raw, w_lv)
+            else:
+                val = raw
             if e.effect_type == 'damage':
                 result['damage_add'] += val
             elif e.effect_type == 'defense':
