@@ -690,6 +690,10 @@ SHOP_CATEGORY_EQUIPMENT = 'equipment'
 # Особые предметы (кастомные эффекты, не завязанные на таблицу эффектов)
 SHOP_CATEGORY_SPECIAL = 'special'
 SHOP_CATEGORY_CHEST = 'chest'
+# special_type: свиток заточки оружия (обрабатывается в кабинете, не через _use_special_shop_item)
+SPECIAL_TYPE_WEAPON_ENCHANT_SCROLL = 'weapon_enchant_scroll'
+# Множитель к числовым бонусам оружия за каждый уровень заточки: итог = 1 + уровень * это значение (+20% за уровень → 0.2)
+WEAPON_ENCHANT_STAT_MULT_PER_LEVEL = 0.20
 
 SHOP_EFFECT_TYPES = ['damage', 'defense', 'current_energy', 'max_energy', 'xp_reward', 'nums_reward']
 
@@ -780,6 +784,8 @@ class UserShopPurchase(db.Model):
     # Сундук: после открытия фиксируется вариант дропа
     chest_opened_at = db.Column(db.DateTime, nullable=True)
     chest_drop_option_id = db.Column(db.Integer, db.ForeignKey('shop_chest_drop_option.id'), nullable=True)
+    # Уровень заточки оружия (0–20), только для покупок снаряжения со слотом weapon
+    weapon_enchant_level = db.Column(db.Integer, default=0, nullable=False)
     user = db.relationship('User', backref=db.backref('shop_purchases', lazy=True))
     shop_item = db.relationship('ShopItem', backref=db.backref('purchases', lazy=True))
     chest_drop_option = db.relationship('ShopChestDropOption', foreign_keys=[chest_drop_option_id], lazy=True)
@@ -972,6 +978,35 @@ def _scheduler_renew_lock() -> None:
     except Exception as e:
         logger.error(f'Ошибка продления лока планировщика: {e}')
         db.session.rollback()
+
+
+def _weapon_enchant_level_clamped(level) -> int:
+    try:
+        return max(0, min(20, int(level or 0)))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _weapon_enchant_multiplier(level) -> float:
+    """Все числовые эффекты заточенного оружия умножаются на (1 + уровень * WEAPON_ENCHANT_STAT_MULT_PER_LEVEL)."""
+    return 1.0 + WEAPON_ENCHANT_STAT_MULT_PER_LEVEL * _weapon_enchant_level_clamped(level)
+
+
+def _weapon_enchant_success_chance_before_attempt(current_level: int) -> float:
+    """100% при текущей заточке 0…2 (до +3 включительно); при заточке +3 и выше до максимума +20 — 60% за попытку."""
+    cur = _weapon_enchant_level_clamped(current_level)
+    if cur >= 20:
+        return 0.0
+    if cur < 3:
+        return 1.0
+    return 0.6
+
+
+def _weapon_enchant_overlay_url(level: int):
+    lv = _weapon_enchant_level_clamped(level)
+    if lv <= 0:
+        return None
+    return url_for('static', filename=f'item/enchant_panel/enchant_panel_{lv:02d}.png')
 
 
 def _use_special_shop_item(purchase: 'UserShopPurchase', item: 'ShopItem'):
@@ -2307,6 +2342,9 @@ with app.app_context():
                 if 'chest_drop_option_id' not in usp_cols:
                     conn.execute(text('ALTER TABLE user_shop_purchase ADD COLUMN chest_drop_option_id INTEGER'))
                     print("Добавлена колонка chest_drop_option_id в user_shop_purchase")
+                if 'weapon_enchant_level' not in usp_cols:
+                    conn.execute(text('ALTER TABLE user_shop_purchase ADD COLUMN weapon_enchant_level INTEGER DEFAULT 0'))
+                    print("Добавлена колонка weapon_enchant_level в user_shop_purchase")
         # Создаём таблицы для Демогorgonов и лока планировщика, если их ещё нет
         if 'demogorgon_army' not in tables or 'demogorgon_damage' not in tables or 'scheduler_instance_lock' not in tables:
             db.create_all()
@@ -2326,6 +2364,21 @@ with app.app_context():
     except Exception as e:
         print(f"Ошибка при создании таблиц лавки: {e}")
         db.create_all()
+
+    # Отдельно от большого try лавки: иначе при частичной ошибке выше колонка заточки могла не создаться,
+    # а db.create_all() не добавляет поля в уже существующие таблицы.
+    try:
+        from sqlalchemy import inspect as _insp_usp, text as _text_usp
+        _inspector_usp = _insp_usp(db.engine)
+        _tables_usp = _inspector_usp.get_table_names()
+        if 'user_shop_purchase' in _tables_usp:
+            _usp_col_names = {c['name'] for c in _inspector_usp.get_columns('user_shop_purchase')}
+            if 'weapon_enchant_level' not in _usp_col_names:
+                with db.engine.begin() as _conn_usp:
+                    _conn_usp.execute(_text_usp('ALTER TABLE user_shop_purchase ADD COLUMN weapon_enchant_level INTEGER DEFAULT 0'))
+                print('Добавлена колонка weapon_enchant_level в user_shop_purchase (отдельная миграция)')
+    except Exception as _e_usp:
+        print(f'Миграция weapon_enchant_level (отдельный блок): {_e_usp}')
 
     # Миграция: кланы и пользователи (character_name, clan_id, avatar, territory stats)
     try:
@@ -3157,9 +3210,11 @@ def _get_equipment_bonuses(user_id: int | None):
     }
     if not user_id:
         return result
-    # Получаем все надетые предметы пользователя и их эффекты
-    equipments = (
-        UserEquipment.query
+    # Явно подтягиваем покупку в том же запросе, чтобы weapon_enchant_level всегда совпадал с БД
+    # (при только join() связь ue.purchase может догружаться отдельным SELECT).
+    rows = (
+        db.session.query(UserEquipment, UserShopPurchase, ShopItem)
+        .select_from(UserEquipment)
         .join(UserShopPurchase, UserEquipment.purchase_id == UserShopPurchase.id)
         .join(ShopItem, UserShopPurchase.shop_item_id == ShopItem.id)
         .filter(
@@ -3168,12 +3223,14 @@ def _get_equipment_bonuses(user_id: int | None):
         )
         .all()
     )
-    for ue in equipments:
-        item = ue.purchase.shop_item if ue.purchase else None
+    for _ue, purchase, item in rows:
         if not item:
             continue
+        mult = 1.0
+        if (item.equipment_slot or '').strip().lower() == 'weapon' and purchase is not None:
+            mult = _weapon_enchant_multiplier(getattr(purchase, 'weapon_enchant_level', 0))
         for e in item.effects:
-            val = e.percent_change or 0
+            val = (e.percent_change or 0) * mult
             if e.effect_type == 'damage':
                 result['damage_add'] += val
             elif e.effect_type == 'defense':
@@ -3412,6 +3469,7 @@ def api_cabinet_inventory():
         for e in UserEquipment.query.filter(UserEquipment.user_id == current_user.id).all()
     }
     for p in purchases:
+        w_ench = _weapon_enchant_level_clamped(getattr(p, 'weapon_enchant_level', 0))
         row = {
             'id': p.id,
             'item_id': p.shop_item_id,
@@ -3423,6 +3481,14 @@ def api_cabinet_inventory():
             'grade': (p.shop_item.grade or '').strip().lower() or None,
             'equipped_slot': equipped.get(p.id),
             'special_type': (p.shop_item.special_type or '').strip().lower() if getattr(p.shop_item, 'special_type', None) else None,
+            'weapon_enchant_level': w_ench if p.shop_item.category == SHOP_CATEGORY_EQUIPMENT else 0,
+            'enchant_overlay_url': (
+                _weapon_enchant_overlay_url(w_ench)
+                if p.shop_item.category == SHOP_CATEGORY_EQUIPMENT
+                and (p.shop_item.equipment_slot or '').strip().lower() == 'weapon'
+                and w_ench > 0
+                else None
+            ),
         }
         if p.shop_item.category == SHOP_CATEGORY_CHEST:
             opened = bool(p.chest_opened_at)
@@ -3477,11 +3543,16 @@ def api_cabinet_equipment_state():
         if not item:
             continue
         static_path = _avatar_static_filename(item.image_filename) if item.image_filename else None
+        pur = ue.purchase
+        wlv = _weapon_enchant_level_clamped(getattr(pur, 'weapon_enchant_level', 0)) if pur else 0
+        is_weapon = (item.equipment_slot or '').strip().lower() == 'weapon'
         slots[ue.slot] = {
             'purchase_id': ue.purchase_id,
             'item_id': item.id,
             'name': item.name,
             'image_url': url_for('static', filename=static_path) if static_path else None,
+            'weapon_enchant_level': wlv if is_weapon else 0,
+            'enchant_overlay_url': _weapon_enchant_overlay_url(wlv) if is_weapon and wlv > 0 else None,
         }
     bonuses = _get_equipment_bonuses(current_user.id)
     return jsonify({
@@ -3629,6 +3700,12 @@ def api_cabinet_inventory_use(purchase_id):
         return jsonify({'success': False, 'error': 'Сундук открывается отдельной кнопкой в инвентаре.'}), 400
     # Особые предметы обрабатываются отдельной логикой
     if item.category == SHOP_CATEGORY_SPECIAL:
+        if (item.special_type or '').strip().lower() == SPECIAL_TYPE_WEAPON_ENCHANT_SCROLL:
+            return jsonify({
+                'success': True,
+                'client_action': 'weapon_enchant',
+                'scroll_purchase_id': purchase.id,
+            })
         return _use_special_shop_item(purchase, item)
     effects = list(item.effects)
     if not effects:
@@ -3731,6 +3808,90 @@ def api_cabinet_inventory_use(purchase_id):
         'message': 'Предмет использован',
         'buff_id': buff.id,
         'one_shot': one_shot,
+    })
+
+
+@app.route('/api/cabinet/inventory/enchant-weapon', methods=['POST'])
+@login_required
+def api_cabinet_inventory_enchant_weapon():
+    """Потратить свиток заточки (special) и попытаться повысить уровень заточки оружия (покупка equipment, слот weapon)."""
+    if current_user.is_admin:
+        return jsonify({'success': False, 'error': 'Администратор не участвует'}), 403
+    data = request.get_json() or {}
+    try:
+        scroll_pid = int(data.get('scroll_purchase_id') or 0)
+        weapon_pid = int(data.get('weapon_purchase_id') or 0)
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'error': 'Некорректные данные'}), 400
+    if not scroll_pid or not weapon_pid:
+        return jsonify({'success': False, 'error': 'Укажите свиток и оружие'}), 400
+    if scroll_pid == weapon_pid:
+        return jsonify({'success': False, 'error': 'Нельзя выбрать один и тот же предмет'}), 400
+
+    scroll_p = UserShopPurchase.query.filter_by(id=scroll_pid, user_id=current_user.id).first()
+    weapon_p = UserShopPurchase.query.filter_by(id=weapon_pid, user_id=current_user.id).first()
+    if not scroll_p or not weapon_p:
+        return jsonify({'success': False, 'error': 'Покупка не найдена'}), 404
+
+    scroll_item = scroll_p.shop_item
+    weapon_item = weapon_p.shop_item
+    if not scroll_item or scroll_item.shop_context != SHOP_CONTEXT_TERRITORY:
+        return jsonify({'success': False, 'error': 'Свиток не найден'}), 404
+    if scroll_item.category != SHOP_CATEGORY_SPECIAL or (scroll_item.special_type or '').strip().lower() != SPECIAL_TYPE_WEAPON_ENCHANT_SCROLL:
+        return jsonify({'success': False, 'error': 'Это не свиток заточки оружия'}), 400
+
+    if not weapon_item or weapon_item.shop_context != SHOP_CONTEXT_TERRITORY:
+        return jsonify({'success': False, 'error': 'Оружие не найдено'}), 404
+    if weapon_item.category != SHOP_CATEGORY_EQUIPMENT or (weapon_item.equipment_slot or '').strip().lower() != 'weapon':
+        return jsonify({'success': False, 'error': 'Можно заточить только оружие из инвентаря'}), 400
+
+    cur_lv = _weapon_enchant_level_clamped(getattr(weapon_p, 'weapon_enchant_level', 0))
+    if cur_lv >= 20:
+        return jsonify({'success': False, 'error': 'Оружие уже максимально заточено (+20)'}), 400
+
+    chance = _weapon_enchant_success_chance_before_attempt(cur_lv)
+    roll = random.random()
+    success = roll < chance
+
+    if success:
+        weapon_p.weapon_enchant_level = cur_lv + 1
+        db.session.delete(scroll_p)
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'enchant_success': True,
+            'new_level': cur_lv + 1,
+            'previous_level': cur_lv,
+            'weapon_name': weapon_item.name or 'Оружие',
+            'enchant_overlay_url': _weapon_enchant_overlay_url(cur_lv + 1),
+            'message': (
+                f'Оружие «{weapon_item.name or "Оружие"}»: заточка с +{cur_lv} до +{cur_lv + 1}. '
+                f'Свиток израсходован.'
+            ),
+        })
+
+    removed_any = False
+    for ue in UserEquipment.query.filter_by(user_id=current_user.id, purchase_id=weapon_p.id).all():
+        db.session.delete(ue)
+        removed_any = True
+    if removed_any:
+        current_user.ensure_energy_refill()
+        if current_user.current_energy is not None and current_user.current_energy > current_user.energy:
+            current_user.current_energy = current_user.energy
+
+    wname = weapon_item.name or 'Оружие'
+    db.session.delete(weapon_p)
+    db.session.delete(scroll_p)
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'enchant_success': False,
+        'weapon_destroyed': True,
+        'weapon_name': wname,
+        'message': (
+            f'Заточка не удалась. Оружие «{wname}» полностью уничтожено и удалено из инвентаря. '
+            f'Свиток израсходован.'
+        ),
     })
 
 
@@ -7128,11 +7289,16 @@ def _equipment_slots_public_dict(user_id: int) -> dict:
         if not item:
             continue
         static_path = _avatar_static_filename(item.image_filename) if item.image_filename else None
+        pur = ue.purchase
+        wlv = _weapon_enchant_level_clamped(getattr(pur, 'weapon_enchant_level', 0)) if pur else 0
+        is_weapon = (item.equipment_slot or '').strip().lower() == 'weapon'
         slots[ue.slot] = {
             'purchase_id': ue.purchase_id,
             'item_id': item.id,
             'name': item.name,
             'image_url': url_for('static', filename=static_path) if static_path else None,
+            'weapon_enchant_level': wlv if is_weapon else 0,
+            'enchant_overlay_url': _weapon_enchant_overlay_url(wlv) if is_weapon and wlv > 0 else None,
         }
     return slots
 

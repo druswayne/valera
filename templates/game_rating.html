@@ -955,12 +955,25 @@ function toggleClan(rowEl) {
                 el.classList.add('equipment-slot--equipped');
                 el.classList.remove('equipment-slot--inactive');
                 el.setAttribute('title', info.name || '');
-                if (body) body.style.backgroundImage = 'url(' + JSON.stringify(String(info.image_url)) + ')';
+                if (body) {
+                    if (info.enchant_overlay_url) {
+                        body.style.backgroundImage = (
+                            'url(' + JSON.stringify(String(info.enchant_overlay_url)) + '), url(' + JSON.stringify(String(info.image_url)) + ')'
+                        );
+                        body.style.backgroundSize = 'contain, contain';
+                    } else {
+                        body.style.backgroundImage = 'url(' + JSON.stringify(String(info.image_url)) + ')';
+                        body.style.backgroundSize = 'contain';
+                    }
+                }
             } else {
                 el.classList.remove('equipment-slot--equipped');
                 el.classList.add('equipment-slot--inactive');
                 el.removeAttribute('title');
-                if (body) body.style.backgroundImage = '';
+                if (body) {
+                    body.style.backgroundImage = '';
+                    body.style.backgroundSize = '';
+                }
             }
         });
     }

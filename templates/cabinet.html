@@ -804,8 +804,62 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     text-align: center;
     opacity: 0.85;
 }
+.inventory-tile-img-wrap { position: relative; display: inline-block; margin: 0 auto 6px; width: 48px; height: 48px; }
+.inventory-tile-img-wrap img.item-icon-main { width: 48px; height: 48px; object-fit: cover; border-radius: 4px; display: block; }
+.inventory-tile-img-wrap img.item-icon-enchant { position: absolute; right: -2px; bottom: -2px; width: 28px; height: 28px; object-fit: contain; pointer-events: none; filter: drop-shadow(0 0 2px rgba(0,0,0,0.8)); }
 .inventory-tile img { width: 48px; height: 48px; object-fit: cover; border-radius: 4px; margin-bottom: 6px; }
 .inventory-tile .tile-placeholder { width: 48px; height: 48px; margin: 0 auto 6px; background: #2c1810; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: #5c4033; }
+.inventory-tile .tile-placeholder.tile-with-enchant { margin-bottom: 6px; }
+.weapon-enchant-modal .weapon-enchant-list { max-height: 280px; overflow-y: auto; margin: 12px 0; display: flex; flex-direction: column; gap: 8px; }
+.weapon-enchant-modal .weapon-enchant-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border: 4px solid #5c4033;
+    border-radius: 8px;
+    cursor: pointer;
+    background: #2c1810;
+    text-align: left;
+    color: #e8dcc4;
+    box-sizing: border-box;
+    transition: border-color 0.12s ease;
+}
+.weapon-enchant-modal .weapon-enchant-option:hover {
+    border-color: #7a5c40;
+}
+.weapon-enchant-modal .weapon-enchant-option.selected {
+    border: 4px solid #d4a84b;
+}
+.weapon-enchant-modal .weapon-enchant-option img { width: 44px; height: 44px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
+.weapon-enchant-modal .weapon-enchant-option .opt-meta { flex: 1; min-width: 0; font-size: 0.9rem; }
+/* Текст на светлом фоне .modal-box — тёмный для читаемости */
+.weapon-enchant-modal .weapon-enchant-hint {
+    margin: 0 0 10px;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    color: #1a1208;
+}
+.weapon-enchant-modal .weapon-enchant-list-empty {
+    margin: 0;
+    color: #2c1810;
+    font-size: 0.9rem;
+}
+.weapon-enchant-result-modal #weaponEnchantResultTitle {
+    font-family: 'Cinzel Decorative', 'Cinzel', Georgia, serif;
+    color: #1a1208;
+}
+.weapon-enchant-result-modal #weaponEnchantResultTitle.weapon-enchant-result-heading--ok {
+    color: #145a22;
+}
+.weapon-enchant-result-modal #weaponEnchantResultTitle.weapon-enchant-result-heading--fail {
+    color: #5c2018;
+}
+.weapon-enchant-result-modal #weaponEnchantResultText {
+    color: #1a1208;
+    line-height: 1.5;
+    margin: 12px 0;
+}
 .inventory-tile .tile-name { font-size: 0.8rem; color: #b8a088; }
 .inventory-empty { color: #b8a088; padding: 16px; text-align: center; }
 .inventory-category { margin-bottom: 16px; }
@@ -1529,6 +1583,9 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         height: 40px;
         margin-bottom: 4px;
     }
+    .inventory-tile-img-wrap { width: 40px; height: 40px; margin-bottom: 4px; }
+    .inventory-tile-img-wrap img.item-icon-main { width: 40px; height: 40px; }
+    .inventory-tile-img-wrap img.item-icon-enchant { width: 22px; height: 22px; }
     .inventory-tile .tile-placeholder { font-size: 1rem; }
     .inventory-tile .tile-name { font-size: 0.7rem; line-height: 1.2; }
     .inventory-empty { padding: 12px; font-size: 0.9rem; }
@@ -2408,6 +2465,31 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         <div class="modal-buttons">
             <button type="button" class="btn-cancel" id="inventoryItemModalClose">Закрыть</button>
             <button type="button" class="btn-confirm inventory-item-use-btn" id="inventoryItemUseBtn">Использовать</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay inventory-item-modal weapon-enchant-modal" id="weaponEnchantModal" style="display:none;">
+    <div class="modal-box" style="max-width: 440px;">
+        <div class="modal-box-header">
+            <h3 id="weaponEnchantModalTitle">Заточка оружия</h3>
+            <button type="button" class="modal-box-close" id="weaponEnchantModalCloseTop" aria-label="Закрыть">×</button>
+        </div>
+        <p id="weaponEnchantModalHint" class="weapon-enchant-hint">Выберите оружие из инвентаря. Каждый уровень заточки усиливает все бонусы оружия на +20%. До +3 успех гарантирован; начиная с +3 шанс каждой попытки — 60% (максимум заточки +20). При неудаче оружие исчезает.</p>
+        <div id="weaponEnchantList" class="weapon-enchant-list"></div>
+        <div class="modal-buttons">
+            <button type="button" class="btn-cancel" id="weaponEnchantCancel">Отмена</button>
+            <button type="button" class="btn-confirm" id="weaponEnchantConfirm" disabled>Зачаровать</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay inventory-item-modal weapon-enchant-result-modal" id="weaponEnchantResultModal" style="display:none;">
+    <div class="modal-box" style="max-width: 420px;">
+        <h3 id="weaponEnchantResultTitle" class="weapon-enchant-result-heading" style="margin-top:0;"></h3>
+        <p id="weaponEnchantResultText" class="weapon-enchant-result-body"></p>
+        <div class="modal-buttons">
+            <button type="button" class="btn-confirm" id="weaponEnchantResultOk">Понятно</button>
         </div>
     </div>
 </div>
@@ -4177,11 +4259,29 @@ var CURRENT_USER_ID = {{ user.id }};
                     div.className = 'inventory-tile';
                     div.setAttribute('data-purchase-id', String(p.id));
                     div.setAttribute('data-item-id', String(p.item_id));
+                    var eqSlot = (p.equipment_slot || '').toLowerCase();
+                    var showEnch = p.category === 'equipment' && eqSlot === 'weapon' && p.enchant_overlay_url;
                     if (p.image_url) {
-                        var img = document.createElement('img');
-                        img.src = p.image_url;
-                        img.alt = p.name;
-                        div.appendChild(img);
+                        if (showEnch) {
+                            var wrap = document.createElement('div');
+                            wrap.className = 'inventory-tile-img-wrap';
+                            var imgM = document.createElement('img');
+                            imgM.className = 'item-icon-main';
+                            imgM.src = p.image_url;
+                            imgM.alt = p.name;
+                            wrap.appendChild(imgM);
+                            var imgO = document.createElement('img');
+                            imgO.className = 'item-icon-enchant';
+                            imgO.src = p.enchant_overlay_url;
+                            imgO.alt = '+' + (p.weapon_enchant_level || 0);
+                            wrap.appendChild(imgO);
+                            div.appendChild(wrap);
+                        } else {
+                            var img = document.createElement('img');
+                            img.src = p.image_url;
+                            img.alt = p.name;
+                            div.appendChild(img);
+                        }
                     } else {
                         var ph = document.createElement('div');
                         ph.className = 'tile-placeholder';
@@ -4359,6 +4459,174 @@ var CURRENT_USER_ID = {{ user.id }};
         currentInventoryPurchaseId = null;
         currentInventoryItem = null;
     }
+
+    var weaponEnchantModal = document.getElementById('weaponEnchantModal');
+    var weaponEnchantList = document.getElementById('weaponEnchantList');
+    var weaponEnchantConfirm = document.getElementById('weaponEnchantConfirm');
+    var weaponEnchantCancel = document.getElementById('weaponEnchantCancel');
+    var weaponEnchantCloseTop = document.getElementById('weaponEnchantModalCloseTop');
+    var weaponEnchantResultModal = document.getElementById('weaponEnchantResultModal');
+    var weaponEnchantResultTitle = document.getElementById('weaponEnchantResultTitle');
+    var weaponEnchantResultText = document.getElementById('weaponEnchantResultText');
+    var weaponEnchantResultOk = document.getElementById('weaponEnchantResultOk');
+    var weaponEnchantScrollPurchaseId = null;
+    var weaponEnchantSelectedWeaponPurchaseId = null;
+
+    function closeWeaponEnchantResultModal() {
+        if (!weaponEnchantResultModal) return;
+        weaponEnchantResultModal.classList.remove('open');
+        weaponEnchantResultModal.style.display = 'none';
+    }
+
+    function openWeaponEnchantResult(isSuccess, bodyText) {
+        if (!weaponEnchantResultModal || !weaponEnchantResultTitle || !weaponEnchantResultText) return;
+        weaponEnchantResultTitle.textContent = isSuccess ? 'Заточка удалась' : 'Заточка не удалась';
+        weaponEnchantResultTitle.classList.remove('weapon-enchant-result-heading--ok', 'weapon-enchant-result-heading--fail');
+        weaponEnchantResultTitle.classList.add(isSuccess ? 'weapon-enchant-result-heading--ok' : 'weapon-enchant-result-heading--fail');
+        weaponEnchantResultText.textContent = bodyText || (isSuccess ? 'Улучшение применено.' : 'Попытка не удалась.');
+        weaponEnchantResultModal.style.display = 'flex';
+        weaponEnchantResultModal.classList.add('open');
+    }
+
+    function closeWeaponEnchantModal() {
+        if (!weaponEnchantModal) return;
+        weaponEnchantModal.classList.remove('open');
+        weaponEnchantModal.style.display = 'none';
+        weaponEnchantScrollPurchaseId = null;
+        weaponEnchantSelectedWeaponPurchaseId = null;
+        if (weaponEnchantList) weaponEnchantList.innerHTML = '';
+        if (weaponEnchantConfirm) weaponEnchantConfirm.disabled = true;
+    }
+
+    function openWeaponEnchantModal(scrollPurchaseId) {
+        if (!weaponEnchantModal || !weaponEnchantList || !weaponEnchantConfirm) return;
+        weaponEnchantScrollPurchaseId = scrollPurchaseId;
+        weaponEnchantSelectedWeaponPurchaseId = null;
+        weaponEnchantConfirm.disabled = true;
+        weaponEnchantList.innerHTML = '';
+        var weapons = (lastInventoryList || []).filter(function(x) {
+            return x.category === 'equipment' && (x.equipment_slot || '').toLowerCase() === 'weapon';
+        });
+        if (!weapons.length) {
+            weaponEnchantList.innerHTML = '<p class="weapon-enchant-list-empty">В инвентаре нет оружия.</p>';
+        } else {
+            weapons.forEach(function(w) {
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'weapon-enchant-option';
+                var lvl = w.weapon_enchant_level || 0;
+                var meta = document.createElement('div');
+                meta.className = 'opt-meta';
+                var strong = document.createElement('strong');
+                strong.textContent = w.name || '';
+                var sub = document.createElement('div');
+                sub.style.fontSize = '0.82rem';
+                sub.style.color = '#8f7a62';
+                sub.style.marginTop = '4px';
+                sub.textContent = 'Заточка: +' + lvl + (lvl >= 20 ? ' (макс.)' : '');
+                meta.appendChild(strong);
+                meta.appendChild(sub);
+                if (w.image_url) {
+                    var iw = document.createElement('span');
+                    iw.style.cssText = 'position:relative;display:inline-block;width:44px;height:44px;flex-shrink:0;';
+                    var im = document.createElement('img');
+                    im.src = w.image_url;
+                    im.alt = '';
+                    im.style.cssText = 'width:44px;height:44px;object-fit:cover;border-radius:4px;display:block;';
+                    iw.appendChild(im);
+                    if (w.enchant_overlay_url) {
+                        var io = document.createElement('img');
+                        io.src = w.enchant_overlay_url;
+                        io.alt = '';
+                        io.style.cssText = 'position:absolute;right:-2px;bottom:-2px;width:24px;height:24px;object-fit:contain;pointer-events:none;';
+                        iw.appendChild(io);
+                    }
+                    btn.appendChild(iw);
+                }
+                btn.appendChild(meta);
+                btn.addEventListener('click', function() {
+                    weaponEnchantList.querySelectorAll('.weapon-enchant-option').forEach(function(el) { el.classList.remove('selected'); });
+                    btn.classList.add('selected');
+                    weaponEnchantSelectedWeaponPurchaseId = w.id;
+                    weaponEnchantConfirm.disabled = (lvl >= 20);
+                });
+                weaponEnchantList.appendChild(btn);
+            });
+        }
+        weaponEnchantModal.style.display = 'flex';
+        weaponEnchantModal.classList.add('open');
+    }
+
+    if (weaponEnchantCancel) {
+        weaponEnchantCancel.addEventListener('click', closeWeaponEnchantModal);
+    }
+    if (weaponEnchantCloseTop) {
+        weaponEnchantCloseTop.addEventListener('click', closeWeaponEnchantModal);
+    }
+    if (weaponEnchantModal) {
+        weaponEnchantModal.addEventListener('click', function(e) {
+            if (e.target === weaponEnchantModal) closeWeaponEnchantModal();
+        });
+    }
+    if (weaponEnchantResultOk) {
+        weaponEnchantResultOk.addEventListener('click', closeWeaponEnchantResultModal);
+    }
+    if (weaponEnchantResultModal) {
+        weaponEnchantResultModal.addEventListener('click', function(e) {
+            if (e.target === weaponEnchantResultModal) closeWeaponEnchantResultModal();
+        });
+    }
+    if (weaponEnchantConfirm) {
+        weaponEnchantConfirm.addEventListener('click', function() {
+            if (!weaponEnchantScrollPurchaseId || !weaponEnchantSelectedWeaponPurchaseId) return;
+            var btn = this;
+            btn.disabled = true;
+            fetch('{{ url_for("api_cabinet_inventory_enchant_weapon") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    scroll_purchase_id: weaponEnchantScrollPurchaseId,
+                    weapon_purchase_id: weaponEnchantSelectedWeaponPurchaseId
+                })
+            })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (!data.success) {
+                        alert(data.error || 'Ошибка');
+                        btn.disabled = false;
+                        return;
+                    }
+                    closeWeaponEnchantModal();
+                    var ok = !!data.enchant_success;
+                    var msg = data.message || '';
+                    if (ok && !msg) {
+                        msg = 'Оружие «' + (data.weapon_name || '') + '»: новый уровень +' + (data.new_level != null ? data.new_level : '') + '. Свиток израсходован.';
+                    }
+                    if (!ok && !msg) {
+                        msg = 'Оружие «' + (data.weapon_name || '') + '» уничтожено. Свиток израсходован.';
+                    }
+                    loadInventory();
+                    fetch('{{ url_for("api_cabinet_equipment_state") }}')
+                        .then(function(r) { return r.json(); })
+                        .then(function(state) {
+                            if (state.success) {
+                                applyEquipmentStateToUI(state);
+                                updateStatsFromEquipmentState(state);
+                            }
+                        })
+                        .catch(function() { /* ignore */ })
+                        .finally(function() {
+                            openWeaponEnchantResult(ok, msg);
+                            btn.disabled = false;
+                        });
+                })
+                .catch(function() {
+                    alert('Ошибка сети');
+                    btn.disabled = false;
+                });
+        });
+    }
+
     if (inventoryItemModalClose) {
         inventoryItemModalClose.addEventListener('click', closeInventoryItemModal);
     }
@@ -4378,6 +4646,12 @@ var CURRENT_USER_ID = {{ user.id }};
     }
     if (inventoryItemUseBtn) inventoryItemUseBtn.addEventListener('click', function() {
         if (!currentInventoryPurchaseId || this.disabled) return;
+        if (currentInventoryItem && currentInventoryItem.category === 'special' && currentInventoryItem.special_type === 'weapon_enchant_scroll') {
+            var sid = currentInventoryPurchaseId;
+            closeInventoryItemModal();
+            openWeaponEnchantModal(sid);
+            return;
+        }
         var effects = currentInventoryItem && (currentInventoryItem.effects || []);
         var needClan = effects.some(function(e) { return e.target === 'clan'; });
         var needRegion = effects.some(function(e) { return e.target === 'region'; });
@@ -4396,6 +4670,13 @@ var CURRENT_USER_ID = {{ user.id }};
         })
             .then(function(r) { return r.json(); })
             .then(function(data) {
+                if (data.success && data.client_action === 'weapon_enchant') {
+                    var sp = data.scroll_purchase_id || currentInventoryPurchaseId;
+                    closeInventoryItemModal();
+                    openWeaponEnchantModal(sp);
+                    inventoryItemUseBtn.disabled = false;
+                    return;
+                }
                 if (data.success) {
                     closeInventoryItemModal();
                     loadInventory();
@@ -4470,6 +4751,36 @@ var CURRENT_USER_ID = {{ user.id }};
         return parts.join(', ');
     }
 
+    function formatItemEffectsTextScaled(item, mult) {
+        mult = mult || 1;
+        var effects = (item && item.effects) || [];
+        if (!effects.length) return '';
+        var parts = [];
+        effects.forEach(function(e) {
+            var v = (e.percent_change != null ? e.percent_change : 0) * mult;
+            if (Math.abs(v) < 1e-9) return;
+            if (item && item.category === 'curse' && v > 0) {
+                v = -v;
+            } else if (item && item.category === 'enhancement' && v < 0) {
+                v = -v;
+            }
+            var label = '';
+            if (e.effect_type === 'damage') label = 'Атака';
+            else if (e.effect_type === 'defense') label = 'Защита';
+            else if (e.effect_type === 'max_energy') label = 'Макс. энергия';
+            else if (e.effect_type === 'xp_reward') label = 'Опыт за задачу';
+            else if (e.effect_type === 'nums_reward') label = 'Награда Нумов';
+            if (!label) return;
+            var sign = v > 0 ? '+' : '';
+            if (e.effect_type === 'xp_reward' || e.effect_type === 'nums_reward') {
+                parts.push(label + ': ' + sign + (Math.round(v * 10) / 10) + '%');
+            } else {
+                parts.push(label + ': ' + sign + Math.round(v));
+            }
+        });
+        return parts.join(', ');
+    }
+
     function openEquipmentItemModal(purchaseId, itemId, targetSlot) {
         currentEquipmentPurchaseId = purchaseId;
         currentEquipmentItemId = itemId;
@@ -4488,12 +4799,29 @@ var CURRENT_USER_ID = {{ user.id }};
                 currentEquipmentItemData = item;
                 equipmentItemModalTitle.textContent = item.name || 'Снаряжение';
                 equipmentItemModalImageWrap.innerHTML = '';
+                var invRow = null;
+                (lastInventoryList || []).forEach(function(r) { if (r.id === purchaseId) invRow = r; });
+                var wlv = 0;
+                if (invRow && (item.equipment_slot || '').toLowerCase() === 'weapon') {
+                    wlv = invRow.weapon_enchant_level || 0;
+                }
+                var mult = 1 + 0.2 * wlv;
                 if (item.image_url) {
+                    var wrapM = document.createElement('div');
+                    wrapM.style.cssText = 'position:relative;display:inline-block;margin:0 auto;';
                     var img = document.createElement('img');
                     img.className = 'item-image';
                     img.src = item.image_url;
                     img.alt = item.name;
-                    equipmentItemModalImageWrap.appendChild(img);
+                    wrapM.appendChild(img);
+                    if (invRow && invRow.enchant_overlay_url) {
+                        var oim = document.createElement('img');
+                        oim.src = invRow.enchant_overlay_url;
+                        oim.alt = '+' + wlv;
+                        oim.style.cssText = 'position:absolute;right:6px;bottom:6px;width:52px;height:52px;object-fit:contain;pointer-events:none;filter:drop-shadow(0 0 2px rgba(0,0,0,0.75));';
+                        wrapM.appendChild(oim);
+                    }
+                    equipmentItemModalImageWrap.appendChild(wrapM);
                 } else {
                     var ph = document.createElement('div');
                     ph.className = 'item-image-placeholder';
@@ -4501,7 +4829,9 @@ var CURRENT_USER_ID = {{ user.id }};
                     equipmentItemModalImageWrap.appendChild(ph);
                 }
                 equipmentItemModalDesc.textContent = item.description || '—';
-                var bonusText = formatItemEffectsText(item);
+                var bonusText = (wlv > 0 && (item.equipment_slot || '').toLowerCase() === 'weapon')
+                    ? (formatItemEffectsTextScaled(item, mult) + ' (заточка +' + wlv + ')')
+                    : formatItemEffectsText(item);
                 equipmentItemModalBonus.textContent = bonusText;
                 // Определяем, надет ли сейчас этот предмет
                 fetch('{{ url_for("api_cabinet_equipment_state") }}')
@@ -4664,7 +4994,15 @@ var CURRENT_USER_ID = {{ user.id }};
                 el.setAttribute('data-purchase-id', String(info.purchase_id));
                 el.setAttribute('data-item-id', String(info.item_id));
                 if (body && info.image_url) {
-                    body.style.backgroundImage = 'url(' + info.image_url + ')';
+                    if (info.enchant_overlay_url) {
+                        body.style.backgroundImage = (
+                            'url(' + JSON.stringify(String(info.enchant_overlay_url)) + '), url(' + JSON.stringify(String(info.image_url)) + ')'
+                        );
+                        body.style.backgroundSize = 'contain, contain';
+                    } else {
+                        body.style.backgroundImage = 'url(' + JSON.stringify(String(info.image_url)) + ')';
+                        body.style.backgroundSize = 'contain';
+                    }
                 }
             } else {
                 el.classList.remove('equipment-slot--equipped');
@@ -4673,6 +5011,7 @@ var CURRENT_USER_ID = {{ user.id }};
                 el.removeAttribute('data-item-id');
                 if (body) {
                     body.style.backgroundImage = '';
+                    body.style.backgroundSize = '';
                 }
             }
         });
@@ -4726,11 +5065,29 @@ var CURRENT_USER_ID = {{ user.id }};
                 div.className = 'inventory-tile';
                 div.setAttribute('data-purchase-id', String(p.id));
                 div.setAttribute('data-item-id', String(p.item_id));
+                var eqSl = (p.equipment_slot || '').toLowerCase();
+                var showEnchSel = p.category === 'equipment' && eqSl === 'weapon' && p.enchant_overlay_url;
                 if (p.image_url) {
-                    var img = document.createElement('img');
-                    img.src = p.image_url;
-                    img.alt = p.name;
-                    div.appendChild(img);
+                    if (showEnchSel) {
+                        var wrapS = document.createElement('div');
+                        wrapS.className = 'inventory-tile-img-wrap';
+                        var imgMs = document.createElement('img');
+                        imgMs.className = 'item-icon-main';
+                        imgMs.src = p.image_url;
+                        imgMs.alt = p.name;
+                        wrapS.appendChild(imgMs);
+                        var imgOs = document.createElement('img');
+                        imgOs.className = 'item-icon-enchant';
+                        imgOs.src = p.enchant_overlay_url;
+                        imgOs.alt = '+' + (p.weapon_enchant_level || 0);
+                        wrapS.appendChild(imgOs);
+                        div.appendChild(wrapS);
+                    } else {
+                        var img = document.createElement('img');
+                        img.src = p.image_url;
+                        img.alt = p.name;
+                        div.appendChild(img);
+                    }
                 } else {
                     var ph = document.createElement('div');
                     ph.className = 'tile-placeholder';
