@@ -426,9 +426,20 @@
 .pvp-duel-task-inner input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 /* Общий знаменатель */
 .pvp-duel-task-inner .task-common-denom-visual { margin-top: 12px; }
+.pvp-duel-task-inner .task-common-denom-condition-block { margin-top: 12px; margin-bottom: 8px; }
+.pvp-duel-task-inner .task-common-denom-visual--condition-only .task-common-denom-row-eq { margin-bottom: 12px; }
+.pvp-duel-task-inner .task-common-denom-visual--condition-only .task-common-denom-row-eq:last-child { margin-bottom: 0; }
+.pvp-duel-task-inner .task-common-denom-row-eq--answer { gap: 12px; }
 .pvp-duel-task-inner .task-common-denom-row-eq { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
 .pvp-duel-task-inner .task-common-denom-row-eq:last-child { margin-bottom: 0; }
 .pvp-duel-task-inner .task-common-denom-original { min-height: 2em; display: inline-flex; align-items: center; }
+.pvp-duel-task-inner .pvp-duel-task-condition-sheet #duelMixedFracDisplay,
+.pvp-duel-task-inner .pvp-duel-task-condition-sheet #duelAddSubFracDisplay {
+    font-size: clamp(1.22rem, 4.6vmin, 2.05rem);
+    line-height: 1.62;
+    margin-top: 10px;
+    margin-bottom: 12px;
+}
 .pvp-duel-task-inner .task-common-denom-eq { font-size: 1.4em; font-weight: bold; color: #3d2914; }
 .pvp-duel-task-inner .task-common-denom-visual .answer-frac-wrap { display: inline-flex; flex-direction: column; align-items: center; }
 .pvp-duel-task-inner .task-common-denom-visual .answer-frac-wrap input { text-align: center; padding: 4px 6px; }
@@ -774,6 +785,10 @@
     .pvp-duel-task-inner .pvp-duel-task-condition-sheet .task-expression-display {
         font-size: clamp(2.44rem, 9.2vmin, 4.1rem);
     }
+    .pvp-duel-task-inner .pvp-duel-task-condition-sheet #duelMixedFracDisplay,
+    .pvp-duel-task-inner .pvp-duel-task-condition-sheet #duelAddSubFracDisplay {
+        font-size: clamp(2.44rem, 9.2vmin, 4.1rem);
+    }
     .pvp-duel-task-inner .pvp-duel-task-condition-sheet .task-title {
         font-size: 2.4rem;
     }
@@ -880,6 +895,18 @@
                 <div class="task-text" id="duelTaskText"></div>
                 <div class="task-expression-display" id="duelTaskExpressionDisplay" style="display: none;"></div>
                 <img class="task-image" id="duelTaskImage" alt="" style="display: none;">
+                <div id="duelCommonDenomConditionBlock" class="task-common-denom-condition-block" style="display: none;" aria-hidden="true">
+                    <div class="task-common-denom-visual task-common-denom-visual--condition-only">
+                        <div class="task-common-denom-row-eq">
+                            <div class="task-common-denom-original task-text" id="duelCommonDenomFrac1"></div>
+                        </div>
+                        <div class="task-common-denom-row-eq">
+                            <div class="task-common-denom-original task-text" id="duelCommonDenomFrac2"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="task-mixed-fraction-display" id="duelMixedFracDisplay" style="display: none;"></div>
+                <div class="task-add-sub-display task-mixed-fraction-display" id="duelAddSubFracDisplay" style="display: none;"></div>
                 </div>
                 </div>
                 </div>
@@ -900,8 +927,7 @@
                 <div class="task-answer-wrap task-common-denom-wrap" id="duelAnswerWrapCommonDenom" style="display: none;">
                     <label>Ваш ответ:</label>
                     <div class="task-common-denom-visual">
-                        <div class="task-common-denom-row-eq">
-                            <div class="task-common-denom-original task-text" id="duelCommonDenomFrac1"></div>
+                        <div class="task-common-denom-row-eq task-common-denom-row-eq--answer">
                             <span class="task-common-denom-eq">=</span>
                             <div class="answer-frac-wrap">
                                 <input type="number" id="duelTaskAnswerNum1" min="0" title="Числитель 1">
@@ -909,8 +935,7 @@
                                 <input type="number" id="duelTaskAnswerDenCommon" min="1" title="Знаменатель 1">
                             </div>
                         </div>
-                        <div class="task-common-denom-row-eq">
-                            <div class="task-common-denom-original task-text" id="duelCommonDenomFrac2"></div>
+                        <div class="task-common-denom-row-eq task-common-denom-row-eq--answer">
                             <span class="task-common-denom-eq">=</span>
                             <div class="answer-frac-wrap">
                                 <input type="number" id="duelTaskAnswerNum2" min="0" title="Числитель 2">
@@ -922,8 +947,6 @@
                 </div>
                 <div class="task-answer-wrap task-mixed-fraction-wrap" id="duelAnswerWrapMixedFraction" style="display: none;">
                     <label id="duelMixedFractionLabel">Ваш ответ (смешанное число):</label>
-                    <div class="task-mixed-fraction-display" id="duelMixedFracDisplay"></div>
-                    <div class="task-add-sub-display task-mixed-fraction-display" id="duelAddSubFracDisplay" style="display: none;"></div>
                     <div class="task-answer-fraction-visual task-mixed-fraction-fields">
                         <div class="answer-int-wrap">
                             <input type="number" id="duelTaskAnswerIntPart" min="0" title="Целая часть">
@@ -1262,6 +1285,12 @@ window.pvpDuelFocusProtection = (function() {
     }
 
     function fillDuelTask(t) {
+        var duelCdCond0 = document.getElementById('duelCommonDenomConditionBlock');
+        if (duelCdCond0) duelCdCond0.style.display = 'none';
+        var duelMix0 = document.getElementById('duelMixedFracDisplay');
+        var duelAs0 = document.getElementById('duelAddSubFracDisplay');
+        if (duelMix0) { duelMix0.style.display = 'none'; duelMix0.innerHTML = ''; }
+        if (duelAs0) { duelAs0.style.display = 'none'; duelAs0.innerHTML = ''; }
         document.getElementById('duelTaskTitle').textContent = t.title || 'Задача';
         var textEl = document.getElementById('duelTaskText');
         var exprDispEl = document.getElementById('duelTaskExpressionDisplay');
@@ -1305,6 +1334,8 @@ window.pvpDuelFocusProtection = (function() {
         document.getElementById('duelTaskAnswerNumMixed').value = '';
         document.getElementById('duelTaskAnswerDenMixed').value = '';
         resizeDuelAnswerInputs();
+        var duelCdCond1 = document.getElementById('duelCommonDenomConditionBlock');
+        if (duelCdCond1) duelCdCond1.style.display = isCommonDenom ? 'block' : 'none';
         if (isCommonDenom) {
             document.getElementById('duelCommonDenomFrac1').innerHTML = t.display_frac1 || '';
             document.getElementById('duelCommonDenomFrac2').innerHTML = t.display_frac2 || '';
@@ -1318,7 +1349,7 @@ window.pvpDuelFocusProtection = (function() {
                     addSubDisp.style.display = 'none';
                     addSubDisp.innerHTML = '';
                 } else {
-                    addSubDisp.style.display = '';
+                    addSubDisp.style.display = 'block';
                     addSubDisp.innerHTML = (t.display_frac1 || '') + ' <span class="task-add-sub-op">' + (t.display_operator || '+') + '</span> ' + (t.display_frac2 || '');
                 }
                 mixedDisp.style.display = 'none';
@@ -1338,7 +1369,7 @@ window.pvpDuelFocusProtection = (function() {
             } else {
                 addSubDisp.style.display = 'none';
                 addSubDisp.innerHTML = '';
-                mixedDisp.style.display = '';
+                mixedDisp.style.display = 'block';
                 mixedDisp.innerHTML = t.display_frac ? ('Дробь: ' + t.display_frac) : '';
                 if (mixedLabel) mixedLabel.textContent = 'Ваш ответ (смешанное число):';
                 var intPartInput = document.getElementById('duelTaskAnswerIntPart');

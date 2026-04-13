@@ -1144,6 +1144,29 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 
 /* Две дроби: дробь из условия = поля ввода новой дроби */
 .task-common-denom-visual { margin-top: 12px; }
+.task-common-denom-condition-block {
+    margin-top: 12px;
+    margin-bottom: 8px;
+}
+.task-common-denom-visual--condition-only .task-common-denom-row-eq {
+    margin-bottom: 12px;
+}
+.task-common-denom-visual--condition-only .task-common-denom-row-eq:last-child {
+    margin-bottom: 0;
+}
+.task-common-denom-row-eq--answer {
+    gap: 12px;
+}
+.territory-task-content #taskMixedFracDisplay,
+.territory-task-content #taskAddSubFracDisplay {
+    font-family: 'Kalam', 'Caveat', cursive;
+    font-size: clamp(1.22rem, 4.6vmin, 2.05rem);
+    font-weight: 400;
+    line-height: 1.62;
+    letter-spacing: 0.03em;
+    margin-top: 10px;
+    margin-bottom: 12px;
+}
 .task-common-denom-row-eq {
     display: flex;
     align-items: center;
@@ -1987,6 +2010,10 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     .territory-task-content .task-expression-display {
         font-size: clamp(2.44rem, 9.2vmin, 4.1rem);
     }
+    .territory-task-content #taskMixedFracDisplay,
+    .territory-task-content #taskAddSubFracDisplay {
+        font-size: clamp(2.44rem, 9.2vmin, 4.1rem);
+    }
     .task-modal-header h2 {
         font-size: 2.7rem;
     }
@@ -2374,6 +2401,18 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                 <div class="task-text" id="taskModalText"></div>
                 <div class="task-expression-display" id="taskExpressionDisplay" style="display: none;"></div>
                 <img class="task-image" id="taskModalImage" alt="" style="display: none;">
+                <div id="taskCommonDenomConditionBlock" class="task-common-denom-condition-block" style="display: none;" aria-hidden="true">
+                    <div class="task-common-denom-visual task-common-denom-visual--condition-only">
+                        <div class="task-common-denom-row-eq">
+                            <div class="task-common-denom-original task-text" id="taskCommonDenomFrac1"></div>
+                        </div>
+                        <div class="task-common-denom-row-eq">
+                            <div class="task-common-denom-original task-text" id="taskCommonDenomFrac2"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="task-mixed-fraction-display" id="taskMixedFracDisplay" style="display: none;"></div>
+                <div class="task-add-sub-display task-mixed-fraction-display" id="taskAddSubFracDisplay" style="display: none;"></div>
             </div>
             </div>
             <div class="task-answer-wrap" id="taskAnswerWrapDefault">
@@ -2393,8 +2432,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
             <div class="task-answer-wrap task-common-denom-wrap" id="taskAnswerWrapCommonDenom" style="display: none;">
                 <label>Ваш ответ:</label>
                 <div class="task-common-denom-visual">
-                    <div class="task-common-denom-row-eq">
-                        <div class="task-common-denom-original task-text" id="taskCommonDenomFrac1"></div>
+                    <div class="task-common-denom-row-eq task-common-denom-row-eq--answer">
                         <span class="task-common-denom-eq">=</span>
                         <div class="answer-frac-wrap">
                             <input type="number" id="taskAnswerNum1" min="0" title="Числитель 1">
@@ -2402,8 +2440,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                             <input type="number" id="taskAnswerDenCommon" min="1" title="Знаменатель 1">
                         </div>
                     </div>
-                    <div class="task-common-denom-row-eq">
-                        <div class="task-common-denom-original task-text" id="taskCommonDenomFrac2"></div>
+                    <div class="task-common-denom-row-eq task-common-denom-row-eq--answer">
                         <span class="task-common-denom-eq">=</span>
                         <div class="answer-frac-wrap">
                             <input type="number" id="taskAnswerNum2" min="0" title="Числитель 2">
@@ -2415,8 +2452,6 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
             </div>
             <div class="task-answer-wrap task-mixed-fraction-wrap" id="taskAnswerWrapMixedFraction" style="display: none;">
                 <label id="taskMixedFractionLabel">Ваш ответ (смешанное число):</label>
-                <div class="task-mixed-fraction-display" id="taskMixedFracDisplay"></div>
-                <div class="task-add-sub-display task-mixed-fraction-display" id="taskAddSubFracDisplay" style="display: none;"></div>
                 <div class="task-answer-fraction-visual task-mixed-fraction-fields">
                     <div class="answer-int-wrap">
                         <input type="number" id="taskAnswerIntPart" min="0" title="Целая часть">
@@ -3393,6 +3428,12 @@ window.territoryFocusProtection = (function() {
         exprDisp.style.display = 'none';
         exprDisp.innerHTML = '';
         document.getElementById('taskModalImage').style.display = 'none';
+        var dgCdCond = document.getElementById('taskCommonDenomConditionBlock');
+        if (dgCdCond) dgCdCond.style.display = 'none';
+        var dgMix = document.getElementById('taskMixedFracDisplay');
+        var dgAs = document.getElementById('taskAddSubFracDisplay');
+        if (dgMix) { dgMix.style.display = 'none'; dgMix.innerHTML = ''; }
+        if (dgAs) { dgAs.style.display = 'none'; dgAs.innerHTML = ''; }
         document.getElementById('taskAnswerInput').value = '';
         document.getElementById('taskAnswerWrapDefault').style.display = 'block';
         document.getElementById('taskAnswerWrapFraction').style.display = 'none';
@@ -3452,6 +3493,8 @@ window.territoryFocusProtection = (function() {
                     document.getElementById('taskAnswerNumMixed').value = '';
                     document.getElementById('taskAnswerDenMixed').value = '';
                     resizeAllTaskAnswerInputs();
+                    var taskCdCondBlkAfter = document.getElementById('taskCommonDenomConditionBlock');
+                    if (taskCdCondBlkAfter) taskCdCondBlkAfter.style.display = isCommonDenom ? 'block' : 'none';
                     if (isCommonDenom) {
                         document.getElementById('taskCommonDenomFrac1').innerHTML = t.display_frac1 || '';
                         document.getElementById('taskCommonDenomFrac2').innerHTML = t.display_frac2 || '';
@@ -3465,7 +3508,7 @@ window.territoryFocusProtection = (function() {
                                 addSubDisp.style.display = 'none';
                                 addSubDisp.innerHTML = '';
                             } else {
-                                addSubDisp.style.display = '';
+                                addSubDisp.style.display = 'block';
                                 addSubDisp.innerHTML = (t.display_frac1 || '') + ' <span class="task-add-sub-op">' + (t.display_operator || '+') + '</span> ' + (t.display_frac2 || '');
                             }
                             mixedDisp.style.display = 'none';
@@ -3485,7 +3528,7 @@ window.territoryFocusProtection = (function() {
                         } else {
                             addSubDisp.style.display = 'none';
                             addSubDisp.innerHTML = '';
-                            mixedDisp.style.display = '';
+                            mixedDisp.style.display = 'block';
                             mixedDisp.innerHTML = t.display_frac ? ('Дробь: ' + t.display_frac) : '';
                             if (mixedLabel) mixedLabel.textContent = 'Ваш ответ (смешанное число):';
                             var intPartInput2 = document.getElementById('taskAnswerIntPart');
@@ -4186,6 +4229,12 @@ window.territoryFocusProtection = (function() {
         exprDisp.style.display = 'none';
         exprDisp.innerHTML = '';
         document.getElementById('taskModalImage').style.display = 'none';
+        var taskCdCondBlk = document.getElementById('taskCommonDenomConditionBlock');
+        if (taskCdCondBlk) taskCdCondBlk.style.display = 'none';
+        var taskMixReset = document.getElementById('taskMixedFracDisplay');
+        var taskAsReset = document.getElementById('taskAddSubFracDisplay');
+        if (taskMixReset) { taskMixReset.style.display = 'none'; taskMixReset.innerHTML = ''; }
+        if (taskAsReset) { taskAsReset.style.display = 'none'; taskAsReset.innerHTML = ''; }
         document.getElementById('taskAnswerInput').value = '';
         document.getElementById('taskAnswerWrapDefault').style.display = 'block';
         document.getElementById('taskAnswerWrapFraction').style.display = 'none';
@@ -4245,6 +4294,8 @@ window.territoryFocusProtection = (function() {
                     document.getElementById('taskAnswerNumMixed').value = '';
                     document.getElementById('taskAnswerDenMixed').value = '';
                     resizeAllTaskAnswerInputs();
+                    var taskCdCondBlkAfter2 = document.getElementById('taskCommonDenomConditionBlock');
+                    if (taskCdCondBlkAfter2) taskCdCondBlkAfter2.style.display = isCommonDenom ? 'block' : 'none';
                     if (isCommonDenom) {
                         document.getElementById('taskCommonDenomFrac1').innerHTML = t.display_frac1 || '';
                         document.getElementById('taskCommonDenomFrac2').innerHTML = t.display_frac2 || '';
@@ -4258,7 +4309,7 @@ window.territoryFocusProtection = (function() {
                                 addSubDisp.style.display = 'none';
                                 addSubDisp.innerHTML = '';
                             } else {
-                                addSubDisp.style.display = '';
+                                addSubDisp.style.display = 'block';
                                 addSubDisp.innerHTML = (t.display_frac1 || '') + ' <span class="task-add-sub-op">' + (t.display_operator || '+') + '</span> ' + (t.display_frac2 || '');
                             }
                             mixedDisp.style.display = 'none';
@@ -4278,7 +4329,7 @@ window.territoryFocusProtection = (function() {
                         } else {
                             addSubDisp.style.display = 'none';
                             addSubDisp.innerHTML = '';
-                            mixedDisp.style.display = '';
+                            mixedDisp.style.display = 'block';
                             mixedDisp.innerHTML = t.display_frac ? ('Дробь: ' + t.display_frac) : '';
                             if (mixedLabel) mixedLabel.textContent = 'Ваш ответ (смешанное число):';
                             var intPartInput = document.getElementById('taskAnswerIntPart');
