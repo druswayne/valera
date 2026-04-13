@@ -5710,7 +5710,7 @@ TERRITORY_DEFAULT_NAMES = [
 @app.route('/admin/territory-battle/reset', methods=['POST'])
 @admin_required
 def admin_territory_reset():
-    """Сброс битвы за территорию: карта и сооружения, все кланы, участники без клана; не-админы — как после регистрации (уровень 1, навыки, нумы, только стартовый набор лавки территории). Админы: только сброс клана/карты/статистики территории, прогресс и инвентарь не трогаются. Требуется пароль администратора."""
+    """Сброс битвы за территорию: карта и сооружения, все кланы, участники без клана; не-админы — как после регистрации (уровень 1, навыки, нумы, только стартовый набор лавки территории). Админы: только сброс клана/карты/статистики территории, прогресс и инвентарь не трогаются. Очищаются дуэли и вызовы PvP, присутствие и чат арены. Требуется пароль администратора."""
     data = request.get_json() or {}
     password = (data.get('password') or '').strip()
     if not password:
@@ -5745,6 +5745,12 @@ def admin_territory_reset():
     User.query.update({User.clan_id: None, User.clan_rank: None}, synchronize_session=False)
     Clan.query.delete(synchronize_session=False)
 
+    # PvP арена и дуэли (история побед/поражений и активные бои)
+    PvPDuel.query.delete(synchronize_session=False)
+    PvPDuelChallenge.query.delete(synchronize_session=False)
+    PvPArenaChatMessage.query.delete(synchronize_session=False)
+    PvPArenaPresence.query.delete(synchronize_session=False)
+
     if non_admin_ids:
         pur_rows = (
             db.session.query(UserShopPurchase.id)
@@ -5758,9 +5764,6 @@ def admin_territory_reset():
         pur_ids = [r[0] for r in pur_rows]
         if pur_ids:
             UserEquipment.query.filter(UserEquipment.purchase_id.in_(pur_ids)).delete(synchronize_session=False)
-            PvPDuel.query.filter(PvPDuel.reward_purchase_id.in_(pur_ids)).update(
-                {PvPDuel.reward_purchase_id: None}, synchronize_session=False
-            )
             UserShopPurchase.query.filter(UserShopPurchase.id.in_(pur_ids)).delete(synchronize_session=False)
 
         User.query.filter_by(is_admin=False).update(
