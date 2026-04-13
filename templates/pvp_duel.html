@@ -769,6 +769,14 @@
     .clan-chat-modal .modal-box { max-height: 80vh; padding: 14px; }
     .clan-chat-modal .clan-chat-messages { max-height: 200px; min-height: 100px; }
     .clan-chat-modal .modal-chat-close { top: 8px; right: 8px; width: 32px; height: 32px; }
+    /* Условие на листе дуэли — в 2 раза крупнее базового clamp */
+    .pvp-duel-task-inner .pvp-duel-task-condition-sheet .task-text,
+    .pvp-duel-task-inner .pvp-duel-task-condition-sheet .task-expression-display {
+        font-size: clamp(2.44rem, 9.2vmin, 4.1rem);
+    }
+    .pvp-duel-task-inner .pvp-duel-task-condition-sheet .task-title {
+        font-size: 2.4rem;
+    }
 }
 </style>
 {% endblock %}

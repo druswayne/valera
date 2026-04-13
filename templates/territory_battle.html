@@ -1980,6 +1980,17 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     .admin-chat-modal .clan-chat-form textarea { min-height: 72px; }
     .admin-chat-modal .clan-chat-form button[type="submit"] { min-height: 44px; }
 }
+
+/* Телефоны и узкие планшеты: условие задачи в модалке — шрифт в 2 раза крупнее */
+@media (max-width: 768px) {
+    .territory-task-content .task-text,
+    .territory-task-content .task-expression-display {
+        font-size: clamp(2.44rem, 9.2vmin, 4.1rem);
+    }
+    .task-modal-header h2 {
+        font-size: 2.7rem;
+    }
+}
 </style>
 {% endblock %}
 
