@@ -356,7 +356,7 @@
 .pvp-duel-task-inner .pvp-duel-task-condition-sheet .task-title { margin-top: 0; }
 .pvp-duel-task-inner .pvp-duel-task-condition-sheet .task-text,
 .pvp-duel-task-inner .pvp-duel-task-condition-sheet .task-expression-display {
-    font-size: clamp(1.22rem, 4.6vmin, 2.05rem);
+    font-size: clamp(1.83rem, 6.9vmin, 3.08rem);
     line-height: 1.62;
 }
 .pvp-duel-task-inner .pvp-duel-task-condition-sheet .task-image {
@@ -435,7 +435,7 @@
 .pvp-duel-task-inner .task-common-denom-original { min-height: 2em; display: inline-flex; align-items: center; }
 .pvp-duel-task-inner .pvp-duel-task-condition-sheet #duelMixedFracDisplay,
 .pvp-duel-task-inner .pvp-duel-task-condition-sheet #duelAddSubFracDisplay {
-    font-size: clamp(1.22rem, 4.6vmin, 2.05rem);
+    font-size: clamp(1.83rem, 6.9vmin, 3.08rem);
     line-height: 1.62;
     margin-top: 10px;
     margin-bottom: 12px;
@@ -780,14 +780,14 @@
     .clan-chat-modal .modal-box { max-height: 80vh; padding: 14px; }
     .clan-chat-modal .clan-chat-messages { max-height: 200px; min-height: 100px; }
     .clan-chat-modal .modal-chat-close { top: 8px; right: 8px; width: 32px; height: 32px; }
-    /* Условие на листе дуэли — в 2 раза крупнее базового clamp */
+    /* Условие на листе дуэли — крупнее */
     .pvp-duel-task-inner .pvp-duel-task-condition-sheet .task-text,
     .pvp-duel-task-inner .pvp-duel-task-condition-sheet .task-expression-display {
-        font-size: clamp(2.44rem, 9.2vmin, 4.1rem);
+        font-size: clamp(3.66rem, 13.8vmin, 6.15rem);
     }
     .pvp-duel-task-inner .pvp-duel-task-condition-sheet #duelMixedFracDisplay,
     .pvp-duel-task-inner .pvp-duel-task-condition-sheet #duelAddSubFracDisplay {
-        font-size: clamp(2.44rem, 9.2vmin, 4.1rem);
+        font-size: clamp(3.66rem, 13.8vmin, 6.15rem);
     }
     .pvp-duel-task-inner .pvp-duel-task-condition-sheet .task-title {
         font-size: 2.4rem;
@@ -889,7 +889,6 @@
             <div class="pvp-duel-task-inner no-copy" id="duelTaskContentNoCopy">
                 <div class="pvp-duel-task-condition-viewport" title="Прокрутите область, чтобы прочитать всё условие">
                 <div class="pvp-duel-task-condition-sheet" id="duelTaskConditionSheet">
-                <div class="task-noise-bg" id="duelTaskNoiseBg" aria-hidden="true"></div>
                 <div id="duelTaskConditionMain">
                 <div class="task-title" id="duelTaskTitle"></div>
                 <div class="task-text" id="duelTaskText"></div>
@@ -1559,9 +1558,6 @@ window.pvpDuelFocusProtection = (function() {
                 fillDuelTask(d.task);
                 document.getElementById('duelTaskContent').style.display = 'block';
                 document.getElementById('duelGetTaskWrap').style.display = 'none';
-                requestAnimationFrame(function() {
-                    requestAnimationFrame(function() { renderDuelTaskNoiseBackground(); });
-                });
                 window.pvpDuelFocusProtection && window.pvpDuelFocusProtection.arm();
             });
     });

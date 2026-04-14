@@ -884,7 +884,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 .territory-task-content .task-text,
 .territory-task-content .task-expression-display {
     font-family: 'Kalam', 'Caveat', cursive;
-    font-size: clamp(1.22rem, 4.6vmin, 2.05rem);
+    font-size: clamp(1.83rem, 6.9vmin, 3.08rem);
     font-weight: 400;
     line-height: 1.62;
     letter-spacing: 0.03em;
@@ -1160,7 +1160,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 .territory-task-content #taskMixedFracDisplay,
 .territory-task-content #taskAddSubFracDisplay {
     font-family: 'Kalam', 'Caveat', cursive;
-    font-size: clamp(1.22rem, 4.6vmin, 2.05rem);
+    font-size: clamp(1.83rem, 6.9vmin, 3.08rem);
     font-weight: 400;
     line-height: 1.62;
     letter-spacing: 0.03em;
@@ -2004,15 +2004,15 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     .admin-chat-modal .clan-chat-form button[type="submit"] { min-height: 44px; }
 }
 
-/* Телефоны и узкие планшеты: условие задачи в модалке — шрифт в 2 раза крупнее */
+/* Телефоны и узкие планшеты: условие задачи крупнее */
 @media (max-width: 768px) {
     .territory-task-content .task-text,
     .territory-task-content .task-expression-display {
-        font-size: clamp(2.44rem, 9.2vmin, 4.1rem);
+        font-size: clamp(3.66rem, 13.8vmin, 6.15rem);
     }
     .territory-task-content #taskMixedFracDisplay,
     .territory-task-content #taskAddSubFracDisplay {
-        font-size: clamp(2.44rem, 9.2vmin, 4.1rem);
+        font-size: clamp(3.66rem, 13.8vmin, 6.15rem);
     }
     .task-modal-header h2 {
         font-size: 2.7rem;
@@ -2391,7 +2391,6 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 <!-- Модальное окно задания -->
 <div class="task-modal-overlay" id="taskModal">
     <div class="task-modal">
-        <div class="task-noise-bg task-noise-bg-modal" id="taskNoiseBg" aria-hidden="true"></div>
         <div class="task-modal-header">
             <h2 id="taskModalTitle">Задание</h2>
         </div>
@@ -3441,7 +3440,6 @@ window.territoryFocusProtection = (function() {
         document.getElementById('taskAnswerWrapMixedFraction').style.display = 'none';
         window._currentDemogorgonTask = null;
         document.getElementById('taskModal').classList.add('open');
-        renderTaskNoiseBackground();
         applyTaskConditionHandwritingAndLens();
         fetch('{{ url_for("api_territory_demogorgons_task") }}', { method: 'POST' })
             .then(function(res) { return res.json(); })
@@ -3537,9 +3535,6 @@ window.territoryFocusProtection = (function() {
                             intPartInput2.classList.remove('task-int-part-disabled');
                         }
                     }
-                    requestAnimationFrame(function() {
-                        requestAnimationFrame(function() { renderTaskNoiseBackground(); });
-                    });
                     if (isFraction) {
                         document.getElementById('taskAnswerNum').focus();
                     } else if (isCommonDenom) {
@@ -4242,7 +4237,6 @@ window.territoryFocusProtection = (function() {
         document.getElementById('taskAnswerWrapMixedFraction').style.display = 'none';
         window._currentTask = null;
         document.getElementById('taskModal').classList.add('open');
-        renderTaskNoiseBackground();
         applyTaskConditionHandwritingAndLens();
         fetch('{{ url_for("api_territory_task") }}?region_index=' + encodeURIComponent(String(regionId)))
             .then(function(res) { return res.json(); })
@@ -4338,9 +4332,6 @@ window.territoryFocusProtection = (function() {
                             intPartInput.classList.remove('task-int-part-disabled');
                         }
                     }
-                    requestAnimationFrame(function() {
-                        requestAnimationFrame(function() { renderTaskNoiseBackground(); });
-                    });
                     if (isFraction) {
                         document.getElementById('taskAnswerNum').focus();
                     } else if (isCommonDenom) {
