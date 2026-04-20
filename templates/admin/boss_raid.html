@@ -6,13 +6,19 @@
 <div class="admin-container">
     <h1 class="admin-title">Управление рейд боссом</h1>
     <div class="admin-nav-row" style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
-        <a href="{{ url_for('index') }}" class="back-link">← Назад к рейтингу</a>
-        <a href="{{ url_for('admin_classes') }}" class="back-link">Классы</a>
-        <a href="{{ url_for('admin_prizes') }}" class="back-link">Призы</a>
-        <a href="{{ url_for('admin_tasks') }}" class="back-link">Задачи</a>
-        <a href="{{ url_for('admin_download_db') }}" class="back-link">Скачать БД</a>
-        <a href="{{ url_for('logout') }}" class="back-link logout-link">Выйти</a>
+        <a href="{{ url_for('index') }}" class="back-link">← Главное меню</a>
     </div>
+
+    {% if raid_share_url %}
+    <div class="share-link-banner share-link-banner--raid">
+        <h2 class="share-link-banner__title">Ссылка для учеников (рейд босс)</h2>
+        <p class="share-link-banner__text">По этой ссылке ученики попадают на страницу <strong>вашего</strong> активного босса и могут сражаться <strong>без входа</strong>. Классы в списке — только ваши.</p>
+        <div class="share-link-banner__row">
+            <input type="text" id="raidShareUrlInput" class="share-link-banner__input" readonly value="{{ raid_share_url }}" aria-label="Ссылка для учеников">
+            <button type="button" class="save-btn share-link-banner__btn" onclick="copyRaidShareUrl()">Копировать</button>
+        </div>
+    </div>
+    {% endif %}
     
     <button class="add-btn" onclick="showAddBossModal()">+ Добавить рейд босса</button>
     
@@ -209,6 +215,26 @@ let currentBossId = null;
 let editingTaskId = null;
 let tasksPage = 1;
 let tasksPerPage = 20;
+
+function copyRaidShareUrl() {
+    const el = document.getElementById('raidShareUrlInput');
+    if (!el) return;
+    el.select();
+    el.setSelectionRange(0, 99999);
+    try {
+        navigator.clipboard.writeText(el.value).then(function () { alert('Ссылка скопирована'); }).catch(function () {
+            document.execCommand('copy');
+            alert('Ссылка скопирована');
+        });
+    } catch (e) {
+        try {
+            document.execCommand('copy');
+            alert('Ссылка скопирована');
+        } catch (e2) {
+            alert('Не удалось скопировать — выделите ссылку вручную');
+        }
+    }
+}
 
 // Управление боссами
 function showAddBossModal() {

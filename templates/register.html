@@ -31,10 +31,6 @@
                     </button>
                 </div>
             </div>
-            <div class="form-group">
-                <label for="character_name">Имя персонажа</label>
-                <input type="text" id="character_name" name="character_name" value="{{ request.form.character_name or '' }}" placeholder="Как вас будут звать в игре">
-            </div>
             <button type="submit" class="register-btn">Зарегистрироваться</button>
         </form>
         <a href="{{ url_for('login') }}" class="back-link">Уже есть аккаунт? Войти</a>

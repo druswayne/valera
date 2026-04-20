@@ -1962,7 +1962,14 @@ const BOSS_ANIMATION_FRAMES = {{ (boss_animation_frames or [])|tojson }};
 let currentTask = null;
 let bossId = {{ boss.id if boss else 'null' }};
 let bossIsActive = {% if boss and boss.is_active %}true{% else %}false{% endif %};
+const raidShareToken = {{ (raid_share_token or '')|tojson }};
 let resumeBattleAfterNameSave = false;
+
+function appendRaidToken(url) {
+    if (!raidShareToken) return url;
+    const join = url.includes('?') ? '&' : '?';
+    return `${url}${join}token=${encodeURIComponent(raidShareToken)}`;
+}
 
 // ==================== ДРОП: СУНДУК (UI) ====================
 const DROP_AUTO_OPEN_DELAY_MS = 2000; // ожидание (тряска) перед открытием
@@ -3047,7 +3054,7 @@ function toggleClassTopRow(row) {
         <div class="class-top-loading">Загрузка...</div>
     `;
 
-    const url = `/api/raid-boss/top-users-by-class?boss_id=${encodeURIComponent(String(bossId))}&class_id=${encodeURIComponent(String(classId))}&limit=10`;
+    const url = appendRaidToken(`/api/raid-boss/top-users-by-class?boss_id=${encodeURIComponent(String(bossId))}&class_id=${encodeURIComponent(String(classId))}&limit=10`);
     fetch(url)
         .then((r) => r.json().then((j) => ({ ok: r.ok, status: r.status, json: j })))
         .then(({ ok, json }) => {
@@ -3311,7 +3318,8 @@ function saveUserName(event) {
         },
         body: JSON.stringify({
             name: name,
-            user_id: currentUserId ? parseInt(currentUserId) : null
+            user_id: currentUserId ? parseInt(currentUserId) : null,
+            ...(raidShareToken ? { token: raidShareToken } : {})
         })
     })
     .then(response => response.json())
@@ -3370,7 +3378,7 @@ function proceedWithBattle() {
     if (taskCard) taskCard.style.display = 'none';
     if (messageBox) messageBox.innerHTML = '';
     
-    fetch('/api/raid-boss/task')
+    fetch(appendRaidToken('/api/raid-boss/task'))
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -3488,7 +3496,8 @@ function submitAnswer(event) {
             class_id: parseInt(classId),
             user_name: savedUserName || classNameText,
             user_id: savedUserId ? parseInt(savedUserId) : null,
-            answer: answer
+            answer: answer,
+            ...(raidShareToken ? { token: raidShareToken } : {})
         })
     })
     .then(response => response.json())
@@ -3640,7 +3649,7 @@ function updateStats() {
         return;
     }
     
-    fetch(`/api/raid-boss/stats?boss_id=${bossId}`)
+    fetch(appendRaidToken(`/api/raid-boss/stats?boss_id=${bossId}`))
         .then(response => response.json())
         .then(data => {
             if (data.success) {

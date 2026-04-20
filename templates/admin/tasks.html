@@ -6,34 +6,19 @@
 <div class="admin-container">
     <h1 class="admin-title">Управление задачами недели</h1>
     <div class="admin-nav-row" style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
-        <a href="{{ url_for('index') }}" class="back-link">← Назад к рейтингу</a>
-        <a href="{{ url_for('admin_classes') }}" class="back-link">Классы</a>
-        <a href="{{ url_for('admin_prizes') }}" class="back-link">Призы</a>
-        <a href="{{ url_for('admin_boss_raid') }}" class="back-link">Рейд босс</a>
-        <a href="{{ url_for('admin_download_db') }}" class="back-link">Скачать БД</a>
-        <a href="{{ url_for('logout') }}" class="back-link" style="color: #f44336;">Выйти</a>
+        <a href="{{ url_for('index') }}" class="back-link">← Главное меню</a>
     </div>
-    
-    <div class="password-card">
-        <h2 class="password-title">Сменить пароль администратора</h2>
-        <form class="password-form" method="POST" action="{{ url_for('admin_change_password') }}">
-            <div class="password-grid">
-                <div class="password-field">
-                    <label for="currentPassword">Текущий пароль</label>
-                    <input id="currentPassword" name="current_password" type="password" required autocomplete="current-password">
-                </div>
-                <div class="password-field">
-                    <label for="newPassword">Новый пароль</label>
-                    <input id="newPassword" name="new_password" type="password" required minlength="6" autocomplete="new-password">
-                </div>
-                <div class="password-field">
-                    <label for="newPasswordConfirm">Повтор нового пароля</label>
-                    <input id="newPasswordConfirm" name="new_password_confirm" type="password" required minlength="6" autocomplete="new-password">
-                </div>
-            </div>
-            <button type="submit" class="save-btn password-save-btn">Сменить пароль</button>
-        </form>
+
+    {% if weekly_share_url %}
+    <div class="share-link-banner share-link-banner--weekly">
+        <h2 class="share-link-banner__title">Ссылка для учеников (задача недели)</h2>
+        <p class="share-link-banner__text">По этой ссылке можно открыть страницу задачи и отправить ответ <strong>без регистрации</strong>. Не публикуйте её в открытых чатах — в ссылке зашит доступ к вашим задачам.</p>
+        <div class="share-link-banner__row">
+            <input type="text" id="weeklyShareUrlInput" class="share-link-banner__input" readonly value="{{ weekly_share_url }}" aria-label="Ссылка для учеников">
+            <button type="button" class="save-btn share-link-banner__btn" onclick="copyWeeklyShareUrl()">Копировать</button>
+        </div>
     </div>
+    {% endif %}
 
     <button class="add-btn" onclick="showAddTaskModal()">+ Добавить задачу</button>
     
@@ -170,6 +155,26 @@
 <script>
 let editingTaskId = null;
 let hasCurrentImage = false;
+
+function copyWeeklyShareUrl() {
+    const el = document.getElementById('weeklyShareUrlInput');
+    if (!el) return;
+    el.select();
+    el.setSelectionRange(0, 99999);
+    try {
+        navigator.clipboard.writeText(el.value).then(function () { alert('Ссылка скопирована'); }).catch(function () {
+            document.execCommand('copy');
+            alert('Ссылка скопирована');
+        });
+    } catch (e) {
+        try {
+            document.execCommand('copy');
+            alert('Ссылка скопирована');
+        } catch (e2) {
+            alert('Не удалось скопировать — выделите ссылку вручную');
+        }
+    }
+}
 
 function showAddTaskModal() {
     editingTaskId = null;
@@ -666,64 +671,6 @@ tr:hover {
     box-shadow: 0 8px 20px rgba(139, 157, 200, 0.4);
 }
 
-.password-card {
-    background: #fff;
-    border-radius: 20px;
-    padding: 20px;
-    margin-bottom: 25px;
-    border: 3px solid #d4c5b0;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-}
-
-.password-title {
-    margin: 0 0 15px 0;
-    color: #8b6fa8;
-    font-size: 24px;
-    font-weight: bold;
-    text-shadow: 1px 1px 0px #e8d5c4;
-}
-
-.password-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(200px, 1fr));
-    gap: 15px;
-    margin-bottom: 15px;
-}
-
-.password-field label {
-    display: block;
-    color: #333;
-    margin-bottom: 8px;
-    font-size: 16px;
-    font-weight: bold;
-}
-
-.password-field input {
-    width: 100%;
-    padding: 12px 14px;
-    border-radius: 12px;
-    border: 3px solid #a8b8d0;
-    background-color: #fff;
-    color: #333;
-    font-size: 16px;
-    font-family: 'Comic Sans MS', Arial, sans-serif;
-    transition: all 0.3s ease;
-}
-
-.password-field input:focus {
-    outline: none;
-    border-color: #8b6fa8;
-    box-shadow: 0 0 15px rgba(139, 111, 168, 0.3);
-}
-
-.password-save-btn {
-    width: auto;
-    padding: 14px 22px;
-    font-size: 16px;
-    text-transform: none;
-    letter-spacing: 0;
-}
-
 .pagination {
     display: flex;
     justify-content: center;
@@ -895,14 +842,6 @@ tr:hover {
         width: 100%;
         padding: 15px;
         font-size: 18px;
-    }
-
-    .password-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .password-save-btn {
-        width: 100%;
     }
     
     .tasks-table {

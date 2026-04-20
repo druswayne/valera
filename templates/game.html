@@ -1315,6 +1315,7 @@
             try {
                 const response = await fetch(`/api/class/${CLASS_ID}/balance/delta`, {
                     method: 'POST',
+                    credentials: 'same-origin',
                     headers: {
                         'Content-Type': 'application/json'
                     },
@@ -1352,7 +1353,7 @@
         // Функция получения текущего баланса
         async function getBalance() {
             try {
-                const response = await fetch(`/api/class/${CLASS_ID}/balance`);
+                const response = await fetch(`/api/class/${CLASS_ID}/balance`, { credentials: 'same-origin' });
                 const data = await response.json();
                 document.getElementById('studentsBalance').textContent = data.students_balance;
                 document.getElementById('valeraBalance').textContent = data.valera_balance;
@@ -1915,7 +1916,7 @@
             studentsRatingListModal.classList.add('show');
             
             try {
-                const response = await fetch(`/api/classes/${CLASS_ID}/students`);
+                const response = await fetch(`/api/classes/${CLASS_ID}/students`, { credentials: 'same-origin' });
                 const data = await response.json();
                 
                 if (!data?.success) {
@@ -1937,7 +1938,7 @@
         // Загрузка учащихся и выбор
         async function loadStudentsAndSelect() {
             try {
-                const response = await fetch(`/api/class/${CLASS_ID}/students/random`);
+                const response = await fetch(`/api/class/${CLASS_ID}/students/random`, { credentials: 'same-origin' });
                 const data = await response.json();
                 
                 if (!data.success) {
@@ -2014,7 +2015,8 @@
             
             try {
                 const response = await fetch(`/api/class/${CLASS_ID}/students/${currentSelectedStudent.student.id}/select`, {
-                    method: 'POST'
+                    method: 'POST',
+                    credentials: 'same-origin'
                 });
                 const data = await response.json();
                 
@@ -2113,6 +2115,7 @@
                 try {
                     const response = await fetch(`/api/class/${CLASS_ID}/students/${ratingTargetStudent.id}/redeem-rating`, {
                         method: 'POST',
+                        credentials: 'same-origin',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ action: pendingRedeemAction })
                     });
@@ -2149,6 +2152,7 @@
                 try {
                     const response = await fetch(`/api/class/${CLASS_ID}/students/${ratingTargetStudent.id}/rate`, {
                         method: 'POST',
+                        credentials: 'same-origin',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ delta })
                     });

@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, send_from_directory, send_file, after_this_request
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, send_from_directory, send_file, after_this_request, abort
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -8,13 +8,15 @@ from functools import wraps
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.executors.pool import ThreadPoolExecutor
-from sqlalchemy import case, cast, Float, Index, and_, func, text
+from sqlalchemy import case, cast, Float, Index, and_, func, text, UniqueConstraint
 from sqlalchemy.exc import IntegrityError
 import json
 import random
 import os
 import logging
-
+import secrets
+concurrent_path = os.path.dirname(__file__)
+os.chdir(concurrent_path)
 try:
     from generate_boss_tasks import (
         generate_expression_task,
@@ -421,6 +423,9 @@ class User(UserMixin, db.Model):
     nums_balance = db.Column(db.Integer, default=0, nullable=False)  # Нумы (валюта за правильные решения задач)
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # Ссылки для учеников: задача недели / рейд босса (без входа)
+    weekly_share_token = db.Column(db.String(64), unique=True, nullable=True, index=True)
+    raid_share_token = db.Column(db.String(64), unique=True, nullable=True, index=True)
 
     clan_obj = db.relationship('Clan', back_populates='members_rel', foreign_keys=[clan_id], lazy=True)
     territory_stats_rel = db.relationship('UserTerritoryStats', backref='user', uselist=False, lazy=True, cascade='all, delete-orphan')
@@ -571,6 +576,9 @@ class ShopItem(db.Model):
     sort_order = db.Column(db.Integer, default=0, nullable=False)
     shop_context = db.Column(db.String(20), nullable=False, default=SHOP_CONTEXT_TERRITORY)  # territory | game
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # Владелец для лавки на странице игры класса; для territory — NULL (глобальная лавка)
+    owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    owner = db.relationship('User', backref=db.backref('owned_shop_items', lazy=True), foreign_keys=[owner_id])
     effects = db.relationship('ShopItemEffect', backref='shop_item', lazy=True, cascade='all, delete-orphan')
 
     def to_dict(self):
@@ -628,13 +636,19 @@ def load_user(user_id):
     return db.session.get(User, int(user_id))
 
 class Class(db.Model):
+    __tablename__ = 'class'
+    __table_args__ = (
+        UniqueConstraint('owner_id', 'name', name='uq_class_owner_name'),
+    )
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False, unique=True)
+    name = db.Column(db.String(100), nullable=False)
     students_balance = db.Column(db.Integer, default=0)
     valera_balance = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     territory_fill_color = db.Column(db.String(20), nullable=True)
     territory_heraldry_filename = db.Column(db.String(255), nullable=True)
+    owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    owner = db.relationship('User', backref=db.backref('owned_classes', lazy=True), foreign_keys=[owner_id])
     students = db.relationship('Student', backref='class_obj', lazy=True, cascade='all, delete-orphan')
     student_selections = db.relationship('StudentSelection', backref='class_obj', lazy=True, cascade='all, delete-orphan')
 
@@ -685,6 +699,8 @@ class Prize(db.Model):
     valera_change = db.Column(db.Integer, default=0, nullable=False)  # Изменение баланса Валеры
     probability = db.Column(db.String(20), default='medium', nullable=False)  # 'high', 'medium', 'low'
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    owner = db.relationship('User', backref=db.backref('owned_prizes', lazy=True), foreign_keys=[owner_id])
 
     def to_dict(self):
         return {
@@ -705,6 +721,8 @@ class WeeklyTask(db.Model):
     is_active = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_updated = db.Column(db.DateTime, default=datetime.utcnow)  # Дата последнего обновления
+    owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    owner = db.relationship('User', backref=db.backref('owned_weekly_tasks', lazy=True), foreign_keys=[owner_id])
     
     # Связь с решениями
     solutions = db.relationship('TaskSolution', backref='task', lazy=True, cascade='all, delete-orphan')
@@ -754,6 +772,8 @@ class Boss(db.Model):
     is_active = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    owner = db.relationship('User', backref=db.backref('owned_bosses', lazy=True), foreign_keys=[owner_id])
     
     tasks = db.relationship('BossTask', backref='boss', lazy=True, cascade='all, delete-orphan')
     solutions = db.relationship('BossTaskSolution', backref='boss', lazy=True, cascade='all, delete-orphan')
@@ -1061,6 +1081,102 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+
+def class_owned_for_request(class_id):
+    """Класс существует и принадлежит текущему пользователю (или пользователь — админ)."""
+    if not current_user.is_authenticated:
+        abort(401)
+    c = db.session.get(Class, class_id)
+    if not c:
+        abort(404)
+    if current_user.is_admin or c.owner_id == current_user.id:
+        return c
+    abort(404)
+
+
+def prize_for_request(prize_id):
+    p = db.session.get(Prize, prize_id)
+    if not p:
+        abort(404)
+    if current_user.is_admin or p.owner_id == current_user.id:
+        return p
+    abort(404)
+
+
+def shop_game_item_for_request(item_id):
+    item = db.session.get(ShopItem, item_id)
+    if not item or item.shop_context != SHOP_CONTEXT_GAME:
+        abort(404)
+    if current_user.is_admin or item.owner_id == current_user.id:
+        return item
+    abort(404)
+
+
+def ensure_user_share_tokens(user):
+    """Токены для публичных ссылок (задача недели / рейд). Без db.session.commit()."""
+    if not user.weekly_share_token:
+        user.weekly_share_token = secrets.token_urlsafe(32)
+    if not user.raid_share_token:
+        user.raid_share_token = secrets.token_urlsafe(32)
+
+
+def boss_owned_for_request(boss_id):
+    if not current_user.is_authenticated:
+        abort(401)
+    b = db.session.get(Boss, boss_id)
+    if not b:
+        abort(404)
+    if current_user.is_admin or b.owner_id == current_user.id:
+        return b
+    abort(404)
+
+
+def weekly_task_owned_for_request(task_id):
+    if not current_user.is_authenticated:
+        abort(401)
+    t = db.session.get(WeeklyTask, task_id)
+    if not t:
+        abort(404)
+    if current_user.is_admin or t.owner_id == current_user.id:
+        return t
+    abort(404)
+
+
+def active_boss_for_owner_id(owner_id: int):
+    b = Boss.query.filter_by(is_active=True, owner_id=owner_id).first()
+    if not b:
+        b = Boss.query.filter_by(owner_id=owner_id).order_by(Boss.created_at.desc()).first()
+    return b
+
+
+def user_by_weekly_token(token):
+    if not token or not str(token).strip():
+        return None
+    return User.query.filter_by(weekly_share_token=str(token).strip()).first()
+
+
+def user_by_raid_token(token):
+    if not token or not str(token).strip():
+        return None
+    return User.query.filter_by(raid_share_token=str(token).strip()).first()
+
+
+def resolve_playable_boss_for_raid(token_str):
+    """
+    Босс для страницы рейда: по raid_share_token (гость) или по текущему учителю.
+    Возвращает (boss_or_none, error_code): error_code — None | 'auth' | 'bad_token'.
+    """
+    t = (token_str or '').strip()
+    if t:
+        u = user_by_raid_token(t)
+        if not u:
+            return None, 'bad_token'
+        return active_boss_for_owner_id(u.id), None
+    if current_user.is_authenticated:
+        return active_boss_for_owner_id(current_user.id), None
+    return None, 'auth'
+
+
 # Функции валидации
 def validate_user_name(name):
     """
@@ -1261,42 +1377,50 @@ def process_drop_reward(boss_id, user_id, task_id, class_id=None, allow_multiple
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# Функция обновления задачи недели
+def ensure_weekly_tasks_active_per_owner():
+    """У каждого владельца ровно одна активная задача недели (если есть задачи)."""
+    owner_rows = db.session.query(WeeklyTask.owner_id).distinct().filter(WeeklyTask.owner_id.isnot(None)).all()
+    for (oid,) in owner_rows:
+        if oid is None:
+            continue
+        tasks = WeeklyTask.query.filter_by(owner_id=oid).all()
+        if not tasks:
+            continue
+        if WeeklyTask.query.filter_by(owner_id=oid, is_active=True).first():
+            continue
+        unsolved = [t for t in tasks if not t.is_solved()]
+        pick = random.choice(unsolved) if unsolved else tasks[0]
+        WeeklyTask.query.filter_by(owner_id=oid).update({WeeklyTask.is_active: False})
+        pick.is_active = True
+        pick.last_updated = datetime.utcnow()
+    db.session.commit()
+
+
+# Функция обновления задачи недели (отдельно по каждому учителю)
 def update_weekly_task():
-    """Обновляет задачу недели, выбирая случайную из нерешенных задач"""
+    """Для каждого владельца выбирает новую активную задачу из нерешенных."""
     with app.app_context():
         try:
-            # Получаем все задачи, которые еще не решены
-            all_tasks = WeeklyTask.query.all()
-            if not all_tasks:
-                print("Нет задач для обновления")
+            owner_rows = db.session.query(WeeklyTask.owner_id).distinct().filter(WeeklyTask.owner_id.isnot(None)).all()
+            if not owner_rows:
+                print("Нет задач недели с владельцем")
                 return
-            
-            unsolved_tasks = [task for task in all_tasks if not task.is_solved()]
-            
-            if not unsolved_tasks:
-                # Если все задачи решены, активируем первую задачу
-                print("Все задачи решены. Активирую первую задачу.")
-                first_task = all_tasks[0]
-                WeeklyTask.query.update({WeeklyTask.is_active: False})
-                first_task.is_active = True
-                first_task.last_updated = datetime.utcnow()
-                db.session.commit()
-                print(f"Задача недели обновлена (все задачи решены): {first_task.title}")
-                return
-            
-            # Выбираем случайную задачу из нерешенных
-            new_task = random.choice(unsolved_tasks)
-            
-            # Деактивируем все задачи
-            WeeklyTask.query.update({WeeklyTask.is_active: False})
-            
-            # Активируем новую задачу
-            new_task.is_active = True
-            new_task.last_updated = datetime.utcnow()
-            
+            for (owner_id,) in owner_rows:
+                if owner_id is None:
+                    continue
+                all_tasks = WeeklyTask.query.filter_by(owner_id=owner_id).all()
+                if not all_tasks:
+                    continue
+                unsolved_tasks = [task for task in all_tasks if not task.is_solved()]
+                WeeklyTask.query.filter_by(owner_id=owner_id).update({WeeklyTask.is_active: False})
+                if unsolved_tasks:
+                    new_task = random.choice(unsolved_tasks)
+                else:
+                    new_task = all_tasks[0]
+                new_task.is_active = True
+                new_task.last_updated = datetime.utcnow()
+                print(f"Задача недели (owner {owner_id}): {new_task.title}")
             db.session.commit()
-            print(f"Задача недели обновлена: {new_task.title}")
         except Exception as e:
             db.session.rollback()
             print(f"Ошибка при обновлении задачи недели: {e}")
@@ -1322,7 +1446,7 @@ def get_next_sunday_9am():
 # Создание таблиц
 with app.app_context():
     db.create_all()
-    
+
     # Миграция: добавление новых колонок в таблицу Prize, если их нет
     try:
         from sqlalchemy import inspect, text
@@ -1348,7 +1472,166 @@ with app.app_context():
     except Exception as e:
         print(f"Ошибка при миграции таблицы prize: {e}")
         # Если таблица не существует, db.create_all() создаст её с нужными колонками
-    
+
+    # Миграция: владельцы классов / призов / лавки игры (несколько учителей на одном сайте)
+    try:
+        from sqlalchemy import inspect, text
+        insp = inspect(db.engine)
+        table_names = insp.get_table_names()
+        legacy_uid = None
+        with db.engine.connect() as raw_conn:
+            legacy_uid = raw_conn.execute(text(
+                "SELECT id FROM user WHERE username = 'admin' OR is_admin = 1 ORDER BY id LIMIT 1"
+            )).scalar()
+            if legacy_uid is None:
+                legacy_uid = raw_conn.execute(text("SELECT id FROM user ORDER BY id LIMIT 1")).scalar()
+        if legacy_uid is None:
+            legacy_uid = 1
+
+        def _class_has_composite_owner_name_unique(conn):
+            for row in conn.execute(text("PRAGMA index_list('class')")):
+                seq, idx_name, unique_flag, *_rest = (list(row) + [0, 0, 0])[:6]
+                if not unique_flag:
+                    continue
+                cols = [r[2] for r in conn.execute(text(f'PRAGMA index_info("{idx_name.replace(chr(34), "")}")'))]
+                if set(cols) == {'owner_id', 'name'}:
+                    return True
+            return False
+
+        with db.engine.begin() as conn:
+            conn.execute(text(
+                "CREATE TABLE IF NOT EXISTS app_meta (k VARCHAR(64) PRIMARY KEY, v VARCHAR(255) NOT NULL)"
+            ))
+
+            def _meta_get(k):
+                r = conn.execute(text("SELECT v FROM app_meta WHERE k = :k"), {"k": k}).fetchone()
+                return r[0] if r else None
+
+            def _meta_set(k, v):
+                conn.execute(text("INSERT OR REPLACE INTO app_meta (k, v) VALUES (:k, :v)"), {"k": k, "v": str(v)})
+
+            if 'class' in table_names:
+                if _meta_get('class_uq_owner_name_v1') == '1':
+                    pass
+                elif _class_has_composite_owner_name_unique(conn):
+                    _meta_set('class_uq_owner_name_v1', '1')
+                else:
+                    cols = [c['name'] for c in insp.get_columns('class')]
+                    if 'owner_id' not in cols:
+                        conn.execute(text("ALTER TABLE class ADD COLUMN owner_id INTEGER REFERENCES user(id)"))
+                        print("Добавлена колонка owner_id в class")
+                    conn.execute(
+                        text("UPDATE class SET owner_id = :uid WHERE owner_id IS NULL"),
+                        {"uid": int(legacy_uid)},
+                    )
+                    conn.execute(text("PRAGMA foreign_keys=OFF"))
+                    conn.execute(text("""
+                        CREATE TABLE class__owner_migrate (
+                            id INTEGER NOT NULL PRIMARY KEY,
+                            name VARCHAR(100) NOT NULL,
+                            students_balance INTEGER,
+                            valera_balance INTEGER,
+                            created_at DATETIME,
+                            territory_fill_color VARCHAR(20),
+                            territory_heraldry_filename VARCHAR(255),
+                            owner_id INTEGER NOT NULL REFERENCES user(id),
+                            UNIQUE (owner_id, name)
+                        )
+                    """))
+                    conn.execute(text("""
+                        INSERT INTO class__owner_migrate (
+                            id, name, students_balance, valera_balance, created_at,
+                            territory_fill_color, territory_heraldry_filename, owner_id
+                        )
+                        SELECT id, name, students_balance, valera_balance, created_at,
+                               territory_fill_color, territory_heraldry_filename,
+                               COALESCE(owner_id, :uid)
+                        FROM class
+                    """), {"uid": int(legacy_uid)})
+                    conn.execute(text("DROP TABLE class"))
+                    conn.execute(text("ALTER TABLE class__owner_migrate RENAME TO class"))
+                    conn.execute(text("PRAGMA foreign_keys=ON"))
+                    _meta_set('class_uq_owner_name_v1', '1')
+                    print("Миграция class: UNIQUE(owner_id, name)")
+
+        insp2 = inspect(db.engine)
+        t2 = insp2.get_table_names()
+        with db.engine.begin() as conn2:
+            if 'prize' in t2:
+                pcols = [c['name'] for c in insp2.get_columns('prize')]
+                if 'owner_id' not in pcols:
+                    conn2.execute(text("ALTER TABLE prize ADD COLUMN owner_id INTEGER REFERENCES user(id)"))
+                    print("Добавлена колонка owner_id в prize")
+                conn2.execute(
+                    text("UPDATE prize SET owner_id = :uid WHERE owner_id IS NULL"),
+                    {"uid": int(legacy_uid)},
+                )
+            if 'shop_item' in t2:
+                scols = [c['name'] for c in insp2.get_columns('shop_item')]
+                if 'owner_id' not in scols:
+                    conn2.execute(text("ALTER TABLE shop_item ADD COLUMN owner_id INTEGER REFERENCES user(id)"))
+                    print("Добавлена колонка owner_id в shop_item")
+                conn2.execute(text(
+                    "UPDATE shop_item SET owner_id = :uid WHERE shop_context = 'game' AND owner_id IS NULL"
+                ), {"uid": int(legacy_uid)})
+    except Exception as e:
+        print(f"Ошибка миграции владельцев class/prize/shop_item: {e}")
+
+    # Миграция: задачи недели и рейд по учителям + токены ссылок
+    try:
+        from sqlalchemy import inspect, text
+        _insp_m = inspect(db.engine)
+        _tn_m = _insp_m.get_table_names()
+        _leg_uid = None
+        with db.engine.connect() as _rc_m:
+            _leg_uid = _rc_m.execute(text(
+                "SELECT id FROM user WHERE username = 'admin' OR is_admin = 1 ORDER BY id LIMIT 1"
+            )).scalar()
+            if _leg_uid is None:
+                _leg_uid = _rc_m.execute(text("SELECT id FROM user ORDER BY id LIMIT 1")).scalar()
+        if _leg_uid is None:
+            _leg_uid = 1
+        with db.engine.begin() as _conn_m:
+            if 'weekly_task' in _tn_m:
+                _wcols = [c['name'] for c in _insp_m.get_columns('weekly_task')]
+                if 'owner_id' not in _wcols:
+                    _conn_m.execute(text("ALTER TABLE weekly_task ADD COLUMN owner_id INTEGER REFERENCES user(id)"))
+                    print("Добавлена колонка owner_id в weekly_task")
+                _conn_m.execute(
+                    text("UPDATE weekly_task SET owner_id = :uid WHERE owner_id IS NULL"),
+                    {"uid": int(_leg_uid)},
+                )
+            if 'boss' in _tn_m:
+                _bcols = [c['name'] for c in _insp_m.get_columns('boss')]
+                if 'owner_id' not in _bcols:
+                    _conn_m.execute(text("ALTER TABLE boss ADD COLUMN owner_id INTEGER REFERENCES user(id)"))
+                    print("Добавлена колонка owner_id в boss")
+                _conn_m.execute(
+                    text("UPDATE boss SET owner_id = :uid WHERE owner_id IS NULL"),
+                    {"uid": int(_leg_uid)},
+                )
+            if 'user' in _tn_m:
+                _ucols = [c['name'] for c in _insp_m.get_columns('user')]
+                if 'weekly_share_token' not in _ucols:
+                    _conn_m.execute(text("ALTER TABLE user ADD COLUMN weekly_share_token VARCHAR(64)"))
+                    print("Добавлена колонка weekly_share_token в user")
+                if 'raid_share_token' not in _ucols:
+                    _conn_m.execute(text("ALTER TABLE user ADD COLUMN raid_share_token VARCHAR(64)"))
+                    print("Добавлена колонка raid_share_token в user")
+        for _u in User.query.all():
+            ensure_user_share_tokens(_u)
+        db.session.commit()
+    except Exception as e:
+        print(f"Ошибка миграции weekly_task/boss/tokens: {e}")
+
+    # После ALTER user (weekly_share_token / raid_share_token) — иначе ORM падает на старых БД
+    if not User.query.filter_by(username='admin').first():
+        _seed_admin = User(username='admin', is_admin=True)
+        _seed_admin.set_password('admin')
+        db.session.add(_seed_admin)
+        db.session.commit()
+        print("Создан администратор admin (пароль: admin) — смените пароль.")
+
     # Миграция: добавление колонки rating в таблицу student, если её нет
     try:
         from sqlalchemy import inspect, text
@@ -1741,34 +2024,11 @@ with app.app_context():
     os.makedirs(os.path.join(app.root_path, app.config['AVATAR_FOLDER']), exist_ok=True)
     os.makedirs(os.path.join(app.root_path, app.config['CLAN_FLAG_FOLDER']), exist_ok=True)
     
-    # Создание администратора по умолчанию (если его нет)
-    admin = User.query.filter_by(username='admin').first()
-    if not admin:
-        admin = User(username='admin', is_admin=True)
-        admin.set_password('admin')  # Пароль по умолчанию - измените его!
-        db.session.add(admin)
-        db.session.commit()
-    
-    # Проверяем, есть ли активная задача, если нет - создаем из нерешенных
-    active_task = WeeklyTask.query.filter_by(is_active=True).first()
-    if not active_task:
-        all_tasks = WeeklyTask.query.all()
-        if all_tasks:
-            unsolved_tasks = [task for task in all_tasks if not task.is_solved()]
-            if unsolved_tasks:
-                # Выбираем случайную задачу из нерешенных
-                new_task = random.choice(unsolved_tasks)
-                new_task.is_active = True
-                new_task.last_updated = datetime.utcnow()
-                db.session.commit()
-                print(f"Активирована задача недели: {new_task.title}")
-            elif all_tasks:
-                # Если все задачи решены, активируем первую
-                first_task = all_tasks[0]
-                first_task.is_active = True
-                first_task.last_updated = datetime.utcnow()
-                db.session.commit()
-                print(f"Активирована задача недели (все задачи решены): {first_task.title}")
+    # У каждого учителя должна быть активная задача недели (если задачи есть)
+    try:
+        ensure_weekly_tasks_active_per_owner()
+    except Exception as e:
+        print(f"ensure_weekly_tasks_active_per_owner: {e}")
     
     # Запуск планировщика задач
     if not scheduler.running:
@@ -1824,12 +2084,10 @@ def login():
         
         if user and user.check_password(password):
             login_user(user)
-            next_page = request.args.get('next')
+            next_page = request.form.get('next') or request.args.get('next')
             if next_page:
                 return redirect(next_page)
-            if user.is_admin:
-                return redirect(url_for('index'))
-            return redirect(url_for('cabinet'))
+            return redirect(url_for('index'))
         else:
             flash('Неверное имя пользователя или пароль', 'error')
     
@@ -1840,21 +2098,17 @@ def login():
 def logout():
     logout_user()
     flash('Вы успешно вышли из системы', 'info')
-    return redirect(url_for('territory_battle_page'))
+    return redirect(url_for('login'))
 
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    if not get_territory_registration_enabled():
-        flash('Регистрация временно отключена администратором.', 'info')
-        return redirect(url_for('index'))
     if current_user.is_authenticated:
-        return redirect(url_for('cabinet'))
+        return redirect(url_for('admin_classes'))
     if request.method == 'POST':
         username = (request.form.get('username') or '').strip()
         password = request.form.get('password')
         password_confirm = request.form.get('password_confirm')
-        character_name = (request.form.get('character_name') or '').strip()
         if not username or len(username) < 3:
             flash('Логин должен быть не менее 3 символов', 'error')
             return render_template('register.html')
@@ -1876,17 +2130,15 @@ def register():
         if password != password_confirm:
             flash('Пароли не совпадают', 'error')
             return render_template('register.html')
-        is_valid, err = validate_user_name(character_name if character_name else 'A')
-        if character_name and not is_valid:
-            flash(err or 'Некорректное имя персонажа', 'error')
-            return render_template('register.html')
-        user = User(username=username, character_name=character_name or username)
+        user = User(username=username, character_name=username)
         user.set_password(password)
         db.session.add(user)
+        db.session.flush()
+        ensure_user_share_tokens(user)
         db.session.commit()
         login_user(user)
-        flash('Регистрация успешна! Добро пожаловать.', 'info')
-        return redirect(url_for('cabinet'))
+        flash('Регистрация успешна! Настройте классы и призы.', 'info')
+        return redirect(url_for('admin_classes'))
     return render_template('register.html')
 
 
@@ -2788,8 +3040,9 @@ def api_clan_chat_send():
     })
 
 
-# Главная страница - рейтинг классов
+# Главная страница — только для авторизованных учителей (меню + рейтинг классов)
 @app.route('/')
+@login_required
 def index():
     # Сортируем по отношению баллов учащихся к баллам Валеры
     # Если valera_balance = 0 и students_balance > 0, то отношение = очень большое число (класс выше)
@@ -2802,17 +3055,21 @@ def index():
         )),
         else_=cast(Class.students_balance, Float) / cast(Class.valera_balance, Float)
     )
-    classes = Class.query.order_by(ratio.desc()).all()
+    q = Class.query
+    if not current_user.is_admin:
+        q = q.filter(Class.owner_id == current_user.id)
+    classes = q.order_by(ratio.desc()).all()
     return render_template('rating.html', classes=classes, registration_enabled=get_territory_registration_enabled())
 
 # Страница игры для класса
 @app.route('/class/<int:class_id>')
-@admin_required
+@login_required
 def class_game(class_id):
-    class_obj = db.get_or_404(Class, class_id)
-    valera_prizes = Prize.query.filter_by(prize_type='valera').all()
-    students_prizes = Prize.query.filter_by(prize_type='students').all()
-    shop_items = ShopItem.query.filter_by(shop_context=SHOP_CONTEXT_GAME).order_by(ShopItem.price).all()
+    class_obj = class_owned_for_request(class_id)
+    owner_id = class_obj.owner_id
+    valera_prizes = Prize.query.filter_by(prize_type='valera', owner_id=owner_id).all()
+    students_prizes = Prize.query.filter_by(prize_type='students', owner_id=owner_id).all()
+    shop_items = ShopItem.query.filter_by(shop_context=SHOP_CONTEXT_GAME, owner_id=owner_id).order_by(ShopItem.price).all()
     return render_template('game.html',
                          class_obj=class_obj,
                          valera_prizes=[p.to_dict() for p in valera_prizes],
@@ -2821,8 +3078,9 @@ def class_game(class_id):
 
 # API для получения баланса
 @app.route('/api/class/<int:class_id>/balance')
+@login_required
 def get_balance(class_id):
-    class_obj = db.get_or_404(Class, class_id)
+    class_obj = class_owned_for_request(class_id)
     return jsonify({
         'students_balance': class_obj.students_balance,
         'valera_balance': class_obj.valera_balance
@@ -2830,13 +3088,14 @@ def get_balance(class_id):
 
 # API для применения изменения баланса (дельт)
 @app.route('/api/class/<int:class_id>/balance/delta', methods=['POST'])
+@login_required
 def apply_balance_delta(class_id):
     """
     Атомарно применяет изменения (дельты) к балансу учащихся и Валеры.
     В отличие от /balance (POST), который принимает абсолютные значения,
     этот эндпоинт добавляет изменения на стороне сервера.
     """
-    class_obj = db.get_or_404(Class, class_id)
+    class_obj = class_owned_for_request(class_id)
     data = request.get_json(silent=True) or {}
 
     try:
@@ -2857,8 +3116,9 @@ def apply_balance_delta(class_id):
 
 # API для обновления баланса
 @app.route('/api/class/<int:class_id>/balance', methods=['POST'])
+@login_required
 def update_balance(class_id):
-    class_obj = db.get_or_404(Class, class_id)
+    class_obj = class_owned_for_request(class_id)
     data = request.json
     if 'students_balance' in data:
         class_obj.students_balance = data['students_balance']
@@ -2867,39 +3127,44 @@ def update_balance(class_id):
     db.session.commit()
     return jsonify({'success': True})
 
-# Панель администратора - классы
+# Панель: мои классы (каждый учитель — только свои; админ видит все)
 @app.route('/admin/classes')
-@admin_required
+@login_required
 def admin_classes():
-    classes = Class.query.all()
+    if current_user.is_admin:
+        classes = Class.query.order_by(Class.created_at.desc()).all()
+    else:
+        classes = Class.query.filter_by(owner_id=current_user.id).order_by(Class.created_at.desc()).all()
     return render_template('admin/classes.html', classes=classes)
 
 # API для управления классами
 @app.route('/api/classes', methods=['POST'])
-@admin_required
+@login_required
 def create_class():
     data = request.json
-    if Class.query.filter_by(name=data['name']).first():
-        return jsonify({'success': False, 'error': 'Класс с таким названием уже существует'}), 400
+    if Class.query.filter_by(name=data['name'], owner_id=current_user.id).first():
+        return jsonify({'success': False, 'error': 'У вас уже есть класс с таким названием'}), 400
     
     new_class = Class(
         name=data['name'],
         students_balance=0,
-        valera_balance=0
+        valera_balance=0,
+        owner_id=current_user.id
     )
     db.session.add(new_class)
     db.session.commit()
     return jsonify({'success': True, 'class': new_class.to_dict()})
 
 @app.route('/api/classes/<int:class_id>', methods=['PUT'])
-@admin_required
+@login_required
 def update_class(class_id):
-    class_obj = db.get_or_404(Class, class_id)
+    class_obj = class_owned_for_request(class_id)
     data = request.json
     
     if 'name' in data:
-        if Class.query.filter_by(name=data['name']).first() and Class.query.filter_by(name=data['name']).first().id != class_id:
-            return jsonify({'success': False, 'error': 'Класс с таким названием уже существует'}), 400
+        dup = Class.query.filter_by(name=data['name'], owner_id=class_obj.owner_id).first()
+        if dup and dup.id != class_id:
+            return jsonify({'success': False, 'error': 'У вас уже есть класс с таким названием'}), 400
         class_obj.name = data['name']
     if 'students_balance' in data:
         class_obj.students_balance = data['students_balance']
@@ -2910,18 +3175,18 @@ def update_class(class_id):
     return jsonify({'success': True, 'class': class_obj.to_dict()})
 
 @app.route('/api/classes/<int:class_id>', methods=['DELETE'])
-@admin_required
+@login_required
 def delete_class(class_id):
-    class_obj = db.get_or_404(Class, class_id)
+    class_obj = class_owned_for_request(class_id)
     db.session.delete(class_obj)
     db.session.commit()
     return jsonify({'success': True})
 
 # API для управления учащимися
 @app.route('/api/classes/<int:class_id>/students', methods=['GET'])
-@admin_required
+@login_required
 def get_students(class_id):
-    class_obj = db.get_or_404(Class, class_id)
+    class_obj = class_owned_for_request(class_id)
     students = Student.query.filter_by(class_id=class_id).all()
     
     students_payload = []
@@ -2936,9 +3201,9 @@ def get_students(class_id):
     return jsonify({'success': True, 'students': students_payload})
 
 @app.route('/api/classes/<int:class_id>/students', methods=['POST'])
-@admin_required
+@login_required
 def add_students(class_id):
-    class_obj = db.get_or_404(Class, class_id)
+    class_obj = class_owned_for_request(class_id)
     data = request.json
     
     if 'names' not in data or not data['names']:
@@ -2963,9 +3228,10 @@ def add_students(class_id):
     return jsonify({'success': True, 'students': [s.to_dict() for s in added_students]})
 
 @app.route('/api/students/<int:student_id>', methods=['PUT'])
-@admin_required
+@login_required
 def update_student(student_id):
     student = db.get_or_404(Student, student_id)
+    class_owned_for_request(student.class_id)
     data = request.json
     
     if 'name' in data:
@@ -2979,18 +3245,19 @@ def update_student(student_id):
     return jsonify({'success': True, 'student': student.to_dict()})
 
 @app.route('/api/students/<int:student_id>', methods=['DELETE'])
-@admin_required
+@login_required
 def delete_student(student_id):
     student = db.get_or_404(Student, student_id)
+    class_owned_for_request(student.class_id)
     db.session.delete(student)
     db.session.commit()
     return jsonify({'success': True})
 
 # API для случайного выбора учащегося
 @app.route('/api/class/<int:class_id>/students/random', methods=['GET'])
-@admin_required
+@login_required
 def get_students_for_random(class_id):
-    class_obj = db.get_or_404(Class, class_id)
+    class_obj = class_owned_for_request(class_id)
     students = Student.query.filter_by(class_id=class_id).all()
     
     if not students:
@@ -3020,9 +3287,9 @@ def get_students_for_random(class_id):
     return jsonify({'success': True, 'students': student_weights})
 
 @app.route('/api/class/<int:class_id>/students/<int:student_id>/select', methods=['POST'])
-@admin_required
+@login_required
 def confirm_student_selection(class_id, student_id):
-    class_obj = db.get_or_404(Class, class_id)
+    class_obj = class_owned_for_request(class_id)
     student = db.get_or_404(Student, student_id)
     
     # Проверяем, что учащийся принадлежит классу
@@ -3037,9 +3304,9 @@ def confirm_student_selection(class_id, student_id):
     return jsonify({'success': True, 'selection': selection.to_dict()})
 
 @app.route('/api/class/<int:class_id>/students/<int:student_id>/rate', methods=['POST'])
-@admin_required
+@login_required
 def rate_student(class_id, student_id):
-    db.get_or_404(Class, class_id)
+    class_owned_for_request(class_id)
     student = db.get_or_404(Student, student_id)
     
     # Проверяем, что учащийся принадлежит классу
@@ -3064,9 +3331,9 @@ def rate_student(class_id, student_id):
 
 
 @app.route('/api/class/<int:class_id>/students/<int:student_id>/redeem-rating', methods=['POST'])
-@admin_required
+@login_required
 def redeem_student_rating(class_id, student_id):
-    db.get_or_404(Class, class_id)
+    class_owned_for_request(class_id)
     student = db.get_or_404(Student, student_id)
     
     # Проверяем, что учащийся принадлежит классу
@@ -3098,13 +3365,19 @@ def redeem_student_rating(class_id, student_id):
     db.session.commit()
     return jsonify({'success': True, 'student': student.to_dict()})
 
-# Панель администратора - призы
+# Панель: призы и лавка игры (по владельцу)
 @app.route('/admin/prizes')
-@admin_required
+@login_required
 def admin_prizes():
-    valera_prizes = Prize.query.filter_by(prize_type='valera').all()
-    students_prizes = Prize.query.filter_by(prize_type='students').all()
-    shop_items = ShopItem.query.filter_by(shop_context=SHOP_CONTEXT_GAME).order_by(ShopItem.price).all()
+    if current_user.is_admin:
+        valera_prizes = Prize.query.filter_by(prize_type='valera').order_by(Prize.id).all()
+        students_prizes = Prize.query.filter_by(prize_type='students').order_by(Prize.id).all()
+        shop_items = ShopItem.query.filter_by(shop_context=SHOP_CONTEXT_GAME).order_by(ShopItem.price).all()
+    else:
+        oid = current_user.id
+        valera_prizes = Prize.query.filter_by(prize_type='valera', owner_id=oid).order_by(Prize.id).all()
+        students_prizes = Prize.query.filter_by(prize_type='students', owner_id=oid).order_by(Prize.id).all()
+        shop_items = ShopItem.query.filter_by(shop_context=SHOP_CONTEXT_GAME, owner_id=oid).order_by(ShopItem.price).all()
     return render_template('admin/prizes.html',
                          valera_prizes=valera_prizes,
                          students_prizes=students_prizes,
@@ -3112,7 +3385,7 @@ def admin_prizes():
 
 # API для управления призами
 @app.route('/api/prizes', methods=['POST'])
-@admin_required
+@login_required
 def create_prize():
     data = request.json
     new_prize = Prize(
@@ -3120,16 +3393,17 @@ def create_prize():
         prize_type=data['prize_type'],
         students_change=data.get('students_change', 0),
         valera_change=data.get('valera_change', 0),
-        probability=data.get('probability', 'medium')
+        probability=data.get('probability', 'medium'),
+        owner_id=current_user.id
     )
     db.session.add(new_prize)
     db.session.commit()
     return jsonify({'success': True, 'prize': new_prize.to_dict()})
 
 @app.route('/api/prizes/<int:prize_id>', methods=['PUT'])
-@admin_required
+@login_required
 def update_prize(prize_id):
-    prize = db.get_or_404(Prize, prize_id)
+    prize = prize_for_request(prize_id)
     data = request.json
     
     if 'name' in data:
@@ -3147,16 +3421,16 @@ def update_prize(prize_id):
     return jsonify({'success': True, 'prize': prize.to_dict()})
 
 @app.route('/api/prizes/<int:prize_id>', methods=['DELETE'])
-@admin_required
+@login_required
 def delete_prize(prize_id):
-    prize = db.get_or_404(Prize, prize_id)
+    prize = prize_for_request(prize_id)
     db.session.delete(prize)
     db.session.commit()
     return jsonify({'success': True})
 
 # API для управления призами магазина
 @app.route('/api/shop-items', methods=['POST'])
-@admin_required
+@login_required
 def create_shop_item():
     """Создать товар лавки призов (game). Используется в admin/prizes."""
     data = request.json
@@ -3164,18 +3438,17 @@ def create_shop_item():
         name=data.get('name', '').strip() or 'Товар',
         price=int(data.get('price', 0)),
         category=data.get('category', 'game'),
-        shop_context=SHOP_CONTEXT_GAME
+        shop_context=SHOP_CONTEXT_GAME,
+        owner_id=current_user.id
     )
     db.session.add(new_item)
     db.session.commit()
     return jsonify({'success': True, 'item': new_item.to_dict()})
 
 @app.route('/api/shop-items/<int:item_id>', methods=['PUT'])
-@admin_required
+@login_required
 def update_shop_item(item_id):
-    item = db.get_or_404(ShopItem, item_id)
-    if item.shop_context != SHOP_CONTEXT_GAME:
-        return jsonify({'success': False, 'error': 'Товар не найден'}), 404
+    item = shop_game_item_for_request(item_id)
     data = request.json
     
     if 'name' in data:
@@ -3187,26 +3460,21 @@ def update_shop_item(item_id):
     return jsonify({'success': True, 'item': item.to_dict()})
 
 @app.route('/api/shop-items/<int:item_id>', methods=['DELETE'])
-@admin_required
+@login_required
 def delete_shop_item(item_id):
-    item = db.get_or_404(ShopItem, item_id)
-    if item.shop_context != SHOP_CONTEXT_GAME:
-        return jsonify({'success': False, 'error': 'Товар не найден'}), 404
+    item = shop_game_item_for_request(item_id)
     db.session.delete(item)
     db.session.commit()
     return jsonify({'success': True})
 
-# Страница задачи недели
-@app.route('/weekly-task')
-def weekly_task():
-    # Получаем таблицу лидеров (первые решившие для всех задач) с пагинацией
+
+def _render_weekly_task_page(owner_id: int, shared_mode: bool, share_token: str | None):
+    """Страница задачи недели для конкретного учителя (owner_id)."""
     page = request.args.get('page', 1, type=int)
     per_page = 10
-    
-    # Получаем все задачи, которые были решены
-    all_tasks = WeeklyTask.query.all()
+    teacher_tasks = WeeklyTask.query.filter_by(owner_id=owner_id).all()
     leaders_list = []
-    for task in all_tasks:
+    for task in teacher_tasks:
         first_solver = TaskSolution.query.filter_by(
             task_id=task.id,
             is_correct=True
@@ -3217,17 +3485,12 @@ def weekly_task():
                 'user_name': first_solver.user_name,
                 'solved_at': first_solver.solved_at
             })
-    
-    # Сортируем по дате решения (от новых к старым)
     leaders_list.sort(key=lambda x: x['solved_at'], reverse=True)
-    
-    # Создаем пагинацию вручную
     total = len(leaders_list)
     start = (page - 1) * per_page
     end = start + per_page
     leaders_page = leaders_list[start:end]
-    
-    # Создаем объект пагинации
+
     class Pagination:
         def __init__(self, page, per_page, total):
             self.page = page
@@ -3238,79 +3501,99 @@ def weekly_task():
             self.has_next = page < self.pages
             self.prev_num = page - 1 if self.has_prev else None
             self.next_num = page + 1 if self.has_next else None
-    
+
     leaders_paginated = Pagination(page, per_page, total)
     leaders_paginated.items = leaders_page
-    
-    active_task = WeeklyTask.query.filter_by(is_active=True).first()
+
+    active_task = WeeklyTask.query.filter_by(is_active=True, owner_id=owner_id).first()
     if not active_task:
-        return render_template('weekly_task.html', task=None, first_solver=None, leaders_paginated=leaders_paginated, is_task_solved=False, next_update_time=None, next_update_timestamp=None)
-    
-    # Получаем первое правильное решение
+        return render_template(
+            'weekly_task.html',
+            task=None, first_solver=None, leaders_paginated=leaders_paginated,
+            is_task_solved=False, next_update_time=None, next_update_timestamp=None,
+            shared_mode=shared_mode, weekly_submit_token=share_token,
+        )
+
     first_solution = TaskSolution.query.filter_by(
         task_id=active_task.id,
         is_correct=True
     ).order_by(TaskSolution.solved_at.asc()).first()
-    
     is_task_solved = first_solution is not None
-    
-    # Вычисляем следующее воскресенье в 09:00 на основе времени последнего обновления задачи
     next_update_time = None
     next_update_timestamp = None
-    
-    # Определяем базовое время для вычисления
     if active_task.last_updated:
         task_update_time = active_task.last_updated
         if task_update_time.tzinfo:
             task_update_time = task_update_time.replace(tzinfo=None)
     else:
-        # Если last_updated не установлено, используем created_at или текущее время
         task_update_time = active_task.created_at if active_task.created_at else datetime.now()
         if task_update_time.tzinfo:
             task_update_time = task_update_time.replace(tzinfo=None)
-    
-    # Вычисляем следующее воскресенье в 09:00 от времени обновления задачи
-    # Воскресенье = 6 (0 = понедельник, 6 = воскресенье)
     days_until_sunday = (6 - task_update_time.weekday()) % 7
-    
     if days_until_sunday == 0:
-        # Если обновление было в воскресенье, проверяем время
         target_time = task_update_time.replace(hour=9, minute=0, second=0, microsecond=0)
         if task_update_time >= target_time:
-            # Если обновление было в 09:00 или после, берем следующее воскресенье
             days_until_sunday = 7
-    
     next_sunday = task_update_time.replace(hour=9, minute=0, second=0, microsecond=0) + timedelta(days=days_until_sunday)
-    
-    # Проверяем, не в прошлом ли это время. Если да, вычисляем следующее воскресенье от текущего времени
     now = datetime.now()
     if next_sunday < now:
-        # Если следующее воскресенье уже прошло, вычисляем следующее от текущего времени
         next_sunday = get_next_sunday_9am()
-    
-    # Передаем и строку для отладки, и timestamp для JavaScript
     next_update_time = next_sunday.isoformat()
-    next_update_timestamp = int(next_sunday.timestamp() * 1000)  # В миллисекундах для JavaScript
-    
-    return render_template('weekly_task.html', 
-                         task=active_task, 
-                         first_solver=first_solution,
-                         leaders_paginated=leaders_paginated,
-                         is_task_solved=is_task_solved,
-                         next_update_time=next_update_time,
-                         next_update_timestamp=next_update_timestamp)
+    next_update_timestamp = int(next_sunday.timestamp() * 1000)
+
+    return render_template(
+        'weekly_task.html',
+        task=active_task,
+        first_solver=first_solution,
+        leaders_paginated=leaders_paginated,
+        is_task_solved=is_task_solved,
+        next_update_time=next_update_time,
+        next_update_timestamp=next_update_timestamp,
+        shared_mode=shared_mode,
+        weekly_submit_token=share_token,
+    )
+
+
+# Страница задачи недели (учитель, своя)
+@app.route('/weekly-task')
+@login_required
+def weekly_task():
+    ensure_user_share_tokens(current_user)
+    db.session.commit()
+    return _render_weekly_task_page(current_user.id, shared_mode=False, share_token=None)
+
+
+# Публичная ссылка для учеников (по токену учителя)
+@app.route('/weekly-task/t/<token>')
+def weekly_task_shared(token):
+    u = user_by_weekly_token(token)
+    if not u:
+        abort(404)
+    return _render_weekly_task_page(u.id, shared_mode=True, share_token=token)
 
 # API для отправки ответа на задачу
 @app.route('/api/weekly-task/submit', methods=['POST'])
 def submit_task_answer():
-    data = request.json
+    data = request.json or {}
     user_name = data.get('user_name', '').strip()
     answer = data.get('answer', '').strip()
+    token = (data.get('token') or '').strip()
     
     if not user_name or not answer:
         return jsonify({'success': False, 'error': 'Имя и ответ обязательны'}), 400
+
+    owner_id = None
+    if token:
+        u = user_by_weekly_token(token)
+        if not u:
+            return jsonify({'success': False, 'error': 'Неверная ссылка'}), 403
+        owner_id = u.id
+    elif current_user.is_authenticated:
+        owner_id = current_user.id
+    else:
+        return jsonify({'success': False, 'error': 'Нужна ссылка от учителя или вход в систему'}), 401
     
-    active_task = WeeklyTask.query.filter_by(is_active=True).first()
+    active_task = WeeklyTask.query.filter_by(is_active=True, owner_id=owner_id).first()
     if not active_task:
         return jsonify({'success': False, 'error': 'Нет активной задачи'}), 404
     
@@ -3351,17 +3634,20 @@ def submit_task_answer():
             'message': 'Неверный ответ. Попробуйте еще раз!'
         })
 
-# Панель администратора - задачи
+# Управление задачами недели (у каждого учителя свои)
 @app.route('/admin/tasks')
-@admin_required
+@login_required
 def admin_tasks():
+    ensure_user_share_tokens(current_user)
+    db.session.commit()
     page = request.args.get('page', 1, type=int)
     per_page = 10
-    tasks = WeeklyTask.query.order_by(WeeklyTask.created_at.desc()).paginate(
+    q = WeeklyTask.query
+    if not current_user.is_admin:
+        q = q.filter_by(owner_id=current_user.id)
+    tasks = q.order_by(WeeklyTask.created_at.desc()).paginate(
         page=page, per_page=per_page, error_out=False
     )
-    
-    # Проверяем для каждой задачи, решена ли она правильно
     tasks_solved = {}
     for task in tasks.items:
         has_solution = TaskSolution.query.filter_by(
@@ -3369,12 +3655,15 @@ def admin_tasks():
             is_correct=True
         ).first() is not None
         tasks_solved[task.id] = has_solution
-    
-    return render_template('admin/tasks.html', tasks=tasks, tasks_solved=tasks_solved)
+    weekly_share_url = url_for('weekly_task_shared', token=current_user.weekly_share_token, _external=True)
+    return render_template(
+        'admin/tasks.html', tasks=tasks, tasks_solved=tasks_solved,
+        weekly_share_url=weekly_share_url,
+    )
 
 
 @app.route('/admin/change-password', methods=['POST'])
-@admin_required
+@login_required
 def admin_change_password():
     current_password = (request.form.get('current_password') or '').strip()
     new_password = request.form.get('new_password') or ''
@@ -3387,7 +3676,9 @@ def admin_change_password():
                 return redirect(ref)
         except Exception:
             pass
-        return redirect(url_for('admin_tasks'))
+        if current_user.is_admin:
+            return redirect(url_for('admin_tasks'))
+        return redirect(url_for('admin_classes'))
 
     # Базовая валидация
     if not current_password or not new_password or not new_password_confirm:
@@ -3408,16 +3699,19 @@ def admin_change_password():
 
     current_user.set_password(new_password)
     db.session.commit()
-    flash('Пароль администратора успешно изменён.', 'info')
+    flash('Пароль успешно изменён.', 'info')
     return _safe_back_redirect()
 
 # API для получения списка задач (с пагинацией)
 @app.route('/api/tasks')
-@admin_required
+@login_required
 def get_tasks():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
-    tasks = WeeklyTask.query.order_by(WeeklyTask.created_at.desc()).paginate(
+    q = WeeklyTask.query
+    if not current_user.is_admin:
+        q = q.filter_by(owner_id=current_user.id)
+    tasks = q.order_by(WeeklyTask.created_at.desc()).paginate(
         page=page, per_page=per_page, error_out=False
     )
     return jsonify({
@@ -3431,7 +3725,7 @@ def get_tasks():
 
 # API для создания задачи
 @app.route('/api/tasks', methods=['POST'])
-@admin_required
+@login_required
 def create_task():
     try:
         title = request.form.get('title', '').strip()
@@ -3442,9 +3736,8 @@ def create_task():
         if not title or not correct_answer:
             return jsonify({'success': False, 'error': 'Название и правильный ответ обязательны'}), 400
         
-        # Если задача должна быть активной, деактивируем все остальные
         if is_active:
-            WeeklyTask.query.update({WeeklyTask.is_active: False})
+            WeeklyTask.query.filter_by(owner_id=current_user.id).update({WeeklyTask.is_active: False})
         
         # Обработка загрузки изображения
         image_filename = None
@@ -3464,7 +3757,8 @@ def create_task():
             description=description,
             image_filename=image_filename,
             correct_answer=correct_answer,
-            is_active=is_active
+            is_active=is_active,
+            owner_id=current_user.id,
         )
         db.session.add(new_task)
         db.session.commit()
@@ -3476,10 +3770,10 @@ def create_task():
 
 # API для обновления задачи
 @app.route('/api/tasks/<int:task_id>', methods=['PUT'])
-@admin_required
+@login_required
 def update_task(task_id):
     try:
-        task = db.get_or_404(WeeklyTask, task_id)
+        task = weekly_task_owned_for_request(task_id)
         
         # Получаем данные из form-data или JSON
         if request.is_json:
@@ -3531,8 +3825,10 @@ def update_task(task_id):
         # Обработка активности задачи
         if is_active != task.is_active:
             if is_active:
-                # Деактивируем все остальные задачи
-                WeeklyTask.query.filter(WeeklyTask.id != task_id).update({WeeklyTask.is_active: False})
+                WeeklyTask.query.filter(
+                    WeeklyTask.owner_id == task.owner_id,
+                    WeeklyTask.id != task_id
+                ).update({WeeklyTask.is_active: False})
             task.is_active = is_active
         
         db.session.commit()
@@ -3543,9 +3839,9 @@ def update_task(task_id):
 
 # API для удаления задачи
 @app.route('/api/tasks/<int:task_id>', methods=['DELETE'])
-@admin_required
+@login_required
 def delete_task(task_id):
-    task = db.get_or_404(WeeklyTask, task_id)
+    task = weekly_task_owned_for_request(task_id)
     
     # Удаляем изображение, если есть
     if task.image_filename:
@@ -3559,15 +3855,17 @@ def delete_task(task_id):
 
 # API для переключения активности задачи
 @app.route('/api/tasks/<int:task_id>/toggle-active', methods=['POST'])
-@admin_required
+@login_required
 def toggle_task_active(task_id):
-    task = db.get_or_404(WeeklyTask, task_id)
+    task = weekly_task_owned_for_request(task_id)
     
     if task.is_active:
         task.is_active = False
     else:
-        # Деактивируем все остальные задачи
-        WeeklyTask.query.filter(WeeklyTask.id != task_id).update({WeeklyTask.is_active: False})
+        WeeklyTask.query.filter(
+            WeeklyTask.owner_id == task.owner_id,
+            WeeklyTask.id != task_id
+        ).update({WeeklyTask.is_active: False})
         task.is_active = True
     
     db.session.commit()
@@ -3596,12 +3894,18 @@ def get_next_update_time():
 
 # ==================== РЕЙД БОССА ====================
 
-# Панель администратора - рейд босса
+# Управление рейд боссом (свой набор у каждого учителя)
 @app.route('/admin/boss-raid')
-@admin_required
+@login_required
 def admin_boss_raid():
-    bosses = Boss.query.all()
-    return render_template('admin/boss_raid.html', bosses=bosses)
+    ensure_user_share_tokens(current_user)
+    db.session.commit()
+    q = Boss.query
+    if not current_user.is_admin:
+        q = q.filter_by(owner_id=current_user.id)
+    bosses = q.order_by(Boss.created_at.desc()).all()
+    raid_share_url = url_for('raid_boss_shared', token=current_user.raid_share_token, _external=True)
+    return render_template('admin/boss_raid.html', bosses=bosses, raid_share_url=raid_share_url)
 
 
 # Панель администратора - настройки битвы за территорию
@@ -4079,7 +4383,7 @@ def admin_download_db():
 
 # API для создания босса
 @app.route('/api/bosses', methods=['POST'])
-@admin_required
+@login_required
 def create_boss():
     data = request.json
     name = data.get('name', '').strip()
@@ -4091,7 +4395,8 @@ def create_boss():
     new_boss = Boss(
         name=name,
         rewards_list=rewards_list,
-        is_active=False
+        is_active=False,
+        owner_id=current_user.id,
     )
     db.session.add(new_boss)
     db.session.commit()
@@ -4099,9 +4404,9 @@ def create_boss():
 
 # API для обновления босса
 @app.route('/api/bosses/<int:boss_id>', methods=['PUT'])
-@admin_required
+@login_required
 def update_boss(boss_id):
-    boss = db.get_or_404(Boss, boss_id)
+    boss = boss_owned_for_request(boss_id)
     data = request.json
     
     if 'name' in data:
@@ -4115,9 +4420,9 @@ def update_boss(boss_id):
 
 # API для удаления босса
 @app.route('/api/bosses/<int:boss_id>', methods=['DELETE'])
-@admin_required
+@login_required
 def delete_boss(boss_id):
-    boss = db.get_or_404(Boss, boss_id)
+    boss = boss_owned_for_request(boss_id)
     
     # Удаляем изображения задач босса
     for task in boss.tasks:
@@ -4132,15 +4437,14 @@ def delete_boss(boss_id):
 
 # API для переключения активности босса
 @app.route('/api/bosses/<int:boss_id>/toggle-active', methods=['POST'])
-@admin_required
+@login_required
 def toggle_boss_active(boss_id):
-    boss = db.get_or_404(Boss, boss_id)
+    boss = boss_owned_for_request(boss_id)
     
     if boss.is_active:
         boss.is_active = False
     else:
-        # Деактивируем всех остальных боссов
-        Boss.query.filter(Boss.id != boss_id).update({Boss.is_active: False})
+        Boss.query.filter(Boss.owner_id == boss.owner_id, Boss.id != boss_id).update({Boss.is_active: False})
         boss.is_active = True
     
     boss.updated_at = datetime.utcnow()
@@ -4149,7 +4453,7 @@ def toggle_boss_active(boss_id):
 
 # API для получения задач босса
 @app.route('/api/bosses/<int:boss_id>/tasks')
-@admin_required
+@login_required
 def get_boss_tasks(boss_id):
     """
     Возвращает задачи босса постранично, чтобы не выгружать всё сразу.
@@ -4157,7 +4461,7 @@ def get_boss_tasks(boss_id):
       - page (1..)
       - per_page (1..100)
     """
-    db.get_or_404(Boss, boss_id)
+    boss_owned_for_request(boss_id)
 
     try:
         page = int(request.args.get('page', 1))
@@ -4194,9 +4498,9 @@ def get_boss_tasks(boss_id):
 
 # API для получения одной задачи босса (для редактирования без загрузки всех задач)
 @app.route('/api/bosses/<int:boss_id>/tasks/<int:task_id>', methods=['GET'])
-@admin_required
+@login_required
 def get_boss_task(boss_id, task_id):
-    db.get_or_404(Boss, boss_id)
+    boss_owned_for_request(boss_id)
     task = db.get_or_404(BossTask, task_id)
     if task.boss_id != boss_id:
         return jsonify({'success': False, 'error': 'Задача не принадлежит этому боссу'}), 400
@@ -4204,18 +4508,18 @@ def get_boss_task(boss_id, task_id):
 
 # API для получения количества задач босса (без загрузки самих задач)
 @app.route('/api/bosses/<int:boss_id>/tasks/count')
-@admin_required
+@login_required
 def get_boss_tasks_count(boss_id):
     from sqlalchemy import func
-    _ = db.get_or_404(Boss, boss_id)  # 404 если босса нет
+    boss_owned_for_request(boss_id)
     count = db.session.query(func.count(BossTask.id)).filter(BossTask.boss_id == boss_id).scalar() or 0
     return jsonify({'success': True, 'count': int(count)})
 
 # API для создания задачи босса
 @app.route('/api/bosses/<int:boss_id>/tasks', methods=['POST'])
-@admin_required
+@login_required
 def create_boss_task(boss_id):
-    boss = db.get_or_404(Boss, boss_id)
+    boss = boss_owned_for_request(boss_id)
     
     try:
         title = request.form.get('title', '').strip()
@@ -4259,9 +4563,9 @@ def create_boss_task(boss_id):
 
 # API для обновления задачи босса
 @app.route('/api/bosses/<int:boss_id>/tasks/<int:task_id>', methods=['PUT'])
-@admin_required
+@login_required
 def update_boss_task(boss_id, task_id):
-    boss = db.get_or_404(Boss, boss_id)
+    boss = boss_owned_for_request(boss_id)
     task = db.get_or_404(BossTask, task_id)
     
     if task.boss_id != boss_id:
@@ -4326,9 +4630,9 @@ def update_boss_task(boss_id, task_id):
 
 # API для удаления задачи босса
 @app.route('/api/bosses/<int:boss_id>/tasks/<int:task_id>', methods=['DELETE'])
-@admin_required
+@login_required
 def delete_boss_task(boss_id, task_id):
-    boss = db.get_or_404(Boss, boss_id)
+    boss = boss_owned_for_request(boss_id)
     task = db.get_or_404(BossTask, task_id)
     
     if task.boss_id != boss_id:
@@ -4344,24 +4648,22 @@ def delete_boss_task(boss_id, task_id):
     db.session.commit()
     return jsonify({'success': True})
 
-# Страница рейд босса (доступна для всех)
+# Страница рейд босса (только учитель — свои классы и свой босс)
 @app.route('/raid-boss')
+@login_required
 def raid_boss_page():
-    # Получаем активного босса, если есть, иначе последнего созданного
-    active_boss = Boss.query.filter_by(is_active=True).first()
-    if not active_boss:
-        # Если нет активного, берем последнего созданного босса
-        active_boss = Boss.query.order_by(Boss.created_at.desc()).first()
-    
+    ensure_user_share_tokens(current_user)
+    db.session.commit()
+    active_boss = active_boss_for_owner_id(current_user.id)
     boss_animation_frames = list_animation_frame_urls('boss')
 
     if not active_boss:
-        return render_template('raid_boss.html', boss=None, classes=[], boss_animation_frames=boss_animation_frames)
-    
-    # Получаем все классы для выбора
-    classes = Class.query.all()
-    
-    # Вычисляем урон по классам
+        return render_template(
+            'raid_boss.html', boss=None, classes=[], class_damage={},
+            boss_animation_frames=boss_animation_frames, raid_share_token=None,
+        )
+
+    classes = Class.query.filter_by(owner_id=current_user.id).order_by(Class.name).all()
     class_damage = {}
     for class_obj in classes:
         damage = db.session.query(db.func.sum(BossTask.points)).join(
@@ -4372,13 +4674,48 @@ def raid_boss_page():
             BossTaskSolution.is_correct == True
         ).scalar() or 0
         class_damage[class_obj.id] = damage
-    
+
     return render_template(
         'raid_boss.html',
         boss=active_boss,
         classes=classes,
         class_damage=class_damage,
-        boss_animation_frames=boss_animation_frames
+        boss_animation_frames=boss_animation_frames,
+        raid_share_token=None,
+    )
+
+
+# Публичная ссылка на рейд босса конкретного учителя
+@app.route('/raid-boss/t/<token>')
+def raid_boss_shared(token):
+    u = user_by_raid_token(token)
+    if not u:
+        abort(404)
+    active_boss = active_boss_for_owner_id(u.id)
+    boss_animation_frames = list_animation_frame_urls('boss')
+    if not active_boss:
+        return render_template(
+            'raid_boss.html', boss=None, classes=[], class_damage={},
+            boss_animation_frames=boss_animation_frames, raid_share_token=token,
+        )
+    classes = Class.query.filter_by(owner_id=u.id).order_by(Class.name).all()
+    class_damage = {}
+    for class_obj in classes:
+        damage = db.session.query(db.func.sum(BossTask.points)).join(
+            BossTaskSolution, BossTaskSolution.task_id == BossTask.id
+        ).filter(
+            BossTaskSolution.boss_id == active_boss.id,
+            BossTaskSolution.class_id == class_obj.id,
+            BossTaskSolution.is_correct == True
+        ).scalar() or 0
+        class_damage[class_obj.id] = damage
+    return render_template(
+        'raid_boss.html',
+        boss=active_boss,
+        classes=classes,
+        class_damage=class_damage,
+        boss_animation_frames=boss_animation_frames,
+        raid_share_token=token,
     )
 
 
@@ -4402,8 +4739,9 @@ TERRITORY_STRENGTH_STEP_SAME = 25
 TERRITORY_STRENGTH_STEP_OTHER = 25
 
 @app.route('/territory-battle')
+@login_required
 def territory_battle_page():
-    # Администратор видит страницу как незарегистрированный пользователь (только просмотр, без участия)
+    # Битва за территорию — только для вошедших пользователей (учителей)
     registration_enabled = get_territory_registration_enabled()
     capture_enabled, capture_start_time, capture_end_time = get_territory_capture_settings()
     is_admin = current_user.is_authenticated and getattr(current_user, 'is_admin', False)
@@ -5781,7 +6119,12 @@ def chest_test_page():
 @app.route('/api/raid-boss/task', methods=['GET'])
 def get_random_boss_task():
     from sqlalchemy import func
-    active_boss = Boss.query.filter_by(is_active=True).first()
+    token = (request.args.get('token') or '').strip()
+    active_boss, err = resolve_playable_boss_for_raid(token)
+    if err == 'bad_token':
+        return jsonify({'success': False, 'error': 'Неверная ссылка'}), 403
+    if err == 'auth':
+        return jsonify({'success': False, 'error': 'Нужна ссылка учителя или вход в систему'}), 401
     if not active_boss:
         return jsonify({'success': False, 'error': 'Нет активного босса'}), 404
     
@@ -5830,7 +6173,12 @@ def save_boss_user():
         data = request.json
         if not data:
             return jsonify({'success': False, 'error': 'Данные не получены'}), 400
-        
+
+        token = (data.get('token') or '').strip()
+        if not current_user.is_authenticated:
+            if not token or not user_by_raid_token(token):
+                return jsonify({'success': False, 'error': 'Нужна ссылка учителя'}), 401
+
         name = data.get('name', '').strip()
         user_id = data.get('user_id', None)  # текущий ID пользователя (если меняем имя)
         
@@ -5892,38 +6240,36 @@ def submit_boss_task_answer():
         # Валидация обязательных полей
         if not task_id or not class_id or not answer:
             return jsonify({'success': False, 'error': 'Все поля обязательны'}), 400
-        
-        # Валидация и проверка user_id на сервере
+
+        try:
+            task = db.get_or_404(BossTask, task_id)
+        except Exception:
+            return jsonify({'success': False, 'error': 'Задача не найдена'}), 404
+
+        token = (data.get('token') or '').strip()
+        active_boss, err = resolve_playable_boss_for_raid(token)
+        if err == 'bad_token':
+            return jsonify({'success': False, 'error': 'Неверная ссылка'}), 403
+        if err == 'auth':
+            return jsonify({'success': False, 'error': 'Нужна ссылка учителя или вход'}), 401
+        if not active_boss or active_boss.id != task.boss_id:
+            return jsonify({'success': False, 'error': 'Босс не активен'}), 404
+
+        class_obj = db.session.get(Class, class_id)
+        if not class_obj or class_obj.owner_id != active_boss.owner_id:
+            return jsonify({'success': False, 'error': 'Некорректный класс'}), 400
+
         validated_user = None
         if user_id:
             is_valid, validated_user, error = validate_user_id(user_id)
             if not is_valid:
                 logger.warning(f"Невалидный user_id: {user_id}, ошибка: {error}")
-                # Не блокируем отправку ответа, но не обрабатываем дроп
                 user_id = None
-            else:
-                # Используем валидированное имя пользователя
-                if validated_user and not user_name:
-                    user_name = validated_user.name
-        
-        # Если имя пользователя не указано, используем название класса
+            elif validated_user and not user_name:
+                user_name = validated_user.name
+
         if not user_name:
-            class_obj = Class.query.get(class_id)
-            if class_obj:
-                user_name = class_obj.name
-            else:
-                user_name = 'Аноним'
-        
-        # Получаем задачу и босса
-        try:
-            task = db.get_or_404(BossTask, task_id)
-        except Exception:
-            return jsonify({'success': False, 'error': 'Задача не найдена'}), 404
-        
-        active_boss = Boss.query.filter_by(is_active=True, id=task.boss_id).first()
-        
-        if not active_boss:
-            return jsonify({'success': False, 'error': 'Босс не активен'}), 404
+            user_name = class_obj.name or 'Аноним'
         
         # Проверяем, не решена ли задача уже
         if task.is_solved():
@@ -6016,22 +6362,34 @@ def submit_boss_task_answer():
 # API для получения статистики босса
 @app.route('/api/raid-boss/stats')
 def get_boss_stats():
-    # Получаем boss_id из параметров запроса, если есть
+    token = (request.args.get('token') or '').strip()
     boss_id = request.args.get('boss_id', type=int)
-    
-    if boss_id:
-        boss = Boss.query.get(boss_id)
+    boss = None
+
+    if token:
+        u = user_by_raid_token(token)
+        if not u:
+            return jsonify({'success': False, 'error': 'Неверная ссылка'}), 403
+        if boss_id:
+            boss = db.session.get(Boss, boss_id)
+            if not boss or boss.owner_id != u.id:
+                return jsonify({'success': False, 'error': 'Нет босса'}), 404
+        else:
+            boss = active_boss_for_owner_id(u.id)
+    elif current_user.is_authenticated:
+        if boss_id:
+            boss = db.session.get(Boss, boss_id)
+            if not boss or (not current_user.is_admin and boss.owner_id != current_user.id):
+                return jsonify({'success': False, 'error': 'Нет босса'}), 404
+        else:
+            boss = active_boss_for_owner_id(current_user.id)
     else:
-        # Если не указан, ищем активного, иначе последнего
-        boss = Boss.query.filter_by(is_active=True).first()
-        if not boss:
-            boss = Boss.query.order_by(Boss.created_at.desc()).first()
-    
+        return jsonify({'success': False, 'error': 'Нужна ссылка учителя или вход'}), 401
+
     if not boss:
         return jsonify({'success': False, 'error': 'Нет босса'}), 404
-    
-    # Получаем все классы
-    classes = Class.query.all()
+
+    classes = Class.query.filter_by(owner_id=boss.owner_id).order_by(Class.name).all()
     class_damage = {}
     
     for class_obj in classes:
@@ -6067,25 +6425,43 @@ def get_boss_stats():
 # Важно: отдаём данные ТОЛЬКО после победы босса (HP=0), чтобы не подсвечивать результаты во время рейда.
 @app.route('/api/raid-boss/top-users-by-class', methods=['GET'])
 def raid_boss_top_users_by_class():
-    # boss_id можно передать явно; иначе используем активного, либо последнего созданного
+    token = (request.args.get('token') or '').strip()
     boss_id = request.args.get('boss_id', type=int)
     limit = request.args.get('limit', default=10, type=int)
     class_id = request.args.get('class_id', type=int)
 
     if limit is None or limit <= 0:
         limit = 10
-    # страхуем от слишком больших значений
     limit = min(int(limit), 50)
 
-    if boss_id:
-        boss = Boss.query.get(boss_id)
+    boss = None
+    if token:
+        u = user_by_raid_token(token)
+        if not u:
+            return jsonify({'success': False, 'error': 'Неверная ссылка'}), 403
+        if boss_id:
+            boss = db.session.get(Boss, boss_id)
+            if not boss or boss.owner_id != u.id:
+                return jsonify({'success': False, 'error': 'Нет босса'}), 404
+        else:
+            boss = active_boss_for_owner_id(u.id)
+    elif current_user.is_authenticated:
+        if boss_id:
+            boss = db.session.get(Boss, boss_id)
+            if not boss or (not current_user.is_admin and boss.owner_id != current_user.id):
+                return jsonify({'success': False, 'error': 'Нет босса'}), 404
+        else:
+            boss = active_boss_for_owner_id(current_user.id)
     else:
-        boss = Boss.query.filter_by(is_active=True).first()
-        if not boss:
-            boss = Boss.query.order_by(Boss.created_at.desc()).first()
+        return jsonify({'success': False, 'error': 'Нужна ссылка учителя или вход'}), 401
 
     if not boss:
         return jsonify({'success': False, 'error': 'Нет босса'}), 404
+
+    if class_id is not None:
+        co = db.session.get(Class, int(class_id))
+        if not co or co.owner_id != boss.owner_id:
+            return jsonify({'success': False, 'error': 'Некорректный класс'}), 400
 
     total_health = boss.get_total_health()
     current_health = boss.get_current_health(total_health=total_health)
@@ -6100,7 +6476,7 @@ def raid_boss_top_users_by_class():
         cls_block = next((x for x in top_by_class if int(x.get('class_id')) == class_id_int), None)
         if not cls_block:
             # если данных нет — возвращаем пустой список (класс мог существовать, но без участников)
-            class_obj = Class.query.get(class_id_int)
+            class_obj = db.session.get(Class, class_id_int)
             return jsonify({
                 'success': True,
                 'boss': boss.to_dict(),
@@ -6124,16 +6500,16 @@ def raid_boss_top_users_by_class():
 
 # API для управления дропами босса
 @app.route('/api/bosses/<int:boss_id>/drops', methods=['GET'])
-@admin_required
+@login_required
 def get_boss_drops(boss_id):
-    boss = db.get_or_404(Boss, boss_id)
+    boss_owned_for_request(boss_id)
     drops = BossDrop.query.filter_by(boss_id=boss_id).all()
     return jsonify({'success': True, 'drops': [drop.to_dict() for drop in drops]})
 
 @app.route('/api/bosses/<int:boss_id>/drops', methods=['POST'])
-@admin_required
+@login_required
 def create_boss_drop(boss_id):
-    boss = db.get_or_404(Boss, boss_id)
+    boss_owned_for_request(boss_id)
     data = request.json
     name = data.get('name', '').strip()
     probability = data.get('probability', 'medium')
@@ -6166,9 +6542,9 @@ def create_boss_drop(boss_id):
     return jsonify({'success': True, 'drop': new_drop.to_dict()})
 
 @app.route('/api/bosses/<int:boss_id>/drops/<int:drop_id>', methods=['PUT'])
-@admin_required
+@login_required
 def update_boss_drop(boss_id, drop_id):
-    boss = db.get_or_404(Boss, boss_id)
+    boss_owned_for_request(boss_id)
     drop = db.get_or_404(BossDrop, drop_id)
     
     if drop.boss_id != boss_id:
@@ -6196,9 +6572,9 @@ def update_boss_drop(boss_id, drop_id):
     return jsonify({'success': True, 'drop': drop.to_dict()})
 
 @app.route('/api/bosses/<int:boss_id>/drops/<int:drop_id>', methods=['DELETE'])
-@admin_required
+@login_required
 def delete_boss_drop(boss_id, drop_id):
-    boss = db.get_or_404(Boss, boss_id)
+    boss_owned_for_request(boss_id)
     drop = db.get_or_404(BossDrop, drop_id)
     
     if drop.boss_id != boss_id:
@@ -6210,9 +6586,9 @@ def delete_boss_drop(boss_id, drop_id):
 
 # API для получения списка пользователей босса
 @app.route('/api/bosses/<int:boss_id>/users', methods=['GET'])
-@admin_required
+@login_required
 def get_boss_users(boss_id):
-    boss = db.get_or_404(Boss, boss_id)
+    boss_owned_for_request(boss_id)
     # Получаем всех пользователей, которые решали задачи этого босса
     users = db.session.query(BossUser).join(
         BossTaskSolution, BossTaskSolution.user_id == BossUser.id
@@ -6503,8 +6879,9 @@ def _get_boss_top_players_by_class_merged_names_data(boss_id: int, limit: int = 
 
 # API: топ-10 пользователей по каждому классу (класс определяется по большинству отправленных решений)
 @app.route('/api/bosses/<int:boss_id>/top-users-by-class', methods=['GET'])
-@admin_required
+@login_required
 def get_boss_top_users_by_class(boss_id):
+    boss_owned_for_request(boss_id)
     boss, top_by_class = _get_boss_top_users_by_class_data(boss_id=boss_id, limit=10)
     return jsonify({
         'success': True,
@@ -6515,8 +6892,9 @@ def get_boss_top_users_by_class(boss_id):
 
 # Админ-страница: топ-10 по классам (таблица)
 @app.route('/admin/bosses/<int:boss_id>/top-users-by-class', methods=['GET'])
-@admin_required
+@login_required
 def admin_boss_top_users_by_class(boss_id):
+    boss_owned_for_request(boss_id)
     boss, top_by_class = _get_boss_top_users_by_class_data(boss_id=boss_id, limit=10)
     return render_template(
         'admin/boss_top_users_by_class.html',
@@ -6527,9 +6905,9 @@ def admin_boss_top_users_by_class(boss_id):
 
 # API для получения списка выпавших дропов
 @app.route('/api/bosses/<int:boss_id>/drop-rewards', methods=['GET'])
-@admin_required
+@login_required
 def get_boss_drop_rewards(boss_id):
-    boss = db.get_or_404(Boss, boss_id)
+    boss_owned_for_request(boss_id)
     rewards = BossDropReward.query.filter_by(boss_id=boss_id).order_by(
         BossDropReward.received_at.desc()
     ).all()

@@ -631,7 +631,9 @@ body {
 
 {% block content %}
 <div class="weekly-task-container">
+    {% if not shared_mode %}
     <a href="{{ url_for('index') }}" class="back-link">← Назад к рейтингу</a>
+    {% endif %}
     
     <div class="task-header">
         <h1>Задача недели</h1>
@@ -743,6 +745,7 @@ body {
 
 {% block scripts %}
 <script>
+const weeklySubmitToken = {{ (weekly_submit_token or '')|tojson }};
 // Запрещаем копирование текста задачи (в пределах блока задачи)
 (function() {
     const weeklyTaskContent = document.getElementById('weeklyTaskContent');
@@ -783,7 +786,8 @@ function submitAnswer(event) {
         },
         body: JSON.stringify({
             user_name: userName,
-            answer: answer
+            answer: answer,
+            ...(weeklySubmitToken ? { token: weeklySubmitToken } : {})
         })
     })
     .then(response => response.json())
