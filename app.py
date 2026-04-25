@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
+from werkzeug.exceptions import HTTPException
 from datetime import datetime, timedelta
 from functools import wraps
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -15,6 +16,7 @@ import json
 import random
 import os
 import logging
+from logging.handlers import RotatingFileHandler
 import uuid
 
 try:
@@ -71,14 +73,44 @@ current_path = os.path.dirname(__file__)
 os.chdir(current_path)
 
 # Настройка логирования
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('app.log', encoding='utf-8'),
-        logging.StreamHandler()
-    ]
-)
+LOG_FILE_PATH = os.path.join(current_path, 'app.log')
+LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+
+
+def configure_logging():
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    formatter = logging.Formatter(LOG_FORMAT)
+    absolute_log_path = os.path.abspath(LOG_FILE_PATH)
+
+    file_handler_exists = any(
+        isinstance(handler, RotatingFileHandler)
+        and os.path.abspath(getattr(handler, 'baseFilename', '')) == absolute_log_path
+        for handler in root_logger.handlers
+    )
+    if not file_handler_exists:
+        file_handler = RotatingFileHandler(
+            LOG_FILE_PATH,
+            maxBytes=5 * 1024 * 1024,
+            backupCount=5,
+            encoding='utf-8'
+        )
+        file_handler.setLevel(logging.INFO)
+        file_handler.setFormatter(formatter)
+        root_logger.addHandler(file_handler)
+
+    stream_handler_exists = any(
+        type(handler) is logging.StreamHandler
+        for handler in root_logger.handlers
+    )
+    if not stream_handler_exists:
+        stream_handler = logging.StreamHandler()
+        stream_handler.setLevel(logging.INFO)
+        stream_handler.setFormatter(formatter)
+        root_logger.addHandler(stream_handler)
+
+
+configure_logging()
 logger = logging.getLogger(__name__)
 
 def now_utc_plus_3():
@@ -111,6 +143,8 @@ def list_animation_frame_urls(animation_name: str):
     return [url_for('static', filename=f'animation/{animation_name}/{fn}') for fn in filenames]
 
 app = Flask(__name__)
+app.logger.handlers = logging.getLogger().handlers
+app.logger.setLevel(logging.INFO)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
 # Подключение к БД из .env (PostgreSQL 15)
 _db_uri = os.getenv('SQLALCHEMY_DATABASE_URI', '').strip().strip("'").strip('"')
@@ -166,6 +200,19 @@ CLAN_EXTRA_SLOT_PRICE = 30_000
 
 # Длительность штрафа за исключение участника: в течение этого времени клан не может принимать новых участников (часы)
 CLAN_ACCEPT_BAN_HOURS = 1
+
+
+@app.errorhandler(Exception)
+def handle_unexpected_error(error):
+    if isinstance(error, HTTPException):
+        return error
+    logger.exception(
+        "Необработанная ошибка. method=%s path=%s remote_addr=%s",
+        request.method,
+        request.path,
+        request.remote_addr
+    )
+    return jsonify({'error': 'Внутренняя ошибка сервера'}), 500
 
 # Длительность штрафа для игрока, покинувшего клан: не может вступать в другой клан и подавать заявки (часы)
 USER_CLAN_JOIN_BAN_HOURS = 1
