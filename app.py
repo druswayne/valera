@@ -9,7 +9,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.executors.pool import ThreadPoolExecutor
 from sqlalchemy import case, cast, Float, Index, and_, func, text
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, OperationalError
 import json
 import random
 import os
@@ -105,7 +105,16 @@ def list_animation_frame_urls(animation_name: str):
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-here'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///valera.db'
+
+# PostgreSQL: задайте DATABASE_URL или SQLALCHEMY_DATABASE_URI (например postgresql+psycopg2://…)
+_database_uri = (
+    os.environ.get('DATABASE_URL')
+    or os.environ.get('SQLALCHEMY_DATABASE_URI')
+    or 'sqlite:///valera.db'
+)
+if _database_uri.startswith('postgres://'):
+    _database_uri = _database_uri.replace('postgres://', 'postgresql://', 1)
+app.config['SQLALCHEMY_DATABASE_URI'] = _database_uri
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads/tasks'
 app.config['AVATAR_FOLDER'] = 'static/uploads/avatars'
@@ -140,9 +149,28 @@ def _avatar_static_filename(avatar_filename):
 MAX_USER_NAME_LENGTH = 200
 MIN_USER_NAME_LENGTH = 2
 
-# Настройка планировщика задач
+# Планировщик: таблица apscheduler_jobs в PostgreSQL (та же БД, что и приложение, если не задано иное).
+# SCHEDULER_JOBSTORE_URL — отдельная строка только для jobstore (редко нужна).
+# Для SQLite в dev: флаг jobs.sqlite рядом с приложением + check_same_thread=False для потоков.
+_SCHEDULER_DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'jobs.sqlite')
+_SCHEDULER_JOBSTORE_URL = os.environ.get('SCHEDULER_JOBSTORE_URL')
+if not _SCHEDULER_JOBSTORE_URL:
+    if _database_uri.startswith('sqlite'):
+        _SCHEDULER_JOBSTORE_URL = 'sqlite:///' + _SCHEDULER_DB_PATH.replace(os.sep, '/')
+    else:
+        _SCHEDULER_JOBSTORE_URL = _database_uri
+
+_scheduler_engine_options = {}
+if _SCHEDULER_JOBSTORE_URL.startswith('sqlite'):
+    _scheduler_engine_options['connect_args'] = {'check_same_thread': False}
+else:
+    _scheduler_engine_options['pool_pre_ping'] = True
+
 jobstores = {
-    'default': SQLAlchemyJobStore(url='sqlite:///jobs.sqlite')
+    'default': SQLAlchemyJobStore(
+        url=_SCHEDULER_JOBSTORE_URL,
+        engine_options=_scheduler_engine_options,
+    )
 }
 executors = {
     'default': ThreadPoolExecutor(20)
@@ -1026,23 +1054,36 @@ class GameUpdate(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
 
+def _get_territory_battle_setting_row():
+    """
+    Одна запись настроек битвы за территорию. При недоступности БД — None (дефолты в хелперах).
+    """
+    try:
+        s = TerritoryBattleSetting.query.first()
+        if not s:
+            s = TerritoryBattleSetting(registration_enabled=True)
+            db.session.add(s)
+            db.session.commit()
+        return s
+    except OperationalError:
+        db.session.rollback()
+        logger.warning('Не удалось прочитать territory_battle_setting (БД недоступна)')
+        return None
+
+
 def get_territory_registration_enabled():
     """Проверить, включена ли регистрация участников в битве за территорию."""
-    s = TerritoryBattleSetting.query.first()
-    if not s:
-        s = TerritoryBattleSetting(registration_enabled=True)
-        db.session.add(s)
-        db.session.commit()
+    s = _get_territory_battle_setting_row()
+    if s is None:
+        return True
     return s.registration_enabled
 
 
 def get_territory_capture_settings():
     """Вернуть (capture_enabled, capture_start_time, capture_end_time). datetime — или None."""
-    s = TerritoryBattleSetting.query.first()
-    if not s:
-        s = TerritoryBattleSetting(registration_enabled=True)
-        db.session.add(s)
-        db.session.commit()
+    s = _get_territory_battle_setting_row()
+    if s is None:
+        return (True, None, None)
     return (
         getattr(s, 'capture_enabled', True),
         getattr(s, 'capture_start_time', None),
@@ -1770,10 +1811,16 @@ with app.app_context():
                 db.session.commit()
                 print(f"Активирована задача недели (все задачи решены): {first_task.title}")
     
-    # Запуск планировщика задач
-    if not scheduler.running:
-        scheduler.start()
-        
+    # Запуск планировщика задач (не дублировать в родительском процессе dev-reloader Werkzeug)
+    db.session.remove()
+    _run_scheduler = (not app.debug) or (os.environ.get('WERKZEUG_RUN_MAIN') == 'true')
+    if _run_scheduler and not scheduler.running:
+        try:
+            scheduler.start()
+        except Exception:
+            logger.exception('Не удалось запустить планировщик задач')
+
+    if _run_scheduler and scheduler.running:
         # Проверяем, не пропущена ли дата обновления задачи
         active_task = WeeklyTask.query.filter_by(is_active=True).first()
         if active_task and active_task.last_updated:
@@ -1799,16 +1846,19 @@ with app.app_context():
                 print("Задача обновлена. Планирую следующее обновление на воскресенье в 09:00")
         
         # Добавляем регулярную задачу на каждое воскресенье в 09:00
-        scheduler.add_job(
-            update_weekly_task,
-            'cron',
-            day_of_week='sun',
-            hour=9,
-            minute=0,
-            id='update_weekly_task',
-            replace_existing=True
-        )
-        print("Планировщик задач запущен. Задача недели будет обновляться каждое воскресенье в 09:00")
+        try:
+            scheduler.add_job(
+                update_weekly_task,
+                'cron',
+                day_of_week='sun',
+                hour=9,
+                minute=0,
+                id='update_weekly_task',
+                replace_existing=True
+            )
+            print("Планировщик задач запущен. Задача недели будет обновляться каждое воскресенье в 09:00")
+        except Exception:
+            logger.exception('Ошибка при регистрации задачи планировщика')
 
 # Маршруты авторизации
 @app.route('/login', methods=['GET', 'POST'])
@@ -6554,6 +6604,20 @@ def get_boss_drop_rewards(boss_id):
         response_rewards.append(data)
 
     return jsonify({'success': True, 'rewards': response_rewards})
+
+@app.errorhandler(OperationalError)
+def handle_operational_error(error):
+    """Таймаут/обрыв PostgreSQL и другие сбои соединения — без трассировки в ответ пользователю."""
+    db.session.rollback()
+    logger.error('Ошибка доступа к БД: %s path=%s', error, getattr(request, 'path', ''))
+    if (getattr(request, 'path', '') or '').startswith('/api/'):
+        return jsonify({'success': False, 'error': 'База данных временно недоступна.'}), 503
+    body = (
+        '<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><title>Сервис недоступен</title></head>'
+        '<body><p>База данных временно недоступна. Попробуйте позже.</p></body></html>'
+    )
+    return body, 503, {'Content-Type': 'text/html; charset=utf-8'}
+
 
 # Обработчик завершения приложения для остановки планировщика
 @app.teardown_appcontext
