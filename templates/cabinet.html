@@ -9,16 +9,30 @@
 <style>
 * { box-sizing: border-box; }
 body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Roman', serif; }
+body:has(.cabinet-page) {
+    display: block;
+    min-height: 100vh;
+    align-items: unset;
+    justify-content: unset;
+}
 
 .cabinet-page {
     min-height: 100vh;
     width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
     padding: 20px;
     color: #e8dcc4;
     background: #3d2914 linear-gradient(180deg, rgba(61,41,20,0.97) 0%, #2c1810 50%, #1a0f08 100%);
     position: relative;
+    overflow-x: hidden;
 }
-.cabinet-page .cabinet-inner { max-width: 800px; margin: 0 auto; }
+.cabinet-page .cabinet-inner {
+    width: 100%;
+    max-width: 640px;
+    margin-left: auto;
+    margin-right: auto;
+}
 .cabinet-page::before {
     content: '';
     position: fixed;
@@ -28,6 +42,41 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     z-index: 0;
 }
 .cabinet-page > * { position: relative; z-index: 1; }
+
+/* Скроллбары — в общем стиле кабинета */
+.cabinet-page {
+    scrollbar-width: thin;
+    scrollbar-color: #8b6914 #1a0f08;
+}
+.cabinet-page ::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+}
+.cabinet-page ::-webkit-scrollbar-track {
+    background: #1a0f08;
+    border-radius: 5px;
+    border: 1px solid rgba(92, 64, 51, 0.45);
+}
+.cabinet-page ::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #6b5344 0%, #4a3520 55%, #3d2914 100%);
+    border-radius: 5px;
+    border: 1px solid rgba(139, 105, 20, 0.55);
+    box-shadow: inset 0 1px 0 rgba(212, 168, 75, 0.16);
+}
+.cabinet-page ::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #7a6352 0%, #5c4033 55%, #4a3520 100%);
+    border-color: #d4a84b;
+}
+.cabinet-page ::-webkit-scrollbar-thumb:active {
+    background: linear-gradient(180deg, #8b6914 0%, #5c4033 100%);
+}
+.cabinet-page ::-webkit-scrollbar-corner {
+    background: #1a0f08;
+}
+.cabinet-section-panel,
+.cabinet-subsection-panel {
+    scrollbar-gutter: stable;
+}
 
 .cabinet-page h1 {
     font-family: 'Cinzel Decorative', 'Cinzel', Georgia, serif;
@@ -42,10 +91,11 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 
 .cabinet-top-nav {
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     gap: 10px;
     margin-bottom: 20px;
     align-items: center;
+    justify-content: center;
 }
 .cabinet-burger-btn {
     display: none;
@@ -69,10 +119,11 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 }
 .cabinet-top-nav-links {
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     align-items: center;
+    justify-content: center;
     gap: 10px;
-    flex: 1;
+    flex: 0 1 auto;
 }
 .cabinet-top-nav .back-link {
     display: inline-flex;
@@ -101,7 +152,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     box-shadow: 0 0 12px rgba(212,168,75,0.25);
 }
 .cabinet-top-nav .logout-link {
-    margin-left: auto;
+    margin-left: 0;
     color: #c4a574;
     border-color: #6b5344;
 }
@@ -286,8 +337,147 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 .stat-item strong { display: block; color: #d4a84b; font-size: 0.9rem; margin-bottom: 4px; font-family: 'Cinzel', Georgia, serif; }
 .stat-item span { font-size: 1.5rem; font-weight: bold; color: #e8dcc4; }
 
+.stats-achievements-section h3 {
+    margin: 0 0 12px;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 1rem;
+    color: #d4a84b;
+    letter-spacing: 0.03em;
+}
+.stats-achievements-section + .stats-achievements-section {
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px solid rgba(92,64,51,0.55);
+}
+.achievements-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+.achievements-progress-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 2px solid rgba(212,168,75,0.45);
+    background: rgba(212,168,75,0.1);
+    color: #e8c86a;
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+.achievements-filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+.achievements-filter-btn {
+    padding: 7px 12px;
+    border-radius: 999px;
+    border: 2px solid #5c4033;
+    background: rgba(44,24,16,0.55);
+    color: #c4b098;
+    font-family: inherit;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+.achievements-filter-btn:hover,
+.achievements-filter-btn.active {
+    border-color: #d4a84b;
+    color: #e8c86a;
+    background: rgba(212,168,75,0.12);
+}
+.achievements-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+}
+.achievement-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 6px;
+    padding: 12px 10px;
+    border-radius: 10px;
+    border: 2px solid #5c4033;
+    background: linear-gradient(145deg, rgba(61,41,20,0.95) 0%, rgba(44,24,16,0.98) 100%);
+    min-height: 148px;
+    position: relative;
+    transition: border-color 0.2s, box-shadow 0.2s, opacity 0.2s;
+}
+.achievement-card.unlocked {
+    border-color: rgba(212,168,75,0.65);
+    box-shadow: 0 0 14px rgba(212,168,75,0.15);
+}
+.achievement-card.locked {
+    opacity: 0.72;
+}
+.achievement-card.hidden-achievement:not(.unlocked) .achievement-icon {
+    filter: grayscale(1);
+}
+.achievement-icon {
+    font-size: 1.8rem;
+    line-height: 1;
+}
+.achievement-title {
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #d4a84b;
+    line-height: 1.25;
+}
+.achievement-desc {
+    font-size: 0.68rem;
+    line-height: 1.35;
+    color: #9a8570;
+    flex: 1;
+}
+.achievement-progress {
+    width: 100%;
+    margin-top: 2px;
+}
+.achievement-progress-bar {
+    height: 5px;
+    border-radius: 999px;
+    background: rgba(20,12,6,0.65);
+    border: 1px solid rgba(92,64,51,0.7);
+    overflow: hidden;
+}
+.achievement-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #8b6914, #d4a84b);
+    border-radius: inherit;
+    transition: width 0.3s;
+}
+.achievement-progress-text {
+    margin-top: 4px;
+    font-size: 0.65rem;
+    color: #b8a088;
+}
+.achievement-reward {
+    font-size: 0.68rem;
+    color: #86efac;
+    font-weight: 700;
+}
+.achievement-unlocked-badge {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    font-size: 0.72rem;
+    color: #86efac;
+}
+
 .skills-block { margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(92,64,51,0.6); }
 .skills-block h4 { margin: 0 0 12px; font-size: 1rem; color: #d4a84b; font-family: 'Cinzel', Georgia, serif; }
+.equipment-block { margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(92,64,51,0.6); }
+.equipment-block h4 { margin: 0 0 12px; font-size: 1rem; color: #d4a84b; font-family: 'Cinzel', Georgia, serif; }
+.equipment-block .equipment-grid { margin: 0 auto; }
 .skill-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; position: relative; }
 .skill-row label { min-width: 100px; font-weight: bold; color: #c4b098; }
 .skill-row .val { min-width: 2.5em; text-align: center; font-weight: bold; color: #d4a84b; }
@@ -609,8 +799,1495 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 }
 .section-toggle:hover { color: #e8c86a; }
 
-/* Блок «Баланс и Лавка предметов» */
-.balance-shop-section .balance-display-row {
+/* Компактная главная и модальные разделы */
+.cabinet-dashboard { margin-bottom: 8px; }
+.cabinet-hero {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+    padding: 18px 20px;
+    margin-bottom: 16px;
+    background:
+        radial-gradient(ellipse 120% 80% at 0% 0%, rgba(212,168,75,0.14) 0%, transparent 55%),
+        linear-gradient(145deg, #4a3520 0%, #3d2914 55%, #2f2112 100%);
+    border: 2px solid #5c4033;
+    border-radius: 12px;
+    box-shadow: inset 0 1px 0 rgba(212,168,75,0.18), 0 6px 18px rgba(0,0,0,0.38);
+    overflow: hidden;
+}
+.cabinet-hero::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: linear-gradient(180deg, #e8c86a 0%, #8b6914 50%, #5c4033 100%);
+    border-radius: 12px 0 0 12px;
+}
+.cabinet-hero-avatar-btn {
+    position: relative;
+    flex-shrink: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 50%;
+    font: inherit;
+    color: inherit;
+}
+.cabinet-hero-avatar-btn:focus-visible {
+    outline: 2px solid #d4a84b;
+    outline-offset: 3px;
+}
+.cabinet-hero-avatar {
+    width: 78px;
+    height: 78px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #2c1810;
+    border: 3px solid #8b6914;
+    box-shadow: 0 0 0 2px rgba(212,168,75,0.25), 0 4px 14px rgba(0,0,0,0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    color: #c4b098;
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+.cabinet-hero-avatar-btn:hover .cabinet-hero-avatar,
+.cabinet-hero-avatar-btn:focus-visible .cabinet-hero-avatar {
+    transform: scale(1.03);
+    border-color: #d4a84b;
+    box-shadow: 0 0 0 3px rgba(212,168,75,0.35), 0 6px 18px rgba(0,0,0,0.4);
+}
+.cabinet-hero-avatar img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+.cabinet-hero-avatar-placeholder { pointer-events: none; line-height: 1; }
+.cabinet-hero-avatar-edit {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    background: rgba(20, 12, 6, 0.72);
+    color: #e8dcc4;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+}
+.cabinet-hero-avatar-edit-icon { font-size: 1.15rem; line-height: 1; }
+.cabinet-hero-avatar-edit-text {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #d4a84b;
+    font-family: 'Cinzel', Georgia, serif;
+}
+.cabinet-hero-avatar-btn:hover .cabinet-hero-avatar-edit,
+.cabinet-hero-avatar-btn:focus-visible .cabinet-hero-avatar-edit {
+    opacity: 1;
+}
+.cabinet-hero-avatar-hint {
+    display: block;
+    margin-top: 6px;
+    font-size: 0.68rem;
+    color: #b8a088;
+    text-align: center;
+    letter-spacing: 0.02em;
+    max-width: 78px;
+    line-height: 1.25;
+}
+.cabinet-hero-avatar-badge {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid #3d2914;
+    background: linear-gradient(145deg, #8b6914 0%, #5c4033 100%);
+    color: #e8dcc4;
+    font-size: 0.72rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+    pointer-events: none;
+}
+.cabinet-hero-avatar-wrap { flex-shrink: 0; }
+.cabinet-hero-main { flex: 1; min-width: 180px; }
+.cabinet-hero-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+.cabinet-hero-top .profile-login-row { margin: 0; flex: 1; min-width: 0; }
+.cabinet-hero-top .password-change-btn { margin-left: 0; flex-shrink: 0; }
+.cabinet-hero-details { color: #e8dcc4; }
+.cabinet-hero-details p { margin: 5px 0; font-size: 0.88rem; }
+.cabinet-hero-details strong { color: #d4a84b; }
+.cabinet-hero .level-block {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(92,64,51,0.45);
+}
+.cabinet-hero .level-block p { margin: 4px 0; font-size: 0.88rem; }
+.cabinet-hero .energy-display { margin: 8px 0 10px; font-size: 0.88rem; color: #e8dcc4; }
+.cabinet-hero .energy-display strong { color: #d4a84b; }
+.cabinet-hero-head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    margin-bottom: 4px;
+}
+.cabinet-hero-name {
+    margin: 0;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 1.25rem;
+    color: #e8c86a;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.35);
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+.cabinet-hero-name .name-edit-btn { margin-left: 2px; }
+.cabinet-hero-level-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(212,168,75,0.45);
+    background: rgba(212,168,75,0.12);
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #d4a84b;
+    font-family: 'Cinzel', Georgia, serif;
+    letter-spacing: 0.04em;
+}
+.cabinet-hero-meta {
+    margin: 0 0 10px;
+    font-size: 0.88rem;
+    color: #b8a088;
+    line-height: 1.5;
+}
+.cabinet-hero-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.cabinet-hero-stat {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(92,64,51,0.85);
+    background: rgba(44,24,16,0.55);
+    font-size: 0.8rem;
+    color: #c4b49a;
+    box-shadow: inset 0 1px 0 rgba(212,168,75,0.08);
+}
+.cabinet-hero-stat-icon { font-size: 0.95rem; line-height: 1; }
+.cabinet-hero-stat-val strong { color: #d4a84b; font-weight: 700; }
+.cabinet-hero-stat--nums .cabinet-hero-stat-val strong { color: #e8c86a; }
+
+.cabinet-section--modal-host.skills-section .skills-block {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+}
+.cabinet-section--modal-host.skills-section .cabinet-section-panel {
+    width: min(540px, 100%);
+}
+.cabinet-section--modal-host.skills-section .cabinet-section-panel.skills-panel--wide {
+    width: min(calc(100vw - 24px), 1080px);
+}
+.cabinet-section-panel--wide {
+    width: min(760px, 100%);
+}
+.skills-modal-intro {
+    margin: 0 0 14px;
+    font-size: 0.92rem;
+    line-height: 1.5;
+    color: #b8a088;
+}
+.skills-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.skill-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 15px;
+    border-radius: 10px;
+    border: 2px solid #5c4033;
+    background: linear-gradient(145deg, rgba(74,53,32,0.95) 0%, rgba(44,24,16,0.98) 100%);
+    box-shadow: inset 0 1px 0 rgba(212,168,75,0.1), 0 3px 10px rgba(0,0,0,0.22);
+}
+.skill-card-main {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+}
+.skill-card-icon-wrap {
+    flex-shrink: 0;
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    border: 1px solid rgba(212,168,75,0.35);
+    background: rgba(212,168,75,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    line-height: 1;
+}
+.skill-card--damage .skill-card-icon-wrap { background: rgba(180,60,40,0.18); border-color: rgba(200,90,70,0.4); }
+.skill-card--defense .skill-card-icon-wrap { background: rgba(70,110,180,0.18); border-color: rgba(100,140,210,0.4); }
+.skill-card--energy .skill-card-icon-wrap { background: rgba(200,170,40,0.16); border-color: rgba(220,190,80,0.42); }
+.skill-card-info { flex: 1; min-width: 0; }
+.skill-card-title-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px 6px;
+    margin-bottom: 2px;
+}
+.skill-card-name {
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #d4a84b;
+    letter-spacing: 0.02em;
+}
+.skill-card-desc {
+    margin: 0;
+    font-size: 0.82rem;
+    line-height: 1.35;
+    color: #9a8570;
+}
+.skills-section .skill-card .stat-label-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+.skills-section .skill-card .stat-help {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 1px solid rgba(212,168,75,0.38);
+    background: linear-gradient(145deg, #3d2914 0%, #2c1810 100%);
+    color: #d4a84b;
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    padding: 0;
+    margin: 0;
+    font-family: inherit;
+    line-height: 1;
+    appearance: none;
+    -webkit-appearance: none;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+    transition: color 0.2s, border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+.skills-section .skill-card .stat-help:hover,
+.skills-section .skill-card .stat-help.active {
+    color: #e8c86a;
+    border-color: #8b6914;
+    background: #4a3520;
+    box-shadow: 0 0 10px rgba(212,168,75,0.22);
+}
+.skills-section .skill-card .stat-tooltip {
+    left: 50%;
+    right: auto;
+    top: calc(100% + 6px);
+    margin-top: 0;
+    transform: translateX(-50%);
+    min-width: 220px;
+    max-width: min(280px, calc(100vw - 48px));
+    z-index: 200;
+}
+.stat-tooltip.stat-tooltip--fixed {
+    position: fixed;
+    left: 12px !important;
+    right: 12px !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    transform: none !important;
+    z-index: 100020;
+}
+.skills-section .skill-card-stepper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    margin: 0;
+    position: relative;
+}
+.skills-section .skill-card-stepper .skill-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    font-size: 1.05rem;
+}
+.skills-section .skill-card-stepper .val {
+    min-width: 2.8em;
+    padding: 6px 10px;
+    font-size: 1.2rem;
+    border-radius: 8px;
+    background: rgba(20,12,6,0.45);
+    border: 1px solid rgba(92,64,51,0.85);
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.25);
+}
+.skills-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(92,64,51,0.55);
+}
+.skills-section .skill-points-block {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    width: 100%;
+    margin-top: 0;
+}
+.skills-points-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(212,168,75,0.4);
+    background: rgba(212,168,75,0.1);
+    font-size: 0.82rem;
+    color: #b8a088;
+}
+.skills-points-badge strong {
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 1.05rem;
+    color: #e8c86a;
+    min-width: 1.2em;
+    text-align: center;
+}
+.skills-section .skill-points-hint { display: none; }
+.skills-section .skill-save-btn {
+    margin-top: 0;
+    margin-left: auto;
+    padding: 11px 22px;
+    border-radius: 8px;
+    min-height: 44px;
+}
+.skills-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+    padding: 4px;
+    border-radius: 10px;
+    background: rgba(20,12,6,0.45);
+    border: 1px solid rgba(92,64,51,0.65);
+}
+.skills-tab {
+    flex: 1;
+    padding: 10px 12px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #b8a088;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.88rem;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+.skills-tab:hover { color: #e8dcc8; }
+.skills-tab.active {
+    background: linear-gradient(145deg, rgba(212,168,75,0.22) 0%, rgba(92,64,51,0.5) 100%);
+    color: #e8c86a;
+    box-shadow: inset 0 1px 0 rgba(212,168,75,0.15);
+}
+.skills-tab-panel[hidden] { display: none !important; }
+.abilities-intro {
+    margin: 0 0 8px;
+    font-size: 0.92rem;
+    line-height: 1.5;
+    color: #b8a088;
+}
+.abilities-scroll-hint { display: none; }
+.abilities-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    margin: 0 0 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(92,64,51,0.55);
+    background: rgba(20,12,6,0.35);
+    font-size: 0.72rem;
+    color: #9a8878;
+}
+.abilities-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+}
+.abilities-legend-item i {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: inline-block;
+}
+.abilities-legend-item--available i { background: #e8c86a; box-shadow: 0 0 6px rgba(232,200,106,0.55); }
+.abilities-legend-item--progress i { background: #9a8878; }
+.abilities-legend-item--waiting i { background: #5a5550; }
+.abilities-legend-item--locked i { background: #3a3835; }
+.abilities-legend-item--maxed i { background: #5ab87a; box-shadow: 0 0 5px rgba(90,184,122,0.45); }
+.abilities-legend-item--foreign i { background: #4a4845; }
+.abilities-class-banner {
+    margin: 0 0 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(212,168,75,0.45);
+    background: linear-gradient(145deg, rgba(212,168,75,0.12) 0%, rgba(20,12,6,0.45) 100%);
+    font-size: 0.88rem;
+    color: #d8c8a8;
+    text-align: center;
+}
+.abilities-class-banner strong {
+    font-family: 'Cinzel', Georgia, serif;
+    color: #e8c86a;
+}
+.abilities-choose-class-btn {
+    display: block;
+    width: 100%;
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(212,168,75,0.5);
+    background: linear-gradient(180deg, rgba(212,168,75,0.25) 0%, rgba(92,64,51,0.5) 100%);
+    color: #fff0c8;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+.abilities-choose-class-btn:hover:not(:disabled) {
+    border-color: #e8c86a;
+    background: linear-gradient(180deg, rgba(212,168,75,0.38) 0%, rgba(92,64,51,0.58) 100%);
+}
+.abilities-choose-class-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+.abilities-branch--foreign {
+    opacity: 0.38;
+    filter: grayscale(0.92);
+    pointer-events: none;
+}
+.abilities-branch--foreign .abilities-branch-header::after {
+    content: 'Другой класс';
+    display: block;
+    margin-top: 6px;
+    font-size: 0.62rem;
+    color: #6a6258;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+.abilities-branch--chosen {
+    border-color: color-mix(in srgb, var(--sk-color) 55%, #5c4033);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--sk-color) 22%, transparent), 0 4px 16px rgba(0,0,0,0.25);
+}
+.abilities-branch--selectable .abilities-branch-header {
+    border-bottom-style: dashed;
+}
+.abilities-branch-lock-note {
+    margin-top: 6px;
+    font-size: 0.62rem;
+    color: #c45a4a;
+    line-height: 1.3;
+}
+.abilities-scroll-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 8px;
+}
+.abilities-scroll-arrow {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: 1px solid rgba(212,168,75,0.4);
+    background: linear-gradient(180deg, rgba(74,53,32,0.95) 0%, rgba(44,24,16,0.98) 100%);
+    color: #e8c86a;
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.15s, color 0.15s, opacity 0.15s;
+}
+.abilities-scroll-arrow:hover:not(:disabled) {
+    border-color: #8b6914;
+    color: #fff0c8;
+}
+.abilities-scroll-arrow:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+.abilities-scroll-top {
+    flex: 1;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    height: 12px;
+    border-radius: 6px;
+    background: #1a0f08;
+    border: 1px solid rgba(92,64,51,0.65);
+    scrollbar-width: thin;
+    scrollbar-color: #8b6914 #1a0f08;
+}
+.abilities-scroll-top::-webkit-scrollbar { height: 8px; }
+.abilities-scroll-top::-webkit-scrollbar-track { background: #1a0f08; border-radius: 4px; }
+.abilities-scroll-top::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #a67c1a 0%, #8b6914 100%);
+    border-radius: 4px;
+    border: 1px solid #5c4033;
+}
+.abilities-scroll-top-inner {
+    height: 1px;
+    pointer-events: none;
+}
+.abilities-tree-wrap {
+    overflow-x: auto;
+    overflow-y: visible;
+    max-width: 100%;
+    margin: 0 -6px;
+    padding: 2px 6px 14px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: #8b6914 #1a0f08;
+}
+.abilities-tree-wrap::-webkit-scrollbar {
+    height: 8px;
+}
+.abilities-tree-wrap::-webkit-scrollbar-track {
+    background: #1a0f08;
+    border-radius: 4px;
+}
+.abilities-tree-wrap::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #a67c1a 0%, #8b6914 100%);
+    border-radius: 4px;
+    border: 1px solid #5c4033;
+}
+.abilities-tree {
+    display: grid;
+    grid-template-columns: repeat(5, 272px);
+    width: max-content;
+    min-width: 100%;
+    gap: 14px;
+    align-items: stretch;
+    padding-bottom: 2px;
+}
+.abilities-tree.abilities-tree--single {
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    max-width: 340px;
+    margin: 0 auto;
+}
+.abilities-tree.abilities-tree--single .abilities-branch {
+    width: 100%;
+    min-width: 0;
+}
+.abilities-branch {
+    --sk-color: #d4a84b;
+    display: flex;
+    flex-direction: column;
+    width: 272px;
+    min-width: 272px;
+    flex-shrink: 0;
+    border-radius: 12px;
+    border: 1px solid rgba(92,64,51,0.75);
+    background: linear-gradient(180deg, rgba(30,20,12,0.55) 0%, rgba(20,12,6,0.35) 100%);
+    overflow: hidden;
+}
+.abilities-branch-header {
+    text-align: center;
+    padding: 10px 10px 8px;
+    border-bottom: 1px solid color-mix(in srgb, var(--sk-color) 35%, transparent);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--sk-color) 12%, transparent) 0%, transparent 100%);
+}
+.abilities-branch-name {
+    display: block;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.88rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--sk-color);
+    line-height: 1.25;
+}
+.abilities-branch-desc {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.74rem;
+    line-height: 1.35;
+    color: #9a8878;
+}
+.abilities-branch-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 6px 10px 12px;
+}
+.sk-tier {
+    display: grid;
+    grid-template-columns: 28px 1fr;
+    gap: 6px;
+    align-items: start;
+}
+.sk-tier-side {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 14px;
+    align-self: start;
+}
+.sk-tier-roman {
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: var(--sk-color);
+    opacity: 0.9;
+    line-height: 1;
+}
+.sk-tier-name {
+    margin-top: 2px;
+    font-size: 0.52rem;
+    line-height: 1.15;
+    color: #7a6a5a;
+    text-align: center;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    max-height: 52px;
+    overflow: hidden;
+}
+.sk-tier-main {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    min-width: 0;
+    width: 100%;
+}
+.sk-tier-hint {
+    text-align: center;
+    font-size: 0.58rem;
+    color: #7a6a5a;
+    margin: 0 0 6px;
+    font-style: italic;
+    line-height: 1.35;
+}
+.sk-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    flex-shrink: 0;
+    pointer-events: none;
+}
+.sk-link--single .sk-link-stem {
+    width: 2px;
+    height: 14px;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--sk-color) 55%, #5c4033), color-mix(in srgb, var(--sk-color) 25%, #5c4033));
+    border-radius: 1px;
+}
+.sk-link--fork .sk-link-stem {
+    width: 2px;
+    height: 10px;
+    background: color-mix(in srgb, var(--sk-color) 45%, #5c4033);
+}
+.sk-link--fork .sk-link-bar {
+    width: 88%;
+    max-width: 210px;
+    height: 2px;
+    background: color-mix(in srgb, var(--sk-color) 40%, #5c4033);
+}
+.sk-link--fork .sk-link-legs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 88%;
+    max-width: 210px;
+}
+.sk-link--fork .sk-link-leg {
+    justify-self: center;
+    width: 2px;
+    height: 12px;
+    background: color-mix(in srgb, var(--sk-color) 40%, #5c4033);
+}
+.sk-link--merge .sk-link-legs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 88%;
+    max-width: 210px;
+}
+.sk-link--merge .sk-link-leg {
+    justify-self: center;
+    width: 2px;
+    height: 10px;
+    background: color-mix(in srgb, var(--sk-color) 40%, #5c4033);
+}
+.sk-link--merge .sk-link-bar {
+    width: 88%;
+    max-width: 210px;
+    height: 2px;
+    background: color-mix(in srgb, var(--sk-color) 40%, #5c4033);
+}
+.sk-link--merge .sk-link-stem {
+    width: 2px;
+    height: 12px;
+    background: color-mix(in srgb, var(--sk-color) 45%, #5c4033);
+}
+.sk-tier-nodes {
+    display: grid;
+    width: 100%;
+    gap: 6px;
+    padding: 4px 0 8px;
+}
+.sk-tier-nodes--1 { grid-template-columns: 1fr; justify-items: center; }
+.sk-tier-nodes--split { grid-template-columns: 1fr 1fr; gap: 8px; align-items: stretch; }
+.sk-tier-nodes--split .sk-node {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.sk-tier-nodes--split .sk-node-title {
+    min-height: 2.6em;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+}
+.sk-tier-nodes--split .sk-node-status {
+    min-height: 1.35em;
+    margin-bottom: 2px;
+}
+.sk-tier-nodes--split .sk-node-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    margin-top: 4px;
+}
+.sk-tier-nodes--split .sk-node-lock {
+    min-height: 2.6em;
+}
+.sk-tier-nodes--split .sk-node-actions {
+    margin-top: auto;
+}
+.sk-tier-nodes--split .sk-node { max-width: 100%; }
+.sk-tier-nodes--stack { grid-template-columns: 1fr; gap: 8px; justify-items: center; }
+.sk-tier-nodes--stack .sk-node + .sk-node {
+    position: relative;
+    padding-top: 4px;
+}
+.sk-tier-nodes--stack .sk-node + .sk-node::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    width: 2px;
+    height: 6px;
+    background: color-mix(in srgb, var(--sk-color) 35%, #5c4033);
+    transform: translateX(-50%);
+}
+.sk-tier-dual-hint { display: none; }
+.sk-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+.sk-node-orb-wrap {
+    position: relative;
+    width: 58px;
+    height: 58px;
+    flex-shrink: 0;
+}
+.sk-node-orb {
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    border: 2px solid #5c4033;
+    background: radial-gradient(circle at 35% 30%, rgba(80,60,40,0.95) 0%, rgba(30,18,10,0.98) 70%);
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    line-height: 1;
+    transition: border-color 0.15s, box-shadow 0.15s, transform 0.12s;
+}
+.sk-node--available .sk-node-orb {
+    border-color: color-mix(in srgb, var(--sk-color) 90%, #fff);
+    background: radial-gradient(circle at 35% 28%, color-mix(in srgb, var(--sk-color) 55%, #4a3828) 0%, rgba(28,18,10,0.95) 72%);
+    filter: saturate(1.35) brightness(1.12);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--sk-color) 35%, transparent), inset 0 1px 4px rgba(255,220,160,0.15), 0 0 20px color-mix(in srgb, var(--sk-color) 45%, transparent);
+    animation: sk-node-glow 2.2s ease-in-out infinite;
+}
+@keyframes sk-node-glow {
+    0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--sk-color) 28%, transparent), inset 0 1px 4px rgba(255,220,160,0.12), 0 0 14px color-mix(in srgb, var(--sk-color) 32%, transparent); }
+    50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--sk-color) 45%, transparent), inset 0 1px 4px rgba(255,220,160,0.2), 0 0 26px color-mix(in srgb, var(--sk-color) 55%, transparent); }
+}
+.sk-node--maxed .sk-node-orb {
+    border-color: rgba(110,210,150,0.9);
+    background: radial-gradient(circle at 35% 28%, rgba(70,140,95,0.55) 0%, rgba(22,32,24,0.95) 72%);
+    filter: saturate(1.15) brightness(1.05);
+    box-shadow: 0 0 0 2px rgba(90,184,122,0.25), inset 0 1px 4px rgba(160,230,190,0.12), 0 0 12px rgba(90,184,122,0.3);
+}
+.sk-node--locked {
+    opacity: 1;
+}
+.sk-node--locked .sk-node-orb {
+    opacity: 0.42;
+    filter: grayscale(0.92) brightness(0.72);
+    border-color: #4a4540;
+    background: radial-gradient(circle at 35% 30%, #3a3835 0%, #1e1c1a 70%);
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.5);
+}
+.sk-node--locked .sk-node-rank-ring { opacity: 0 !important; }
+.sk-node--locked .sk-node-title {
+    color: #5c5650;
+}
+.sk-node--locked .sk-node-card {
+    border-color: rgba(70,68,64,0.55);
+    background: rgba(24,22,20,0.55);
+}
+.sk-node--locked .sk-node-bonus {
+    color: #5a5550;
+}
+.sk-node--locked .sk-node-pip {
+    border-color: #4a4845;
+    background: #2a2826;
+}
+.sk-node--locked .sk-node-pip--on {
+    background: #5a5854;
+    border-color: #5a5854;
+    box-shadow: none;
+}
+.sk-node--locked .sk-node-upgrade {
+    opacity: 0.35;
+}
+.sk-node--locked .sk-node-cost {
+    color: #4a4845;
+}
+.sk-node--foreign .sk-node-orb,
+.sk-node--preview .sk-node-orb {
+    opacity: 0.42;
+    filter: grayscale(0.92) brightness(0.72);
+    border-color: #4a4540;
+    background: radial-gradient(circle at 35% 30%, #3a3835 0%, #1e1c1a 70%);
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.5);
+}
+.sk-node--foreign .sk-node-title,
+.sk-node--preview .sk-node-title { color: #5c5650; }
+.sk-node--foreign .sk-node-card,
+.sk-node--preview .sk-node-card {
+    border-color: rgba(70,68,64,0.55);
+    background: rgba(24,22,20,0.55);
+}
+.sk-node--foreign .sk-node-bonus,
+.sk-node--preview .sk-node-bonus { color: #5a5550; }
+.sk-node--foreign .sk-node-upgrade,
+.sk-node--preview .sk-node-upgrade { opacity: 0.3; }
+.sk-node-status--foreign {
+    color: #6a6258;
+    background: rgba(28,26,24,0.6);
+    border: 1px solid rgba(60,58,55,0.55);
+}
+.sk-node-status--preview {
+    color: #7a7268;
+    background: rgba(28,26,24,0.5);
+    border: 1px solid rgba(70,68,64,0.5);
+}
+.sk-node--waiting .sk-node-orb,
+.sk-node--waiting .sk-node-title,
+.sk-node--waiting .sk-node-bonus {
+    opacity: 0.72;
+}
+.sk-node--waiting .sk-node-orb {
+    filter: grayscale(0.55) brightness(0.85);
+    border-color: #5a5550;
+    background: radial-gradient(circle at 35% 30%, #403a35 0%, #1e1c1a 70%);
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.45);
+}
+.sk-node--waiting .sk-node-title { color: #7a7268; }
+.sk-node--waiting .sk-node-card {
+    border-color: rgba(70,68,64,0.5);
+    background: rgba(22,20,18,0.5);
+}
+.sk-node--waiting .sk-node-bonus { color: #6a6258; }
+.sk-node--waiting .sk-node-upgrade { opacity: 0.45; }
+.sk-node--progress .sk-node-orb {
+    border-color: color-mix(in srgb, var(--sk-color) 40%, #5c4033);
+    background: radial-gradient(circle at 35% 28%, color-mix(in srgb, var(--sk-color) 18%, #3a3028) 0%, rgba(24,18,12,0.96) 72%);
+    filter: saturate(0.85) brightness(0.95);
+}
+.sk-node--progress .sk-node-title { color: #c8b8a8; }
+.sk-node--progress .sk-node-rank-ring { opacity: 0.55; }
+.sk-node--progress .sk-node-pip--on {
+    background: color-mix(in srgb, var(--sk-color) 70%, #5a5550);
+    border-color: color-mix(in srgb, var(--sk-color) 70%, #5a5550);
+}
+.sk-node-status {
+    display: inline-block;
+    margin-top: 4px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    font-size: 0.6rem;
+    line-height: 1.3;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+.sk-node-status--available {
+    color: #fff0c8;
+    background: color-mix(in srgb, var(--sk-color) 35%, rgba(212,168,75,0.25));
+    border: 1px solid color-mix(in srgb, var(--sk-color) 50%, #d4a84b);
+}
+.sk-node-status--locked {
+    color: #8a7068;
+    background: rgba(30,28,26,0.6);
+    border: 1px solid rgba(70,68,64,0.55);
+}
+.sk-node-status--waiting {
+    color: #8a8278;
+    background: rgba(30,28,26,0.55);
+    border: 1px solid rgba(80,75,70,0.5);
+}
+.sk-node-status--progress {
+    color: #b8a898;
+    background: rgba(40,34,28,0.55);
+    border: 1px solid color-mix(in srgb, var(--sk-color) 25%, #5c4033);
+}
+.sk-node-status--maxed {
+    color: #b8e8c8;
+    background: rgba(30,50,38,0.55);
+    border: 1px solid rgba(90,184,122,0.45);
+}
+.sk-node-status--spacer {
+    visibility: hidden;
+    border-color: transparent;
+    background: transparent;
+}
+.sk-node--available .sk-node-title {
+    color: #fff8e8;
+    text-shadow: 0 0 12px color-mix(in srgb, var(--sk-color) 40%, transparent);
+}
+.sk-node--available .sk-node-card {
+    border-color: color-mix(in srgb, var(--sk-color) 50%, #5c4033);
+    background: color-mix(in srgb, var(--sk-color) 8%, rgba(20,12,6,0.5));
+}
+.sk-node--available .sk-node-bonus {
+    color: #d8c8a8;
+}
+.sk-node--available .sk-node-upgrade {
+    border-color: color-mix(in srgb, var(--sk-color) 65%, #d4a84b);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--sk-color) 35%, rgba(212,168,75,0.3)) 0%, rgba(92,64,51,0.5) 100%);
+    color: #fff0c8;
+    font-weight: 700;
+}
+.sk-node--available .sk-node-pip--on {
+    box-shadow: 0 0 6px color-mix(in srgb, var(--sk-color) 70%, transparent);
+}
+.sk-node--progress .sk-node-title,
+.sk-node--waiting .sk-node-title {
+    text-shadow: none;
+}
+.sk-node--maxed .sk-node-title {
+    color: #b8e8c8;
+}
+.sk-node-rank-ring {
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    border-top-color: var(--sk-color);
+    border-right-color: color-mix(in srgb, var(--sk-color) 35%, transparent);
+    opacity: 0;
+    transform: rotate(-45deg);
+    pointer-events: none;
+}
+.sk-node--progress .sk-node-rank-ring,
+.sk-node--maxed .sk-node-rank-ring {
+    opacity: 0.85;
+}
+.sk-node-pips {
+    display: flex;
+    justify-content: center;
+    gap: 3px;
+    margin-top: 5px;
+}
+.sk-node-pip {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    border: 1px solid color-mix(in srgb, var(--sk-color) 50%, #5c4033);
+    background: rgba(20,12,6,0.8);
+}
+.sk-node-pip--on {
+    background: var(--sk-color);
+    border-color: var(--sk-color);
+    box-shadow: 0 0 4px color-mix(in srgb, var(--sk-color) 50%, transparent);
+}
+.sk-node-title {
+    margin-top: 5px;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #e8dcc8;
+    text-align: center;
+    line-height: 1.3;
+    max-width: 100%;
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+    hyphens: auto;
+}
+.sk-node-card {
+    width: 100%;
+    margin-top: 6px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(92,64,51,0.65);
+    background: rgba(20,12,6,0.42);
+    text-align: center;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+}
+.sk-node-bonus {
+    font-size: 0.72rem;
+    line-height: 1.4;
+    color: #9a8878;
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+}
+.sk-node-lock {
+    margin-top: 4px;
+    font-size: 0.66rem;
+    line-height: 1.3;
+    color: #8a6058;
+    min-height: 2.6em;
+}
+.sk-node--locked .sk-node-lock {
+    color: #6a5048;
+    opacity: 0.85;
+}
+.sk-node-lock--placeholder {
+    visibility: hidden;
+}
+.sk-node--available .sk-node-lock {
+    color: #c45a4a;
+}
+.sk-node-actions {
+    margin-top: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: stretch;
+}
+.sk-node-upgrade {
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid rgba(212,168,75,0.4);
+    background: linear-gradient(180deg, rgba(212,168,75,0.18) 0%, rgba(92,64,51,0.4) 100%);
+    color: #e8c86a;
+    font-size: 0.72rem;
+    font-family: 'Cinzel', Georgia, serif;
+    cursor: pointer;
+    min-height: 34px;
+}
+.sk-node-upgrade:hover:not(:disabled) {
+    background: linear-gradient(180deg, rgba(212,168,75,0.28) 0%, rgba(92,64,51,0.5) 100%);
+}
+.sk-node-upgrade:disabled { opacity: 0.4; cursor: not-allowed; }
+.sk-node-cost {
+    font-size: 0.64rem;
+    color: #8a7868;
+}
+.abilities-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(92,64,51,0.55);
+}
+.abilities-bonuses-summary {
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(92,64,51,0.55);
+    background: rgba(20,12,6,0.35);
+    font-size: 0.72rem;
+    line-height: 1.45;
+    color: #9a8878;
+}
+.abilities-bonuses-summary strong { color: #d4a84b; }
+.abilities-loading {
+    text-align: center;
+    padding: 24px 12px;
+    color: #b8a088;
+    font-size: 0.86rem;
+}
+.skills-section .skill-row .stat-label-wrap { position: relative; }
+.skills-section .skill-row .stat-tooltip {
+    left: auto;
+    right: 0;
+    max-width: min(280px, 85vw);
+}
+.cabinet-section--modal-host.equipment-section .equipment-block {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+}
+
+.cabinet-section-header-text { flex: 1; min-width: 0; }
+.cabinet-section-header-text h2 { margin: 0; }
+.cabinet-modal-breadcrumb {
+    margin: 4px 0 0;
+    font-size: 0.78rem;
+    color: #b8a088;
+    letter-spacing: 0.02em;
+    min-height: 1.1em;
+}
+.cabinet-modal-breadcrumb:empty { display: none; }
+
+.cabinet-launcher-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+.cabinet-launcher-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    text-align: left;
+    padding: 14px 16px;
+    min-height: 88px;
+    border: 2px solid #5c4033;
+    border-radius: 10px;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    color: #e8dcc4;
+    cursor: pointer;
+    font-family: inherit;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+    box-shadow: inset 0 1px 0 rgba(212,168,75,0.1), 0 3px 10px rgba(0,0,0,0.3);
+}
+.cabinet-launcher-btn:hover {
+    border-color: #d4a84b;
+    box-shadow: 0 0 16px rgba(212,168,75,0.2), 0 4px 12px rgba(0,0,0,0.35);
+    transform: translateY(-1px);
+}
+.cabinet-launcher-btn:active { transform: translateY(0); }
+.cabinet-launcher-icon { font-size: 1.35rem; line-height: 1; }
+.cabinet-launcher-title {
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #d4a84b;
+    letter-spacing: 0.03em;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+.cabinet-launcher-skill-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: linear-gradient(145deg, #e07830 0%, #b84a18 100%);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 800;
+    font-family: inherit;
+    line-height: 1;
+    border: 2px solid #3d2914;
+    box-shadow: 0 0 10px rgba(224,120,48,0.45);
+    animation: cabinetSkillBadgePulse 2.2s ease-in-out infinite;
+    flex-shrink: 0;
+}
+.cabinet-launcher-skill-badge[hidden] { display: none !important; }
+@keyframes cabinetSkillBadgePulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 0 2px #3d2914, 0 0 8px rgba(224,120,48,0.35); }
+    50% { transform: scale(1.06); box-shadow: 0 0 0 2px #3d2914, 0 0 14px rgba(224,120,48,0.65); }
+}
+.cabinet-launcher-hint {
+    font-size: 0.78rem;
+    color: #b8a088;
+    line-height: 1.35;
+}
+@media (min-width: 520px) {
+    .cabinet-launcher-btn:last-child:nth-child(odd) {
+        grid-column: 1 / -1;
+        min-height: 72px;
+        flex-direction: row;
+        align-items: center;
+        gap: 12px;
+    }
+    .cabinet-launcher-btn:last-child:nth-child(odd) .cabinet-launcher-hint {
+        margin-left: auto;
+        text-align: right;
+        max-width: 55%;
+    }
+}
+.cabinet-section--modal-host {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 99990;
+    margin: 0;
+    padding: 16px;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+    max-width: none;
+    align-items: center;
+    justify-content: center;
+}
+.cabinet-section--modal-host.open {
+    display: flex;
+}
+.cabinet-section-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 6, 3, 0.88);
+    cursor: pointer;
+}
+.cabinet-section-panel {
+    position: relative;
+    z-index: 1;
+    width: min(760px, 100%);
+    max-height: min(90vh, 920px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    border: 2px solid #5c4033;
+    border-radius: 10px;
+    padding: 18px 20px 22px;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.55), inset 0 1px 0 rgba(212,168,75,0.12);
+}
+.cabinet-section--modal-host .cabinet-section-header {
+    cursor: default;
+    margin-bottom: 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(92,64,51,0.55);
+}
+.cabinet-section--modal-host .cabinet-section-body {
+    margin-top: 16px;
+}
+.cabinet-section-close {
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 2px solid #5c4033;
+    background: linear-gradient(145deg, #5c4033 0%, #4a3520 100%);
+    color: #e8dcc4;
+    font-size: 1.25rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    transition: border-color 0.2s, color 0.2s;
+}
+.cabinet-section-close:hover {
+    color: #e8c86a;
+    border-color: #8b6914;
+}
+body.cabinet-section-modal-open { overflow: hidden; }
+
+/* Подразделы внутри модалок (профиль, лавка, инвентарь) */
+.cabinet-sub-launcher-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 4px;
+}
+.cabinet-sub-launcher-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    text-align: left;
+    padding: 12px 14px;
+    min-height: 72px;
+    border: 2px solid #5c4033;
+    border-radius: 8px;
+    background: linear-gradient(145deg, #3d2914 0%, #2c1810 100%);
+    color: #e8dcc4;
+    cursor: pointer;
+    font-family: inherit;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-shadow: inset 0 1px 0 rgba(212,168,75,0.08);
+}
+.cabinet-sub-launcher-btn:hover {
+    border-color: #d4a84b;
+    box-shadow: 0 0 12px rgba(212,168,75,0.18);
+}
+.cabinet-sub-launcher-icon { font-size: 1.2rem; line-height: 1; }
+.cabinet-sub-launcher-title {
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #d4a84b;
+}
+.cabinet-sub-launcher-hint {
+    font-size: 0.72rem;
+    color: #b8a088;
+    line-height: 1.35;
+}
+.cabinet-subsection-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 99995;
+    padding: 12px;
+    align-items: center;
+    justify-content: center;
+}
+.cabinet-subsection-modal.open {
+    display: flex;
+}
+.cabinet-subsection-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(8, 5, 2, 0.72);
+    cursor: pointer;
+}
+.cabinet-subsection-panel {
+    position: relative;
+    z-index: 1;
+    width: min(680px, 100%);
+    max-height: min(85vh, 820px);
+    overflow-y: auto;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    border: 2px solid #5c4033;
+    border-radius: 10px;
+    padding: 16px 18px 20px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.55);
+}
+.cabinet-subsection-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(92,64,51,0.55);
+}
+.cabinet-subsection-header h3 {
+    margin: 0;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 1.05rem;
+    color: #d4a84b;
+}
+.cabinet-subsection-close {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid #5c4033;
+    background: linear-gradient(145deg, #5c4033 0%, #4a3520 100%);
+    color: #e8dcc4;
+    font-size: 1.15rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+}
+.cabinet-subsection-close:hover { color: #e8c86a; border-color: #8b6914; }
+.cabinet-subsection-body .shop-tiles,
+.cabinet-subsection-body .inventory-tiles {
+    width: 100%;
+}
+.cabinet-subsection-body .shop-tiles {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+.cabinet-subsection-body .inventory-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    gap: 10px;
+}
+.cabinet-subsection-body .shop-item-tile,
+.cabinet-subsection-body .inventory-tile {
+    min-width: 0;
+    box-sizing: border-box;
+}
+.cabinet-subsection-body .shop-item-tile .tile-name {
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    line-height: 1.3;
+}
+.cabinet-sub-empty {
+    margin: 0;
+    padding: 20px 12px;
+    text-align: center;
+    color: #b8a088;
+    font-size: 0.9rem;
+}
+.cabinet-subsection-body .equipment-grid {
+    margin: 0 auto;
+}
+
+/* Блок баланса (инвентарь) и лавки */
+.balance-shop-section .balance-display-row,
+.inventory-section .balance-display-row,
+.cabinet-subsection-body .balance-display-row {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
@@ -643,13 +2320,17 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     min-height: 48px;
     box-sizing: border-box;
 }
-.balance-shop-section .balance-display-row .nums-balance-block {
+.balance-shop-section .balance-display-row .nums-balance-block,
+.inventory-section .balance-display-row .nums-balance-block,
+.cabinet-subsection-body .balance-display-row .nums-balance-block {
     margin-left: auto;
     width: auto;
     box-sizing: border-box;
     justify-content: flex-end;
 }
-.balance-shop-section .balance-display-row .balance-transfer-wrap .nums-balance-block {
+.balance-shop-section .balance-display-row .balance-transfer-wrap .nums-balance-block,
+.inventory-section .balance-display-row .balance-transfer-wrap .nums-balance-block,
+.cabinet-subsection-body .balance-display-row .balance-transfer-wrap .nums-balance-block {
     margin-left: 0;
     width: 100%;
 }
@@ -976,6 +2657,27 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 
 .members-list, .territories-list, .pending-list, .clan-chat-content { margin-top: 12px; display: none; }
 .members-list.open, .territories-list.open, .pending-list.open, .clan-chat-content.open { display: block; }
+.cabinet-subsection-body .members-list,
+.cabinet-subsection-body .territories-list,
+.cabinet-subsection-body .pending-list,
+.cabinet-subsection-body .clan-chat-content {
+    display: block;
+    margin-top: 0;
+}
+.cabinet-subsection-body .clan-members-toggle { display: none; }
+.cabinet-sub-launcher-badge {
+    display: inline-block;
+    min-width: 18px;
+    padding: 1px 6px;
+    margin-left: 6px;
+    border-radius: 10px;
+    background: #8b4513;
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.4;
+    vertical-align: middle;
+}
 .member-item, .territory-item, .pending-item {
     display: flex;
     align-items: center;
@@ -1400,13 +3102,56 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 .no-clan-msg { color: #b8a088; margin-bottom: 12px; }
 
 @media (max-width: 600px) {
-    .cabinet-page { padding: 12px; }
+    .cabinet-page { padding: 12px 12px 72px; }
     .cabinet-page h1 { font-size: 1.35rem; margin-bottom: 16px; }
     .cabinet-support-float-label { display: none; }
     .section-title-row { flex-direction: column; align-items: stretch; gap: 8px; }
     .nums-balance-block { padding: 14px 16px; margin-left: 0; }
     .nums-balance-block .nums-value { font-size: 1.2rem; }
     .nums-balance-block .nums-suffix { font-size: 0.95rem; }
+    .cabinet-hero {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 14px 16px;
+        gap: 12px;
+    }
+    .cabinet-hero-main {
+        width: 100%;
+        min-width: 0;
+    }
+    .cabinet-hero-top {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    .cabinet-hero-head {
+        justify-content: center;
+    }
+    .cabinet-hero-name {
+        justify-content: center;
+        font-size: 1.1rem;
+        word-break: break-word;
+    }
+    .cabinet-hero-details {
+        text-align: left;
+        width: 100%;
+    }
+    .cabinet-hero-details p {
+        word-break: break-word;
+    }
+    .cabinet-hero .energy-display .energy-hint {
+        display: block;
+        margin-top: 2px;
+        font-size: 0.78rem;
+        line-height: 1.35;
+    }
+    .cabinet-hero-stats {
+        justify-content: center;
+        width: 100%;
+    }
+    .cabinet-hero-stat { padding: 5px 8px; font-size: 0.75rem; }
+    .cabinet-hero-avatar { width: 72px; height: 72px; }
+    .cabinet-hero-avatar-hint { max-width: 72px; font-size: 0.62rem; }
     .cabinet-top-nav {
         flex-wrap: nowrap;
         justify-content: flex-end;
@@ -1437,6 +3182,16 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     }
     .cabinet-top-nav.open .cabinet-top-nav-links .logout-link { margin-left: 0; }
     .cabinet-top-nav .back-link { width: 100%; min-height: 44px; }
+    .cabinet-launcher-grid { grid-template-columns: 1fr; }
+    .cabinet-launcher-btn {
+        min-height: 76px;
+    }
+    .cabinet-launcher-hint {
+        font-size: 0.74rem;
+    }
+    .cabinet-sub-launcher-grid { grid-template-columns: 1fr; }
+    .cabinet-section--modal-host { padding: 10px; }
+    .cabinet-section-panel { padding: 14px 16px 18px; max-height: calc(100vh - 20px); }
     .cabinet-section { padding: 16px; margin-bottom: 16px; }
     .cabinet-section h2 { font-size: 1.1rem; }
     .profile-row { flex-direction: column; align-items: flex-start; gap: 16px; }
@@ -1449,8 +3204,110 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     .level-block { margin-top: 8px; padding-top: 8px; }
     .level-xp-text { font-size: 0.9rem; }
     .skills-block { margin-top: 12px; padding-top: 12px; }
-    .skill-row { gap: 6px; margin-bottom: 8px; }
-    .skill-row label { min-width: 80px; font-size: 0.9rem; }
+    .equipment-block { margin-top: 12px; padding-top: 12px; }
+    .skills-section .skill-card {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 12px;
+    }
+    .skills-section .skill-card-stepper {
+        justify-content: center;
+        padding-top: 8px;
+        border-top: 1px solid rgba(92,64,51,0.35);
+    }
+    .skills-section .skill-card .stat-tooltip:not(.stat-tooltip--fixed) {
+        left: 0;
+        right: 0;
+        transform: none;
+        min-width: 0;
+        max-width: none;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    .skills-section .skill-points-block {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .skills-section .skill-save-btn {
+        width: 100%;
+        margin-left: 0;
+        justify-content: center;
+    }
+    .skills-points-badge {
+        width: 100%;
+        justify-content: center;
+    }
+    .cabinet-section--modal-host.skills-section .cabinet-section-panel.skills-panel--wide {
+        width: 100%;
+        padding: 12px 14px 16px;
+        max-height: calc(100dvh - 16px);
+    }
+    .skills-modal-intro { font-size: 0.88rem; }
+    .skills-tabs { gap: 4px; }
+    .skills-tab { min-height: 44px; padding: 10px 8px; }
+    .skill-card-desc { font-size: 0.82rem; }
+    .abilities-scroll-bar { gap: 6px; }
+    .abilities-scroll-arrow {
+        width: 44px;
+        height: 44px;
+        font-size: 1.35rem;
+    }
+    .abilities-legend {
+        font-size: 0.66rem;
+        gap: 6px 10px;
+        padding: 8px;
+    }
+    .abilities-legend-item { white-space: normal; }
+    .abilities-intro { font-size: 0.88rem; }
+    .abilities-class-banner { font-size: 0.86rem; }
+    .abilities-tree-wrap {
+        margin: 0 -4px;
+        padding: 2px 4px 14px;
+    }
+    .abilities-tree {
+        grid-template-columns: repeat(5, min(calc(100vw - 56px), 272px));
+        gap: 12px;
+    }
+    .abilities-tree.abilities-tree--single {
+        grid-template-columns: minmax(0, 1fr);
+        max-width: 100%;
+        margin: 0;
+    }
+    .abilities-branch {
+        width: min(calc(100vw - 56px), 272px);
+        min-width: min(calc(100vw - 56px), 272px);
+    }
+    .abilities-tree.abilities-tree--single .abilities-branch {
+        width: 100%;
+        min-width: 0;
+    }
+    .abilities-branch-body { padding: 8px 10px 14px; }
+    .sk-tier-nodes--split {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+    .sk-tier-hint { font-size: 0.62rem; margin-bottom: 8px; }
+    .sk-tier {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    .sk-tier-side {
+        flex-direction: row;
+        justify-content: flex-start;
+        align-items: center;
+        gap: 8px;
+        padding-top: 0;
+    }
+    .sk-tier-name {
+        writing-mode: horizontal-tb;
+        transform: none;
+        max-height: none;
+        margin-top: 0;
+    }
+    .sk-node { max-width: none; }
+    .achievements-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .achievement-card { min-height: 136px; padding: 10px 8px; }
     .skill-save-btn { width: 100%; justify-content: center; min-height: 44px; }
     .energy-display { font-size: 0.9rem; }
     .clan-block { padding: 12px; margin-bottom: 12px; }
@@ -1468,8 +3325,10 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     .clan-chat-form button { width: 100%; min-height: 44px; }
     .modal-box { margin: 16px; max-height: calc(100vh - 32px); overflow-y: auto; padding: 20px; }
 
-    /* Блок «Баланс и Лавка» — мобильная версия */
-    .balance-shop-section .balance-display-row {
+    /* Блок баланса и лавки — мобильная версия */
+    .balance-shop-section .balance-display-row,
+    .inventory-section .balance-display-row,
+    .cabinet-subsection-body .balance-display-row {
         flex-direction: column;
         align-items: stretch;
         gap: 10px;
@@ -1511,7 +3370,9 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         min-height: 44px;
         padding: 10px 14px;
     }
-    .balance-shop-section .balance-display-row .nums-balance-block {
+    .balance-shop-section .balance-display-row .nums-balance-block,
+    .inventory-section .balance-display-row .nums-balance-block,
+    .cabinet-subsection-body .balance-display-row .nums-balance-block {
         margin-left: 0;
         width: 100%;
         min-width: 0;
@@ -1554,6 +3415,10 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     .shop-category-block h4 { font-size: 0.95rem; margin-bottom: 10px; }
     .shop-tiles {
         grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    .cabinet-subsection-body .shop-tiles {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 10px;
     }
     .shop-item-tile {
@@ -1647,6 +3512,48 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 #dropChestFallback.opening { display: block; animation: cabinetDropChestPop 2000ms ease-in-out; }
 @keyframes cabinetDropChestSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 @keyframes cabinetDropChestPop { 0% { filter: drop-shadow(0 0 0 rgba(255, 215, 0, 0)) brightness(1); } 60% { filter: drop-shadow(0 14px 30px rgba(255, 215, 0, 0.25)) brightness(1.05); } 100% { filter: drop-shadow(0 10px 25px rgba(255, 215, 0, 0.35)) brightness(1.08); } }
+
+.cabinet-toast-host {
+    position: fixed;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100010;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    pointer-events: none;
+    width: min(92vw, 420px);
+}
+.cabinet-toast {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 2px solid #5c4033;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    color: #e8dcc4;
+    font-size: 0.92rem;
+    line-height: 1.35;
+    text-align: center;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.45);
+    opacity: 0;
+    transform: translateY(-12px);
+    transition: opacity 0.28s ease, transform 0.28s ease;
+}
+.cabinet-toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+.cabinet-toast--success {
+    border-color: #6b8f3a;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.45), inset 0 1px 0 rgba(180,220,120,0.15);
+}
+.cabinet-toast--success::before {
+    content: '✓ ';
+    color: #a8d86a;
+    font-weight: 700;
+}
 </style>
 {% endblock %}
 
@@ -1665,6 +3572,135 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     </nav>
     <h1>Личный кабинет</h1>
 
+    <div class="cabinet-dashboard">
+        <div class="cabinet-hero">
+            <div class="cabinet-hero-avatar-wrap">
+                <input type="file" id="avatarFileInput" accept="image/*" style="display: none;">
+                <button type="button" class="cabinet-hero-avatar-btn" id="heroAvatarBtn" title="Нажмите, чтобы изменить аватар" aria-label="Изменить аватар">
+                    <span class="cabinet-hero-avatar">
+                        {% if avatar_url %}
+                        <img src="{{ avatar_url }}" alt="" id="heroAvatarImg">
+                        {% else %}
+                        <span class="cabinet-hero-avatar-placeholder" id="heroAvatarPlaceholder">👤</span>
+                        {% endif %}
+                    </span>
+                    <span class="cabinet-hero-avatar-edit" aria-hidden="true">
+                        <span class="cabinet-hero-avatar-edit-icon">📷</span>
+                        <span class="cabinet-hero-avatar-edit-text">Сменить</span>
+                    </span>
+                    <span class="cabinet-hero-avatar-badge" aria-hidden="true">📷</span>
+                </button>
+                <span class="cabinet-hero-avatar-hint">Нажмите для смены</span>
+            </div>
+            <div class="cabinet-hero-main">
+                <div class="cabinet-hero-top">
+                    <p class="profile-login-row">
+                        <strong>Логин:</strong> {{ user.username }}
+                    </p>
+                    <button type="button"
+                            class="password-change-btn"
+                            id="openUserPasswordModalBtn"
+                            aria-label="Сменить пароль">
+                        🔑
+                    </button>
+                </div>
+                <div class="cabinet-hero-head">
+                    <p class="cabinet-hero-name">
+                        <span id="characterNameDisplay">{{ user.character_name or user.username }}</span>
+                        <button type="button" class="name-edit-btn" id="nameEditBtn" aria-label="Изменить имя">✏️</button>
+                    </p>
+                    <span class="cabinet-hero-level-badge">Ур. {{ user.level }}</span>
+                </div>
+                <div class="cabinet-hero-details">
+                    <p><strong>Звание:</strong>
+                        {% if user.clan_title == 'Бродяга' %}
+                            <span title="Бродяга">🥾 {{ user.clan_title }}</span>
+                        {% elif user.clan_title == 'Вассал' %}
+                            <span title="Вассал">🪶 {{ user.clan_title }}</span>
+                        {% elif user.clan_title == 'Рыцарь' %}
+                            <span title="Рыцарь">⚔️ {{ user.clan_title }}</span>
+                        {% elif user.clan_title == 'Барон' %}
+                            <span title="Барон">🛡️ {{ user.clan_title }}</span>
+                        {% elif user.clan_title == 'Граф' %}
+                            <span title="Граф">🎖️ {{ user.clan_title }}</span>
+                        {% elif user.clan_title == 'Маркиз' %}
+                            <span title="Маркиз">🦁 {{ user.clan_title }}</span>
+                        {% elif user.clan_title == 'Герцог' %}
+                            <span title="Герцог">👑 {{ user.clan_title }}</span>
+                        {% elif user.clan_title == 'Великий князь' %}
+                            <span title="Великий князь">👑✶ {{ user.clan_title }}</span>
+                        {% else %}
+                            {{ user.clan_title }}
+                        {% endif %}
+                        <button type="button" class="rank-help-btn" id="openRankHelpBtn" aria-label="Описание званий">?</button>
+                    </p>
+                    <div class="level-block">
+                        <p><strong>Уровень:</strong> {{ user.level }}</p>
+                        <p class="level-xp-text">Опыт до следующего уровня: {{ user.xp_in_current_level }} / {{ user.xp_needed_for_next_level }}</p>
+                        <div class="level-progress-wrap">
+                            <div class="level-progress-fill" style="width: {{ (user.xp_in_current_level / user.xp_needed_for_next_level * 100) if user.xp_needed_for_next_level else 100 }}%;"></div>
+                        </div>
+                    </div>
+                    <p class="energy-display"><strong>Энергия:</strong> <span id="energyCurrent">{{ user.current_energy_value }}</span> / <span id="energyMax">{{ user.energy }}</span> <span class="energy-hint">(восст. каждые 30 мин)</span></p>
+                </div>
+                <div class="cabinet-hero-stats">
+                    <span class="cabinet-hero-stat" title="Атака">
+                        <span class="cabinet-hero-stat-icon">⚔</span>
+                        <span class="cabinet-hero-stat-val"><strong id="heroDamage">{{ user.damage }}</strong></span>
+                    </span>
+                    <span class="cabinet-hero-stat" title="Защита">
+                        <span class="cabinet-hero-stat-icon">🛡</span>
+                        <span class="cabinet-hero-stat-val"><strong id="heroDefense">{{ user.defense }}</strong></span>
+                    </span>
+                    <span class="cabinet-hero-stat cabinet-hero-stat--nums" title="Нумы">
+                        <span class="cabinet-hero-stat-icon">💰</span>
+                        <span class="cabinet-hero-stat-val"><strong id="heroNums">{{ user.nums_balance or 0 }}</strong></span>
+                    </span>
+                </div>
+            </div>
+        </div>
+        <div class="cabinet-launcher-grid">
+            <button type="button" class="cabinet-launcher-btn" data-open-section="skills">
+                <span class="cabinet-launcher-icon">⚔</span>
+                <span class="cabinet-launcher-title">
+                    Навыки и умения
+                    <span class="cabinet-launcher-skill-badge" id="skillsPointsBadge" title="Есть нераспределённые очки" {% if (user.skill_points_available or 0) + (ability_points_available or 0) == 0 %}hidden{% endif %} aria-hidden="{{ 'false' if (user.skill_points_available or 0) + (ability_points_available or 0) > 0 else 'true' }}">{% set _unspent = (user.skill_points_available or 0) + (ability_points_available or 0) %}{{ _unspent if _unspent <= 9 else '9+' if _unspent > 0 else '' }}</span>
+                </span>
+                <span class="cabinet-launcher-hint">Характеристики и умения</span>
+            </button>
+            <button type="button" class="cabinet-launcher-btn" data-open-section="equipment">
+                <span class="cabinet-launcher-icon">🛡</span>
+                <span class="cabinet-launcher-title">Снаряжение</span>
+                <span class="cabinet-launcher-hint">Слоты экипировки</span>
+            </button>
+            <button type="button" class="cabinet-launcher-btn" data-open-section="balance-shop">
+                <span class="cabinet-launcher-icon">🛒</span>
+                <span class="cabinet-launcher-title">Лавка</span>
+                <span class="cabinet-launcher-hint">Усиления, снаряжение, сундуки</span>
+            </button>
+            <button type="button" class="cabinet-launcher-btn" data-open-section="inventory">
+                <span class="cabinet-launcher-icon">🎒</span>
+                <span class="cabinet-launcher-title">Инвентарь</span>
+                <span class="cabinet-launcher-hint"><span id="launcherNums">{{ user.nums_balance or 0 }}</span> Нумов · баланс и предметы</span>
+            </button>
+            <button type="button" class="cabinet-launcher-btn" data-open-section="clan">
+                <span class="cabinet-launcher-icon">🛡️</span>
+                <span class="cabinet-launcher-title">Клан</span>
+                <span class="cabinet-launcher-hint">{% if clan_data %}{{ clan_data.clan.name }}{% elif pending_request %}Заявка на рассмотрении{% else %}Создать или вступить{% endif %}</span>
+            </button>
+            <button type="button" class="cabinet-launcher-btn" data-open-section="stats">
+                <span class="cabinet-launcher-icon">📊</span>
+                <span class="cabinet-launcher-title">
+                    Статистика и достижения
+                    {% if achievements_payload.unlocked_count < achievements_payload.total %}
+                    <span class="cabinet-launcher-skill-badge" id="achievementsProgressBadge" title="Прогресс достижений">{{ achievements_payload.unlocked_count }}/{{ achievements_payload.total }}</span>
+                    {% endif %}
+                </span>
+                <span class="cabinet-launcher-hint">Урон: {{ user.total_damage_dealt }} · {{ achievements_payload.unlocked_count }} достижений</span>
+            </button>
+        </div>
+    </div>
+
     <div class="cabinet-support-float">
         <div class="cabinet-support-float-label">Поддержать проект</div>
         <a href="https://t.me/territory_battle"
@@ -1677,184 +3713,340 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         </a>
     </div>
 
-    <div class="cabinet-section" data-section="personal">
-        <div class="cabinet-section-header" data-toggle-section>
-            <h2>Личная информация</h2>
-            <button type="button" class="section-toggle" aria-label="Свернуть/развернуть">▼</button>
+    <div class="modal-overlay" id="characterNameChangeModal" style="display:none; visibility:hidden; align-items:center; justify-content:center;">
+        <div class="modal-box">
+            <h3>Изменить имя персонажа</h3>
+            <p id="characterNameChangeModalText" style="margin-bottom:12px;">
+                Изменить имя можно за {{ character_rename_price|int }} Нумов (списывается с вашего баланса). Продолжить?
+            </p>
+            <div class="modal-buttons">
+                <button type="button" id="characterNameChangeCancel" class="btn-cancel">Отмена</button>
+                <button type="button" id="characterNameChangeConfirm" class="btn-confirm">Продолжить</button>
+            </div>
+        </div>
+    </div>
+    <div class="modal-overlay" id="characterNameInputModal" style="display:none; visibility:hidden; align-items:center; justify-content:center;">
+        <div class="modal-box">
+            <h3>Новое имя персонажа</h3>
+            <p style="margin-bottom:8px;">Введите новое имя (до 20 символов).</p>
+            <input type="text" id="characterNameInput" maxlength="20" placeholder="Имя персонажа" style="width:100%; padding:10px 14px; margin-bottom:8px; border:2px solid #5c4033; border-radius:4px; background:#2c1810; color:#e8dcc4;">
+            <p id="characterNameInputStatus" style="margin:0 0 8px; font-size:0.85rem; color:#5c4033;"></p>
+            <div class="modal-buttons">
+                <button type="button" id="characterNameInputCancel" class="btn-cancel">Отмена</button>
+                <button type="button" id="characterNameInputSave" class="btn-confirm">Сохранить</button>
+            </div>
+        </div>
+    </div>
+    <div class="modal-overlay" id="characterInsufficientFundsModal" style="display:none; visibility:hidden; align-items:center; justify-content:center;">
+        <div class="modal-box">
+            <h3>Недостаточно средств</h3>
+            <p id="characterInsufficientFundsText" style="margin-bottom:12px;">Недостаточно средств.</p>
+            <div class="modal-buttons">
+                <button type="button" id="characterInsufficientFundsClose" class="btn-confirm">Понятно</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="cabinet-section cabinet-section--modal-host skills-section" data-section="skills" id="cabinetSectionSkills">
+        <div class="cabinet-section-modal-backdrop" data-close-section tabindex="-1"></div>
+        <div class="cabinet-section-panel" id="skillsSectionPanel">
+        <div class="cabinet-section-header">
+            <div class="cabinet-section-header-text">
+                <h2>Навыки и умения</h2>
+                <p class="cabinet-modal-breadcrumb" data-breadcrumb-for="skills"></p>
+            </div>
+            <button type="button" class="cabinet-section-close" data-close-section aria-label="Закрыть">×</button>
+        </div>
+        <div class="cabinet-section-body skills-modal-body">
+        <div class="skills-tabs" role="tablist">
+            <button type="button" class="skills-tab active" data-skills-tab="stats" role="tab" aria-selected="true">Характеристики</button>
+            <button type="button" class="skills-tab" data-skills-tab="abilities" role="tab" aria-selected="false">Умения</button>
+        </div>
+        <div class="skills-tab-panel" data-skills-panel="stats" role="tabpanel">
+        <p class="skills-modal-intro">Распределите очки навыков между характеристиками. Нажмите «Сохранить», чтобы применить изменения.</p>
+        <div class="skills-block">
+            <div class="skills-cards">
+            <div class="skill-card skill-card--damage">
+                <div class="skill-card-main">
+                    <div class="skill-card-icon-wrap" aria-hidden="true">⚔</div>
+                    <div class="skill-card-info">
+                        <div class="skill-card-title-row">
+                            <span class="skill-card-name">Атака</span>
+                            <span class="stat-label-wrap">
+                                <button type="button" class="stat-help" id="helpAttack" aria-label="Описание">?</button>
+                                <span class="stat-tooltip" id="tooltipAttack">Урон, который наносится при захвате области.</span>
+                            </span>
+                        </div>
+                        <p class="skill-card-desc">Урон при захвате области</p>
+                    </div>
+                </div>
+                <div class="skill-card-stepper">
+                    <button type="button" class="skill-btn" id="skillDamageMinus" aria-label="Уменьшить атаку">−</button>
+                    <span class="val" id="skillDamageVal">{{ user.damage }}</span>
+                    <button type="button" class="skill-btn" id="skillDamagePlus" aria-label="Увеличить атаку">+</button>
+                </div>
+            </div>
+            <div class="skill-card skill-card--defense">
+                <div class="skill-card-main">
+                    <div class="skill-card-icon-wrap" aria-hidden="true">🛡</div>
+                    <div class="skill-card-info">
+                        <div class="skill-card-title-row">
+                            <span class="skill-card-name">Защита</span>
+                            <span class="stat-label-wrap">
+                                <button type="button" class="stat-help" id="helpDefense" aria-label="Описание">?</button>
+                                <span class="stat-tooltip" id="tooltipDefense">Очки влияния, которые ваш клан получает при защите области.</span>
+                            </span>
+                        </div>
+                        <p class="skill-card-desc">Влияние клана при защите</p>
+                    </div>
+                </div>
+                <div class="skill-card-stepper">
+                    <button type="button" class="skill-btn" id="skillDefenseMinus" aria-label="Уменьшить защиту">−</button>
+                    <span class="val" id="skillDefenseVal">{{ user.defense }}</span>
+                    <button type="button" class="skill-btn" id="skillDefensePlus" aria-label="Увеличить защиту">+</button>
+                </div>
+            </div>
+            <div class="skill-card skill-card--energy">
+                <div class="skill-card-main">
+                    <div class="skill-card-icon-wrap" aria-hidden="true">⚡</div>
+                    <div class="skill-card-info">
+                        <div class="skill-card-title-row">
+                            <span class="skill-card-name">Макс. энергия</span>
+                            <span class="stat-label-wrap">
+                                <button type="button" class="stat-help" id="helpEnergy" aria-label="Описание">?</button>
+                                <span class="stat-tooltip" id="tooltipEnergy">Максимальный запас энергии для захвата областей. Восстанавливается со временем (каждые 30 мин).</span>
+                            </span>
+                        </div>
+                        <p class="skill-card-desc">Запас энергии для захватов</p>
+                    </div>
+                </div>
+                <div class="skill-card-stepper">
+                    <button type="button" class="skill-btn" id="skillEnergyMinus" aria-label="Уменьшить макс. энергию">−</button>
+                    <span class="val" id="skillEnergyVal">{{ user.energy }}</span>
+                    <button type="button" class="skill-btn" id="skillEnergyPlus" aria-label="Увеличить макс. энергию">+</button>
+                </div>
+            </div>
+            </div>
+            <div id="skillPointsBlock" class="skill-points-block skills-modal-footer" style="display: {{ 'none' if user.skill_points_available == 0 else 'flex' }};">
+                <div class="skills-points-badge">
+                    <span>Доступно очков</span>
+                    <strong id="skillPointsAvail">{{ user.skill_points_available }}</strong>
+                </div>
+                <p id="skillPointsHint" class="skill-points-hint" style="display: none;">Очков навыков: <span></span></p>
+                <button type="button" class="skill-save-btn" id="skillSaveBtn" title="Сохранить">✓ Сохранить</button>
+            </div>
+        </div>
+        </div>
+        <div class="skills-tab-panel" data-skills-panel="abilities" role="tabpanel" hidden>
+            <p class="abilities-intro" id="abilitiesIntro">Сначала выберите класс персонажа — воин, страж, мудрец, тактик или дуэлянт. Выбор необратим.</p>
+            <div class="abilities-class-banner" id="abilitiesClassBanner" hidden></div>
+            <div class="abilities-legend" id="abilitiesLegend" hidden>
+                <span class="abilities-legend-item abilities-legend-item--available"><i></i> Можно улучшить</span>
+                <span class="abilities-legend-item abilities-legend-item--progress"><i></i> В процессе</span>
+                <span class="abilities-legend-item abilities-legend-item--waiting"><i></i> Открыто, нет очков</span>
+                <span class="abilities-legend-item abilities-legend-item--locked"><i></i> Заблокировано</span>
+                <span class="abilities-legend-item abilities-legend-item--maxed"><i></i> Максимум</span>
+                <span class="abilities-legend-item abilities-legend-item--foreign" id="abilitiesLegendForeign" hidden><i></i> Другой класс</span>
+            </div>
+            <div class="abilities-scroll-bar" id="abilitiesScrollBar" hidden>
+                <button type="button" class="abilities-scroll-arrow" id="abilitiesScrollLeft" aria-label="Прокрутить влево">‹</button>
+                <div class="abilities-scroll-top" id="abilitiesScrollTop">
+                    <div class="abilities-scroll-top-inner" id="abilitiesScrollTopInner"></div>
+                </div>
+                <button type="button" class="abilities-scroll-arrow" id="abilitiesScrollRight" aria-label="Прокрутить вправо">›</button>
+            </div>
+            <div id="abilitiesTreeRoot" class="abilities-loading">Загрузка дерева умений…</div>
+            <div class="abilities-footer" id="abilitiesFooter" hidden>
+                <div class="skills-points-badge">
+                    <span>Очков умений</span>
+                    <strong id="abilityPointsAvail">{{ ability_points_available or 0 }}</strong>
+                </div>
+            </div>
+            <div class="abilities-bonuses-summary" id="abilitiesBonusesSummary" hidden></div>
+        </div>
+        </div>
+        </div>
+    </div>
+
+    <div class="cabinet-section cabinet-section--modal-host equipment-section" data-section="equipment" id="cabinetSectionEquipment">
+        <div class="cabinet-section-modal-backdrop" data-close-section tabindex="-1"></div>
+        <div class="cabinet-section-panel">
+        <div class="cabinet-section-header">
+            <div class="cabinet-section-header-text">
+                <h2>Снаряжение</h2>
+                <p class="cabinet-modal-breadcrumb" data-breadcrumb-for="equipment"></p>
+            </div>
+            <button type="button" class="cabinet-section-close" data-close-section aria-label="Закрыть">×</button>
         </div>
         <div class="cabinet-section-body">
-        <div class="profile-row">
-            <div class="avatar-wrap" id="avatarWrap" title="Нажмите, чтобы изменить аватар">
-                <input type="file" id="avatarFileInput" accept="image/*" style="display: none;">
-                {% if avatar_url %}
-                <img src="{{ avatar_url }}" alt="Аватар" id="avatarImg">
-                {% else %}
-                <div class="avatar-placeholder-inner" id="avatarPlaceholder">👤</div>
-                {% endif %}
-            </div>
-            <div class="profile-info">
-                <p class="profile-login-row">
-                    <strong>Логин:</strong> {{ user.username }}
-                    <button type="button"
-                            class="password-change-btn"
-                            id="openUserPasswordModalBtn"
-                            aria-label="Сменить пароль">
-                        🔑
-                    </button>
-                </p>
-                <p><strong>Имя персонажа:</strong> <span id="characterNameDisplay">{{ user.character_name or user.username }}</span> <button type="button" class="name-edit-btn" id="nameEditBtn" aria-label="Изменить имя">✏️</button></p>
-                <p><strong>Звание:</strong>
-                    {% if user.clan_title == 'Бродяга' %}
-                        <span title="Бродяга">🥾 {{ user.clan_title }}</span>
-                    {% elif user.clan_title == 'Вассал' %}
-                        <span title="Вассал">🪶 {{ user.clan_title }}</span>
-                    {% elif user.clan_title == 'Рыцарь' %}
-                        <span title="Рыцарь">⚔️ {{ user.clan_title }}</span>
-                    {% elif user.clan_title == 'Барон' %}
-                        <span title="Барон">🛡️ {{ user.clan_title }}</span>
-                    {% elif user.clan_title == 'Граф' %}
-                        <span title="Граф">🎖️ {{ user.clan_title }}</span>
-                    {% elif user.clan_title == 'Маркиз' %}
-                        <span title="Маркиз">🦁 {{ user.clan_title }}</span>
-                    {% elif user.clan_title == 'Герцог' %}
-                        <span title="Герцог">👑 {{ user.clan_title }}</span>
-                    {% elif user.clan_title == 'Великий князь' %}
-                        <span title="Великий князь">👑✶ {{ user.clan_title }}</span>
-                    {% else %}
-                        {{ user.clan_title }}
-                    {% endif %}
-                    <button type="button" class="rank-help-btn" id="openRankHelpBtn" aria-label="Описание званий">?</button>
-                </p>
-                <div class="level-block">
-                    <p><strong>Уровень:</strong> {{ user.level }}</p>
-                    <p class="level-xp-text">Опыт до следующего уровня: {{ user.xp_in_current_level }} / {{ user.xp_needed_for_next_level }}</p>
-                    <div class="level-progress-wrap">
-                        <div class="level-progress-fill" style="width: {{ (user.xp_in_current_level / user.xp_needed_for_next_level * 100) if user.xp_needed_for_next_level else 100 }}%;"></div>
-                    </div>
+        <div class="equipment-block">
+            <div class="equipment-grid" id="equipmentSection">
+                <div class="equipment-slot equipment-slot--helmet equipment-slot--inactive" data-slot="helmet">
+                    <div class="equipment-slot-label">Шлем</div>
+                    <div class="equipment-slot-body equipment-slot-body--helmet"></div>
                 </div>
-                <p class="energy-display"><strong>Энергия:</strong> <span id="energyCurrent">{{ user.current_energy_value }}</span> / <span id="energyMax">{{ user.energy }}</span> <span class="energy-hint">(восст. каждые 30 мин)</span></p>
-                <div class="skills-block">
-                    <h4>Характеристики</h4>
-                    <div class="skill-row">
-                        <span class="stat-label-wrap">
-                            <label>Атака</label>
-                            <button type="button" class="stat-help" id="helpAttack" aria-label="Описание">?</button>
-                            <span class="stat-tooltip" id="tooltipAttack">Урон, который наносится при захвате области.</span>
-                        </span>
-                        <button type="button" class="skill-btn" id="skillDamageMinus" aria-label="Уменьшить атаку">−</button>
-                        <span class="val" id="skillDamageVal">{{ user.damage }}</span>
-                        <button type="button" class="skill-btn" id="skillDamagePlus" aria-label="Увеличить атаку">+</button>
-                    </div>
-                    <div class="skill-row">
-                        <span class="stat-label-wrap">
-                            <label>Защита</label>
-                            <button type="button" class="stat-help" id="helpDefense" aria-label="Описание">?</button>
-                            <span class="stat-tooltip" id="tooltipDefense">Очки влияния, которые ваш клан получает при защите области.</span>
-                        </span>
-                        <button type="button" class="skill-btn" id="skillDefenseMinus" aria-label="Уменьшить защиту">−</button>
-                        <span class="val" id="skillDefenseVal">{{ user.defense }}</span>
-                        <button type="button" class="skill-btn" id="skillDefensePlus" aria-label="Увеличить защиту">+</button>
-                    </div>
-                    <div class="skill-row">
-                        <span class="stat-label-wrap">
-                            <label>Макс. энергия</label>
-                            <button type="button" class="stat-help" id="helpEnergy" aria-label="Описание">?</button>
-                            <span class="stat-tooltip" id="tooltipEnergy">Максимальный запас энергии для захвата областей. Восстанавливается со временем (каждые 30 мин).</span>
-                        </span>
-                        <button type="button" class="skill-btn" id="skillEnergyMinus" aria-label="Уменьшить макс. энергию">−</button>
-                        <span class="val" id="skillEnergyVal">{{ user.energy }}</span>
-                        <button type="button" class="skill-btn" id="skillEnergyPlus" aria-label="Увеличить макс. энергию">+</button>
-                    </div>
-                    <div id="skillPointsBlock" class="skill-points-block" style="display: {{ 'none' if user.skill_points_available == 0 else 'block' }};">
-                        <p id="skillPointsHint" class="skill-points-hint">Очков навыков: <span id="skillPointsAvail">{{ user.skill_points_available }}</span></p>
-                        <button type="button" class="skill-save-btn" id="skillSaveBtn" title="Сохранить">✓ Сохранить</button>
-                    </div>
+                <div class="equipment-slot equipment-slot--weapon equipment-slot--inactive" data-slot="weapon_main">
+                    <div class="equipment-slot-label">Оружие</div>
+                    <div class="equipment-slot-body equipment-slot-body--weapon"></div>
                 </div>
-                <div class="equipment-section collapsed" id="equipmentSection">
-                    <div class="equipment-section-header" id="equipmentSectionHeader">
-                        <h4>Снаряжение</h4>
-                        <button type="button" class="section-toggle" aria-label="Свернуть/развернуть снаряжение">▼</button>
-                    </div>
-                    <div class="equipment-section-body">
-                        <div class="equipment-grid">
-                            <div class="equipment-slot equipment-slot--helmet equipment-slot--inactive" data-slot="helmet">
-                                <div class="equipment-slot-label">Шлем</div>
-                                <div class="equipment-slot-body equipment-slot-body--helmet"></div>
-                            </div>
-                            <div class="equipment-slot equipment-slot--weapon equipment-slot--inactive" data-slot="weapon_main">
-                                <div class="equipment-slot-label">Оружие</div>
-                                <div class="equipment-slot-body equipment-slot-body--weapon"></div>
-                            </div>
-                            <div class="equipment-slot equipment-slot--offhand equipment-slot--inactive" data-slot="weapon_off">
-                                <div class="equipment-slot-label">Второе оружие</div>
-                                <div class="equipment-slot-body equipment-slot-body--offhand"></div>
-                            </div>
-                            <div class="equipment-slot equipment-slot--chest equipment-slot--inactive" data-slot="chest">
-                                <div class="equipment-slot-label">Нагрудник</div>
-                                <div class="equipment-slot-body equipment-slot-body--chest"></div>
-                            </div>
-                            <div class="equipment-slot equipment-slot--pants equipment-slot--inactive" data-slot="pants">
-                                <div class="equipment-slot-label">Штаны</div>
-                                <div class="equipment-slot-body equipment-slot-body--pants"></div>
-                            </div>
-                            <div class="equipment-slot equipment-slot--gloves equipment-slot--inactive" data-slot="gloves">
-                                <div class="equipment-slot-label">Рукавицы</div>
-                                <div class="equipment-slot-body equipment-slot-body--gloves"></div>
-                            </div>
-                            <div class="equipment-slot equipment-slot--boots equipment-slot--inactive" data-slot="boots">
-                                <div class="equipment-slot-label">Сапоги</div>
-                                <div class="equipment-slot-body equipment-slot-body--boots"></div>
-                            </div>
-                        </div>
-                    </div>
+                <div class="equipment-slot equipment-slot--offhand equipment-slot--inactive" data-slot="weapon_off">
+                    <div class="equipment-slot-label">Второе оружие</div>
+                    <div class="equipment-slot-body equipment-slot-body--offhand"></div>
+                </div>
+                <div class="equipment-slot equipment-slot--chest equipment-slot--inactive" data-slot="chest">
+                    <div class="equipment-slot-label">Нагрудник</div>
+                    <div class="equipment-slot-body equipment-slot-body--chest"></div>
+                </div>
+                <div class="equipment-slot equipment-slot--pants equipment-slot--inactive" data-slot="pants">
+                    <div class="equipment-slot-label">Штаны</div>
+                    <div class="equipment-slot-body equipment-slot-body--pants"></div>
+                </div>
+                <div class="equipment-slot equipment-slot--gloves equipment-slot--inactive" data-slot="gloves">
+                    <div class="equipment-slot-label">Рукавицы</div>
+                    <div class="equipment-slot-body equipment-slot-body--gloves"></div>
+                </div>
+                <div class="equipment-slot equipment-slot--boots equipment-slot--inactive" data-slot="boots">
+                    <div class="equipment-slot-label">Сапоги</div>
+                    <div class="equipment-slot-body equipment-slot-body--boots"></div>
                 </div>
             </div>
         </div>
-        <!-- Модальные окна смены имени персонажа -->
-        <div class="modal-overlay" id="characterNameChangeModal" style="display:none; visibility:hidden; align-items:center; justify-content:center;">
-            <div class="modal-box">
-                <h3>Изменить имя персонажа</h3>
-                <p id="characterNameChangeModalText" style="margin-bottom:12px;">
-                    Изменить имя можно за {{ character_rename_price|int }} Нумов (списывается с вашего баланса). Продолжить?
-                </p>
-                <div class="modal-buttons">
-                    <button type="button" id="characterNameChangeCancel" class="btn-cancel">Отмена</button>
-                    <button type="button" id="characterNameChangeConfirm" class="btn-confirm">Продолжить</button>
+        </div>
+        </div>
+    </div>
+
+    <div class="cabinet-section cabinet-section--modal-host balance-shop-section" data-section="balance-shop" id="cabinetSectionBalanceShop">
+        <div class="cabinet-section-modal-backdrop" data-close-section tabindex="-1"></div>
+        <div class="cabinet-section-panel">
+        <div class="cabinet-section-header">
+            <div class="cabinet-section-header-text">
+                <h2>Лавка предметов</h2>
+                <p class="cabinet-modal-breadcrumb" data-breadcrumb-for="balance-shop"></p>
+            </div>
+            <button type="button" class="cabinet-section-close" data-close-section aria-label="Закрыть">×</button>
+        </div>
+        <div class="cabinet-section-body">
+            <div class="cabinet-sub-launcher-grid">
+                <button type="button" class="cabinet-sub-launcher-btn" data-open-subsection="shop-enhancement" data-subsection-title="Усиления">
+                    <span class="cabinet-sub-launcher-icon">🧪</span>
+                    <span class="cabinet-sub-launcher-title">Усиления</span>
+                    <span class="cabinet-sub-launcher-hint">Баффы на себя и клан</span>
+                </button>
+                <button type="button" class="cabinet-sub-launcher-btn" data-open-subsection="shop-curse" data-subsection-title="Проклятия">
+                    <span class="cabinet-sub-launcher-icon">💀</span>
+                    <span class="cabinet-sub-launcher-title">Проклятия</span>
+                    <span class="cabinet-sub-launcher-hint">Ослабление врагов</span>
+                </button>
+                <button type="button" class="cabinet-sub-launcher-btn" data-open-subsection="shop-equipment" data-subsection-title="Снаряжение">
+                    <span class="cabinet-sub-launcher-icon">🛡</span>
+                    <span class="cabinet-sub-launcher-title">Снаряжение</span>
+                    <span class="cabinet-sub-launcher-hint">Грейды D–S</span>
+                </button>
+                <button type="button" class="cabinet-sub-launcher-btn" data-open-subsection="shop-special" data-subsection-title="Особое">
+                    <span class="cabinet-sub-launcher-icon">✨</span>
+                    <span class="cabinet-sub-launcher-title">Особое</span>
+                    <span class="cabinet-sub-launcher-hint">Редкие товары</span>
+                </button>
+                <button type="button" class="cabinet-sub-launcher-btn" data-open-subsection="shop-chest" data-subsection-title="Сундуки">
+                    <span class="cabinet-sub-launcher-icon">📦</span>
+                    <span class="cabinet-sub-launcher-title">Сундуки</span>
+                    <span class="cabinet-sub-launcher-hint">Случайные награды</span>
+                </button>
+            </div>
+
+            <div class="cabinet-subsection-modal" data-subsection="shop-enhancement">
+                <div class="cabinet-subsection-backdrop" data-close-subsection></div>
+                <div class="cabinet-subsection-panel">
+                    <div class="cabinet-subsection-header"><h3>Усиления</h3><button type="button" class="cabinet-subsection-close" data-close-subsection aria-label="Закрыть">×</button></div>
+                    <div class="cabinet-subsection-body"><div class="shop-tiles" id="shopTilesEnhancement"></div></div>
                 </div>
             </div>
-        </div>
-        <div class="modal-overlay" id="characterNameInputModal" style="display:none; visibility:hidden; align-items:center; justify-content:center;">
-            <div class="modal-box">
-                <h3>Новое имя персонажа</h3>
-                <p style="margin-bottom:8px;">Введите новое имя (до 20 символов).</p>
-                <input type="text" id="characterNameInput" maxlength="20" placeholder="Имя персонажа" style="width:100%; padding:10px 14px; margin-bottom:8px; border:2px solid #5c4033; border-radius:4px; background:#2c1810; color:#e8dcc4;">
-                <p id="characterNameInputStatus" style="margin:0 0 8px; font-size:0.85rem; color:#5c4033;"></p>
-                <div class="modal-buttons">
-                    <button type="button" id="characterNameInputCancel" class="btn-cancel">Отмена</button>
-                    <button type="button" id="characterNameInputSave" class="btn-confirm">Сохранить</button>
+            <div class="cabinet-subsection-modal" data-subsection="shop-curse">
+                <div class="cabinet-subsection-backdrop" data-close-subsection></div>
+                <div class="cabinet-subsection-panel">
+                    <div class="cabinet-subsection-header"><h3>Проклятия</h3><button type="button" class="cabinet-subsection-close" data-close-subsection aria-label="Закрыть">×</button></div>
+                    <div class="cabinet-subsection-body"><div class="shop-tiles" id="shopTilesCurse"></div></div>
                 </div>
             </div>
-        </div>
-        <div class="modal-overlay" id="characterInsufficientFundsModal" style="display:none; visibility:hidden; align-items:center; justify-content:center;">
-            <div class="modal-box">
-                <h3>Недостаточно средств</h3>
-                <p id="characterInsufficientFundsText" style="margin-bottom:12px;">Недостаточно средств.</p>
-                <div class="modal-buttons">
-                    <button type="button" id="characterInsufficientFundsClose" class="btn-confirm">Понятно</button>
+            <div class="cabinet-subsection-modal" data-subsection="shop-equipment">
+                <div class="cabinet-subsection-backdrop" data-close-subsection></div>
+                <div class="cabinet-subsection-panel">
+                    <div class="cabinet-subsection-header"><h3>Снаряжение</h3><button type="button" class="cabinet-subsection-close" data-close-subsection aria-label="Закрыть">×</button></div>
+                    <div class="cabinet-subsection-body"><div class="shop-tiles" id="shopTilesEquipment"></div></div>
+                </div>
+            </div>
+            <div class="cabinet-subsection-modal" data-subsection="shop-special">
+                <div class="cabinet-subsection-backdrop" data-close-subsection></div>
+                <div class="cabinet-subsection-panel">
+                    <div class="cabinet-subsection-header"><h3>Особое</h3><button type="button" class="cabinet-subsection-close" data-close-subsection aria-label="Закрыть">×</button></div>
+                    <div class="cabinet-subsection-body"><div class="shop-tiles" id="shopTilesSpecial"></div></div>
+                </div>
+            </div>
+            <div class="cabinet-subsection-modal" data-subsection="shop-chest">
+                <div class="cabinet-subsection-backdrop" data-close-subsection></div>
+                <div class="cabinet-subsection-panel">
+                    <div class="cabinet-subsection-header"><h3>Сундуки</h3><button type="button" class="cabinet-subsection-close" data-close-subsection aria-label="Закрыть">×</button></div>
+                    <div class="cabinet-subsection-body"><div class="shop-tiles" id="shopTilesChest"></div></div>
                 </div>
             </div>
         </div>
         </div>
     </div>
 
-    <div class="cabinet-section balance-shop-section collapsed" data-section="balance-shop">
-        <div class="cabinet-section-header" data-toggle-section>
-            <h2>Баланс и Лавка предметов</h2>
-            <button type="button" class="section-toggle" aria-label="Свернуть/развернуть">▼</button>
+    <div class="cabinet-section cabinet-section--modal-host inventory-section" data-section="inventory" id="cabinetSectionInventory">
+        <div class="cabinet-section-modal-backdrop" data-close-section tabindex="-1"></div>
+        <div class="cabinet-section-panel">
+        <div class="cabinet-section-header">
+            <div class="cabinet-section-header-text">
+                <h2>Инвентарь</h2>
+                <p class="cabinet-modal-breadcrumb" data-breadcrumb-for="inventory"></p>
+            </div>
+            <button type="button" class="cabinet-section-close" data-close-section aria-label="Закрыть">×</button>
         </div>
         <div class="cabinet-section-body">
+            <div class="cabinet-sub-launcher-grid">
+                <button type="button" class="cabinet-sub-launcher-btn" data-open-subsection="inv-balance" data-subsection-title="Баланс">
+                    <span class="cabinet-sub-launcher-icon">💰</span>
+                    <span class="cabinet-sub-launcher-title">Баланс</span>
+                    <span class="cabinet-sub-launcher-hint"><span id="invLauncherBalance">{{ user.nums_balance or 0 }}</span> Нумов</span>
+                </button>
+                <button type="button" class="cabinet-sub-launcher-btn" data-open-subsection="inv-enhancement" data-subsection-title="Усиления">
+                    <span class="cabinet-sub-launcher-icon">🧪</span>
+                    <span class="cabinet-sub-launcher-title">Усиления</span>
+                    <span class="cabinet-sub-launcher-hint" id="invHintEnhancement">—</span>
+                </button>
+                <button type="button" class="cabinet-sub-launcher-btn" data-open-subsection="inv-curse" data-subsection-title="Проклятия">
+                    <span class="cabinet-sub-launcher-icon">💀</span>
+                    <span class="cabinet-sub-launcher-title">Проклятия</span>
+                    <span class="cabinet-sub-launcher-hint" id="invHintCurse">—</span>
+                </button>
+                <button type="button" class="cabinet-sub-launcher-btn" data-open-subsection="inv-equipment" data-subsection-title="Снаряжение">
+                    <span class="cabinet-sub-launcher-icon">🛡</span>
+                    <span class="cabinet-sub-launcher-title">Снаряжение</span>
+                    <span class="cabinet-sub-launcher-hint" id="invHintEquipment">—</span>
+                </button>
+                <button type="button" class="cabinet-sub-launcher-btn" data-open-subsection="inv-special" data-subsection-title="Особое">
+                    <span class="cabinet-sub-launcher-icon">✨</span>
+                    <span class="cabinet-sub-launcher-title">Особое</span>
+                    <span class="cabinet-sub-launcher-hint" id="invHintSpecial">—</span>
+                </button>
+                <button type="button" class="cabinet-sub-launcher-btn" data-open-subsection="inv-chest" data-subsection-title="Сундуки">
+                    <span class="cabinet-sub-launcher-icon">📦</span>
+                    <span class="cabinet-sub-launcher-title">Сундуки</span>
+                    <span class="cabinet-sub-launcher-hint" id="invHintChest">—</span>
+                </button>
+            </div>
+            <p class="inventory-empty" id="inventoryEmpty" style="display: none;">Пока пусто. Покупайте товары в лавке.</p>
+
+            <div class="cabinet-subsection-modal" data-subsection="inv-balance">
+                <div class="cabinet-subsection-backdrop" data-close-subsection></div>
+                <div class="cabinet-subsection-panel">
+                    <div class="cabinet-subsection-header">
+                        <h3>Баланс и перевод</h3>
+                        <button type="button" class="cabinet-subsection-close" data-close-subsection aria-label="Закрыть">×</button>
+                    </div>
+                    <div class="cabinet-subsection-body">
             <div class="balance-display-row">
-                <button type="button" class="shop-toggle-btn" id="shopToggleBtn">Открыть лавку предметов</button>
                 <div class="balance-transfer-wrap">
                     <div class="nums-balance-block" aria-label="Баланс Нумов">
                         <div class="nums-balance-main">
@@ -1866,10 +4058,9 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                             <span class="stat-tooltip" id="tooltipNums">Нумы начисляются за правильное решение задач в битве за территорию. Награда зависит от уровня сложности задания.</span>
                         </span>
                     </div>
-                    <div class="nums-transfer-block collapsed" id="numsTransferBlock">
-                        <div class="nums-transfer-header" id="numsTransferHeader" data-toggle-nums-transfer>
+                    <div class="nums-transfer-block" id="numsTransferBlock">
+                        <div class="nums-transfer-header" id="numsTransferHeader">
                             <h3 class="nums-transfer-title">Перевести Нумы</h3>
-                            <button type="button" class="nums-transfer-toggle" aria-label="Свернуть/развернуть">▼</button>
                         </div>
                         <div class="nums-transfer-body">
                             <p class="nums-transfer-desc">Переведите часть своих Нумов другому игроку по его логину.</p>
@@ -1885,101 +4076,127 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                     </div>
                 </div>
             </div>
-            <div class="shop-grid-wrap" id="shopGridWrap">
-                <div class="shop-category-block collapsed" id="shopCategoryEnhancement">
-                    <div class="shop-category-header" data-shop-category-toggle>
-                        <h4>Усиления</h4>
-                        <button type="button" class="shop-category-toggle" aria-label="Свернуть/развернуть">▼</button>
                     </div>
-                    <div class="shop-tiles" id="shopTilesEnhancement"></div>
-                </div>
-                <div class="shop-category-block collapsed" id="shopCategoryCurse">
-                    <div class="shop-category-header" data-shop-category-toggle>
-                        <h4>Проклятия</h4>
-                        <button type="button" class="shop-category-toggle" aria-label="Свернуть/развернуть">▼</button>
-                    </div>
-                    <div class="shop-tiles" id="shopTilesCurse"></div>
-                </div>
-                <div class="shop-category-block collapsed" id="shopCategoryEquipment">
-                    <div class="shop-category-header" data-shop-category-toggle>
-                        <h4>Снаряжение</h4>
-                        <button type="button" class="shop-category-toggle" aria-label="Свернуть/развернуть">▼</button>
-                    </div>
-                    <div class="shop-tiles" id="shopTilesEquipment"></div>
-                </div>
-                <div class="shop-category-block collapsed" id="shopCategorySpecial">
-                    <div class="shop-category-header" data-shop-category-toggle>
-                        <h4>Особое</h4>
-                        <button type="button" class="shop-category-toggle" aria-label="Свернуть/развернуть">▼</button>
-                    </div>
-                    <div class="shop-tiles" id="shopTilesSpecial"></div>
-                </div>
-                <div class="shop-category-block collapsed" id="shopCategoryChest">
-                    <div class="shop-category-header" data-shop-category-toggle>
-                        <h4>Сундуки</h4>
-                        <button type="button" class="shop-category-toggle" aria-label="Свернуть/развернуть">▼</button>
-                    </div>
-                    <div class="shop-tiles" id="shopTilesChest"></div>
                 </div>
             </div>
+
+            <div class="cabinet-subsection-modal" data-subsection="inv-enhancement">
+                <div class="cabinet-subsection-backdrop" data-close-subsection></div>
+                <div class="cabinet-subsection-panel">
+                    <div class="cabinet-subsection-header"><h3>Усиления</h3><button type="button" class="cabinet-subsection-close" data-close-subsection aria-label="Закрыть">×</button></div>
+                    <div class="cabinet-subsection-body">
+                        <div class="inventory-tiles" id="inventoryTilesEnhancement"></div>
+                        <p class="cabinet-sub-empty" id="invEmptyEnhancement" style="display:none;">Нет предметов в этой категории</p>
+                    </div>
+                </div>
+            </div>
+            <div class="cabinet-subsection-modal" data-subsection="inv-curse">
+                <div class="cabinet-subsection-backdrop" data-close-subsection></div>
+                <div class="cabinet-subsection-panel">
+                    <div class="cabinet-subsection-header"><h3>Проклятия</h3><button type="button" class="cabinet-subsection-close" data-close-subsection aria-label="Закрыть">×</button></div>
+                    <div class="cabinet-subsection-body">
+                        <div class="inventory-tiles" id="inventoryTilesCurse"></div>
+                        <p class="cabinet-sub-empty" id="invEmptyCurse" style="display:none;">Нет предметов в этой категории</p>
+                    </div>
+                </div>
+            </div>
+            <div class="cabinet-subsection-modal" data-subsection="inv-equipment">
+                <div class="cabinet-subsection-backdrop" data-close-subsection></div>
+                <div class="cabinet-subsection-panel">
+                    <div class="cabinet-subsection-header"><h3>Снаряжение</h3><button type="button" class="cabinet-subsection-close" data-close-subsection aria-label="Закрыть">×</button></div>
+                    <div class="cabinet-subsection-body">
+                        <div class="inventory-tiles" id="inventoryTilesEquipment"></div>
+                        <p class="cabinet-sub-empty" id="invEmptyEquipment" style="display:none;">Нет предметов в этой категории</p>
+                    </div>
+                </div>
+            </div>
+            <div class="cabinet-subsection-modal" data-subsection="inv-special">
+                <div class="cabinet-subsection-backdrop" data-close-subsection></div>
+                <div class="cabinet-subsection-panel">
+                    <div class="cabinet-subsection-header"><h3>Особое</h3><button type="button" class="cabinet-subsection-close" data-close-subsection aria-label="Закрыть">×</button></div>
+                    <div class="cabinet-subsection-body">
+                        <div class="inventory-tiles" id="inventoryTilesSpecial"></div>
+                        <p class="cabinet-sub-empty" id="invEmptySpecial" style="display:none;">Нет предметов в этой категории</p>
+                    </div>
+                </div>
+            </div>
+            <div class="cabinet-subsection-modal" data-subsection="inv-chest">
+                <div class="cabinet-subsection-backdrop" data-close-subsection></div>
+                <div class="cabinet-subsection-panel">
+                    <div class="cabinet-subsection-header"><h3>Сундуки</h3><button type="button" class="cabinet-subsection-close" data-close-subsection aria-label="Закрыть">×</button></div>
+                    <div class="cabinet-subsection-body">
+                        <div class="inventory-tiles" id="inventoryTilesChest"></div>
+                        <p class="cabinet-sub-empty" id="invEmptyChest" style="display:none;">Нет предметов в этой категории</p>
+                    </div>
+                </div>
+            </div>
+        </div>
         </div>
     </div>
 
-    <div class="cabinet-section collapsed" data-section="inventory">
-        <div class="cabinet-section-header" data-toggle-section>
-            <h2>Инвентарь</h2>
-            <button type="button" class="section-toggle" aria-label="Свернуть/развернуть">▼</button>
-        </div>
-        <div class="cabinet-section-body">
-            <div class="inventory-category collapsed" id="inventoryCategoryEnhancement" style="display:none;">
-                <div class="inventory-category-header" data-inventory-category-toggle>
-                    <h3 class="inventory-category-title">Усиления</h3>
-                    <button type="button" class="inventory-category-toggle" aria-label="Свернуть/развернуть">▼</button>
-                </div>
-                <div class="inventory-tiles" id="inventoryTilesEnhancement"></div>
+    <div class="cabinet-section cabinet-section--modal-host" data-section="clan" id="cabinetSectionClan">
+        <div class="cabinet-section-modal-backdrop" data-close-section tabindex="-1"></div>
+        <div class="cabinet-section-panel">
+        <div class="cabinet-section-header">
+            <div class="cabinet-section-header-text">
+                <h2>Клан</h2>
+                <p class="cabinet-modal-breadcrumb" data-breadcrumb-for="clan"></p>
             </div>
-            <div class="inventory-category collapsed" id="inventoryCategoryCurse" style="display:none;">
-                <div class="inventory-category-header" data-inventory-category-toggle>
-                    <h3 class="inventory-category-title">Проклятия</h3>
-                    <button type="button" class="inventory-category-toggle" aria-label="Свернуть/развернуть">▼</button>
-                </div>
-                <div class="inventory-tiles" id="inventoryTilesCurse"></div>
-            </div>
-            <div class="inventory-category collapsed" id="inventoryCategoryEquipment" style="display:none;">
-                <div class="inventory-category-header" data-inventory-category-toggle>
-                    <h3 class="inventory-category-title">Снаряжение</h3>
-                    <button type="button" class="inventory-category-toggle" aria-label="Свернуть/развернуть">▼</button>
-                </div>
-                <div class="inventory-tiles" id="inventoryTilesEquipment"></div>
-            </div>
-            <div class="inventory-category collapsed" id="inventoryCategorySpecial" style="display:none;">
-                <div class="inventory-category-header" data-inventory-category-toggle>
-                    <h3 class="inventory-category-title">Особое</h3>
-                    <button type="button" class="inventory-category-toggle" aria-label="Свернуть/развернуть">▼</button>
-                </div>
-                <div class="inventory-tiles" id="inventoryTilesSpecial"></div>
-            </div>
-            <div class="inventory-category collapsed" id="inventoryCategoryChest" style="display:none;">
-                <div class="inventory-category-header" data-inventory-category-toggle>
-                    <h3 class="inventory-category-title">Сундуки</h3>
-                    <button type="button" class="inventory-category-toggle" aria-label="Свернуть/развернуть">▼</button>
-                </div>
-                <div class="inventory-tiles" id="inventoryTilesChest"></div>
-            </div>
-            <p class="inventory-empty" id="inventoryEmpty" style="display: none;">Пока пусто. Покупайте товары в лавке.</p>
-        </div>
-    </div>
-
-    <div class="cabinet-section collapsed" data-section="clan">
-        <div class="cabinet-section-header" data-toggle-section>
-            <h2>Клан</h2>
-            <button type="button" class="section-toggle" aria-label="Свернуть/развернуть">▼</button>
+            <button type="button" class="cabinet-section-close" data-close-section aria-label="Закрыть">×</button>
         </div>
         <div class="cabinet-section-body">
         {% if clan_data %}
-        <!-- Информация о клане -->
+        <div class="cabinet-sub-launcher-grid">
+            <button type="button" class="cabinet-sub-launcher-btn" data-open-subsection="clan-info" data-subsection-title="О клане">
+                <span class="cabinet-sub-launcher-icon">🏴</span>
+                <span class="cabinet-sub-launcher-title">О клане</span>
+                <span class="cabinet-sub-launcher-hint">{{ clan_data.clan.name }} · {{ clan_data.members|length }} участн.</span>
+            </button>
+            {% if user.id == clan_data.clan.owner_id %}
+            <button type="button" class="cabinet-sub-launcher-btn" data-open-subsection="clan-edit" data-subsection-title="Редактирование">
+                <span class="cabinet-sub-launcher-icon">✏️</span>
+                <span class="cabinet-sub-launcher-title">Редактирование</span>
+                <span class="cabinet-sub-launcher-hint">Эмблема и название</span>
+            </button>
+            {% endif %}
+            <button type="button" class="cabinet-sub-launcher-btn" data-open-subsection="clan-members" data-subsection-title="Участники">
+                <span class="cabinet-sub-launcher-icon">👥</span>
+                <span class="cabinet-sub-launcher-title">Участники</span>
+                <span class="cabinet-sub-launcher-hint">{{ clan_data.members|length }} / {{ clan_data.clan.max_members }} мест</span>
+            </button>
+            <button type="button" class="cabinet-sub-launcher-btn" data-open-subsection="clan-chat" data-subsection-title="Чат">
+                <span class="cabinet-sub-launcher-icon">💬</span>
+                <span class="cabinet-sub-launcher-title">Чат</span>
+                <span class="cabinet-sub-launcher-hint">Общение с кланом</span>
+            </button>
+            <button type="button" class="cabinet-sub-launcher-btn" data-open-subsection="clan-territories" data-subsection-title="Территории">
+                <span class="cabinet-sub-launcher-icon">🗺</span>
+                <span class="cabinet-sub-launcher-title">Территории</span>
+                <span class="cabinet-sub-launcher-hint">{{ clan_data.territories|length }} областей</span>
+            </button>
+            {% if clan_data.can_manage_requests %}
+            <button type="button" class="cabinet-sub-launcher-btn" data-open-subsection="clan-requests" data-subsection-title="Заявки" id="clanRequestsLauncher">
+                <span class="cabinet-sub-launcher-icon">📋</span>
+                <span class="cabinet-sub-launcher-title">Заявки{% if clan_data.pending_requests %}<span class="cabinet-sub-launcher-badge" id="clanRequestsBadge">{{ clan_data.pending_requests|length }}</span>{% endif %}</span>
+                <span class="cabinet-sub-launcher-hint">Вступление в клан</span>
+            </button>
+            {% endif %}
+            <button type="button" class="cabinet-sub-launcher-btn" data-open-subsection="clan-leave" data-subsection-title="Выход">
+                <span class="cabinet-sub-launcher-icon">🚪</span>
+                <span class="cabinet-sub-launcher-title">Выход</span>
+                <span class="cabinet-sub-launcher-hint">Покинуть клан</span>
+            </button>
+        </div>
+
+        <div class="cabinet-subsection-modal" data-subsection="clan-info">
+            <div class="cabinet-subsection-backdrop" data-close-subsection></div>
+            <div class="cabinet-subsection-panel">
+                <div class="cabinet-subsection-header">
+                    <h3>О клане</h3>
+                    <button type="button" class="cabinet-subsection-close" data-close-subsection aria-label="Закрыть">×</button>
+                </div>
+                <div class="cabinet-subsection-body">
         <div class="clan-block">
-            <h3>Информация о клане</h3>
             <div class="clan-view">
                 {% if clan_data.clan.flag_url %}
                 <img id="clanFlagDisplay" src="{{ clan_data.clan.flag_url }}" alt="Эмблема" class="clan-view-emblem">
@@ -1995,11 +4212,20 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                 </div>
             </div>
         </div>
+                </div>
+            </div>
+        </div>
 
         {% if user.id == clan_data.clan.owner_id %}
-        <!-- Редактор клана (только для владельца) -->
+        <div class="cabinet-subsection-modal" data-subsection="clan-edit">
+            <div class="cabinet-subsection-backdrop" data-close-subsection></div>
+            <div class="cabinet-subsection-panel">
+                <div class="cabinet-subsection-header">
+                    <h3>Редактирование клана</h3>
+                    <button type="button" class="cabinet-subsection-close" data-close-subsection aria-label="Закрыть">×</button>
+                </div>
+                <div class="cabinet-subsection-body">
         <div class="clan-block">
-            <h3>Редактирование клана</h3>
             <form id="clanEditForm" class="clan-edit-form" enctype="multipart/form-data">
                 <div class="form-row">
                     <div>
@@ -2043,21 +4269,27 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                 </div>
             </form>
         </div>
+                </div>
+            </div>
+        </div>
         {% endif %}
 
-        <!-- Участники -->
+        <div class="cabinet-subsection-modal" data-subsection="clan-members">
+            <div class="cabinet-subsection-backdrop" data-close-subsection></div>
+            <div class="cabinet-subsection-panel">
+                <div class="cabinet-subsection-header">
+                    <h3>Участники клана</h3>
+                    <button type="button" class="cabinet-subsection-close" data-close-subsection aria-label="Закрыть">×</button>
+                </div>
+                <div class="cabinet-subsection-body">
         <div class="clan-block">
-            <h3>Участники клана</h3>
             <p class="clan-members-count" style="margin:4px 0 8px; font-size:0.9rem; color:#8a7355;">
                 Мест: {{ clan_data.members|length }} / {{ clan_data.clan.max_members }}
             </p>
             {% if user.id == clan_data.clan.owner_id and clan_data.clan.max_members < clan_max_members_limit %}
             <button type="button" id="clanExpandSlotBtn" class="clan-btn" style="margin-bottom:8px;">Расширить место</button>
             {% endif %}
-            <button type="button" class="clan-members-toggle" onclick="document.getElementById('membersList').classList.toggle('open')">
-                Показать участников ({{ clan_data.members|length }})
-            </button>
-            <div id="membersList" class="members-list">
+            <div id="membersList" class="members-list open">
                 {% for m in clan_data.members %}
                 <div class="member-item">
                     {% if m.avatar_url %}
@@ -2105,15 +4337,21 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                 {% endfor %}
             </div>
         </div>
+                </div>
+            </div>
+        </div>
 
-        <!-- Чат с кланом -->
+        <div class="cabinet-subsection-modal" data-subsection="clan-chat">
+            <div class="cabinet-subsection-backdrop" data-close-subsection></div>
+            <div class="cabinet-subsection-panel">
+                <div class="cabinet-subsection-header">
+                    <h3>Чат с кланом</h3>
+                    <button type="button" class="cabinet-subsection-close" data-close-subsection aria-label="Закрыть">×</button>
+                </div>
+                <div class="cabinet-subsection-body">
         <div class="clan-block clan-chat-block">
-            <h3>Чат с кланом</h3>
-            <button type="button" id="clanChatToggleBtn" class="clan-members-toggle" onclick="var el=document.getElementById('clanChatContent'); var btn=document.getElementById('clanChatToggleBtn'); if(!el) return; el.classList.toggle('open'); if(el.classList.contains('open')){ var m=document.getElementById('clanChatMessages'); if(m) m.scrollTop=m.scrollHeight; btn.textContent='Скрыть чат'; } else { btn.textContent='Показать чат'; }">
-                Показать чат
-            </button>
             <div id="clanChatContentHolder">
-                <div id="clanChatContent" class="clan-chat-content">
+                <div id="clanChatContent" class="clan-chat-content open">
                     <div id="clanChatMessages" class="clan-chat-messages">
                         <div class="clan-chat-empty">Загрузка сообщений…</div>
                     </div>
@@ -2121,6 +4359,78 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                         <input type="text" id="clanChatInput" placeholder="Введите сообщение…" maxlength="2000" autocomplete="off">
                         <button type="button" id="clanChatSendBtn">Отправить</button>
                     </div>
+                </div>
+            </div>
+        </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="cabinet-subsection-modal" data-subsection="clan-territories">
+            <div class="cabinet-subsection-backdrop" data-close-subsection></div>
+            <div class="cabinet-subsection-panel">
+                <div class="cabinet-subsection-header">
+                    <h3>Контролируемые области</h3>
+                    <button type="button" class="cabinet-subsection-close" data-close-subsection aria-label="Закрыть">×</button>
+                </div>
+                <div class="cabinet-subsection-body">
+        <div class="clan-block">
+            <div id="territoriesList" class="territories-list open">
+                {% for t in clan_data.territories %}
+                <div class="territory-item">{{ t.display_name }} — сила {{ t.strength }}</div>
+                {% endfor %}
+                {% if not clan_data.territories %}
+                <p style="color:#b8a088; margin:8px 0 0;">Нет контролируемых областей</p>
+                {% endif %}
+            </div>
+        </div>
+                </div>
+            </div>
+        </div>
+
+        {% if clan_data.can_manage_requests %}
+        <div class="cabinet-subsection-modal" data-subsection="clan-requests" id="clan-join-requests">
+            <div class="cabinet-subsection-backdrop" data-close-subsection></div>
+            <div class="cabinet-subsection-panel">
+                <div class="cabinet-subsection-header">
+                    <h3>Заявки на вступление</h3>
+                    <button type="button" class="cabinet-subsection-close" data-close-subsection aria-label="Закрыть">×</button>
+                </div>
+                <div class="cabinet-subsection-body">
+        <div class="clan-block">
+            <div id="pendingList" class="pending-list open">
+                {% for r in clan_data.pending_requests %}
+                <div class="pending-item" data-request-id="{{ r.id }}">
+                    <span>{{ r.character_name }} ({{ r.username }})</span>
+                    {% if r.message %}
+                    <p class="pending-request-message" style="margin:6px 0 4px; font-size:0.9rem; color:#8a7355;">«{{ r.message }}»</p>
+                    {% endif %}
+                    <span>
+                        <button class="accept-btn" onclick="handleAccept({{ r.id }})">Принять</button>
+                        <button class="reject-btn" onclick="handleReject({{ r.id }})">Отклонить</button>
+                    </span>
+                </div>
+                {% else %}
+                <p style="color:#b8a088; margin:0;">Нет активных заявок</p>
+                {% endfor %}
+            </div>
+        </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="cabinet-subsection-modal" data-subsection="clan-leave">
+            <div class="cabinet-subsection-backdrop" data-close-subsection></div>
+            <div class="cabinet-subsection-panel">
+                <div class="cabinet-subsection-header">
+                    <h3>Выход из клана</h3>
+                    <button type="button" class="cabinet-subsection-close" data-close-subsection aria-label="Закрыть">×</button>
+                </div>
+                <div class="cabinet-subsection-body">
+        <div class="clan-block">
+            <button type="button" id="leaveClanBtn" class="clan-btn danger" onclick="openLeaveModal()" data-is-owner="{{ '1' if (clan_data and user.id == clan_data.clan.owner_id) else '0' }}">Выйти из клана</button>
+        </div>
                 </div>
             </div>
         </div>
@@ -2186,47 +4496,6 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
             </div>
         </div>
 
-        <!-- Контролируемые области -->
-        <div class="clan-block">
-            <h3>Контролируемые области</h3>
-            <button type="button" class="clan-members-toggle" onclick="document.getElementById('territoriesList').classList.toggle('open')">
-                Показать области
-            </button>
-            <div id="territoriesList" class="territories-list">
-                {% for t in clan_data.territories %}
-                <div class="territory-item">{{ t.display_name }} — сила {{ t.strength }}</div>
-                {% endfor %}
-                {% if not clan_data.territories %}
-                <p style="color:#b8a088; margin:8px 0 0;">Нет контролируемых областей</p>
-                {% endif %}
-            </div>
-        </div>
-
-        {% if clan_data.can_manage_requests and clan_data.pending_requests %}
-        <!-- Заявки на вступление -->
-        <div class="clan-block" id="clan-join-requests">
-            <h3>Заявки на вступление</h3>
-            <div id="pendingList" class="pending-list open">
-                {% for r in clan_data.pending_requests %}
-                <div class="pending-item" data-request-id="{{ r.id }}">
-                    <span>{{ r.character_name }} ({{ r.username }})</span>
-                    {% if r.message %}
-                    <p class="pending-request-message" style="margin:6px 0 4px; font-size:0.9rem; color:#8a7355;">«{{ r.message }}»</p>
-                    {% endif %}
-                    <span>
-                        <button class="accept-btn" onclick="handleAccept({{ r.id }})">Принять</button>
-                        <button class="reject-btn" onclick="handleReject({{ r.id }})">Отклонить</button>
-                    </span>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-        {% endif %}
-
-        <!-- Выход из клана -->
-        <div class="clan-block">
-            <button type="button" id="leaveClanBtn" class="clan-btn danger" onclick="openLeaveModal()" data-is-owner="{{ '1' if (clan_data and user.id == clan_data.clan.owner_id) else '0' }}">Выйти из клана</button>
-        </div>
         {% elif pending_request %}
         <div class="clan-block">
             <p class="no-clan-msg">Заявка на вступление в клан подана. Ожидайте решения.</p>
@@ -2240,28 +4509,98 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         </div>
         {% endif %}
         </div>
+        </div>
     </div>
 
-    <div class="cabinet-section collapsed" data-section="stats">
-        <div class="cabinet-section-header" data-toggle-section>
-            <h2>Статистика битвы за территорию</h2>
-            <button type="button" class="section-toggle" aria-label="Свернуть/развернуть">▼</button>
+    <div class="cabinet-section cabinet-section--modal-host" data-section="stats" id="cabinetSectionStats">
+        <div class="cabinet-section-modal-backdrop" data-close-section tabindex="-1"></div>
+        <div class="cabinet-section-panel cabinet-section-panel--wide">
+        <div class="cabinet-section-header">
+            <div class="cabinet-section-header-text">
+                <h2>Статистика и достижения</h2>
+                <p class="cabinet-modal-breadcrumb" data-breadcrumb-for="stats"></p>
+            </div>
+            <button type="button" class="cabinet-section-close" data-close-section aria-label="Закрыть">×</button>
         </div>
         <div class="cabinet-section-body">
-        <div class="stats-row">
-            <div class="stat-item">
-                <strong>Урон нанесённый другим кланам</strong>
-                <span id="statDamage">{{ user.total_damage_dealt }}</span>
+        <div class="stats-achievements-section">
+            <h3>Битва за территорию</h3>
+            <div class="stats-row">
+                <div class="stat-item">
+                    <strong>Урон по чужим кланам</strong>
+                    <span id="statDamage">{{ extended_stats.territory_damage }}</span>
+                </div>
+                <div class="stat-item">
+                    <strong>Влияние (защита)</strong>
+                    <span id="statInfluence">{{ extended_stats.territory_influence }}</span>
+                </div>
+                <div class="stat-item">
+                    <strong>Верных ответов</strong>
+                    <span id="statTerritoryCorrect">{{ extended_stats.territory_correct }}</span>
+                </div>
+                <div class="stat-item">
+                    <strong>Захватов областей</strong>
+                    <span id="statTerritoryCaptures">{{ extended_stats.territory_captures }}</span>
+                </div>
             </div>
-            <div class="stat-item">
-                <strong>Очки влияния клану (защита)</strong>
-                <span id="statInfluence">{{ user.total_influence_points }}</span>
+        </div>
+        <div class="stats-achievements-section">
+            <h3>Общее</h3>
+            <div class="stats-row">
+                <div class="stat-item">
+                    <strong>Уровень</strong>
+                    <span id="statLevel">{{ extended_stats.level }}</span>
+                </div>
+                <div class="stat-item">
+                    <strong>Нумы (баланс)</strong>
+                    <span id="statNumsBalance">{{ extended_stats.nums_balance }}</span>
+                </div>
+                <div class="stat-item">
+                    <strong>Заработано Нумов</strong>
+                    <span id="statNumsEarned">{{ extended_stats.nums_earned }}</span>
+                </div>
+                <div class="stat-item">
+                    <strong>Побед в PvP</strong>
+                    <span id="statPvpWins">{{ extended_stats.pvp_wins }}</span>
+                </div>
+                <div class="stat-item">
+                    <strong>Покупок в лавке</strong>
+                    <span id="statShopPurchases">{{ extended_stats.shop_purchases }}</span>
+                </div>
+                <div class="stat-item">
+                    <strong>Сундуков открыто</strong>
+                    <span id="statChestsOpened">{{ extended_stats.chests_opened }}</span>
+                </div>
             </div>
+        </div>
+        <div class="stats-achievements-section">
+            <div class="achievements-summary">
+                <h3 style="margin:0;">Достижения</h3>
+                <div class="achievements-progress-pill" id="achievementsProgressPill">
+                    <span id="achievementsUnlockedCount">{{ achievements_payload.unlocked_count }}</span>
+                    <span>/</span>
+                    <span id="achievementsTotalCount">{{ achievements_payload.total }}</span>
+                </div>
+            </div>
+            <div class="achievements-filter-row" id="achievementsFilterRow">
+                <button type="button" class="achievements-filter-btn active" data-ach-filter="all">Все</button>
+                <button type="button" class="achievements-filter-btn" data-ach-filter="unlocked">Получены</button>
+                <button type="button" class="achievements-filter-btn" data-ach-filter="locked">В процессе</button>
+            </div>
+            <div class="achievements-filter-row" id="achievementsCategoryRow">
+                <button type="button" class="achievements-filter-btn active" data-ach-category="all">Все категории</button>
+                {% for cat in achievements_payload.categories %}
+                <button type="button" class="achievements-filter-btn" data-ach-category="{{ cat.id }}">{{ cat.label }}</button>
+                {% endfor %}
+            </div>
+            <div class="achievements-grid" id="achievementsGrid"></div>
+        </div>
         </div>
         </div>
     </div>
 </div>
 </div>
+<div id="cabinetToastHost" class="cabinet-toast-host" aria-live="polite" aria-atomic="true"></div>
 {% if clan_data %}
 <button type="button" class="floating-chat-btn" id="floatingChatBtn" aria-label="Открыть чат с кланом" title="Чат с кланом" data-clan-id="{{ clan_data.clan.id if clan_data and clan_data.clan else '' }}">💬<span class="chat-unread-badge" id="clanChatUnreadBadge" aria-hidden="true" title="Есть новые сообщения"></span></button>
 {% endif %}
@@ -2596,6 +4935,166 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 <script src="{{ url_for('static', filename='js/cabinet_chest_drop.js') }}"></script>
 <script>
 (function() {
+    var host = document.getElementById('cabinetToastHost');
+    var toastTimer = null;
+    window.showCabinetToast = function(message, type) {
+        if (!host || !message) return;
+        if (toastTimer) {
+            clearTimeout(toastTimer);
+            toastTimer = null;
+        }
+        host.innerHTML = '';
+        var el = document.createElement('div');
+        el.className = 'cabinet-toast cabinet-toast--' + (type || 'success');
+        el.textContent = message;
+        host.appendChild(el);
+        requestAnimationFrame(function() {
+            requestAnimationFrame(function() { el.classList.add('show'); });
+        });
+        toastTimer = setTimeout(function() {
+            el.classList.remove('show');
+            setTimeout(function() {
+                if (el.parentNode) el.parentNode.removeChild(el);
+            }, 280);
+            toastTimer = null;
+        }, 3400);
+    };
+    window.showAchievementUnlocks = function(list) {
+        if (!list || !list.length || typeof window.showCabinetToast !== 'function') return;
+        list.forEach(function(a, i) {
+            setTimeout(function() {
+                var msg = (a.icon || '🏆') + ' Достижение: «' + (a.title || '') + '»';
+                if (a.reward_nums) msg += ' (+' + a.reward_nums + ' Нумов)';
+                window.showCabinetToast(msg);
+            }, i * 850);
+        });
+    };
+})();
+(function achievementsUi() {
+    var state = {{ achievements_payload | tojson }};
+    var activeFilter = 'all';
+    var activeCategory = 'all';
+
+    function escapeHtml(s) {
+        if (!s) return '';
+        var d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    function progressPct(current, target) {
+        if (!target) return 100;
+        return Math.min(100, Math.round((current / target) * 100));
+    }
+
+    function updateStatsUI(stats) {
+        if (!stats) return;
+        var map = {
+            statDamage: stats.territory_damage,
+            statInfluence: stats.territory_influence,
+            statTerritoryCorrect: stats.territory_correct,
+            statTerritoryCaptures: stats.territory_captures,
+            statLevel: stats.level,
+            statNumsBalance: stats.nums_balance,
+            statNumsEarned: stats.nums_earned,
+            statPvpWins: stats.pvp_wins,
+            statShopPurchases: stats.shop_purchases,
+            statChestsOpened: stats.chests_opened
+        };
+        Object.keys(map).forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el && map[id] !== undefined && map[id] !== null) el.textContent = map[id];
+        });
+        var heroNums = document.getElementById('heroNums');
+        if (heroNums && stats.nums_balance !== undefined) heroNums.textContent = stats.nums_balance;
+    }
+
+    function updateProgressPill() {
+        var uc = document.getElementById('achievementsUnlockedCount');
+        var tc = document.getElementById('achievementsTotalCount');
+        var badge = document.getElementById('achievementsProgressBadge');
+        if (uc) uc.textContent = state.unlocked_count;
+        if (tc) tc.textContent = state.total;
+        if (badge) badge.textContent = state.unlocked_count + '/' + state.total;
+    }
+
+    function renderAchievements() {
+        var grid = document.getElementById('achievementsGrid');
+        if (!grid) return;
+        var items = (state.achievements || []).filter(function(a) {
+            if (activeFilter === 'unlocked' && !a.unlocked) return false;
+            if (activeFilter === 'locked' && a.unlocked) return false;
+            if (activeCategory !== 'all' && a.category !== activeCategory) return false;
+            return true;
+        });
+        if (!items.length) {
+            grid.innerHTML = '<p style="grid-column:1/-1;color:#b8a088;text-align:center;padding:16px 8px;font-size:0.9rem;">Нет достижений по выбранному фильтру</p>';
+            return;
+        }
+        grid.innerHTML = items.map(function(a) {
+            var progress = a.unlocked ? 100 : progressPct(a.current, a.target);
+            var cls = 'achievement-card' + (a.unlocked ? ' unlocked' : ' locked') + (a.hidden ? ' hidden-achievement' : '');
+            var reward = (a.reward_nums > 0 && !a.hidden) ? '<div class="achievement-reward">+' + a.reward_nums + ' Нумов</div>' : '';
+            var badge = a.unlocked ? '<span class="achievement-unlocked-badge" title="Получено">✓</span>' : '';
+            var progressHtml = a.unlocked ? '' : (
+                '<div class="achievement-progress">' +
+                '<div class="achievement-progress-bar"><div class="achievement-progress-fill" style="width:' + progress + '%"></div></div>' +
+                '<div class="achievement-progress-text">' + a.current + ' / ' + a.target + '</div></div>'
+            );
+            return '<article class="' + cls + '" data-code="' + escapeHtml(a.code) + '">' + badge +
+                '<div class="achievement-icon">' + a.icon + '</div>' +
+                '<div class="achievement-title">' + escapeHtml(a.title) + '</div>' +
+                '<div class="achievement-desc">' + escapeHtml(a.description) + '</div>' +
+                progressHtml + reward + '</article>';
+        }).join('');
+    }
+
+    function bindAchievementFilters() {
+        document.querySelectorAll('[data-ach-filter]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                activeFilter = btn.getAttribute('data-ach-filter') || 'all';
+                document.querySelectorAll('[data-ach-filter]').forEach(function(b) { b.classList.toggle('active', b === btn); });
+                renderAchievements();
+            });
+        });
+        document.querySelectorAll('[data-ach-category]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                activeCategory = btn.getAttribute('data-ach-category') || 'all';
+                document.querySelectorAll('[data-ach-category]').forEach(function(b) { b.classList.toggle('active', b === btn); });
+                renderAchievements();
+            });
+        });
+    }
+
+    window.cabinetAchievementsRefresh = function() {
+        fetch('{{ url_for("api_cabinet_achievements") }}')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.success) return;
+                state = data.achievements;
+                updateStatsUI(data.stats);
+                updateProgressPill();
+                renderAchievements();
+                if (data.nums_balance !== undefined) {
+                    var heroNums = document.getElementById('heroNums');
+                    if (heroNums) heroNums.textContent = data.nums_balance;
+                }
+                if (typeof window.showAchievementUnlocks === 'function') {
+                    window.showAchievementUnlocks(data.newly_unlocked);
+                }
+            })
+            .catch(function() {});
+    };
+
+    renderAchievements();
+    bindAchievementFilters();
+    updateProgressPill();
+    var statsBtn = document.querySelector('[data-open-section="stats"]');
+    if (statsBtn) statsBtn.addEventListener('click', function() {
+        setTimeout(window.cabinetAchievementsRefresh, 120);
+    });
+})();
+(function() {
     var nav = document.getElementById('cabinetTopNav');
     var btn = document.getElementById('cabinetBurgerBtn');
     if (nav && btn) {
@@ -2696,6 +5195,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
 })();
 (function() {
     var totalSkillPoints = {{ user.skill_points_total }};
+    var abilityPointsAvailable = {{ ability_points_available or 0 }};
     var skillState = {
         damage: {{ user.damage_skill or 0 }},
         defense: {{ user.defense_skill or 0 }},
@@ -2708,6 +5208,22 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     };
     function spent() { return skillState.damage + skillState.defense + skillState.energy; }
     function available() { return Math.max(0, totalSkillPoints - spent()); }
+    function updateSkillsLauncherBadge(skillAvail, abilityAvail) {
+        var badge = document.getElementById('skillsPointsBadge');
+        if (!badge) return;
+        var sa = skillAvail !== undefined ? skillAvail : available();
+        var aa = abilityAvail !== undefined ? abilityAvail : abilityPointsAvailable;
+        var total = Math.max(0, sa) + Math.max(0, aa);
+        if (total > 0) {
+            badge.textContent = total > 9 ? '9+' : String(total);
+            badge.title = 'Нераспределённых очков: ' + total;
+            badge.hidden = false;
+            badge.setAttribute('aria-hidden', 'false');
+        } else {
+            badge.hidden = true;
+            badge.setAttribute('aria-hidden', 'true');
+        }
+    }
     function hasUnsavedChanges() {
         return skillState.damage !== savedState.damage || skillState.defense !== savedState.defense || skillState.energy !== savedState.energy;
     }
@@ -2721,7 +5237,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         var av = available();
         var pointsBlock = document.getElementById('skillPointsBlock');
         var pointsHint = document.getElementById('skillPointsHint');
-        if (pointsBlock) pointsBlock.style.display = (av > 0 || hasUnsavedChanges()) ? 'block' : 'none';
+        if (pointsBlock) pointsBlock.style.display = (av > 0 || hasUnsavedChanges()) ? 'flex' : 'none';
         if (pointsHint) pointsHint.style.display = av > 0 ? 'block' : 'none';
         document.getElementById('skillPointsAvail').textContent = av;
         document.getElementById('skillDamagePlus').disabled = av <= 0;
@@ -2730,6 +5246,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         document.getElementById('skillDamageMinus').disabled = skillState.damage <= savedState.damage;
         document.getElementById('skillDefenseMinus').disabled = skillState.defense <= savedState.defense;
         document.getElementById('skillEnergyMinus').disabled = skillState.energy <= savedState.energy;
+        updateSkillsLauncherBadge(av, abilityPointsAvailable);
     }
     function skillPlus(stat) {
         if (available() <= 0) return;
@@ -2765,9 +5282,26 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
             helpPairs.forEach(function(p) {
                 var t = document.getElementById(p.tooltip);
                 var b = document.getElementById(p.btn);
-                if (t) t.classList.remove('show');
+                if (t) {
+                    t.classList.remove('show', 'stat-tooltip--fixed');
+                    t.style.top = '';
+                    t.style.left = '';
+                    t.style.right = '';
+                    t.style.width = '';
+                }
                 if (b) b.classList.remove('active');
             });
+        }
+        function positionTooltip(btn, tooltip) {
+            tooltip.style.top = '';
+            tooltip.style.left = '';
+            tooltip.style.right = '';
+            tooltip.style.width = '';
+            tooltip.classList.remove('stat-tooltip--fixed');
+            if (!window.matchMedia('(max-width: 600px)').matches) return;
+            var rect = btn.getBoundingClientRect();
+            tooltip.classList.add('stat-tooltip--fixed');
+            tooltip.style.top = Math.round(rect.bottom + 6) + 'px';
         }
         helpPairs.forEach(function(p) {
             var btn = document.getElementById(p.btn);
@@ -2778,11 +5312,14 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                 var isOpen = tooltip.classList.contains('show');
                 closeAllTooltips();
                 if (!isOpen) {
+                    positionTooltip(btn, tooltip);
                     tooltip.classList.add('show');
                     btn.classList.add('active');
                 }
             });
         });
+        window.addEventListener('resize', closeAllTooltips);
+        document.addEventListener('scroll', closeAllTooltips, true);
         document.addEventListener('click', closeAllTooltips);
     })();
     var btnSkillSave = document.getElementById('skillSaveBtn');
@@ -2809,6 +5346,10 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                 document.getElementById('skillDamageVal').textContent = data.damage;
                 document.getElementById('skillDefenseVal').textContent = data.defense;
                 document.getElementById('skillEnergyVal').textContent = data.energy;
+                var heroDamage = document.getElementById('heroDamage');
+                var heroDefense = document.getElementById('heroDefense');
+                if (heroDamage) heroDamage.textContent = data.damage;
+                if (heroDefense) heroDefense.textContent = data.defense;
                 document.getElementById('skillPointsAvail').textContent = data.skill_points_available;
                 if (data.current_energy !== undefined) {
                     var ec = document.getElementById('energyCurrent');
@@ -2819,6 +5360,9 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                     if (em) em.textContent = data.energy;
                 }
                 updateSkillUI();
+                if (typeof window.showAchievementUnlocks === 'function') {
+                    window.showAchievementUnlocks(data.newly_unlocked);
+                }
                 openSkillSavedModal();
             } else {
                 alert(data.error || 'Ошибка');
@@ -2857,13 +5401,425 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
         skillSavedTimer = null;
         closeSkillSavedModal();
     });
+
+    // --- Дерево умений ---
+    var abilitiesLoaded = false;
+    var abilitiesData = null;
+    var skillsPanel = document.getElementById('skillsSectionPanel');
+    var abilitiesRoot = document.getElementById('abilitiesTreeRoot');
+    var abilitiesFooter = document.getElementById('abilitiesFooter');
+    var abilitiesBonusesSummary = document.getElementById('abilitiesBonusesSummary');
+    var abilityPointsEl = document.getElementById('abilityPointsAvail');
+    var branchColors = {
+        warrior: '#c45a4a',
+        guardian: '#5a8ac4',
+        sage: '#d4a84b',
+        tactician: '#5ab87a',
+        duelist: '#9a6ac4'
+    };
+
+    function switchSkillsTab(tabId) {
+        document.querySelectorAll('.skills-tab').forEach(function(btn) {
+            var active = btn.getAttribute('data-skills-tab') === tabId;
+            btn.classList.toggle('active', active);
+            btn.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+        document.querySelectorAll('.skills-tab-panel').forEach(function(panel) {
+            var show = panel.getAttribute('data-skills-panel') === tabId;
+            if (show) panel.removeAttribute('hidden');
+            else panel.setAttribute('hidden', 'hidden');
+        });
+        if (skillsPanel) {
+            skillsPanel.classList.toggle('skills-panel--wide', tabId === 'abilities');
+        }
+        if (tabId === 'abilities' && !abilitiesLoaded) {
+            loadAbilities();
+        } else if (tabId === 'abilities' && abilitiesLoaded) {
+            requestAnimationFrame(function() { initAbilitiesHorizontalScroll(); });
+        }
+    }
+
+    document.querySelectorAll('.skills-tab').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            switchSkillsTab(btn.getAttribute('data-skills-tab'));
+        });
+    });
+
+    function formatBonusesSummary(bonuses) {
+        if (!bonuses) return '';
+        var parts = [];
+        if (bonuses.damage_add) parts.push('+' + bonuses.damage_add + ' атака');
+        if (bonuses.defense_add) parts.push('+' + bonuses.defense_add + ' защита');
+        if (bonuses.max_energy_add) parts.push('+' + bonuses.max_energy_add + ' энергия');
+        if (bonuses.damage_pct) parts.push('+' + bonuses.damage_pct + '% урон');
+        if (bonuses.defense_pct) parts.push('+' + bonuses.defense_pct + '% защита');
+        if (bonuses.xp_reward_pct) parts.push('+' + bonuses.xp_reward_pct + '% опыт');
+        if (bonuses.nums_reward_pct) parts.push('+' + bonuses.nums_reward_pct + '% нумы');
+        if (bonuses.pvp_damage_pct) parts.push('+' + bonuses.pvp_damage_pct + '% PvP-урон');
+        if (bonuses.pvp_damage_add) parts.push('+' + bonuses.pvp_damage_add + ' PvP-урон');
+        if (bonuses.pvp_hp_add) parts.push('+' + bonuses.pvp_hp_add + ' HP в дуэли');
+        if (!parts.length) return 'Пока нет активных бонусов от умений.';
+        return '<strong>Активные бонусы:</strong> ' + parts.join(' · ');
+    }
+
+    function renderNodePips(rank, maxRank) {
+        var html = '<div class="sk-node-pips">';
+        for (var i = 1; i <= maxRank; i++) {
+            html += '<span class="sk-node-pip' + (i <= rank ? ' sk-node-pip--on' : '') + '"></span>';
+        }
+        html += '</div>';
+        return html;
+    }
+
+    function renderSkNode(node) {
+        var status = node.status || 'locked';
+        var cls = 'sk-node sk-node--' + status;
+        var html = '<div class="' + cls + '" data-ability-code="' + escapeHtml(node.code) + '" data-status="' + escapeHtml(status) + '">';
+        html += '<div class="sk-node-orb-wrap">';
+        html += '<div class="sk-node-orb" title="' + escapeHtml(node.description || node.name) + '">' + escapeHtml(node.icon || '★') + '</div>';
+        html += '<div class="sk-node-rank-ring"></div>';
+        html += '</div>';
+        html += renderNodePips(node.rank || 0, node.max_rank || 1);
+        html += '<div class="sk-node-title">' + escapeHtml(node.name) + '</div>';
+        if (node.status_label) {
+            html += '<span class="sk-node-status sk-node-status--' + escapeHtml(status) + '">' + escapeHtml(node.status_label) + '</span>';
+        } else {
+            html += '<span class="sk-node-status sk-node-status--spacer" aria-hidden="true">&nbsp;</span>';
+        }
+        html += '<div class="sk-node-card">';
+        html += '<div class="sk-node-bonus">' + escapeHtml(node.bonus_text || '') + '</div>';
+        var lockText = '';
+        if (status === 'locked' && node.requires_text) {
+            lockText = node.requires_text;
+        } else if (node.lock_reason && status !== 'available' && status !== 'maxed') {
+            lockText = node.lock_reason;
+        }
+        html += '<div class="sk-node-lock' + (lockText ? '' : ' sk-node-lock--placeholder') + '">' + (lockText ? escapeHtml(lockText) : '&nbsp;') + '</div>';
+        html += '<div class="sk-node-actions">';
+        if (status !== 'preview' && status !== 'foreign') {
+            html += '<button type="button" class="sk-node-upgrade" data-upgrade-ability="' + escapeHtml(node.code) + '"';
+            if (!node.can_upgrade) html += ' disabled';
+            html += '>' + (status === 'maxed' ? 'Максимум' : 'Улучшить') + '</button>';
+            html += '<span class="sk-node-cost">' + node.cost_per_rank + ' оч. за ранг · ' + (node.rank || 0) + '/' + node.max_rank + '</span>';
+        }
+        html += '</div></div></div>';
+        return html;
+    }
+
+    function tierNodesLayoutClass(nodes) {
+        if (!nodes || nodes.length <= 1) return 'sk-tier-nodes--1';
+        var slots = nodes.map(function(n) { return n.slot || 'center'; });
+        var hasLeft = slots.indexOf('left') >= 0;
+        var hasRight = slots.indexOf('right') >= 0;
+        if (nodes.length === 2 && hasLeft && hasRight) return 'sk-tier-nodes--split';
+        return 'sk-tier-nodes--stack';
+    }
+
+    function getAbilitiesScrollStep(el) {
+        return Math.max(400, Math.round(el.clientWidth * 0.92));
+    }
+
+    function initAbilitiesHorizontalScroll() {
+        var wrap = document.getElementById('abilitiesTreeWrap');
+        var topScroll = document.getElementById('abilitiesScrollTop');
+        var topInner = document.getElementById('abilitiesScrollTopInner');
+        var scrollBar = document.getElementById('abilitiesScrollBar');
+        var legend = document.getElementById('abilitiesLegend');
+        var btnLeft = document.getElementById('abilitiesScrollLeft');
+        var btnRight = document.getElementById('abilitiesScrollRight');
+        if (!wrap || !topScroll || !topInner) return;
+
+        var tree = wrap.querySelector('.abilities-tree');
+        if (tree) topInner.style.width = tree.scrollWidth + 'px';
+
+        var needsScroll = wrap.scrollWidth > wrap.clientWidth + 4;
+        if (scrollBar) scrollBar.hidden = !needsScroll;
+        if (legend) legend.hidden = false;
+
+        var syncing = false;
+        function syncFromWrap() {
+            if (syncing) return;
+            syncing = true;
+            topScroll.scrollLeft = wrap.scrollLeft;
+            updateScrollArrows();
+            syncing = false;
+        }
+        function syncFromTop() {
+            if (syncing) return;
+            syncing = true;
+            wrap.scrollLeft = topScroll.scrollLeft;
+            updateScrollArrows();
+            syncing = false;
+        }
+        function updateScrollArrows() {
+            var max = Math.max(0, wrap.scrollWidth - wrap.clientWidth);
+            if (btnLeft) btnLeft.disabled = wrap.scrollLeft <= 2;
+            if (btnRight) btnRight.disabled = wrap.scrollLeft >= max - 2;
+        }
+        wrap.removeEventListener('scroll', syncFromWrap);
+        topScroll.removeEventListener('scroll', syncFromTop);
+        wrap.addEventListener('scroll', syncFromWrap);
+        topScroll.addEventListener('scroll', syncFromTop);
+
+        if (btnLeft) {
+            btnLeft.onclick = function() {
+                wrap.scrollBy({ left: -getAbilitiesScrollStep(wrap), behavior: 'auto' });
+            };
+        }
+        if (btnRight) {
+            btnRight.onclick = function() {
+                wrap.scrollBy({ left: getAbilitiesScrollStep(wrap), behavior: 'auto' });
+            };
+        }
+        updateScrollArrows();
+    }
+
+    function renderConnector(prevCount, nextCount) {
+        if (!nextCount) return '';
+        if (prevCount <= 0) return '';
+        if (prevCount === 1 && nextCount === 1) {
+            return '<div class="sk-link sk-link--single"><div class="sk-link-stem"></div></div>';
+        }
+        if (prevCount === 1 && nextCount >= 2) {
+            return '<div class="sk-link sk-link--fork"><div class="sk-link-stem"></div><div class="sk-link-bar"></div><div class="sk-link-legs"><div class="sk-link-leg"></div><div class="sk-link-leg"></div></div></div>';
+        }
+        if (prevCount >= 2 && nextCount === 1) {
+            return '<div class="sk-link sk-link--merge"><div class="sk-link-legs"><div class="sk-link-leg"></div><div class="sk-link-leg"></div></div><div class="sk-link-bar"></div><div class="sk-link-stem"></div></div>';
+        }
+        return '<div class="sk-link sk-link--single"><div class="sk-link-stem"></div></div>';
+    }
+
+    function groupBranchTiers(nodes) {
+        var slotOrder = { left: 0, center: 1, right: 2 };
+        var tiers = {};
+        nodes.forEach(function(node) {
+            var t = node.tier || 1;
+            if (!tiers[t]) tiers[t] = [];
+            tiers[t].push(node);
+        });
+        return Object.keys(tiers).map(Number).sort(function(a, b) { return a - b; }).map(function(tierNum) {
+            var list = tiers[tierNum].slice().sort(function(a, b) {
+                return (slotOrder[a.slot] || 1) - (slotOrder[b.slot] || 1);
+            });
+            return { tier: tierNum, nodes: list };
+        });
+    }
+
+    function renderAbilitiesTree(data) {
+        if (!abilitiesRoot || !data) return;
+        abilitiesData = data;
+        abilityPointsAvailable = data.ability_points_available || 0;
+        var introEl = document.getElementById('abilitiesIntro');
+        var bannerEl = document.getElementById('abilitiesClassBanner');
+        var legendForeign = document.getElementById('abilitiesLegendForeign');
+
+        if (data.class_chosen) {
+            if (introEl) introEl.textContent = 'Ваш класс — ' + (data.chosen_class_name || '') + '. Ярко подсвечиваются умения, которые можно улучшить сейчас. На ярусе II выберите одну из двух веток развития.';
+            if (bannerEl) {
+                bannerEl.hidden = false;
+                bannerEl.innerHTML = 'Ваш класс: <strong style="color:' + escapeHtml(data.chosen_class_color || '#e8c86a') + '">' + escapeHtml(data.chosen_class_name || '') + '</strong> · сменить нельзя';
+            }
+            if (abilitiesFooter) abilitiesFooter.hidden = false;
+            if (legendForeign) legendForeign.hidden = false;
+        } else {
+            if (introEl) introEl.textContent = 'Выберите класс персонажа. Это необратимый выбор — прокачивать можно только умения выбранного класса. Остальные ветки станут недоступны.';
+            if (bannerEl) bannerEl.hidden = true;
+            if (abilitiesFooter) abilitiesFooter.hidden = true;
+            if (legendForeign) legendForeign.hidden = true;
+        }
+
+        if (abilityPointsEl) abilityPointsEl.textContent = abilityPointsAvailable;
+        if (abilitiesBonusesSummary) {
+            abilitiesBonusesSummary.hidden = !data.class_chosen;
+            abilitiesBonusesSummary.innerHTML = formatBonusesSummary(data.bonuses_summary);
+        }
+        updateSkillsLauncherBadge(available(), abilityPointsAvailable);
+
+        var nodesByBranch = {};
+        (data.abilities || []).forEach(function(node) {
+            if (!nodesByBranch[node.branch]) nodesByBranch[node.branch] = [];
+            nodesByBranch[node.branch].push(node);
+        });
+
+        var branches = data.branches || [];
+        var isMobileNarrow = window.matchMedia('(max-width: 600px)').matches;
+        if (data.class_chosen && isMobileNarrow) {
+            branches = branches.filter(function(b) { return b.state === 'chosen'; });
+        }
+        var treeClass = 'abilities-tree';
+        if (branches.length === 1) treeClass += ' abilities-tree--single';
+
+        var html = '<div class="abilities-tree-wrap" id="abilitiesTreeWrap"><div class="' + treeClass + '">';
+        branches.forEach(function(branch) {
+            var color = branch.color || branchColors[branch.id] || '#d4a84b';
+            var tierGroups = groupBranchTiers(nodesByBranch[branch.id] || []);
+            var branchCls = 'abilities-branch';
+            if (branch.state === 'foreign') branchCls += ' abilities-branch--foreign';
+            else if (branch.state === 'chosen') branchCls += ' abilities-branch--chosen';
+            else if (branch.state === 'selectable') branchCls += ' abilities-branch--selectable';
+
+            html += '<div class="' + branchCls + '" style="--sk-color:' + color + '" data-branch-id="' + escapeHtml(branch.id) + '">';
+            html += '<div class="abilities-branch-header">';
+            html += '<span class="abilities-branch-name">' + escapeHtml(branch.icon || '') + ' ' + escapeHtml(branch.name) + '</span>';
+            html += '<span class="abilities-branch-desc">' + escapeHtml(branch.description || '') + '</span>';
+            if (!data.class_chosen) {
+                if (branch.state === 'selectable') {
+                    html += '<button type="button" class="abilities-choose-class-btn" data-choose-class="' + escapeHtml(branch.id) + '">Выбрать класс</button>';
+                } else if (branch.state === 'locked' && branch.lock_reason) {
+                    html += '<p class="abilities-branch-lock-note">' + escapeHtml(branch.lock_reason) + '</p>';
+                }
+            }
+            html += '</div>';
+            html += '<div class="abilities-branch-body">';
+            var prevCount = 0;
+            tierGroups.forEach(function(tierGroup, idx) {
+                if (idx > 0) {
+                    html += renderConnector(prevCount, tierGroup.nodes.length);
+                }
+                var tierTitle = tierGroup.nodes[0] && tierGroup.nodes[0].tier_title ? tierGroup.nodes[0].tier_title : '';
+                var tierLabel = tierGroup.nodes[0] && tierGroup.nodes[0].tier_label ? tierGroup.nodes[0].tier_label : String(tierGroup.tier);
+                var layoutClass = tierNodesLayoutClass(tierGroup.nodes);
+                html += '<div class="sk-tier">';
+                html += '<div class="sk-tier-side"><span class="sk-tier-roman">' + escapeHtml(tierLabel) + '</span>';
+                if (tierTitle) html += '<span class="sk-tier-name">' + escapeHtml(tierTitle) + '</span>';
+                html += '</div>';
+                html += '<div class="sk-tier-main">';
+                if (layoutClass === 'sk-tier-nodes--split' && tierGroup.tier === 2) {
+                    html += '<div class="sk-tier-hint">Развилка — выберите путь развития</div>';
+                }
+                if (layoutClass === 'sk-tier-nodes--split' && tierGroup.tier === 3) {
+                    html += '<div class="sk-tier-hint">Мастерство выбранной ветки</div>';
+                }
+                html += '<div class="sk-tier-nodes ' + layoutClass + '">';
+                tierGroup.nodes.forEach(function(node) {
+                    html += renderSkNode(node);
+                });
+                html += '</div></div></div>';
+                prevCount = tierGroup.nodes.length;
+            });
+            html += '</div></div>';
+        });
+        html += '</div></div>';
+        abilitiesRoot.innerHTML = html;
+        abilitiesRoot.classList.remove('abilities-loading');
+
+        abilitiesRoot.querySelectorAll('[data-upgrade-ability]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                upgradeAbility(btn.getAttribute('data-upgrade-ability'), btn);
+            });
+        });
+        abilitiesRoot.querySelectorAll('[data-choose-class]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                chooseAbilityClass(btn.getAttribute('data-choose-class'));
+            });
+        });
+        requestAnimationFrame(function() { initAbilitiesHorizontalScroll(); });
+    }
+
+    function chooseAbilityClass(branchId) {
+        if (!branchId || !abilitiesData) return;
+        var branch = (abilitiesData.branches || []).find(function(b) { return b.id === branchId; });
+        var name = branch ? branch.name : branchId;
+        if (!confirm('Выбрать класс «' + name + '»?\n\nКласс нельзя будет сменить. Прокачивать можно только умения этой ветки.')) return;
+        fetch('{{ url_for("api_cabinet_abilities_choose_class") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ branch_id: branchId })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.success) {
+                alert(data.error || 'Не удалось выбрать класс');
+                return;
+            }
+            renderAbilitiesTree(data);
+        })
+        .catch(function() { alert('Ошибка соединения'); });
+    }
+
+    function escapeHtml(s) {
+        if (s === null || s === undefined) return '';
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function loadAbilities() {
+        if (!abilitiesRoot) return;
+        var scrollBar = document.getElementById('abilitiesScrollBar');
+        var legend = document.getElementById('abilitiesLegend');
+        if (scrollBar) scrollBar.hidden = true;
+        if (legend) legend.hidden = true;
+        abilitiesRoot.innerHTML = '<div class="abilities-loading">Загрузка дерева умений…</div>';
+        fetch('{{ url_for("api_cabinet_abilities") }}')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.success) {
+                    abilitiesRoot.innerHTML = '<div class="abilities-loading">' + escapeHtml(data.error || 'Ошибка загрузки') + '</div>';
+                    return;
+                }
+                abilitiesLoaded = true;
+                renderAbilitiesTree(data);
+            })
+            .catch(function() {
+                abilitiesRoot.innerHTML = '<div class="abilities-loading">Ошибка соединения</div>';
+            });
+    }
+
+    function upgradeAbility(code, btn) {
+        if (!code || !btn) return;
+        btn.disabled = true;
+        fetch('{{ url_for("api_cabinet_abilities_upgrade") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ability_code: code })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.success) {
+                alert(data.error || 'Не удалось улучшить умение');
+                return;
+            }
+            var heroDamage = document.getElementById('heroDamage');
+            var heroDefense = document.getElementById('heroDefense');
+            if (heroDamage && data.damage !== undefined) heroDamage.textContent = data.damage;
+            if (heroDefense && data.defense !== undefined) heroDefense.textContent = data.defense;
+            if (data.energy !== undefined) {
+                var em = document.getElementById('energyMax');
+                if (em) em.textContent = data.energy;
+            }
+            renderAbilitiesTree(data);
+        })
+        .catch(function() { alert('Ошибка соединения'); })
+        .finally(function() { if (btn) btn.disabled = false; });
+    }
 })();
 
 (function() {
-    var avatarWrap = document.getElementById('avatarWrap');
+    var heroAvatarBtn = document.getElementById('heroAvatarBtn');
     var avatarFileInput = document.getElementById('avatarFileInput');
-    if (avatarWrap && avatarFileInput) {
-        avatarWrap.addEventListener('click', function() { avatarFileInput.click(); });
+
+    function updateAvatarImages(url) {
+        if (!url) return;
+        var heroImg = document.getElementById('heroAvatarImg');
+        var heroPlaceholder = document.getElementById('heroAvatarPlaceholder');
+
+        if (heroImg) {
+            heroImg.src = url;
+        } else if (heroPlaceholder) {
+            var newHeroImg = document.createElement('img');
+            newHeroImg.id = 'heroAvatarImg';
+            newHeroImg.alt = '';
+            newHeroImg.src = url;
+            heroPlaceholder.parentNode.replaceChild(newHeroImg, heroPlaceholder);
+        }
+    }
+
+    function openAvatarPicker() {
+        if (avatarFileInput) avatarFileInput.click();
+    }
+
+    if (heroAvatarBtn) heroAvatarBtn.addEventListener('click', openAvatarPicker);
+
+    if (avatarFileInput) {
         avatarFileInput.addEventListener('change', function() {
             if (!this.files || !this.files[0]) return;
             var fd = new FormData();
@@ -2873,19 +5829,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
                     if (data.success) {
-                        if (data.avatar_url) {
-                            var img = document.getElementById('avatarImg');
-                            var placeholder = document.getElementById('avatarPlaceholder');
-                            if (img) {
-                                img.src = data.avatar_url;
-                            } else if (placeholder) {
-                                var newImg = document.createElement('img');
-                                newImg.id = 'avatarImg';
-                                newImg.alt = 'Аватар';
-                                newImg.src = data.avatar_url;
-                                placeholder.parentNode.replaceChild(newImg, placeholder);
-                            }
-                        }
+                        if (data.avatar_url) updateAvatarImages(data.avatar_url);
                     } else { alert(data.error || 'Ошибка'); }
                 })
                 .catch(function() { alert('Ошибка загрузки'); });
@@ -3902,49 +6846,194 @@ var CURRENT_USER_ID = {{ user.id }};
     });
 })();
 
-(function() {
-    if (window.location.hash !== '#clan-join-requests') return;
-    var el = document.getElementById('clan-join-requests');
-    if (!el) return;
-    var section = el.closest('.cabinet-section');
-    if (section && section.classList.contains('collapsed')) section.classList.remove('collapsed');
-    setTimeout(function() {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 150);
+(function cabinetModals() {
+    var openSectionId = null;
+    var openSubsectionId = null;
+
+    var SECTION_LABELS = {
+        skills: 'Навыки и умения',
+        equipment: 'Снаряжение',
+        'balance-shop': 'Лавка',
+        inventory: 'Инвентарь',
+        clan: 'Клан',
+        stats: 'Статистика и достижения'
+    };
+
+    function updateCabinetBreadcrumb(sectionId, subsectionTitle) {
+        if (!sectionId) return;
+        var label = SECTION_LABELS[sectionId] || sectionId;
+        var text = subsectionTitle ? (label + ' · ' + subsectionTitle) : '';
+        document.querySelectorAll('.cabinet-modal-breadcrumb[data-breadcrumb-for="' + sectionId + '"]').forEach(function(el) {
+            el.textContent = text;
+        });
+    }
+
+    function ensureClanChatInCabinet() {
+        var chatModal = document.getElementById('clanChatModal');
+        var holder = document.getElementById('clanChatContentHolder');
+        var content = document.getElementById('clanChatContent');
+        if (!content || !holder) return;
+        if (chatModal && chatModal.classList.contains('open')) {
+            chatModal.classList.remove('open');
+        }
+        if (content.parentNode !== holder) {
+            holder.appendChild(content);
+        }
+        content.classList.add('open');
+    }
+
+    function scrollClanChatToBottom() {
+        var messages = document.getElementById('clanChatMessages');
+        if (!messages) return;
+        setTimeout(function() {
+            messages.scrollTop = messages.scrollHeight;
+        }, 80);
+        setTimeout(function() {
+            messages.scrollTop = messages.scrollHeight;
+        }, 250);
+    }
+
+    function markClanChatReadIfFloating() {
+        var btn = document.getElementById('floatingChatBtn');
+        var messages = document.getElementById('clanChatMessages');
+        if (!btn || !messages) return;
+        var clanId = btn.getAttribute('data-clan-id') || '';
+        var storageKey = 'clanChatLastRead_' + clanId;
+        var maxId = 0;
+        messages.querySelectorAll('.clan-chat-msg').forEach(function(m) {
+            var id = parseInt(m.getAttribute('data-id'), 10);
+            if (id > maxId) maxId = id;
+        });
+        if (maxId > 0) {
+            try { localStorage.setItem(storageKey, String(maxId)); } catch (e) {}
+        }
+        btn.classList.remove('has-unread');
+    }
+
+    function onSubsectionOpened(id, subsectionTitle) {
+        openSubsectionId = id;
+        if (openSectionId) updateCabinetBreadcrumb(openSectionId, subsectionTitle || '');
+        if (id === 'clan-chat') {
+            ensureClanChatInCabinet();
+            scrollClanChatToBottom();
+            setTimeout(markClanChatReadIfFloating, 300);
+        }
+    }
+
+    function closeCabinetSubsections() {
+        document.querySelectorAll('.cabinet-subsection-modal.open').forEach(function(m) {
+            m.classList.remove('open');
+        });
+        openSubsectionId = null;
+        if (openSectionId) updateCabinetBreadcrumb(openSectionId, '');
+    }
+
+    function openCabinetSection(name, subsectionId) {
+        var section = document.querySelector('.cabinet-section--modal-host[data-section="' + name + '"]');
+        if (!section) return;
+        closeCabinetSubsections();
+        document.querySelectorAll('.cabinet-section--modal-host.open').forEach(function(s) {
+            s.classList.remove('open');
+        });
+        section.classList.add('open');
+        openSectionId = name;
+        updateCabinetBreadcrumb(name, '');
+        document.body.classList.add('cabinet-section-modal-open');
+        if (subsectionId) {
+            setTimeout(function() {
+                openCabinetSubsection(subsectionId);
+            }, 50);
+        }
+    }
+
+    function closeCabinetSection() {
+        closeCabinetSubsections();
+        document.querySelectorAll('.cabinet-section--modal-host.open').forEach(function(s) {
+            s.classList.remove('open');
+        });
+        openSectionId = null;
+        document.body.classList.remove('cabinet-section-modal-open');
+    }
+
+    function openCabinetSubsection(id, subsectionTitle) {
+        if (!id) return;
+        closeCabinetSubsections();
+        var modal = document.querySelector('.cabinet-subsection-modal[data-subsection="' + id + '"]');
+        if (!modal) return;
+        modal.classList.add('open');
+        if (!subsectionTitle) {
+            var launcherBtn = document.querySelector('[data-open-subsection="' + id + '"]');
+            subsectionTitle = launcherBtn ? launcherBtn.getAttribute('data-subsection-title') : '';
+        }
+        if (!openSectionId) {
+            var parentSection = modal.closest('.cabinet-section--modal-host');
+            if (parentSection) openSectionId = parentSection.getAttribute('data-section');
+        }
+        onSubsectionOpened(id, subsectionTitle);
+    }
+
+    window.openCabinetSection = function(name) {
+        openCabinetSection(name, null);
+    };
+    window.openCabinetSectionWithSubsection = function(name, subsectionId) {
+        openCabinetSection(name, subsectionId);
+    };
+    window.closeCabinetSection = closeCabinetSection;
+    window.closeCabinetSubsections = closeCabinetSubsections;
+    window.openCabinetSubsection = openCabinetSubsection;
+
+    document.querySelectorAll('[data-open-section]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            openCabinetSection(btn.getAttribute('data-open-section'), null);
+        });
+    });
+    document.querySelectorAll('[data-close-section]').forEach(function(el) {
+        el.addEventListener('click', function(e) {
+            e.stopPropagation();
+            closeCabinetSection();
+        });
+    });
+    document.querySelectorAll('[data-open-subsection]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            openCabinetSubsection(btn.getAttribute('data-open-subsection'), btn.getAttribute('data-subsection-title'));
+        });
+    });
+    document.querySelectorAll('[data-close-subsection]').forEach(function(el) {
+        el.addEventListener('click', function(e) {
+            e.stopPropagation();
+            closeCabinetSubsections();
+        });
+    });
+    document.addEventListener('keydown', function(e) {
+        if (e.key !== 'Escape') return;
+        if (document.querySelector('.cabinet-subsection-modal.open')) {
+            closeCabinetSubsections();
+            return;
+        }
+        if (openSectionId) closeCabinetSection();
+    });
+
+    if (window.location.hash === '#clan-join-requests') {
+        var requestsEl = document.getElementById('clan-join-requests');
+        if (requestsEl) {
+            openCabinetSection('clan', 'clan-requests');
+        }
+    }
 })();
 
 (function() {
-    document.querySelectorAll('[data-toggle-section]').forEach(function(header) {
-        var section = header.closest('.cabinet-section');
-        if (!section) return;
-        header.addEventListener('click', function() {
-            section.classList.toggle('collapsed');
-        });
-    });
-    var equipmentSection = document.getElementById('equipmentSection');
-    var equipmentHeader = document.getElementById('equipmentSectionHeader');
-    if (equipmentSection && equipmentHeader) {
-        equipmentHeader.addEventListener('click', function() {
-            equipmentSection.classList.toggle('collapsed');
-        });
-    }
-    var shopToggleBtn = document.getElementById('shopToggleBtn');
-    var shopGridWrap = document.getElementById('shopGridWrap');
-    if (shopToggleBtn && shopGridWrap) {
-        shopToggleBtn.addEventListener('click', function() {
-            shopGridWrap.classList.toggle('open');
-        });
-    }
-    var numsTransferBlock = document.getElementById('numsTransferBlock');
-    var numsTransferHeader = document.getElementById('numsTransferHeader');
-    if (numsTransferBlock && numsTransferHeader) {
-        numsTransferHeader.addEventListener('click', function() {
-            numsTransferBlock.classList.toggle('collapsed');
-        });
-    }
     var balanceDisplay = document.getElementById('numsBalanceDisplay');
     function getBalance() { return parseInt(balanceDisplay ? balanceDisplay.textContent : 0, 10) || 0; }
-    function setBalance(v) { if (balanceDisplay) balanceDisplay.textContent = v; }
+    function setBalance(v) {
+        if (balanceDisplay) balanceDisplay.textContent = v;
+        var heroNums = document.getElementById('heroNums');
+        var launcherNums = document.getElementById('launcherNums');
+        var invLauncherBalance = document.getElementById('invLauncherBalance');
+        if (heroNums) heroNums.textContent = v;
+        if (launcherNums) launcherNums.textContent = v;
+        if (invLauncherBalance) invLauncherBalance.textContent = v;
+    }
 
     var numsTransferForm = document.getElementById('numsTransferForm');
     var numsTransferError = document.getElementById('numsTransferError');
@@ -4225,11 +7314,6 @@ var CURRENT_USER_ID = {{ user.id }};
         fetch('{{ url_for("api_cabinet_inventory") }}')
             .then(function(r) { return r.json(); })
             .then(function(data) {
-                var enhWrap = document.getElementById('inventoryCategoryEnhancement');
-                var curseWrap = document.getElementById('inventoryCategoryCurse');
-                var eqWrap = document.getElementById('inventoryCategoryEquipment');
-                var specWrap = document.getElementById('inventoryCategorySpecial');
-                var chestWrap = document.getElementById('inventoryCategoryChest');
                 var enh = document.getElementById('inventoryTilesEnhancement');
                 var cur = document.getElementById('inventoryTilesCurse');
                 var eq = document.getElementById('inventoryTilesEquipment');
@@ -4242,15 +7326,12 @@ var CURRENT_USER_ID = {{ user.id }};
                 eq.innerHTML = '';
                 if (spec) spec.innerHTML = '';
                 if (chestTiles) chestTiles.innerHTML = '';
-                if (enhWrap) enhWrap.style.display = 'none';
-                if (curseWrap) curseWrap.style.display = 'none';
-                if (eqWrap) eqWrap.style.display = 'none';
-                if (specWrap) specWrap.style.display = 'none';
-                if (chestWrap) chestWrap.style.display = 'none';
+                var counts = { enhancement: 0, curse: 0, equipment: 0, special: 0, chest: 0 };
                 var list = (data.success && data.inventory) ? data.inventory : [];
                 lastInventoryList = list;
                 if (list.length === 0) {
                     if (empty) empty.style.display = 'block';
+                    updateInventoryHints(counts);
                     return;
                 }
                 if (empty) empty.style.display = 'none';
@@ -4311,34 +7392,46 @@ var CURRENT_USER_ID = {{ user.id }};
                         }
                     });
                     var targetGrid = null;
+                    var catKey = p.category || 'enhancement';
                     if (p.category === 'enhancement') {
                         targetGrid = enh;
-                        if (enhWrap) enhWrap.style.display = '';
                     } else if (p.category === 'curse') {
                         targetGrid = cur;
-                        if (curseWrap) curseWrap.style.display = '';
                     } else if (p.category === 'equipment') {
                         targetGrid = eq;
-                        if (eqWrap) eqWrap.style.display = '';
                     } else if (p.category === 'special') {
                         targetGrid = spec || enh;
-                        if (p.category === 'special' && specWrap && spec) {
-                            specWrap.style.display = '';
-                        } else if (enhWrap) {
-                            enhWrap.style.display = '';
-                        }
+                        catKey = 'special';
                     } else if (p.category === 'chest') {
                         targetGrid = chestTiles || enh;
-                        if (chestWrap && chestTiles) {
-                            chestWrap.style.display = '';
-                        }
+                        catKey = 'chest';
                     } else {
                         targetGrid = enh;
-                        if (enhWrap) enhWrap.style.display = '';
+                        catKey = 'enhancement';
                     }
+                    if (counts[catKey] !== undefined) counts[catKey]++;
+                    else counts.enhancement++;
                     targetGrid.appendChild(div);
                 });
+                updateInventoryHints(counts);
             });
+    }
+
+    function updateInventoryHints(counts) {
+        var map = {
+            enhancement: 'invHintEnhancement',
+            curse: 'invHintCurse',
+            equipment: 'invHintEquipment',
+            special: 'invHintSpecial',
+            chest: 'invHintChest'
+        };
+        Object.keys(map).forEach(function(key) {
+            var hint = document.getElementById(map[key]);
+            var n = counts[key] || 0;
+            if (hint) hint.textContent = n ? (n + ' шт.') : 'Пусто';
+            var emptyEl = document.getElementById('invEmpty' + key.charAt(0).toUpperCase() + key.slice(1));
+            if (emptyEl) emptyEl.style.display = n ? 'none' : 'block';
+        });
     }
 
     var inventoryItemModal = document.getElementById('inventoryItemModal');
@@ -4680,6 +7773,10 @@ var CURRENT_USER_ID = {{ user.id }};
                 if (data.success) {
                     closeInventoryItemModal();
                     loadInventory();
+                    var usedName = (currentInventoryItem && currentInventoryItem.name) || 'Предмет';
+                    if (typeof window.showCabinetToast === 'function') {
+                        window.showCabinetToast(data.message || ('«' + usedName + '» использовано'));
+                    }
                 } else {
                     alert(data.error || 'Ошибка использования предмета');
                     inventoryItemUseBtn.disabled = false;
@@ -4963,9 +8060,13 @@ var CURRENT_USER_ID = {{ user.id }};
         var dmgEl = document.getElementById('skillDamageVal');
         var defEl = document.getElementById('skillDefenseVal');
         var eneEl = document.getElementById('skillEnergyVal');
+        var heroDamage = document.getElementById('heroDamage');
+        var heroDefense = document.getElementById('heroDefense');
         var energyMaxSpan = document.getElementById('energyMax');
         if (dmgEl && s.damage != null) dmgEl.textContent = s.damage;
         if (defEl && s.defense != null) defEl.textContent = s.defense;
+        if (heroDamage && s.damage != null) heroDamage.textContent = s.damage;
+        if (heroDefense && s.defense != null) heroDefense.textContent = s.defense;
         if (eneEl && s.max_energy != null) eneEl.textContent = s.max_energy;
         if (energyMaxSpan && s.max_energy != null) energyMaxSpan.textContent = s.max_energy;
     }
@@ -5158,22 +8259,6 @@ var CURRENT_USER_ID = {{ user.id }};
         });
     });
 
-    document.querySelectorAll('[data-shop-category-toggle]').forEach(function(header) {
-        var block = header.closest('.shop-category-block');
-        if (!block) return;
-        header.addEventListener('click', function() {
-            block.classList.toggle('collapsed');
-        });
-    });
-
-    document.querySelectorAll('[data-inventory-category-toggle]').forEach(function(header) {
-        var block = header.closest('.inventory-category');
-        if (!block) return;
-        header.addEventListener('click', function() {
-            block.classList.toggle('collapsed');
-        });
-    });
-
     var shopItemModal = document.getElementById('shopItemModal');
     var shopItemModalTitle = document.getElementById('shopItemModalTitle');
     var shopItemModalImageWrap = document.getElementById('shopItemModalImageWrap');
@@ -5187,8 +8272,8 @@ var CURRENT_USER_ID = {{ user.id }};
     var shopItemModalCloseTop = document.getElementById('shopItemModalCloseTop');
     var currentShopItemId = null;
 
-    var shopGridWrap = document.getElementById('shopGridWrap');
-    if (shopGridWrap) shopGridWrap.addEventListener('click', function(e) {
+    var balanceShopSection = document.getElementById('cabinetSectionBalanceShop');
+    if (balanceShopSection) balanceShopSection.addEventListener('click', function(e) {
         var tile = e.target.closest('.shop-item-tile');
         if (!tile) return;
         var id = tile.getAttribute('data-item-id');
@@ -5291,7 +8376,11 @@ var CURRENT_USER_ID = {{ user.id }};
                 if (data.success) {
                     setBalance(data.balance);
                     loadInventory();
+                    var purchasedName = (shopItemModalTitle && shopItemModalTitle.textContent) || 'Товар';
                     closeShopItemModal();
+                    if (typeof window.showCabinetToast === 'function') {
+                        window.showCabinetToast('«' + purchasedName + '» куплено и добавлено в инвентарь');
+                    }
                 } else {
                     alert(data.error || 'Ошибка');
                 }
@@ -5385,6 +8474,9 @@ var CURRENT_USER_ID = {{ user.id }};
                     closeChestConsumeConfirm();
                     closeChestOpenedModal();
                     loadInventory();
+                    if (typeof window.showCabinetToast === 'function') {
+                        window.showCabinetToast(data.message || 'Награда получена');
+                    }
                 } else {
                     alert(data.error || 'Ошибка');
                 }

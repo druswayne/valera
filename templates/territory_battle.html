@@ -994,6 +994,20 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     border-top: 1.5px solid #3d2914;
     margin: 1px 0;
 }
+.task-text .task-decimal,
+.task-expression-display .task-decimal,
+.task-mixed-fraction-display .task-decimal {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: #2a1f14;
+    letter-spacing: 0.02em;
+}
+.task-text .task-add-sub-op {
+    margin: 0 4px;
+    font-weight: bold;
+    color: #3d2914;
+    vertical-align: middle;
+}
 
 /* Ответ-дробь в том же формате: целая часть + вертикальная дробь */
 .task-answer-fraction-visual {
@@ -1162,6 +1176,34 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
     text-align: center;
     padding: 4px 6px;
     box-sizing: content-box;
+}
+.task-mixed-eq-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
+.task-mixed-eq-row > .task-common-denom-eq,
+.task-mixed-eq-row > #taskMixedEqSign {
+    display: inline-flex;
+    align-items: center;
+    align-self: center;
+    line-height: 1;
+    margin: 0;
+}
+.task-mixed-eq-source {
+    display: inline-flex;
+    align-items: center;
+    align-self: center;
+    min-height: 0;
+    font-size: 1.15em;
+    line-height: 1;
+}
+.task-mixed-eq-row .task-mixed-fraction-fields,
+.task-mixed-eq-row .task-answer-fraction-visual {
+    margin-top: 0;
+    align-self: center;
 }
 .task-mixed-fraction-fields .answer-frac-line {
     width: 100%;
@@ -2252,7 +2294,7 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                 <img class="task-image" id="taskModalImage" alt="" style="display: none;">
             </div>
             <div class="task-answer-wrap" id="taskAnswerWrapDefault">
-                <label for="taskAnswerInput">Ваш ответ:</label>
+                <label for="taskAnswerInput" id="taskAnswerDefaultLabel">Ваш ответ:</label>
                 <input type="text" id="taskAnswerInput">
             </div>
             <div class="task-answer-wrap task-fraction-wrap" id="taskAnswerWrapFraction" style="display: none;">
@@ -2292,14 +2334,18 @@ body { font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Ro
                 <label id="taskMixedFractionLabel">Ваш ответ (смешанное число):</label>
                 <div class="task-mixed-fraction-display" id="taskMixedFracDisplay"></div>
                 <div class="task-add-sub-display task-mixed-fraction-display" id="taskAddSubFracDisplay" style="display: none;"></div>
-                <div class="task-answer-fraction-visual task-mixed-fraction-fields">
-                    <div class="answer-int-wrap">
-                        <input type="number" id="taskAnswerIntPart" min="0" title="Целая часть">
-                    </div>
-                    <div class="answer-frac-wrap">
-                        <input type="number" id="taskAnswerNumMixed" min="0" title="Числитель">
-                        <span class="answer-frac-line"></span>
-                        <input type="number" id="taskAnswerDenMixed" min="1" title="Знаменатель">
+                <div class="task-mixed-eq-row" id="taskMixedEqRow">
+                    <div class="task-mixed-eq-source task-text" id="taskMixedEqSource" style="display: none;"></div>
+                    <span class="task-common-denom-eq" id="taskMixedEqSign" style="display: none;">=</span>
+                    <div class="task-answer-fraction-visual task-mixed-fraction-fields">
+                        <div class="answer-int-wrap">
+                            <input type="number" id="taskAnswerIntPart" min="0" title="Целая часть">
+                        </div>
+                        <div class="answer-frac-wrap">
+                            <input type="number" id="taskAnswerNumMixed" min="0" title="Числитель">
+                            <span class="answer-frac-line"></span>
+                            <input type="number" id="taskAnswerDenMixed" min="1" title="Знаменатель">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -3081,6 +3127,107 @@ window.territoryFocusProtection = (function() {
             });
     }
 
+    function configureTaskAnswerUi(t) {
+        var isFraction = t.answer_type === 'fraction';
+        var isCommonDenom = t.answer_type === 'common_denominator';
+        var isMixedFraction = t.answer_type === 'mixed_fraction' || t.answer_type === 'add_sub_fractions';
+        var isSpecial = isFraction || isCommonDenom || isMixedFraction;
+        var isMultiFracExpr = t.multi_frac_expression && t.display_frac1;
+        document.getElementById('taskAnswerWrapDefault').style.display = isSpecial ? 'none' : 'block';
+        document.getElementById('taskAnswerWrapFraction').style.display = isFraction ? 'block' : 'none';
+        document.getElementById('taskAnswerWrapCommonDenom').style.display = isCommonDenom ? 'block' : 'none';
+        document.getElementById('taskAnswerWrapMixedFraction').style.display = isMixedFraction ? 'block' : 'none';
+        document.getElementById('taskAnswerInput').value = '';
+        document.getElementById('taskAnswerNum').value = '';
+        document.getElementById('taskAnswerDen').value = '';
+        document.getElementById('taskAnswerNum1').value = '';
+        document.getElementById('taskAnswerDenCommon').value = '';
+        document.getElementById('taskAnswerNum2').value = '';
+        document.getElementById('taskAnswerDenCommon2').value = '';
+        document.getElementById('taskAnswerIntPart').value = '';
+        document.getElementById('taskAnswerNumMixed').value = '';
+        document.getElementById('taskAnswerDenMixed').value = '';
+        var defaultLabel = document.getElementById('taskAnswerDefaultLabel');
+        if (defaultLabel) {
+            defaultLabel.textContent = (t.answer_hint === 'decimal')
+                ? 'Ваш ответ (десятичная дробь или целое):'
+                : 'Ваш ответ:';
+        }
+        resizeAllTaskAnswerInputs();
+        if (isCommonDenom) {
+            document.getElementById('taskCommonDenomFrac1').innerHTML = t.display_frac1 || '';
+            document.getElementById('taskCommonDenomFrac2').innerHTML = t.display_frac2 || '';
+        }
+        if (isMixedFraction) {
+            var mixedDisp = document.getElementById('taskMixedFracDisplay');
+            var addSubDisp = document.getElementById('taskAddSubFracDisplay');
+            var mixedLabel = document.getElementById('taskMixedFractionLabel');
+            var intPartInput = document.getElementById('taskAnswerIntPart');
+            var eqSource = document.getElementById('taskMixedEqSource');
+            var eqSign = document.getElementById('taskMixedEqSign');
+            if (t.answer_type === 'add_sub_fractions') {
+                if (isMultiFracExpr) {
+                    addSubDisp.style.display = 'none';
+                    addSubDisp.innerHTML = '';
+                } else {
+                    addSubDisp.style.display = 'block';
+                    addSubDisp.innerHTML = (t.display_frac1 || '') + ' <span class="task-add-sub-op">' + (t.display_operator || '+') + '</span> ' + (t.display_frac2 || '');
+                }
+                mixedDisp.style.display = 'none';
+                mixedDisp.innerHTML = '';
+                if (eqSource) { eqSource.style.display = 'none'; eqSource.innerHTML = ''; }
+                if (eqSign) eqSign.style.display = 'none';
+                if (mixedLabel) mixedLabel.textContent = 'Ваш ответ (несократимая дробь, целая часть если есть):';
+            } else {
+                addSubDisp.style.display = 'none';
+                addSubDisp.innerHTML = '';
+                if (t.display_kind === 'decimal' || t.title === 'Перевод дробей') {
+                    mixedDisp.style.display = 'none';
+                    mixedDisp.innerHTML = '';
+                    if (eqSource) { eqSource.style.display = 'none'; eqSource.innerHTML = ''; }
+                    if (eqSign) eqSign.style.display = 'none';
+                    if (mixedLabel) mixedLabel.textContent = 'Ваш ответ:';
+                } else if (t.display_frac && eqSource && eqSign) {
+                    mixedDisp.style.display = 'none';
+                    mixedDisp.innerHTML = '';
+                    eqSource.innerHTML = t.display_frac;
+                    eqSource.style.display = 'inline-flex';
+                    eqSign.style.display = 'inline-flex';
+                    if (mixedLabel) mixedLabel.textContent = 'Ваш ответ (смешанное число):';
+                } else {
+                    if (eqSource) { eqSource.style.display = 'none'; eqSource.innerHTML = ''; }
+                    if (eqSign) eqSign.style.display = 'none';
+                    mixedDisp.style.display = t.display_frac ? 'block' : 'none';
+                    mixedDisp.innerHTML = t.display_frac ? ('Дробь: ' + t.display_frac) : '';
+                    if (mixedLabel) mixedLabel.textContent = 'Ваш ответ (смешанное число):';
+                }
+            }
+            if (t.int_part_zero) {
+                intPartInput.disabled = true;
+                intPartInput.value = '0';
+                intPartInput.setAttribute('readonly', 'readonly');
+                intPartInput.classList.add('task-int-part-disabled');
+            } else {
+                intPartInput.disabled = false;
+                intPartInput.removeAttribute('readonly');
+                intPartInput.classList.remove('task-int-part-disabled');
+            }
+        }
+        if (isFraction) {
+            document.getElementById('taskAnswerNum').focus();
+        } else if (isCommonDenom) {
+            document.getElementById('taskAnswerNum1').focus();
+        } else if (isMixedFraction) {
+            if (t.int_part_zero) {
+                document.getElementById('taskAnswerNumMixed').focus();
+            } else {
+                document.getElementById('taskAnswerIntPart').focus();
+            }
+        } else {
+            document.getElementById('taskAnswerInput').focus();
+        }
+    }
+
     function openDemogorgonTaskModal() {
         // Переиспользуем существующую модалку задания, но без расхода энергии и без region_index
         document.getElementById('taskModalTitle').textContent = 'Атака на армию Демогorgonов';
@@ -3111,7 +3258,9 @@ window.territoryFocusProtection = (function() {
                     var exprDispEl = document.getElementById('taskExpressionDisplay');
                     var isMultiFracExpr = t.multi_frac_expression && t.display_frac1;
                     if (isMultiFracExpr) {
-                        textEl.textContent = t.text || 'Вычислите выражение ниже. В ответе укажите несократимую дробь и выделите целую часть, если это возможно.';
+                        textEl.textContent = t.text || (t.answer_hint === 'decimal'
+                            ? 'Вычислите выражение ниже. В ответ укажите одно число (десятичную дробь или целое).'
+                            : 'Вычислите выражение ниже. В ответе укажите несократимую дробь и выделите целую часть, если это возможно.');
                         exprDispEl.innerHTML = t.display_frac1;
                         exprDispEl.style.display = 'block';
                     } else {
@@ -3131,80 +3280,7 @@ window.territoryFocusProtection = (function() {
                     } else {
                         img.style.display = 'none';
                     }
-                    var isFraction = t.answer_type === 'fraction';
-                    var isCommonDenom = t.answer_type === 'common_denominator';
-                    var isMixedFraction = t.answer_type === 'mixed_fraction' || t.answer_type === 'add_sub_fractions';
-                    var isSpecial = isFraction || isCommonDenom || isMixedFraction;
-                    document.getElementById('taskAnswerWrapDefault').style.display = isSpecial ? 'none' : 'block';
-                    document.getElementById('taskAnswerWrapFraction').style.display = isFraction ? 'block' : 'none';
-                    document.getElementById('taskAnswerWrapCommonDenom').style.display = isCommonDenom ? 'block' : 'none';
-                    document.getElementById('taskAnswerWrapMixedFraction').style.display = isMixedFraction ? 'block' : 'none';
-                    document.getElementById('taskAnswerInput').value = '';
-                    document.getElementById('taskAnswerNum').value = '';
-                    document.getElementById('taskAnswerDen').value = '';
-                    document.getElementById('taskAnswerNum1').value = '';
-                    document.getElementById('taskAnswerDenCommon').value = '';
-                    document.getElementById('taskAnswerNum2').value = '';
-                    document.getElementById('taskAnswerDenCommon2').value = '';
-                    document.getElementById('taskAnswerIntPart').value = '';
-                    document.getElementById('taskAnswerNumMixed').value = '';
-                    document.getElementById('taskAnswerDenMixed').value = '';
-                    resizeAllTaskAnswerInputs();
-                    if (isCommonDenom) {
-                        document.getElementById('taskCommonDenomFrac1').innerHTML = t.display_frac1 || '';
-                        document.getElementById('taskCommonDenomFrac2').innerHTML = t.display_frac2 || '';
-                    }
-                    if (isMixedFraction) {
-                        var mixedDisp = document.getElementById('taskMixedFracDisplay');
-                        var addSubDisp = document.getElementById('taskAddSubFracDisplay');
-                        var mixedLabel = document.getElementById('taskMixedFractionLabel');
-                        if (t.answer_type === 'add_sub_fractions') {
-                            if (isMultiFracExpr) {
-                                addSubDisp.style.display = 'none';
-                                addSubDisp.innerHTML = '';
-                            } else {
-                                addSubDisp.style.display = 'block';
-                                addSubDisp.innerHTML = (t.display_frac1 || '') + ' <span class="task-add-sub-op">' + (t.display_operator || '+') + '</span> ' + (t.display_frac2 || '');
-                            }
-                            mixedDisp.style.display = 'none';
-                            mixedDisp.innerHTML = '';
-                            if (mixedLabel) mixedLabel.textContent = 'Ваш ответ (несократимая дробь, целая часть если есть):';
-                            var intPartInput = document.getElementById('taskAnswerIntPart');
-                            if (t.int_part_zero) {
-                                intPartInput.disabled = true;
-                                intPartInput.value = '0';
-                                intPartInput.setAttribute('readonly', 'readonly');
-                                intPartInput.classList.add('task-int-part-disabled');
-                            } else {
-                                intPartInput.disabled = false;
-                                intPartInput.removeAttribute('readonly');
-                                intPartInput.classList.remove('task-int-part-disabled');
-                            }
-                        } else {
-                            addSubDisp.style.display = 'none';
-                            addSubDisp.innerHTML = '';
-                            mixedDisp.style.display = 'block';
-                            mixedDisp.innerHTML = t.display_frac ? ('Дробь: ' + t.display_frac) : '';
-                            if (mixedLabel) mixedLabel.textContent = 'Ваш ответ (смешанное число):';
-                            var intPartInput2 = document.getElementById('taskAnswerIntPart');
-                            intPartInput2.disabled = false;
-                            intPartInput2.removeAttribute('readonly');
-                            intPartInput2.classList.remove('task-int-part-disabled');
-                        }
-                    }
-                    if (isFraction) {
-                        document.getElementById('taskAnswerNum').focus();
-                    } else if (isCommonDenom) {
-                        document.getElementById('taskAnswerNum1').focus();
-                    } else if (isMixedFraction) {
-                        if (t.answer_type === 'add_sub_fractions' && t.int_part_zero) {
-                            document.getElementById('taskAnswerNumMixed').focus();
-                        } else {
-                            document.getElementById('taskAnswerIntPart').focus();
-                        }
-                    } else {
-                        document.getElementById('taskAnswerInput').focus();
-                    }
+                    configureTaskAnswerUi(t);
                     if (data.current_energy !== undefined) {
                         var ed = document.getElementById('energyDisplay');
                         if (ed) ed.textContent = data.current_energy;
@@ -3903,7 +3979,9 @@ window.territoryFocusProtection = (function() {
                     var exprDispEl = document.getElementById('taskExpressionDisplay');
                     var isMultiFracExpr = t.multi_frac_expression && t.display_frac1;
                     if (isMultiFracExpr) {
-                        textEl.textContent = t.text || 'Вычислите выражение ниже. В ответе укажите несократимую дробь и выделите целую часть, если это возможно.';
+                        textEl.textContent = t.text || (t.answer_hint === 'decimal'
+                            ? 'Вычислите выражение ниже. В ответ укажите одно число (десятичную дробь или целое).'
+                            : 'Вычислите выражение ниже. В ответе укажите несократимую дробь и выделите целую часть, если это возможно.');
                         exprDispEl.innerHTML = t.display_frac1;
                         exprDispEl.style.display = 'block';
                     } else {
@@ -3923,80 +4001,7 @@ window.territoryFocusProtection = (function() {
                     } else {
                         img.style.display = 'none';
                     }
-                    var isFraction = t.answer_type === 'fraction';
-                    var isCommonDenom = t.answer_type === 'common_denominator';
-                    var isMixedFraction = t.answer_type === 'mixed_fraction' || t.answer_type === 'add_sub_fractions';
-                    var isSpecial = isFraction || isCommonDenom || isMixedFraction;
-                    document.getElementById('taskAnswerWrapDefault').style.display = isSpecial ? 'none' : 'block';
-                    document.getElementById('taskAnswerWrapFraction').style.display = isFraction ? 'block' : 'none';
-                    document.getElementById('taskAnswerWrapCommonDenom').style.display = isCommonDenom ? 'block' : 'none';
-                    document.getElementById('taskAnswerWrapMixedFraction').style.display = isMixedFraction ? 'block' : 'none';
-                    document.getElementById('taskAnswerInput').value = '';
-                    document.getElementById('taskAnswerNum').value = '';
-                    document.getElementById('taskAnswerDen').value = '';
-                    document.getElementById('taskAnswerNum1').value = '';
-                    document.getElementById('taskAnswerDenCommon').value = '';
-                    document.getElementById('taskAnswerNum2').value = '';
-                    document.getElementById('taskAnswerDenCommon2').value = '';
-                    document.getElementById('taskAnswerIntPart').value = '';
-                    document.getElementById('taskAnswerNumMixed').value = '';
-                    document.getElementById('taskAnswerDenMixed').value = '';
-                    resizeAllTaskAnswerInputs();
-                    if (isCommonDenom) {
-                        document.getElementById('taskCommonDenomFrac1').innerHTML = t.display_frac1 || '';
-                        document.getElementById('taskCommonDenomFrac2').innerHTML = t.display_frac2 || '';
-                    }
-                    if (isMixedFraction) {
-                        var mixedDisp = document.getElementById('taskMixedFracDisplay');
-                        var addSubDisp = document.getElementById('taskAddSubFracDisplay');
-                        var mixedLabel = document.getElementById('taskMixedFractionLabel');
-                        if (t.answer_type === 'add_sub_fractions') {
-                            if (isMultiFracExpr) {
-                                addSubDisp.style.display = 'none';
-                                addSubDisp.innerHTML = '';
-                            } else {
-                                addSubDisp.style.display = 'block';
-                                addSubDisp.innerHTML = (t.display_frac1 || '') + ' <span class="task-add-sub-op">' + (t.display_operator || '+') + '</span> ' + (t.display_frac2 || '');
-                            }
-                            mixedDisp.style.display = 'none';
-                            mixedDisp.innerHTML = '';
-                            if (mixedLabel) mixedLabel.textContent = 'Ваш ответ (несократимая дробь, целая часть если есть):';
-                            var intPartInput = document.getElementById('taskAnswerIntPart');
-                            if (t.int_part_zero) {
-                                intPartInput.disabled = true;
-                                intPartInput.value = '0';
-                                intPartInput.setAttribute('readonly', 'readonly');
-                                intPartInput.classList.add('task-int-part-disabled');
-                            } else {
-                                intPartInput.disabled = false;
-                                intPartInput.removeAttribute('readonly');
-                                intPartInput.classList.remove('task-int-part-disabled');
-                            }
-                        } else {
-                            addSubDisp.style.display = 'none';
-                            addSubDisp.innerHTML = '';
-                            mixedDisp.style.display = 'block';
-                            mixedDisp.innerHTML = t.display_frac ? ('Дробь: ' + t.display_frac) : '';
-                            if (mixedLabel) mixedLabel.textContent = 'Ваш ответ (смешанное число):';
-                            var intPartInput = document.getElementById('taskAnswerIntPart');
-                            intPartInput.disabled = false;
-                            intPartInput.removeAttribute('readonly');
-                            intPartInput.classList.remove('task-int-part-disabled');
-                        }
-                    }
-                    if (isFraction) {
-                        document.getElementById('taskAnswerNum').focus();
-                    } else if (isCommonDenom) {
-                        document.getElementById('taskAnswerNum1').focus();
-                    } else if (isMixedFraction) {
-                        if (t.answer_type === 'add_sub_fractions' && t.int_part_zero) {
-                            document.getElementById('taskAnswerNumMixed').focus();
-                        } else {
-                            document.getElementById('taskAnswerIntPart').focus();
-                        }
-                    } else {
-                        document.getElementById('taskAnswerInput').focus();
-                    }
+                    configureTaskAnswerUi(t);
                     if (data.current_energy !== undefined) {
                         var ed = document.getElementById('energyDisplay');
                         if (ed) ed.textContent = data.current_energy;

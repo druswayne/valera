@@ -501,8 +501,9 @@ def generate_territory_computations(difficulty: int) -> Dict[str, Any]:
     num_min, num_max = 2, 25
     # Первый уровень — без скобок; на 2–3 уровнях скобки есть
     paren_chance = 0.0 if difficulty == 1 else (0.35 + (difficulty - 2) * 0.15)
-    # Степень только со 2-го уровня сложности
+    # Степень только со 2-го уровня сложности (основание ≤ 6 / ≤ 8, показатель 2 или 3)
     power_weight = 0 if difficulty == 1 else (8 + (difficulty - 2) * 4)  # 0 / 8 / 12
+    power_base_max = 0 if difficulty == 1 else (6 if difficulty == 2 else 8)
 
     def _maybe_paren(s: str) -> str:
         return f"({s})" if random.random() < paren_chance else s
@@ -528,11 +529,18 @@ def generate_territory_computations(difficulty: int) -> Dict[str, Any]:
             next_ev = atoms_eval[i + 1]
 
             if op == "pow_wrap":
-                exp = random.randint(1, 4)
-                disp, _ = _format_power_territory(_maybe_paren(display), exp)
-                display = disp
-                ev = f"({ev})**{exp}"
-                continue
+                try:
+                    base_val = int(ev)
+                except (ValueError, TypeError):
+                    base_val = -1
+                if base_val < 2 or base_val > power_base_max:
+                    op = random.choice(["+", "-", "*", "/"])
+                else:
+                    exp = random.choice([2, 3])
+                    disp, _ = _format_power_territory(_maybe_paren(display), exp)
+                    display = disp
+                    ev = f"({ev})**{exp}"
+                    continue
 
             left_disp = _maybe_paren(display)
             right_disp = _maybe_paren(next_disp)
@@ -576,42 +584,45 @@ def generate_territory_computations(difficulty: int) -> Dict[str, Any]:
 
 def generate_equation_task(difficulty: int = 3) -> Dict[str, Any]:
     """Генерирует линейное уравнение; решение x — натуральное число.
-    difficulty 1: одно действие (x+a=b, x-a=b, a·x=b, x:a=b);
-    2: 2–3 действия (например 2x+15=45, (x+5)-6=29);
-    3: 4–7 действий (сложные схемы со скобками и делением).
+    difficulty 1: одно действие, a,b ≤ 20;
+    2: 2–3 действия, a ≤ 5, b,c ≤ 50;
+    3: многошаговые, коэффициенты ≤ 6, корень ≤ 20.
     """
     max_attempts = 400
     for _ in range(max_attempts):
-        x = random.randint(2, 250)
+        if difficulty == 1:
+            x = random.randint(2, 20)
+        elif difficulty == 2:
+            x = random.randint(2, 50)
+        else:
+            x = random.randint(2, 20)
 
         # ——— Уровень 1: одно действие ———
         if difficulty == 1:
             pattern = random.choice(["L1_plus", "L1_minus", "L1_mult", "L1_div"])
             if pattern == "L1_plus":
                 # x + a = b  →  x = b - a
-                a = random.randint(1, 100)
+                a = random.randint(1, min(20, x))
                 b = x + a
                 equation = f"x+{a}={b}"
                 points = 10
             elif pattern == "L1_minus":
                 # x - a = b  →  x = a + b
-                a = random.randint(1, min(80, x - 1))
+                a = random.randint(1, min(20, x - 1))
                 b = x - a
                 equation = f"x-{a}={b}"
                 points = 10
             elif pattern == "L1_mult":
-                # a·x = b  →  x = b/a, b кратно a
-                a = random.randint(2, 12)
+                a = random.randint(2, min(12, max(2, 20 // max(2, x))))
                 b = a * x
                 equation = f"{a}·x={b}"
                 points = 12
             else:  # L1_div
-                # x : a = b  →  x = a*b
-                a = random.randint(2, 15)
-                b = x  # x = a*b, значит b = x/a — но x должно быть натуральным, значит x = a*b
-                # делаем так: задаём b, тогда x = a*b
-                b = random.randint(2, 30)
+                a = random.randint(2, 10)
+                b = random.randint(2, min(10, max(2, 20 // a)))
                 x = a * b
+                if x > 20:
+                    continue
                 equation = f"x:{a}={b}"
                 points = 12
             title = random.choice(EQUATION_TITLES) + f" #{random.randint(1, 1000)}"
@@ -630,15 +641,15 @@ def generate_equation_task(difficulty: int = 3) -> Dict[str, Any]:
             pattern = random.choice(["L2_axb", "L2_axmb", "L2_xab", "L2_xamb", "L2_axpb", "L2_xpb"])
             if pattern == "L2_axb":
                 # a·x + b = c  →  x = (c-b)/a
-                a = random.randint(2, 12)
-                b = random.randint(1, 80)
+                a = random.randint(2, 5)
+                b = random.randint(1, min(50, max(1, 50 - a * x)))
                 c = a * x + b
                 equation = f"{a}·x+{b}={c}"
                 points = 16
             elif pattern == "L2_axmb":
                 # a·x - b = c  →  x = (c+b)/a, c+b кратно a
-                a = random.randint(2, 10)
-                b = random.randint(1, 60)
+                a = random.randint(2, 5)
+                b = random.randint(1, min(50, a * x - 1))
                 c = a * x - b
                 if c <= 0:
                     continue
@@ -646,15 +657,15 @@ def generate_equation_task(difficulty: int = 3) -> Dict[str, Any]:
                 points = 16
             elif pattern == "L2_xab":
                 # (x + a) + b = c  →  x = c - a - b
-                a = random.randint(1, 50)
-                b = random.randint(1, 50)
+                a = random.randint(1, min(50, x))
+                b = random.randint(1, min(50, max(1, 50 - a)))
                 c = x + a + b
                 equation = f"(x+{a})+{b}={c}"
                 points = 14
             elif pattern == "L2_xamb":
                 # (x + a) - b = c  →  x = c + b - a
-                a = random.randint(1, 40)
-                b = random.randint(1, 40)
+                a = random.randint(1, min(40, x))
+                b = random.randint(1, min(40, x + a - 1))
                 c = x + a - b
                 if c <= 0:
                     continue
@@ -662,18 +673,18 @@ def generate_equation_task(difficulty: int = 3) -> Dict[str, Any]:
                 points = 14
             elif pattern == "L2_axpb":
                 # a·(x + b) = c  →  x = c/a - b, c кратно a
-                a = random.randint(2, 10)
-                b = random.randint(1, 50)
+                a = random.randint(2, 5)
+                b = random.randint(1, min(50, max(1, 50 - x)))
                 c = a * (x + b)
                 equation = f"{a}·(x+{b})={c}"
                 points = 18
             else:  # L2_xpb
                 # (x + a) : b = c  →  x = c*b - a
                 b = random.randint(2, 10)
-                c = random.randint(2, 40)
-                a = random.randint(0, 100)
+                c = random.randint(2, min(40, (x + 50) // b))
+                a = random.randint(0, min(50, c * b - x))
                 x = c * b - a
-                if x < 1:
+                if x < 1 or x > 50:
                     continue
                 equation = f"(x+{a}):{b}={c}"
                 points = 18
@@ -693,10 +704,10 @@ def generate_equation_task(difficulty: int = 3) -> Dict[str, Any]:
 
         if pattern == "p1":
             # ((a*x + b) : c) + d = e
-            a = random.randint(2, 15)
-            c = random.randint(2, 12)
-            b = random.randint(0, 80)
-            d = random.randint(1, 60)
+            a = random.randint(2, 6)
+            c = random.randint(2, 6)
+            b = random.randint(0, 30)
+            d = random.randint(1, 20)
             left_num = a * x + b
             if left_num % c != 0:
                 b += (c - (left_num % c))
@@ -707,9 +718,9 @@ def generate_equation_task(difficulty: int = 3) -> Dict[str, Any]:
 
         elif pattern == "p2":
             # a*(x+b) - c = d
-            a = random.randint(2, 12)
-            b = random.randint(1, 60)
-            c = random.randint(1, 120)
+            a = random.randint(2, 6)
+            b = random.randint(1, 15)
+            c = random.randint(1, 30)
             d = a * (x + b) - c
             if d <= 0:
                 c = a * (x + b) - 1
@@ -719,28 +730,28 @@ def generate_equation_task(difficulty: int = 3) -> Dict[str, Any]:
 
         elif pattern == "p3":
             # (x - a)*b + c = d
-            a = random.randint(1, min(80, x - 1))
-            b = random.randint(2, 12)
-            c = random.randint(1, 120)
+            a = random.randint(1, min(15, x - 1))
+            b = random.randint(2, 6)
+            c = random.randint(1, 30)
             d = (x - a) * b + c
             equation = f"(x-{a})·{b}+{c}={d}"
             points = 22
 
         elif pattern == "p4":
             # (a - x)*b + c = d  (следим, чтобы было натурально)
-            b = random.randint(2, 10)
-            a = random.randint(x + 1, x + 120)
-            c = random.randint(1, 120)
+            b = random.randint(2, 6)
+            a = random.randint(x + 1, x + 30)
+            c = random.randint(1, 30)
             d = (a - x) * b + c
             equation = f"({a}-x)·{b}+{c}={d}"
             points = 24
 
         else:  # p5
             # ((x+a)*b - c) : d = e
-            a = random.randint(1, 40)
-            b = random.randint(2, 10)
-            ddiv = random.randint(2, 10)
-            c = random.randint(1, 120)
+            a = random.randint(1, 15)
+            b = random.randint(2, 6)
+            ddiv = random.randint(2, 6)
+            c = random.randint(1, 30)
             temp = (x + a) * b - c
             if temp <= 0:
                 c = (x + a) * b - 1
@@ -1543,6 +1554,8 @@ def generate_add_sub_fractions_task(difficulty: int) -> Dict[str, Any]:
             c = random.randint(1, max(1, min(b - 1, MAX_FRAC_NUM_DEN - a)))
             num = a + c
         else:
+            b = random.randint(3, min(20, MAX_FRAC_NUM_DEN))
+            d = b
             a = random.randint(2, b - 1)
             c = random.randint(1, a - 1)
             num = a - c
@@ -1588,43 +1601,57 @@ def generate_add_sub_fractions_task(difficulty: int) -> Dict[str, Any]:
                 num = a * d - c * b
                 den = b * d
     else:
-        # Разные не взаимно простые: b*d ≤ 99. Уровень 3 — знаменатели до 11 (например 9×11=99).
-        ok = False
-        for _ in range(100):
-            b = random.randint(2, 11)
-            d = random.randint(2, 11)
-            if b == d or gcd(b, d) == 1 or b * d > MAX_FRAC_NUM_DEN:
+        # Уровень 3: три дроби (+/−), пример: 2/3 + 1/4 − 1/6
+        for _ in range(200):
+            fracs = []
+            for _f in range(3):
+                den = random.randint(2, 11)
+                num = random.randint(1, den - 1)
+                fracs.append((num, den))
+            ops3 = [random.choice(["+", "-"]) for _ in range(2)]
+            if all(o == "-" for o in ops3):
+                ops3[0] = "+"
+            result = Fraction(fracs[0][0], fracs[0][1])
+            ok_mid = True
+            for idx, op3 in enumerate(ops3):
+                f_next = Fraction(fracs[idx + 1][0], fracs[idx + 1][1])
+                if op3 == "+":
+                    result += f_next
+                else:
+                    result -= f_next
+                if result <= 0:
+                    ok_mid = False
+                    break
+                if result.numerator > MAX_FRAC_NUM_DEN or result.denominator > MAX_FRAC_NUM_DEN:
+                    ok_mid = False
+                    break
+            if not ok_mid or result <= 0:
                 continue
-            a = random.randint(1, b - 1)
-            c = random.randint(1, d - 1)
-            if is_sum:
-                num = a * d + c * b
-                if num > MAX_FRAC_NUM_DEN:
-                    continue
-            else:
-                if a * d <= c * b:
-                    a, c = c, a
-                    b, d = d, b
-                num = a * d - c * b
-                if num > MAX_FRAC_NUM_DEN or num <= 0:
-                    continue
-            den = b * d
-            ok = True
-            break
-        if not ok:
-            b, d = 6, 9
-            a = random.randint(1, b - 1)
-            c_max = min(d - 1, (MAX_FRAC_NUM_DEN - 1) // b)
-            c = random.randint(1, max(1, c_max))
-            if is_sum:
-                num = a * d + c * b
-                den = b * d
-            else:
-                if a * d <= c * b:
-                    a, c = c, a
-                    b, d = d, b
-                num = a * d - c * b
-                den = b * d
+            a, b = fracs[0]
+            c, d = fracs[1]
+            e_num, f_den = fracs[2]
+            int_part, rem_num, rem_den = _to_mixed_irreducible(result.numerator, result.denominator)
+            operands_mixed = [(0, a, b), (0, c, d), (0, e_num, f_den)]
+            expr_html = _build_multi_frac_expr_html(operands_mixed, ops3)
+            return {
+                "title": "Сложение и вычитание дробей",
+                "description": instruction,
+                "correct_answer": f"{int_part}|{rem_num}|{rem_den}",
+                "points": points,
+                "answer_type": "add_sub_fractions",
+                "display_frac1": expr_html,
+                "display_frac2": "",
+                "display_operator": "",
+                "int_part_zero": (int_part == 0),
+                "multi_frac_expression": True,
+                "_meta": {"three_fracs": True, "ops": ops3},
+            }
+        # запасной вариант — две дроби
+        b = 6
+        d = 9
+        a, c = 2, 1
+        num = a * d + c * b
+        den = b * d
 
     int_part, rem_num, rem_den = _to_mixed_irreducible(num, den)
     correct_answer = f"{int_part}|{rem_num}|{rem_den}"
@@ -1649,34 +1676,80 @@ def generate_add_sub_fractions_task(difficulty: int) -> Dict[str, Any]:
 
 def generate_mul_div_fractions_task(difficulty: int) -> Dict[str, Any]:
     """Генератор «Умножение и деление дробей» для битвы за территорию.
-    Умножение или деление двух обыкновенных дробей.
-    Ответ: несократимая правильная дробь с целой частью, если есть (int|num|den).
-    На каждом шаге числитель и знаменатель не более двух знаков (≤ 99).
-    Распределение по сложности: уровень 1 — множители 2–5, уровень 2 — 2–7, уровень 3 — 2–9 (все произведения ≤ 99).
+    Умножение или деление двух обыкновенных дробей; на ур. 2 — дробь × целое; на ур. 3 — цепочка из 3 множителей.
+    Ответ: несократимая дробь с целой частью (int|num|den). Промежуточные числитель/знаменатель ≤ 99.
     """
     instruction = "Вычислите выражение выше. В ответе укажите несократимую дробь и выделите целую часть, если это возможно."
     points = 12 + difficulty * 4
-    is_mul = random.choice([True, False])
 
-    # Градация по уровням при сохранении произведений ≤ 99
+    if difficulty == 3 and random.random() < 0.55:
+        # Цепочка: дробь × смешанное ÷ дробь (пример: 2/3 × 1 1/2 ÷ 5/6)
+        den_lo, den_hi = 2, 9
+        int_max = 2
+        for _ in range(200):
+            def _one_mixed() -> Tuple[int, int, int]:
+                den = random.randint(den_lo, den_hi)
+                num = random.randint(1, den - 1)
+                while gcd(num, den) != 1:
+                    num = random.randint(1, den - 1)
+                return random.randint(0, int_max), num, den
+
+            mixed = [_one_mixed() for _ in range(3)]
+            ops_chain = ["*", ":"]
+            fracs = [_mixed_to_fraction(i, n, d) for i, n, d in mixed]
+            try:
+                result, within = _eval_chain_check_max_digits(fracs, ops_chain, MAX_FRAC_NUM_DEN)
+            except ZeroDivisionError:
+                continue
+            if not within or result <= 0:
+                continue
+            int_part, rem_num, rem_den = _to_mixed_irreducible(result.numerator, result.denominator)
+            expr_html = _build_multi_frac_expr_html(mixed, ops_chain)
+            return {
+                "title": "Умножение и деление дробей",
+                "description": instruction,
+                "correct_answer": f"{int_part}|{rem_num}|{rem_den}",
+                "points": points,
+                "answer_type": "add_sub_fractions",
+                "display_frac1": expr_html,
+                "display_frac2": "",
+                "display_operator": "",
+                "int_part_zero": (int_part == 0),
+                "multi_frac_expression": True,
+                "_meta": {"chain": True},
+            }
+
+    is_mul = random.choice([True, False])
     if difficulty == 1:
-        low, high = 2, 5   # макс. произведение 25
+        low, high = 2, 5
     elif difficulty == 2:
-        low, high = 2, 7   # макс. произведение 49
+        low, high = 2, 7
     else:
-        low, high = 2, 9   # макс. произведение 81
+        low, high = 2, 9
+
+    use_whole = difficulty == 2 and is_mul and random.random() < 0.45
+    frac2_is_whole = False
+    whole_c = 0
 
     for _ in range(100):
         a = random.randint(low, high)
         b = random.randint(low, high)
-        c = random.randint(low, high)
-        d = random.randint(low, high)
-        if is_mul:
+        if use_whole:
+            whole_c = random.randint(2, min(9, MAX_FRAC_NUM_DEN // max(1, a)))
+            c = whole_c
+            d = 1
             num = a * c
-            den = b * d
+            den = b
+            frac2_is_whole = True
         else:
-            num = a * d
-            den = b * c
+            c = random.randint(low, high)
+            d = random.randint(low, high)
+            if is_mul:
+                num = a * c
+                den = b * d
+            else:
+                num = a * d
+                den = b * c
         if num <= MAX_FRAC_NUM_DEN and den <= MAX_FRAC_NUM_DEN and den > 0:
             break
     else:
@@ -1694,7 +1767,10 @@ def generate_mul_div_fractions_task(difficulty: int) -> Dict[str, Any]:
     correct_answer = f"{int_part}|{rem_num}|{rem_den}"
 
     frac1_html = _format_fraction_html(0, a, b)
-    frac2_html = _format_fraction_html(0, c, d)
+    if frac2_is_whole:
+        frac2_html = f'<span class="frac-int-only">{whole_c}</span>'
+    else:
+        frac2_html = _format_fraction_html(0, c, d)
 
     return {
         "title": "Умножение и деление дробей",
@@ -1706,7 +1782,7 @@ def generate_mul_div_fractions_task(difficulty: int) -> Dict[str, Any]:
         "display_frac2": frac2_html,
         "display_operator": "×" if is_mul else "÷",
         "int_part_zero": (int_part == 0),
-        "_meta": {"a": a, "b": b, "c": c, "d": d, "is_mul": is_mul},
+        "_meta": {"a": a, "b": b, "c": c, "d": d, "is_mul": is_mul, "whole": frac2_is_whole},
     }
 
 
@@ -1791,15 +1867,25 @@ def generate_mixed_numbers_task(difficulty: int) -> Dict[str, Any]:
     }
 
 
-def generate_part_of_whole_word_task() -> Dict[str, Any]:
+def generate_part_of_whole_word_task(difficulty: Optional[int] = None) -> Dict[str, Any]:
     """Усложнённые текстовые задачи на 'часть от целого' (в т.ч. многошаговые)."""
 
-    variant = random.choice(["simple_part", "remaining_after_part", "price_change", "remove_from_fraction", "rectangle"])
+    if difficulty == 1:
+        variants = ["simple_part"]
+    elif difficulty == 2:
+        variants = ["simple_part", "remaining_after_part", "remove_from_fraction"]
+    elif difficulty == 3:
+        variants = ["simple_part", "remaining_after_part", "price_change", "remove_from_fraction", "rectangle", "two_step_remaining"]
+    else:
+        variants = ["simple_part", "remaining_after_part", "price_change", "remove_from_fraction", "rectangle", "two_step_remaining"]
+
+    variant = random.choice(variants)
     title = random.choice(PART_OF_WHOLE_TITLES) + f" #{random.randint(1, 1000)}"
 
     if variant == "simple_part":
-        n, d = _rand_coprime_fraction(2, 10)
-        total = _pick_multiple(d, 60, 3000)
+        den_max = 6 if difficulty == 1 else 10
+        n, d = _rand_coprime_fraction(2, den_max)
+        total = _pick_multiple(d, 12 if difficulty == 1 else 60, 3000)
         part = total * n // d
         unit = random.choice(["кг", "л", "шт.", "руб."])
         obj = random.choice(["яблок", "конфет", "сока", "денег"])
@@ -1838,7 +1924,7 @@ def generate_part_of_whole_word_task() -> Dict[str, Any]:
             after_down = base * (d1 - n1) // d1
             attempts += 1
         if after_down % d2 != 0:
-            return generate_part_of_whole_word_task()
+            return generate_part_of_whole_word_task(difficulty=difficulty)
         after_up = after_down + (after_down * n2 // d2)
         description = (
             f"Стоимость товара снизилась на {n1}/{d1}, а затем подорожала на {n2}/{d2} от новой стоимости. "
@@ -1862,22 +1948,58 @@ def generate_part_of_whole_word_task() -> Dict[str, Any]:
         points = 22
         return {"title": title, "description": description, "correct_answer": str(remaining), "points": points * 2, "_meta": {"variant": variant, "total": total, "n": n, "d": d, "removed": removed, "ans": remaining}}
 
-    # rectangle
-    width = _pick_multiple(7, 14, 350)  # чтобы дроби 4/7, 3/7 и т.п. давали целое
-    n, d = random.choice([(4, 7), (5, 7), (3, 7), (2, 7)])
-    length = width * n // d
-    perim = 2 * (width + length)
-    description = (
-        f"Ширина прямоугольника {width} м, а длина составляет {n}/{d} его ширины. "
-        f"Найдите периметр прямоугольника. В ответ укажите только число"
-    )
-    points = 24
-    return {"title": title, "description": description, "correct_answer": str(perim), "points": points * 2, "_meta": {"variant": variant, "width": width, "n": n, "d": d, "ans": perim}}
+    if variant == "rectangle":
+        width = _pick_multiple(7, 14, 350)  # чтобы дроби 4/7, 3/7 и т.п. давали целое
+        n, d = random.choice([(4, 7), (5, 7), (3, 7), (2, 7)])
+        length = width * n // d
+        perim = 2 * (width + length)
+        description = (
+            f"Ширина прямоугольника {width} м, а длина составляет {n}/{d} его ширины. "
+            f"Найдите периметр прямоугольника. В ответ укажите только число"
+        )
+        points = 24
+        return {"title": title, "description": description, "correct_answer": str(perim), "points": points * 2, "_meta": {"variant": variant, "width": width, "n": n, "d": d, "ans": perim}}
 
-def generate_whole_from_part_word_task() -> Dict[str, Any]:
+    if variant == "two_step_remaining":
+        n1, d1 = random.choice([(2, 5), (1, 3), (3, 5)])
+        n2, d2 = random.choice([(1, 3), (1, 4), (2, 5)])
+        for _ in range(80):
+            total = random.randint(60, 300)
+            total = _pick_multiple(d1, max(60, total), 360)
+            after_first = total * (d1 - n1) // d1
+            if after_first <= 0 or after_first % d2 != 0:
+                continue
+            taken_second = after_first * n2 // d2
+            remaining = after_first - taken_second
+            if remaining <= 0:
+                continue
+            description = (
+                f"В книге {total} страниц. Сначала прочитали {n1}/{d1} всех страниц, "
+                f"затем {n2}/{d2} от оставшихся. Сколько страниц осталось прочитать? "
+                f"В ответ укажите только число"
+            )
+            points = 26
+            return {
+                "title": title,
+                "description": description,
+                "correct_answer": str(remaining),
+                "points": points * 2,
+                "_meta": {"variant": variant, "total": total, "remaining": remaining},
+            }
+        return generate_part_of_whole_word_task(difficulty=2)
+
+    return generate_part_of_whole_word_task(difficulty=difficulty or 1)
+
+
+def generate_whole_from_part_word_task(difficulty: Optional[int] = None) -> Dict[str, Any]:
     """Усложнённые задачи: найти исходное целое по части/результату."""
 
-    variant = random.choice(["classic_part", "classic_remaining", "reverse_operations"])
+    if difficulty == 1:
+        return generate_part_of_whole_word_task(difficulty=1)
+    if difficulty == 2:
+        variant = random.choice(["classic_part", "classic_remaining"])
+    else:
+        variant = random.choice(["classic_part", "classic_remaining", "reverse_operations"])
     title = random.choice(WHOLE_FROM_PART_TITLES) + f" #{random.randint(1, 1000)}"
 
     if variant == "classic_part":
@@ -1930,7 +2052,7 @@ def generate_whole_from_part_word_task() -> Dict[str, Any]:
     points = 28
     return {"title": title, "description": description, "correct_answer": str(x), "points": points * 2, "_meta": {"variant": variant, "mul": mul, "n": n, "d": d, "res": res, "ans": x}}
 
-def generate_part_fraction_word_task() -> Dict[str, Any]:
+def generate_part_fraction_word_task(difficulty: Optional[int] = None) -> Dict[str, Any]:
     """Усложнённая задача: какую часть составляет одна группа от другой/от общего (ответ — несократимая дробь)."""
     def plural_ru(n: int, one: str, two: str, five: str) -> str:
         # one: 1 (книга), two: 2-4 (книги), five: 5+ (книг)
@@ -1977,15 +2099,18 @@ def generate_part_fraction_word_task() -> Dict[str, Any]:
     ]
 
     ctx = random.choice(contexts)
-    total0 = random.randint(20, 120)
+    if difficulty == 1:
+        total0 = random.randint(12, 60)
+        change = False
+    else:
+        total0 = random.randint(20, 120)
+        change = difficulty >= 2 and random.random() < (0.55 if difficulty >= 3 else 0.35)
     part10 = random.randint(1, total0 - 1)
 
     total_one, total_two, total_five = ctx["total_forms"]
     cat1_one, cat1_two, cat1_five = ctx["cat1_forms"]
 
-    # Усложнение: возможны изменения (добавили/убрали) ТОЛЬКО первой категории,
-    # чтобы условие было однозначным (и проверяемым).
-    change = random.random() < 0.55
+    # Усложнение: возможны изменения (добавили/убрали) ТОЛЬКО первой категории
     delta = 0
     total = total0
     part1 = part10
@@ -2054,16 +2179,24 @@ def generate_part_fraction_word_task() -> Dict[str, Any]:
 
 def generate_territory_fraction_word_task(difficulty: int) -> Dict[str, Any]:
     """Генератор «Задачи на дроби» для битвы за территорию.
-    Объединяет три типа: часть от целого (доли), целое по части (доли), какую часть составляет (доля).
-    Ответ: число (для части от целого / целое по части) или несократимая дробь вида 5/6 (для «какую часть составляет»).
+    Объединяет три типа: часть от целого, целое по части, какую часть составляет.
+    Уровень 1: часть от целого (простые) + какую часть составляет.
+    Уровень 2: целое по части, часть с остатком, какую часть (с изменениями).
+    Уровень 3: все варианты, включая комбинированные.
     """
-    choice = random.choice(["part_of_whole", "whole_from_part", "part_fraction"])
-    if choice == "part_of_whole":
-        task = generate_part_of_whole_word_task()
-    elif choice == "whole_from_part":
-        task = generate_whole_from_part_word_task()
+    difficulty = max(1, min(3, difficulty))
+    if difficulty == 1:
+        choice = random.choice(["part_of_whole", "part_fraction"])
+    elif difficulty == 2:
+        choice = random.choice(["whole_from_part", "part_of_whole", "part_fraction"])
     else:
-        task = generate_part_fraction_word_task()
+        choice = random.choice(["part_of_whole", "whole_from_part", "part_fraction"])
+    if choice == "part_of_whole":
+        task = generate_part_of_whole_word_task(difficulty=difficulty)
+    elif choice == "whole_from_part":
+        task = generate_whole_from_part_word_task(difficulty=difficulty)
+    else:
+        task = generate_part_fraction_word_task(difficulty=difficulty)
     return {
         "title": "Задачи на дроби",
         "description": task["description"],
@@ -2394,18 +2527,44 @@ def generate_simplify_x_expression_task() -> Dict[str, Any]:
     return generate_simplify_x_expression_task()
 
 
-def generate_two_unknowns_word_task() -> Dict[str, Any]:
+def generate_two_unknowns_word_task(difficulty: Optional[int] = None) -> Dict[str, Any]:
     """
-    Текстовые задачи на две неизвестные величины:
-    1) сумма и разность (одна величина на D больше/дороже другой)
-    2) задачи на части: одна величина в k раз больше другой, известна сумма
-    3) задачи на части: одна величина в k раз больше другой, известна разность
-
-    Ответ: одно натуральное число (обычно "большая/дорогая" величина).
+    Текстовые задачи на две неизвестные величины.
+    difficulty 1: ratio_sum (k=2,3), сумма ≤ 50
+    difficulty 2: ratio_diff (k≤5), числа ≤ 100
+    difficulty 3: sum_diff или дробное отношение (2/3)
     """
 
     title = random.choice(MATH_TITLES) + f" #{random.randint(1, 1000)}"
-    variant = random.choice(["sum_diff_money", "sum_diff_generic", "ratio_sum", "ratio_diff"])
+
+    if difficulty == 1:
+        variant = "ratio_sum"
+    elif difficulty == 2:
+        variant = "ratio_diff"
+    elif difficulty == 3:
+        variant = random.choice(["sum_diff_money", "sum_diff_generic", "ratio_fraction"])
+    else:
+        variant = random.choice(["sum_diff_money", "sum_diff_generic", "ratio_sum", "ratio_diff"])
+
+    if variant == "ratio_fraction":
+        # Меньшее составляет 2/3 большего, известна сумма
+        n, d = 2, 3
+        y = random.randint(5, 45) * 3  # большее
+        x = (y * n) // d  # меньшее
+        t = x + y
+        ask_big = random.random() >= 0.25
+        ans = y if ask_big else x
+        description = (
+            f"Сумма двух чисел равна {t}. Меньшее число составляет {n}/{d} большего. "
+            f"Найдите {'большее' if ask_big else 'меньшее'} число. В ответ укажите только число"
+        )
+        return {
+            "title": title,
+            "description": description,
+            "correct_answer": str(ans),
+            "points": 52,
+            "_meta": {"variant": variant, "x": x, "y": y, "t": t, "ans": ans},
+        }
 
     # 1) Сумма и разность: x + y = T, x - y = D (x > y)
     if variant in ("sum_diff_money", "sum_diff_generic"):
@@ -2439,9 +2598,9 @@ def generate_two_unknowns_word_task() -> Dict[str, Any]:
         item_big, item_small = random.choice(ctx["items"])
 
         # Подбираем x,y так, чтобы (T ± D) были целыми и >0
-        y = random.randint(5, 250)
-        # D выбираем умеренно, чтобы формулировка была естественной
-        d = random.randint(10, 220)
+        y_max = 50 if difficulty == 3 else 250
+        y = random.randint(5, min(y_max, 120 if difficulty == 3 else 250))
+        d = random.randint(10, min(60 if difficulty == 3 else 220, y + 40))
         x = y + d
         t = x + y
 
@@ -2510,10 +2669,15 @@ def generate_two_unknowns_word_task() -> Dict[str, Any]:
 
     # 2) Задачи на части: в k раз больше, известна сумма
     if variant == "ratio_sum":
-        k = random.randint(2, 7)
-        small = random.randint(3, 60)
+        k = random.randint(2, 3 if difficulty == 1 else 7)
+        small_max = 50 // (k + 1) if difficulty == 1 else 60
+        small = random.randint(3, max(3, small_max))
         big = k * small
         total = big + small
+        if difficulty == 1 and total > 50:
+            small = random.randint(3, max(3, 50 // (k + 1)))
+            big = k * small
+            total = big + small
 
         contexts = [
             {"what": "фруктов", "where_sg": "корзине", "where_pl": "корзинах"},
@@ -2541,10 +2705,15 @@ def generate_two_unknowns_word_task() -> Dict[str, Any]:
         }
 
     # 3) Задачи на части: в k раз больше, известна разность
-    k = random.randint(2, 7)
-    small = random.randint(3, 70)
+    k = random.randint(2, 5 if difficulty == 2 else 7)
+    small_max = 100 // (k - 1) if difficulty == 2 else 70
+    small = random.randint(3, max(3, min(small_max, 70)))
     big = k * small
     diff = big - small
+    if difficulty == 2 and big > 100:
+        small = random.randint(3, max(3, 100 // k))
+        big = k * small
+        diff = big - small
 
     contexts = [
         {"what": "фруктов", "where_sg": "корзине"},
@@ -2651,7 +2820,41 @@ def generate_joint_work_task(difficulty: int) -> Dict[str, Any]:
         }
 
     num_workers = 2 if difficulty == 1 else random.choice([2, 3])
-    ask_part = random.choice([True, False])  # True: часть за 1 ед.; False: за сколько времени вся работа
+    ask_part = random.choice([True, False])
+
+    # Уровень 3: обратная задача — известно совместное время и время первого исполнителя
+    if difficulty == 3 and num_workers == 2 and not ask_part and random.random() < 0.35:
+        ctx = random.choice([
+            {"names": ["Первая бригада", "Вторая бригада"], "object": "дорогу", "action": "отремонтировать", "unit": "day"},
+            {"names": ["Первая труба", "Вторая труба"], "object": "бассейн", "object_gen": "бассейна", "action": "наполнить водой", "unit": "hour"},
+            {"names": ["Мастер", "Ученик"], "object": "работу", "object_gen": "работы", "action": "выполнить", "unit": "hour"},
+        ])
+        unit_key = ctx["unit"]
+        unit_word = {"day": "дней", "hour": "ч", "min": "мин"}[unit_key]
+        for _ in range(60):
+            T = random.randint(2, 12)
+            t1 = random.randint(T + 1, T + 24)
+            if (t1 - T) <= 0 or (t1 * T) % (t1 - T) != 0:
+                continue
+            t2 = (t1 * T) // (t1 - T)
+            if t2 <= 0 or t2 > 60:
+                continue
+            time_word_t = _time_unit_word(T, unit_key)
+            time_word_1 = _time_unit_word(t1, unit_key)
+            time_word_2 = _time_unit_word(t2, unit_key)
+            desc = (
+                f"{ctx['names'][0]} и {ctx['names'][1].lower()} вместе могут {ctx['action']} {ctx['object']} "
+                f"за {T} {time_word_t}. {ctx['names'][0]} одна выполняет эту работу за {t1} {time_word_1}. "
+                f"За сколько времени ({unit_word}) {ctx['names'][1].lower()} выполнит работу одна? "
+                f"В ответ укажите только число"
+            )
+            return {
+                "title": "Совместная работа",
+                "description": desc,
+                "correct_answer": str(t2),
+                "points": points,
+                "_meta": {"reverse": True, "T": T, "t1": t1, "t2": t2},
+            }
 
     # Контексты: object — винительный (отремонтировать что? дорогу), object_gen — родительный (часть чего? дороги)
     if num_workers == 2:
@@ -2813,21 +3016,20 @@ def generate_territory_geometry_task(difficulty: int) -> Dict[str, Any]:
     Ответ всегда — одно натуральное число.
     """
     difficulty = max(1, min(3, difficulty))
-    task_kind = random.choice([
-        "perimeter_direct",
-        "area_rect_direct",
-        "area_square_direct",
-        "area_triangle_direct",
-        "perimeter_inverse",
-        "area_inverse",
-        "linked_unknowns",
-    ])
-    # На сложности 1 не даём обратные и связанные
-    if difficulty == 1 and task_kind in ("perimeter_inverse", "area_inverse", "linked_unknowns"):
-        task_kind = random.choice(["perimeter_direct", "area_rect_direct", "area_square_direct", "area_triangle_direct"])
+    direct_kinds = ["perimeter_direct", "area_rect_direct", "area_square_direct", "area_triangle_direct"]
+    if difficulty >= 2:
+        direct_kinds.append("area_triangle_bh_direct")
+    all_kinds = direct_kinds + ["perimeter_inverse", "area_inverse", "linked_unknowns"]
+    if difficulty == 1:
+        pool = direct_kinds
+    elif difficulty == 2:
+        pool = direct_kinds + ["perimeter_inverse", "area_inverse", "area_triangle_bh_inverse"]
+    else:
+        pool = all_kinds + ["area_triangle_bh_inverse", "rect_area_side_perimeter"]
+    task_kind = random.choice(pool)
     # На сложности 3 чаще связанные
     if difficulty == 3 and random.random() < 0.4:
-        task_kind = "linked_unknowns"
+        task_kind = random.choice(["linked_unknowns", "rect_area_side_perimeter"])
 
     points = 10 + difficulty * 4
     title = random.choice(GEOMETRY_TITLES) + f" #{random.randint(1, 1000)}"
@@ -2874,6 +3076,48 @@ def generate_territory_geometry_task(difficulty: int) -> Dict[str, Any]:
         S = (leg1 * leg2) // 2
         desc = f"Катеты прямоугольного треугольника равны {leg1} см и {leg2} см. Найдите площадь (в см²). В ответ укажите одно число."
         return {"title": title, "description": desc, "correct_answer": str(S), "points": points}
+
+    if task_kind == "area_triangle_bh_direct":
+        base = random.randint(4, 24)
+        height = random.randint(2, 16)
+        S = (base * height) // 2
+        desc = (
+            f"Основание треугольника равно {base} см, высота — {height} см. "
+            f"Найдите площадь (в см²). В ответ укажите одно число."
+        )
+        return {"title": title, "description": desc, "correct_answer": str(S), "points": points}
+
+    if task_kind == "area_triangle_bh_inverse":
+        base = random.randint(4, 20)
+        height = random.randint(2, 16)
+        S = (base * height) // 2
+        ask = random.choice(["base", "height"])
+        if ask == "base":
+            desc = (
+                f"Площадь треугольника равна {S} см², высота равна {height} см. "
+                f"Найдите длину основания (в см). В ответ укажите одно число."
+            )
+            ans = base
+        else:
+            desc = (
+                f"Площадь треугольника равна {S} см², основание равно {base} см. "
+                f"Найдите высоту (в см). В ответ укажите одно число."
+            )
+            ans = height
+        return {"title": title, "description": desc, "correct_answer": str(ans), "points": points}
+
+    if task_kind == "rect_area_side_perimeter":
+        side = random.randint(4, 15)
+        other = random.randint(4, 18)
+        if side == other:
+            other += random.randint(1, 4)
+        S = side * other
+        P = 2 * (side + other)
+        desc = (
+            f"Площадь прямоугольника равна {S} см², одна из сторон равна {side} см. "
+            f"Найдите периметр (в см). В ответ укажите одно число."
+        )
+        return {"title": title, "description": desc, "correct_answer": str(P), "points": points}
 
     # --- Обратные: по периметру/площади найти сторону ---
     if task_kind == "perimeter_inverse":
@@ -2989,7 +3233,7 @@ def generate_territory_quantities_task(difficulty: int) -> Dict[str, Any]:
     if difficulty >= 2:
         task_types += ["ops_time_sum", "ops_length", "ops_weight"]
     if difficulty >= 3:
-        task_types += ["ops_time_div_add", "century"]
+        task_types += ["ops_time_div_add", "century", "convert_days_hours"]
     task_kind = random.choice(task_types)
 
     # --- Перевод времени: X ч Y мин в минутах ---
@@ -3110,6 +3354,17 @@ def generate_territory_quantities_task(difficulty: int) -> Dict[str, Any]:
         desc = "Найдите значение: (2 ч 30 мин) : 2 + 1 ч. Ответ дайте в минутах (одно число)."
         return {"title": title, "description": desc, "correct_answer": "135", "points": points}
 
+    # --- Сутки и часы → часы ---
+    if task_kind == "convert_days_hours":
+        days = random.randint(1, 5)
+        hours = random.randint(0, 23)
+        total = days * 24 + hours
+        if hours == 0:
+            desc = f"Выразите {days} сут в часах. В ответ укажите одно число."
+        else:
+            desc = f"Выразите {days} сут {hours} ч в часах. В ответ укажите одно число."
+        return {"title": title, "description": desc, "correct_answer": str(total), "points": points}
+
     # --- Век по году ---
     if task_kind == "century":
         # Год: желательно не круглый 1900/2000 чтобы не путать век
@@ -3129,43 +3384,42 @@ def generate_territory_quantities_task(difficulty: int) -> Dict[str, Any]:
     return {"title": title, "description": desc, "correct_answer": str(total), "points": points}
 
 
-# Проценты: только 10, 20, 25, 50 — все условия и ответы только целые числа
-PERCENT_VALUES = [10, 20, 25, 50]
+# Проценты по уровням (v2.1): все промежуточные и ответы — целые
+PERCENT_VALUES_L1 = [10, 20, 25, 50]
+PERCENT_VALUES_L2 = [10, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90]
+PERCENT_VALUES = PERCENT_VALUES_L1  # совместимость
+
+
+def _ns_for_percent(p: int, lo: int, hi: int) -> List[int]:
+    """N из [lo, hi], для которых N*p/100 целое."""
+    if p <= 0 or hi < lo:
+        return []
+    step = 100 // gcd(p, 100)
+    start = ((lo + step - 1) // step) * step
+    return list(range(start, hi + 1, step))
 
 
 def _percent_int_multipliers(p: int):
-    """Для p in {10,20,25,50} возвращает список допустимых N, чтобы N*p/100 было целым."""
-    if p == 10:
-        return list(range(20, 201, 10))
-    if p == 20:
-        return list(range(10, 101, 5))
-    if p == 25:
-        return list(range(8, 121, 4))
-    if p == 50:
-        return list(range(4, 101, 2))
-    return list(range(20, 101, 10))
+    """Обратная совместимость: допустимые N для p% (целое)."""
+    return _ns_for_percent(p, 4, 300)
 
 
 def generate_territory_percent_task(difficulty: int) -> Dict[str, Any]:
-    """Генератор «Проценты» для битвы за территорию (и PvP дуэли).
+    """Генератор «Проценты» для битвы за территорию (и PvP дуэли). v2.1
 
-    Уровень 1: найти процент от числа; найти число по его проценту.
-    Уровень 2: текстовые задачи (процент от числа, число по проценту, несколько действий);
-               какой процент одна величина составляет от другой.
-    Уровень 3: задачи повышенной сложности (несколько шагов, изменение на %).
-    Используются только 10%, 20%, 25%, 50%. Все числа в условиях и ответах — целые.
+    Ур.1: проценты 10/20/25/50; найти p% от N; число по p%. N ≤ 200.
+    Ур.2: расширенный набор процентов; текстовые задачи; какой % A от B. N ≤ 500.
+    Ур.3: любые целые % 1–99; числа подбираются так, что все результаты целые.
     """
     difficulty = max(1, min(3, difficulty))
     points = 10 + difficulty * 4
     title = random.choice(PERCENT_TITLES) + f" #{random.randint(1, 1000)}"
 
-    # --- Уровень 1: процент от числа; число по проценту ---
     if difficulty == 1:
         kind = random.choice(["pct_of_number", "number_by_pct"])
-        p = random.choice(PERCENT_VALUES)
+        p = random.choice(PERCENT_VALUES_L1)
         if kind == "pct_of_number":
-            allowed_N = _percent_int_multipliers(p)
-            allowed_N = [n for n in allowed_N if n * p // 100 >= 2]
+            allowed_N = [n for n in _ns_for_percent(p, 10, 200) if n * p // 100 >= 2]
             N = random.choice(allowed_N) if allowed_N else 40
             ans = N * p // 100
             desc = random.choice([
@@ -3175,33 +3429,28 @@ def generate_territory_percent_task(difficulty: int) -> Dict[str, Any]:
                 f"Найдите, чему равны {p}% от величины {N}. В ответ укажите одно число.",
             ])
             return {"title": title, "description": desc, "correct_answer": str(ans), "points": points}
-        else:
-            # p% от ? = R  =>  ? = R*100/p (уже целое при p in {10,20,25,50})
-            R = random.randint(2, 50)
-            whole = R * 100 // p
-            if whole <= 0:
-                whole = 20
-                R = p * whole // 100
-            desc = random.choice([
-                f"{p}% от неизвестного числа равны {R}. Найдите это число. В ответ укажите одно число.",
-                f"Некоторое число уменьшили до {p}% от него и получили {R}. Чему равно исходное число? В ответ укажите одно число.",
-                f"{R} — это {p}% некоторого числа. Найдите это число. В ответ укажите одно число.",
-            ])
-            return {"title": title, "description": desc, "correct_answer": str(whole), "points": points}
+        R = random.randint(2, 50)
+        whole = R * 100 // p
+        if whole <= 0 or whole > 200:
+            allowed_N = _ns_for_percent(p, 10, 200)
+            whole = random.choice(allowed_N) if allowed_N else 100
+            R = whole * p // 100
+        desc = random.choice([
+            f"{p}% от неизвестного числа равны {R}. Найдите это число. В ответ укажите одно число.",
+            f"{R} — это {p}% некоторого числа. Найдите это число. В ответ укажите одно число.",
+            f"Некоторое число. {p}% от него равны {R}. Чему равно исходное число? В ответ укажите одно число.",
+        ])
+        return {"title": title, "description": desc, "correct_answer": str(whole), "points": points}
 
-    # --- Уровень 2: текстовые задачи и «какой процент» ---
     if difficulty == 2:
         templates = []
-        # Текстовые: процент от числа (один шаг), N — только такие, что p% от N целое
-        for _ in range(3):
-            p = random.choice(PERCENT_VALUES)
-            allowed_N = _percent_int_multipliers(p)
-            allowed_N = [n for n in allowed_N if 4 <= n <= 100 and n * p // 100 >= 1]
+        for _ in range(4):
+            p = random.choice(PERCENT_VALUES_L2)
+            allowed_N = [n for n in _ns_for_percent(p, 20, 500) if n * p // 100 >= 1]
             if not allowed_N:
-                allowed_N = [20, 40, 60, 80, 100]
+                continue
             N = random.choice(allowed_N)
             ans = N * p // 100
-            # 1) класс, корзина, размер скидки, вклад, путь
             templates.append({
                 "desc": random.choice([
                     f"В классе {N} учеников. {p}% из них участвовали в олимпиаде. Сколько учеников участвовали? В ответ укажите одно число.",
@@ -3212,7 +3461,6 @@ def generate_territory_percent_task(difficulty: int) -> Dict[str, Any]:
                 ]),
                 "ans": str(ans),
             })
-            # 2) цена после скидки
             final_price = N - ans
             if final_price > 0:
                 templates.append({
@@ -3222,25 +3470,24 @@ def generate_territory_percent_task(difficulty: int) -> Dict[str, Any]:
                     ]),
                     "ans": str(final_price),
                 })
-        # Текстовые: число по проценту (R и whole уже целые)
         for _ in range(2):
-            p = random.choice(PERCENT_VALUES)
-            R = random.randint(2, 40)
-            whole = R * 100 // p
-            if whole > 0 and whole <= 500:
-                templates.append({
-                    "desc": random.choice([
-                        f"{R} учеников — это {p}% класса. Сколько всего учеников в классе? В ответ укажите одно число.",
-                        f"{p}% от некоторой суммы равны {R} рублям. Найдите эту сумму. В ответ укажите одно число.",
-                        f"{R} — это {p}% некоторой величины. Найдите эту величину. В ответ укажите одно число.",
-                    ]),
-                    "ans": str(whole),
-                })
-        # Два действия: остаток после процента; N только такие, что p% от N целое
-        p = random.choice(PERCENT_VALUES)
-        allowed_N = _percent_int_multipliers(p)
-        allowed_N = [n for n in allowed_N if 20 <= n <= 120]
-        N = random.choice(allowed_N) if allowed_N else 40
+            p = random.choice(PERCENT_VALUES_L2)
+            allowed_N = [n for n in _ns_for_percent(p, 20, 500) if 2 <= n * p // 100 <= 200]
+            if not allowed_N:
+                continue
+            whole = random.choice(allowed_N)
+            R = whole * p // 100
+            templates.append({
+                "desc": random.choice([
+                    f"{R} учеников — это {p}% класса. Сколько всего учеников в классе? В ответ укажите одно число.",
+                    f"{p}% от некоторой суммы равны {R} рублям. Найдите эту сумму. В ответ укажите одно число.",
+                    f"{R} — это {p}% некоторой величины. Найдите эту величину. В ответ укажите одно число.",
+                ]),
+                "ans": str(whole),
+            })
+        p = random.choice(PERCENT_VALUES_L2)
+        allowed_N = _ns_for_percent(p, 40, 400)
+        N = random.choice(allowed_N) if allowed_N else 100
         sold = N * p // 100
         rest = N - sold
         if rest > 0:
@@ -3249,111 +3496,704 @@ def generate_territory_percent_task(difficulty: int) -> Dict[str, Any]:
                     f"В магазине было {N} кг яблок. Продали {p}% от этого количества. Сколько килограммов яблок осталось? В ответ укажите одно число.",
                     f"Было {N} страниц. Прочитали {p}%. Сколько страниц осталось прочитать? В ответ укажите одно число.",
                     f"На складе было {N} т продукции. Продали {p}%. Сколько тонн продукции осталось продать? В ответ укажите одно число.",
-                    f"В бочке было {N} литров воды. Из неё вылили {p}% воды. Сколько литров воды осталось в бочке? В ответ укажите одно число.",
                 ]),
                 "ans": str(rest),
             })
-        # Какой процент A составляет от B
-        what_pct_pairs = [(5, 50), (10, 100), (8, 40), (15, 60), (25, 100), (12, 48), (20, 80), (6, 30), (9, 36), (14, 70), (18, 90)]
-        for (A, B) in what_pct_pairs:
-            if A <= B and B > 0:
-                pct = round(100 * A / B)
-                if pct in PERCENT_VALUES and pct > 0:
-                    templates.append({
-                        "desc": random.choice([
-                            f"Сколько процентов составляет число {A} от числа {B}? В ответ укажите только число (без знака %).",
-                            f"Какой процент от {B} составляет {A}? В ответ укажите одно число.",
-                        ]),
-                        "ans": str(pct),
-                    })
+        for _ in range(8):
+            p = random.choice(PERCENT_VALUES_L2)
+            allowed_B = [n for n in _ns_for_percent(p, 20, 500) if n * p // 100 >= 1]
+            if not allowed_B:
+                continue
+            B = random.choice(allowed_B)
+            A = B * p // 100
+            templates.append({
+                "desc": random.choice([
+                    f"Сколько процентов составляет число {A} от числа {B}? В ответ укажите только число (без знака %).",
+                    f"Какой процент от {B} составляет {A}? В ответ укажите одно число.",
+                ]),
+                "ans": str(p),
+            })
         if not templates:
             templates = [{"desc": "Найдите 25% от 40. В ответ укажите одно число.", "ans": "10"}]
         choice = random.choice(templates)
         return {"title": title, "description": choice["desc"], "correct_answer": choice["ans"], "points": points}
 
-    # --- Уровень 3: повышенная сложность (все результаты целые) ---
+    # --- Уровень 3: любые целые % 1–99, все результаты целые ---
     templates_l3 = []
-    # Увеличили на p%, потом уменьшили на q% — только (N,p,q), при которых first и second целые
-    for (N, p, q) in [(20, 20, 25), (40, 20, 25), (60, 20, 25), (80, 20, 25), (100, 20, 25),
-                      (100, 10, 20), (200, 10, 20), (50, 50, 20), (100, 50, 20)]:
-        first = N * (100 + p) // 100
-        second = first * (100 - q) // 100
-        if second > 0:
+    for _ in range(12):
+        p = random.randint(1, 99)
+        q = random.randint(1, 99)
+        # N кратно 100/gcd(100+p, 100), чтобы N*(100+p)/100 было целым
+        step_up = 100 // gcd(100 + p, 100)
+        candidates = []
+        for N in range(step_up, 501, step_up):
+            first = N * (100 + p) // 100
+            if first * (100 - q) % 100 != 0:
+                continue
+            second = first * (100 - q) // 100
+            if second > 0:
+                candidates.append((N, first, second))
+            if len(candidates) >= 8:
+                break
+        if candidates:
+            N, first, second = random.choice(candidates)
             templates_l3.append({
                 "desc": f"Число {N} увеличили на {p}%, затем полученный результат уменьшили на {q}%. Какое число получилось? В ответ укажите одно число.",
                 "ans": str(second),
             })
-    # Сначала уменьшили, потом увеличили
-    for (N, p, q) in [(40, 25, 20), (80, 25, 20), (60, 20, 25), (80, 20, 25), (100, 20, 25)]:
-        first = N * (100 - p) // 100
-        second = first * (100 + q) // 100
-        if second > 0:
+        # Уменьшили, затем увеличили
+        step_down = 100 // gcd(p, 100)
+        candidates2 = []
+        for N in range(step_down, 501, step_down):
+            first = N * (100 - p) // 100
+            if first <= 0 or first * (100 + q) % 100 != 0:
+                continue
+            second = first * (100 + q) // 100
+            if second > 0:
+                candidates2.append((N, second))
+            if len(candidates2) >= 8:
+                break
+        if candidates2:
+            N, second = random.choice(candidates2)
             templates_l3.append({
                 "desc": f"Число {N} уменьшили на {p}%, затем результат увеличили на {q}%. Какое число получилось? В ответ укажите одно число.",
                 "ans": str(second),
             })
-    # Мука: N кратно 40 чтобы 25% целое и остаток (3N/4) был кратен 10
-    for N in [40, 80, 120, 160]:
-        a = N * 25 // 100
-        rest = N - a
-        b = rest * 10 // 100
-        total_taken = a + b
-        if total_taken > 0:
+
+    for _ in range(6):
+        p = random.randint(5, 40)
+        q = random.randint(5, 40)
+        step1 = 100 // gcd(p, 100)
+        for N in range(max(40, step1), 401, step1):
+            a = N * p // 100
+            rest = N - a
+            if rest <= 0 or rest * q % 100 != 0:
+                continue
+            b = rest * q // 100
             templates_l3.append({
-                "desc": f"В магазине было {N} кг муки. Продали 25% от всей муки, затем 10% от остатка. Сколько всего килограммов муки продали? В ответ укажите одно число.",
-                "ans": str(total_taken),
-            })
-    # Две последовательные скидки: сначала -20%, потом ещё -20%
-    for base_price in [500, 800, 1000, 1200, 1500, 2000, 2500]:
-        price_after_first = base_price * 80 // 100
-        price_after_second = price_after_first * 80 // 100
-        if price_after_first > 0 and price_after_second > 0:
-            templates_l3.append({
-                "desc": f"Товар стоил {base_price} рублей. Сначала его цену снизили на 20%, затем ещё раз снизили на 20%. Сколько рублей стал стоить товар? В ответ укажите одно число.",
-                "ans": str(price_after_second),
-            })
-    # Обратные задачи: сначала -10%, потом -20%, известно конечное значение — найти исходную цену
-    for base_price in [900, 1200, 1500, 1600, 1800, 2000]:
-        after_first = base_price * 90 // 100
-        after_second = after_first * 80 // 100
-        if after_first > 0 and after_second > 0:
-            templates_l3.append({
-                "desc": f"Товар сначала подешевел на 10%, затем ещё на 20% и стал стоить {after_second} рублей. Сколько рублей стоил товар изначально? В ответ укажите одно число.",
-                "ans": str(base_price),
-            })
-    # Какой процент (сложнее числа)
-    for (A, B) in [(18, 90), (15, 75), (30, 150), (12, 60), (9, 45)]:
-        pct = round(100 * A / B)
-        if pct in PERCENT_VALUES:
-            templates_l3.append({
-                "desc": f"Сколько процентов составляет {A} от {B}? В ответ укажите только число.",
-                "ans": str(pct),
+                "desc": (
+                    f"В магазине было {N} кг муки. Продали {p}% от всей муки, затем {q}% от остатка. "
+                    f"Сколько всего килограммов муки продали? В ответ укажите одно число."
+                ),
+                "ans": str(a + b),
             })
             break
-    # «На сколько процентов изменилось»
-    N = random.randint(50, 100)
-    p = random.choice([10, 20, 25])
-    new_val = N * (100 + p) // 100
-    if new_val > N:
-        templates_l3.append({
-            "desc": f"Число {N} увеличили на {p}%. На сколько процентов получившееся число больше исходного? В ответ укажите одно число (процент).",
-            "ans": str(p),
-        })
-    # Процент от числа (крупные), только целые результаты
-    p = random.choice(PERCENT_VALUES)
-    allowed_N = [n for n in _percent_int_multipliers(p) if 100 <= n <= 300]
-    if allowed_N:
+
+    for _ in range(5):
+        p = random.choice([10, 15, 20, 25, 30])
+        q = random.choice([10, 15, 20, 25, 30])
+        step = 100 // gcd(p, 100)
+        for base in range(max(200, step), 2001, step):
+            after1 = base * (100 - p) // 100
+            if after1 * (100 - q) % 100 != 0:
+                continue
+            after2 = after1 * (100 - q) // 100
+            if after2 <= 0:
+                continue
+            templates_l3.append({
+                "desc": (
+                    f"Товар стоил {base} рублей. Сначала его цену снизили на {p}%, затем ещё раз снизили на {q}%. "
+                    f"Сколько рублей стал стоить товар? В ответ укажите одно число."
+                ),
+                "ans": str(after2),
+            })
+            templates_l3.append({
+                "desc": (
+                    f"Товар сначала подешевел на {p}%, затем ещё на {q}% и стал стоить {after2} рублей. "
+                    f"Сколько рублей стоил товар изначально? В ответ укажите одно число."
+                ),
+                "ans": str(base),
+            })
+            break
+
+    for _ in range(4):
+        p = random.randint(1, 99)
+        allowed_N = [n for n in _ns_for_percent(p, 50, 500) if n * p // 100 >= 1]
+        if not allowed_N:
+            continue
         N = random.choice(allowed_N)
         ans = N * p // 100
-        if ans > 0:
-            templates_l3.append({
-                "desc": f"Найдите {p}% от числа {N}. В ответ укажите одно число.",
-                "ans": str(ans),
-            })
+        templates_l3.append({
+            "desc": f"Найдите {p}% от числа {N}. В ответ укажите одно число.",
+            "ans": str(ans),
+        })
+        templates_l3.append({
+            "desc": f"Сколько процентов составляет {ans} от {N}? В ответ укажите только число.",
+            "ans": str(p),
+        })
+
+    for _ in range(3):
+        p = random.randint(5, 50)
+        allowed_N = _ns_for_percent(p, 40, 400)
+        if not allowed_N:
+            continue
+        N = random.choice(allowed_N)
+        new_val = N * (100 + p) // 100
+        templates_l3.append({
+            "desc": (
+                f"Число {N} увеличили на {p}%. На сколько процентов получившееся число больше исходного? "
+                f"В ответ укажите одно число (процент)."
+            ),
+            "ans": str(p),
+        })
+
     if not templates_l3:
-        templates_l3 = [{"desc": "Найдите 20% от 100. В ответ укажите одно число.", "ans": "20"}]
+        templates_l3 = [{"desc": "Найдите 23% от 200. В ответ укажите одно число.", "ans": "46"}]
     choice = random.choice(templates_l3)
     return {"title": title, "description": choice["desc"], "correct_answer": choice["ans"], "points": points}
+
+
+# --- Десятичные дроби (генераторы 19–22) ---
+
+DECIMAL_CONV_TITLES = [
+    "Перевод дробей",
+    "Десятичные и обыкновенные",
+    "Перевод десятичных дробей",
+]
+DECIMAL_ADD_SUB_TITLES = [
+    "Сложение и вычитание десятичных",
+    "Десятичные: сумма и разность",
+]
+DECIMAL_MUL_DIV_TITLES = [
+    "Умножение и деление десятичных",
+    "Десятичные: произведение и частное",
+]
+DECIMAL_WORD_TITLES = [
+    "Задачи на десятичные дроби",
+    "Десятичные дроби: текстовые задачи",
+]
+
+
+def _finite_denominators(max_den: int) -> List[int]:
+    """Знаменатели вида 2^a * 5^b, 2 ≤ den ≤ max_den."""
+    dens = []
+    a = 0
+    while (1 << a) <= max_den:
+        b = 0
+        while True:
+            d = (1 << a) * (5 ** b)
+            if d > max_den:
+                break
+            if d >= 2:
+                dens.append(d)
+            b += 1
+        a += 1
+    return sorted(set(dens))
+
+
+def _is_finite_decimal(f: Fraction) -> bool:
+    d = abs(f.denominator)
+    while d % 2 == 0:
+        d //= 2
+    while d % 5 == 0:
+        d //= 5
+    return d == 1
+
+
+def _frac_to_decimal_str(f: Fraction, max_places: int = 4) -> str:
+    """Конечная десятичная запись Fraction без лишних нулей.
+
+    Если нужно больше max_places знаков — ValueError (вызывающий код подбирает другие числа).
+    """
+    if not _is_finite_decimal(f):
+        raise ValueError("infinite decimal")
+    sign = "-" if f < 0 else ""
+    f = abs(f)
+    int_part = f.numerator // f.denominator
+    rem = f.numerator % f.denominator
+    if rem == 0:
+        return sign + str(int_part)
+    digits = []
+    den = f.denominator
+    while rem != 0:
+        if len(digits) > max_places:
+            raise ValueError("too many decimal places")
+        rem *= 10
+        digits.append(str(rem // den))
+        rem %= den
+    s = "".join(digits).rstrip("0")
+    if not s:
+        return sign + str(int_part)
+    return sign + f"{int_part}.{s}"
+
+
+def _random_finite_fraction(max_den: int, allow_improper: bool = True) -> Fraction:
+    dens = _finite_denominators(max_den)
+    den = random.choice(dens)
+    if allow_improper:
+        num = random.randint(1, den * 4)
+    else:
+        num = random.randint(1, den - 1) if den > 1 else 1
+    f = Fraction(num, den)
+    return f
+
+
+def _format_decimal_html(dec_str: str) -> str:
+    """Оформление десятичной дроби в условии задачи (с запятой)."""
+    display = str(dec_str).replace(".", ",")
+    return f'<span class="task-decimal">{display}</span>'
+
+
+def _format_fraction_value_html(f: Fraction) -> str:
+    """Обыкновенная/смешанная дробь в HTML (вертикальная запись)."""
+    ip, rn, rd = _to_mixed_irreducible(f.numerator, f.denominator)
+    if rn == 0:
+        return f'<span class="frac-int-only">{ip}</span>'
+    return _format_fraction_html(ip, rn, rd)
+
+
+def _op_html(op: str) -> str:
+    symbols = {"+": "+", "-": "−", "*": "×", "×": "×", ":": "÷", "÷": "÷", "/": "÷"}
+    return f'<span class="task-add-sub-op">{symbols.get(op, op)}</span>'
+
+
+def generate_decimal_fraction_conversion(difficulty: int) -> Dict[str, Any]:
+    """Генератор «Перевод дробей»: десятичная ↔ обыкновенная (конечные)."""
+    difficulty = max(1, min(3, difficulty))
+    points = 12 + difficulty * 4
+    title = "Перевод дробей"
+    max_den = {1: 10, 2: 20, 3: 32}[difficulty]
+    max_int = {1: 0, 2: 2, 3: 4}[difficulty]
+    direction = random.choice(["dec_to_frac", "frac_to_dec"])
+
+    if direction == "frac_to_dec":
+        for _ in range(40):
+            dens = [d for d in _finite_denominators(max_den) if d <= max_den]
+            den = random.choice(dens)
+            if difficulty == 1:
+                num = random.choice([1, den // 2 if den > 2 else 1, den - 1] + list(range(1, den)))
+                num = max(1, min(num, den - 1)) if den > 1 else 1
+                f = Fraction(num, den)
+            else:
+                int_p = random.randint(0, max_int)
+                num = random.randint(1, den - 1) if den > 1 else 1
+                f = Fraction(int_p * den + num, den)
+            if not _is_finite_decimal(f):
+                continue
+            try:
+                dec = _frac_to_decimal_str(f, max_places=4 if difficulty >= 2 else 3)
+            except ValueError:
+                continue
+            places = len(dec.split(".")[1]) if "." in dec else 0
+            if difficulty == 1 and places > 3:
+                continue
+            g = gcd(f.numerator, f.denominator)
+            f = Fraction(f.numerator // g, f.denominator // g)
+            frac_html = _format_fraction_value_html(f)
+            desc = random.choice([
+                f"Переведите обыкновенную дробь {frac_html} в десятичную. В ответ укажите одно число.",
+                f"Запишите дробь {frac_html} в виде десятичной дроби. В ответ укажите одно число.",
+            ])
+            return {
+                "title": title,
+                "description": desc,
+                "correct_answer": dec,
+                "points": points,
+                "answer_hint": "decimal",
+            }
+
+    # dec → frac
+    for _ in range(40):
+        dens = _finite_denominators(max_den)
+        den = random.choice(dens)
+        int_p = random.randint(0, max_int)
+        num = random.randint(1, den - 1) if den > 1 else 1
+        f = Fraction(int_p * den + num, den)
+        if not _is_finite_decimal(f):
+            continue
+        try:
+            dec = _frac_to_decimal_str(f, max_places=4)
+        except ValueError:
+            continue
+        if "." in dec and len(dec.split(".")[1]) > (3 if difficulty < 3 else 4):
+            continue
+        ip, rn, rd = _to_mixed_irreducible(f.numerator, f.denominator)
+        if rn == 0:
+            continue
+        dec_html = _format_decimal_html(dec)
+        desc = (
+            f"Переведите десятичную дробь {dec_html} в обыкновенную (смешанную) несократимую дробь. "
+            f"В ответе укажите целую часть, числитель и знаменатель."
+        )
+        return {
+            "title": title,
+            "description": desc,
+            "correct_answer": f"{ip}|{rn}|{rd}",
+            "points": points,
+            "answer_type": "mixed_fraction",
+            "display_frac": dec_html,
+            "display_kind": "decimal",
+            "int_part_zero": (ip == 0),
+        }
+    return {
+        "title": title,
+        "description": (
+            f"Переведите десятичную дробь {_format_decimal_html('0.5')} в обыкновенную. "
+            f"Укажите целую часть, числитель и знаменатель."
+        ),
+        "correct_answer": "0|1|2",
+        "points": points,
+        "answer_type": "mixed_fraction",
+        "display_frac": _format_decimal_html("0.5"),
+        "display_kind": "decimal",
+        "int_part_zero": True,
+    }
+
+
+def generate_decimal_add_sub(difficulty: int) -> Dict[str, Any]:
+    """Генератор «Сложение и вычитание десятичных»."""
+    difficulty = max(1, min(3, difficulty))
+    points = 12 + difficulty * 4
+    title = "Сложение и вычитание десятичных"
+    instruction = (
+        "Вычислите выражение ниже. В ответ укажите одно число (десятичную дробь или целое)."
+    )
+
+    def rnd_dec(places: int, lo: float = 0.1, hi: float = 99.0) -> Fraction:
+        scale = 10 ** places
+        a = random.randint(max(1, int(lo * scale)), int(hi * scale))
+        return Fraction(a, scale)
+
+    def dec_h(f: Fraction) -> str:
+        return _format_decimal_html(_frac_to_decimal_str(f))
+
+    def frac_h(f: Fraction) -> str:
+        return _format_fraction_value_html(f)
+
+    for attempt in range(50):
+        try:
+            if difficulty == 1:
+                places = random.choice([1, 2])
+                a = rnd_dec(places, 0.1, 50)
+                b = rnd_dec(places, 0.1, 50)
+                if random.choice([True, False]):
+                    expr_html = f"{dec_h(a)} {_op_html('+')} {dec_h(b)}"
+                    res = a + b
+                else:
+                    if a < b:
+                        a, b = b, a
+                    expr_html = f"{dec_h(a)} {_op_html('-')} {dec_h(b)}"
+                    res = a - b
+            elif difficulty == 2:
+                kind = random.choice(["dec_dec", "dec_frac", "frac_dec"])
+                if kind == "dec_dec":
+                    a = rnd_dec(random.randint(1, 3), 0.05, 40)
+                    b = rnd_dec(random.randint(1, 3), 0.05, 40)
+                    if random.choice([True, False]):
+                        expr_html = f"{dec_h(a)} {_op_html('+')} {dec_h(b)}"
+                        res = a + b
+                    else:
+                        if a < b:
+                            a, b = b, a
+                        expr_html = f"{dec_h(a)} {_op_html('-')} {dec_h(b)}"
+                        res = a - b
+                else:
+                    a = rnd_dec(random.randint(1, 3), 0.1, 20)
+                    fr = _random_finite_fraction(20, allow_improper=False)
+                    if random.choice([True, False]):
+                        expr_html = f"{dec_h(a)} {_op_html('+')} {frac_h(fr)}"
+                        res = a + fr
+                    else:
+                        if a < fr:
+                            expr_html = f"{frac_h(fr)} {_op_html('-')} {dec_h(a)}"
+                            res = fr - a
+                        else:
+                            expr_html = f"{dec_h(a)} {_op_html('-')} {frac_h(fr)}"
+                            res = a - fr
+            else:
+                kind = random.choice(["three", "parens", "mul_in"])
+                a = rnd_dec(1, 0.5, 15)
+                b = _random_finite_fraction(16, allow_improper=False)
+                c = rnd_dec(2, 0.1, 10)
+                if kind == "three":
+                    expr_html = f"{frac_h(b)} {_op_html('+')} {dec_h(a)} {_op_html('-')} {dec_h(c)}"
+                    res = b + a - c
+                elif kind == "parens":
+                    expr_html = (
+                        f"<span class=\"task-multi-frac-group\">({dec_h(a)} {_op_html('+')} {frac_h(b)})</span> "
+                        f"{_op_html('-')} {dec_h(c)}"
+                    )
+                    res = a + b - c
+                else:
+                    k = random.randint(2, 5)
+                    expr_html = f"{dec_h(a)} {_op_html('×')} {k} {_op_html('-')} {frac_h(b)}"
+                    res = a * k - b
+                if res < 0:
+                    continue
+            if not _is_finite_decimal(res):
+                continue
+            ans = _frac_to_decimal_str(res, max_places=3)
+            return {
+                "title": title,
+                "description": instruction,
+                "correct_answer": ans,
+                "points": points,
+                "display_frac1": expr_html,
+                "multi_frac_expression": True,
+                "answer_hint": "decimal",
+            }
+        except ValueError:
+            continue
+
+    return {
+        "title": title,
+        "description": instruction,
+        "correct_answer": "5.7",
+        "points": points,
+        "display_frac1": f"{_format_decimal_html('2.5')} {_op_html('+')} {_format_decimal_html('3.2')}",
+        "multi_frac_expression": True,
+        "answer_hint": "decimal",
+    }
+
+
+def generate_decimal_mul_div(difficulty: int) -> Dict[str, Any]:
+    """Генератор «Умножение и деление десятичных»."""
+    difficulty = max(1, min(3, difficulty))
+    points = 12 + difficulty * 4
+    title = "Умножение и деление десятичных"
+    instruction = (
+        "Вычислите выражение ниже. В ответ укажите одно число (десятичную дробь или целое)."
+    )
+
+    def rnd_dec(places: int, lo: int, hi: int) -> Fraction:
+        scale = 10 ** places
+        return Fraction(random.randint(lo, hi), scale)
+
+    def dec_h(f: Fraction) -> str:
+        return _format_decimal_html(_frac_to_decimal_str(f))
+
+    def frac_h(f: Fraction) -> str:
+        return _format_fraction_value_html(f)
+
+    for _ in range(60):
+        try:
+            if difficulty == 1:
+                kind = random.choice(["shift10", "shift01", "mul_nat", "div_nat"])
+                a = rnd_dec(1, 11, 99)
+                if kind == "shift10":
+                    k = random.choice([10, 100, 1000])
+                    if random.choice([True, False]):
+                        expr_html = f"{dec_h(a)} {_op_html('×')} {k}"
+                        res = a * k
+                    else:
+                        expr_html = f"{dec_h(a)} {_op_html('÷')} {k}"
+                        res = a / k
+                elif kind == "shift01":
+                    k = Fraction(1, random.choice([10, 100, 1000]))
+                    if random.choice([True, False]):
+                        expr_html = f"{dec_h(a)} {_op_html('×')} {dec_h(k)}"
+                        res = a * k
+                    else:
+                        expr_html = f"{dec_h(a)} {_op_html('÷')} {dec_h(k)}"
+                        res = a / k
+                elif kind == "mul_nat":
+                    n = random.randint(2, 9)
+                    expr_html = f"{dec_h(a)} {_op_html('×')} {n}"
+                    res = a * n
+                else:
+                    n = random.choice([2, 4, 5, 8])
+                    a = Fraction(random.randint(2, 40) * n, 10)
+                    expr_html = f"{dec_h(a)} {_op_html('÷')} {n}"
+                    res = a / n
+            elif difficulty == 2:
+                kind = random.choice(["mul_dec", "div_dec", "mul_frac"])
+                if kind == "mul_dec":
+                    a = rnd_dec(1, 11, 50)
+                    b = rnd_dec(1, 1, 9)
+                    expr_html = f"{dec_h(a)} {_op_html('×')} {dec_h(b)}"
+                    res = a * b
+                elif kind == "div_dec":
+                    res_target = Fraction(random.randint(2, 40), random.choice([1, 2, 4, 5, 10]))
+                    b = rnd_dec(2, 5, 50)
+                    a = res_target * b
+                    if not _is_finite_decimal(a) or not _is_finite_decimal(b):
+                        continue
+                    expr_html = f"{dec_h(a)} {_op_html('÷')} {dec_h(b)}"
+                    res = res_target
+                else:
+                    a = rnd_dec(2, 10, 90)
+                    fr = _random_finite_fraction(10, allow_improper=False)
+                    expr_html = f"{dec_h(a)} {_op_html('×')} {frac_h(fr)}"
+                    res = a * fr
+            else:
+                kind = random.choice(["chain", "mixed", "div_add"])
+                a = rnd_dec(1, 15, 40)
+                b = rnd_dec(1, 2, 8)
+                c = rnd_dec(1, 2, 10)
+                fr = _random_finite_fraction(8, allow_improper=False)
+                if kind == "chain":
+                    expr_html = (
+                        f"<span class=\"task-multi-frac-group\">({dec_h(a)} {_op_html('×')} {dec_h(b)})</span> "
+                        f"{_op_html('÷')} {dec_h(c)}"
+                    )
+                    res = (a * b) / c
+                elif kind == "mixed":
+                    expr_html = f"{frac_h(fr)} {_op_html('×')} {dec_h(a)} {_op_html('÷')} {dec_h(b)}"
+                    res = fr * a / b
+                else:
+                    res_div = Fraction(random.randint(2, 20), 1)
+                    b = rnd_dec(2, 5, 40)
+                    a = res_div * b
+                    c = rnd_dec(1, 1, 20)
+                    expr_html = f"{dec_h(a)} {_op_html('÷')} {dec_h(b)} {_op_html('+')} {dec_h(c)}"
+                    res = res_div + c
+            if res <= 0 or not _is_finite_decimal(res):
+                continue
+            ans = _frac_to_decimal_str(res, max_places=3)
+            return {
+                "title": title,
+                "description": instruction,
+                "correct_answer": ans,
+                "points": points,
+                "display_frac1": expr_html,
+                "multi_frac_expression": True,
+                "answer_hint": "decimal",
+            }
+        except ValueError:
+            continue
+
+    return {
+        "title": title,
+        "description": instruction,
+        "correct_answer": "25",
+        "points": points,
+        "display_frac1": f"{_format_decimal_html('2.5')} {_op_html('×')} 10",
+        "multi_frac_expression": True,
+        "answer_hint": "decimal",
+    }
+
+
+def generate_decimal_word_tasks(difficulty: int) -> Dict[str, Any]:
+    """Генератор «Задачи на десятичные дроби»."""
+    difficulty = max(1, min(3, difficulty))
+    points = 12 + difficulty * 4
+    title = "Задачи на десятичные дроби"
+    parts = [
+        Fraction(1, 10), Fraction(2, 10), Fraction(3, 10), Fraction(4, 10), Fraction(5, 10),
+        Fraction(1, 5), Fraction(2, 5), Fraction(1, 4), Fraction(3, 4), Fraction(1, 2),
+        Fraction(1, 8), Fraction(3, 8), Fraction(1, 20), Fraction(1, 25),
+    ]
+
+    def d(f: Fraction) -> str:
+        return _format_decimal_html(_frac_to_decimal_str(f))
+
+    for _ in range(50):
+        try:
+            p = random.choice(parts)
+            if difficulty == 1:
+                if random.choice([True, False]):
+                    candidates = [n for n in range(10, 101) if (Fraction(n) * p).denominator == 1]
+                    if not candidates:
+                        continue
+                    N = random.choice(candidates)
+                    ans_f = Fraction(N) * p
+                    desc = random.choice([
+                        f"Найдите {d(p)} от {N}. В ответ укажите одно число.",
+                        f"Чему равны {d(p)} числа {N}? В ответ укажите одно число.",
+                    ])
+                else:
+                    candidates = [n for n in range(10, 101) if (Fraction(n) * p).denominator == 1]
+                    if not candidates:
+                        continue
+                    X = random.choice(candidates)
+                    part_val = Fraction(X) * p
+                    ans_f = Fraction(X)
+                    desc = random.choice([
+                        f"{d(p)} числа равны {d(part_val)}. Найдите это число. В ответ укажите одно число.",
+                        f"Известно, что {d(p)} неизвестного числа составляют {d(part_val)}. Найдите число.",
+                    ])
+            elif difficulty == 2:
+                kind = random.choice(["part_of_dec", "whole_by_part_dec", "diff"])
+                if kind == "part_of_dec":
+                    base = Fraction(random.randint(12, 96), 10)
+                    ans_f = base * p
+                    if not _is_finite_decimal(ans_f):
+                        continue
+                    desc = f"Найдите {d(p)} от {d(base)}. В ответ укажите одно число."
+                elif kind == "whole_by_part_dec":
+                    X = Fraction(random.randint(10, 50), 1)
+                    part_val = X * p
+                    if not _is_finite_decimal(part_val):
+                        continue
+                    ans_f = X
+                    desc = (
+                        f"{d(p)} числа равны {d(part_val)}. "
+                        f"Найдите это число. В ответ укажите одно число."
+                    )
+                else:
+                    a = Fraction(random.randint(25, 90), 10)
+                    b = Fraction(random.randint(10, 40), 10)
+                    if a <= b:
+                        continue
+                    ans_f = a - b
+                    desc = (
+                        f"Одно число равно {d(a)}, другое — {d(b)}. "
+                        f"На сколько первое больше второго? В ответ укажите одно число."
+                    )
+            else:
+                if random.choice([True, False]):
+                    p = random.choice([Fraction(1, 4), Fraction(1, 5), Fraction(3, 10), Fraction(2, 5)])
+                    q = random.choice([Fraction(1, 5), Fraction(3, 10), Fraction(1, 4), Fraction(2, 5)])
+                    found = None
+                    for N in range(20, 201, 4):
+                        sold1 = Fraction(N) * p
+                        rest = Fraction(N) - sold1
+                        sold2 = rest * q
+                        left = rest - sold2
+                        if left <= 0:
+                            continue
+                        ok = True
+                        for x in (sold1, sold2, left):
+                            if not _is_finite_decimal(x):
+                                ok = False
+                                break
+                            s = _frac_to_decimal_str(x, 2)
+                            if "." in s and len(s.split(".")[1]) > 1:
+                                ok = False
+                                break
+                        if ok:
+                            found = (N, left)
+                            break
+                    if not found:
+                        continue
+                    N, left = found
+                    ans_f = left
+                    desc = (
+                        f"В корзине {N} кг яблок. Продали {d(p)} всех яблок, "
+                        f"а затем {d(q)} остатка. Сколько килограммов яблок осталось? "
+                        f"В ответ укажите одно число."
+                    )
+                else:
+                    p2 = random.choice([Fraction(1, 10), Fraction(1, 5), Fraction(1, 4), Fraction(3, 10)])
+                    base = random.choice(list(range(40, 201, 10)))
+                    ans_f = Fraction(base) * (1 + p2)
+                    if not _is_finite_decimal(ans_f):
+                        continue
+                    desc = (
+                        f"Число {base} увеличили на {d(p2)} его величины. "
+                        f"Какое число получилось? В ответ укажите одно число."
+                    )
+
+            if ans_f <= 0 or not _is_finite_decimal(ans_f):
+                continue
+            ans = _frac_to_decimal_str(ans_f, max_places=2)
+            return {
+                "title": title,
+                "description": desc,
+                "correct_answer": ans,
+                "points": points,
+                "answer_hint": "decimal",
+            }
+        except ValueError:
+            continue
+
+    return {
+        "title": title,
+        "description": f"Найдите {_format_decimal_html('0.3')} от 20. В ответ укажите одно число.",
+        "correct_answer": "6",
+        "points": points,
+        "answer_hint": "decimal",
+    }
 
 
 def _mixed_to_fraction(int_part: int, num: int, den: int) -> Fraction:
@@ -3560,6 +4400,24 @@ def generate_territory_variable_expr_task(difficulty: int) -> Dict[str, Any]:
     title = random.choice(VARIABLE_EXPR_TITLES) + f" #{random.randint(1, 1000)}"
     VAR_NAMES = ["x", "y", "z", "w"]
 
+    if difficulty == 3 and random.random() < 0.35:
+        v1, v2 = random.sample(["a", "b", "x", "y"], 2)
+        val1 = random.randint(2, 12)
+        val2 = random.randint(2, 12)
+        ans = val1 * val1 + val2 * val2
+        supers = {"a": "a", "b": "b", "x": "x", "y": "y"}
+        expr = f"{supers[v1]}²+{supers[v2]}²"
+        desc = (
+            f"Найдите значение выражения при заданных значениях переменных.\n\n"
+            f"{expr}\n\nпри {v1}={val1}, {v2}={val2}"
+        )
+        return {
+            "title": title,
+            "description": desc,
+            "correct_answer": str(ans),
+            "points": points,
+        }
+
     if difficulty == 1:
         n_vars = 1
         n_terms = random.randint(3, 4)  # 2–3 действия
@@ -3743,6 +4601,8 @@ def generate_territory_multi_frac_task(difficulty: int) -> Dict[str, Any]:
         correct_answer = f"{int_part}|{rem_num}|{rem_den}"
 
         expr_html = _build_multi_frac_expr_html(operands_mixed, ops)
+        if random.random() < 0.3:
+            expr_html = f'<span class="task-multi-frac-group">({expr_html})</span>'
 
         return {
             "title": title,
@@ -3782,11 +4642,8 @@ def generate_territory_multi_frac_task(difficulty: int) -> Dict[str, Any]:
 
 
 def generate_territory_two_unknowns_task(difficulty: int) -> Dict[str, Any]:
-    """Генератор «сумма/разность и части» для битвы за территорию.
-    Использует алгоритм двух неизвестных: сумма и разность, задачи на части (в k раз больше, сумма/разность).
-    Ответ: одно натуральное число.
-    """
-    task = generate_two_unknowns_word_task()
+    """Генератор «сумма/разность и части» для битвы за территорию."""
+    task = generate_two_unknowns_word_task(difficulty=difficulty)
     return {
         "title": "сумма/разность и части",
         "description": task["description"],

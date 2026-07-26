@@ -62,9 +62,59 @@ body {
 @media (max-width: 600px) {
     .admin-container { padding: 15px; }
     .admin-title { font-size: 28px; }
+    .territory-admin-tabs { flex-direction: column; border-bottom: none; gap: 6px; }
+    .territory-admin-tab-btn {
+        width: 100%;
+        text-align: left;
+        border-bottom: none;
+        border-radius: 12px;
+        background: #f0e8f8;
+        margin-bottom: 0;
+    }
+    .territory-admin-tab-btn.active {
+        background: linear-gradient(135deg, #9b8fb8 0%, #8b6fa8 100%);
+        color: #fff;
+        border-bottom-color: transparent;
+    }
+}
+.territory-admin-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    border-bottom: 2px solid #d4c5b0;
+    flex-wrap: wrap;
+}
+.territory-admin-tab-btn {
+    padding: 12px 20px;
+    border: none;
+    background: transparent;
+    color: #666;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all 0.25s ease;
+    font-family: inherit;
+    margin-bottom: -2px;
+}
+.territory-admin-tab-btn:hover {
+    color: #8b6fa8;
+}
+.territory-admin-tab-btn.active {
+    color: #8b6fa8;
+    border-bottom-color: #8b6fa8;
+}
+.territory-tab-panel {
+    display: none;
+}
+.territory-tab-panel.active {
+    display: block;
 }
 .admin-section {
     margin-bottom: 32px;
+}
+.admin-section:last-child {
+    margin-bottom: 0;
 }
 .admin-section h2 {
     color: #8b6fa8;
@@ -601,10 +651,18 @@ body {
         <a href="{{ url_for('admin_boss_raid') }}" class="back-link">Рейд босс</a>
         <a href="{{ url_for('admin_download_db') }}" class="back-link">Скачать БД</a>
         <a href="{{ url_for('logout') }}" class="back-link logout-link">Выйти</a>
-        <button type="button" class="territory-reset-btn" id="territoryAdminChatsBtn">Чаты с пользователями</button>
-        <button type="button" class="territory-reset-btn" id="territoryResetBtn">Сбросить битву за территорию</button>
     </div>
 
+    <nav class="territory-admin-tabs" aria-label="Разделы настроек битвы за территорию">
+        <button type="button" class="territory-admin-tab-btn active" data-tab="settings">Настройки битвы</button>
+        <button type="button" class="territory-admin-tab-btn" data-tab="map">Карта и задания</button>
+        <button type="button" class="territory-admin-tab-btn" data-tab="shop">Лавка</button>
+        <button type="button" class="territory-admin-tab-btn" data-tab="clans">Кланы</button>
+        <button type="button" class="territory-admin-tab-btn" data-tab="updates">Обновления игры</button>
+        <button type="button" class="territory-admin-tab-btn" data-tab="service">Сервис</button>
+    </nav>
+
+    <div class="territory-tab-panel active" id="territoryTabSettings" data-tab-panel="settings">
     <section class="admin-section">
         <h2>Регистрация участников</h2>
         <p>Когда регистрация отключена, пользователи могут просматривать карту, но не могут участвовать в битве (атаковать области, решать задачи).</p>
@@ -637,7 +695,9 @@ body {
         </div>
         <button type="button" class="edit-btn" id="saveCaptureSettingsBtn" style="margin-top: 10px;">Сохранить время</button>
     </section>
+    </div>
 
+    <div class="territory-tab-panel" id="territoryTabMap" data-tab-panel="map">
     <section class="admin-section">
         <h2>Генераторы заданий</h2>
         <p>Создайте генераторы по названию. Затем для каждой области укажите, какой генератор заданий использовать (или оставьте «Без генератора»).</p>
@@ -692,7 +752,9 @@ body {
         </table>
         </div>
     </section>
+    </div>
 
+    <div class="territory-tab-panel" id="territoryTabShop" data-tab-panel="shop">
     <section class="admin-section">
         <h2>Редактор лавки</h2>
         <p>Товары лавки отображаются в личном кабинете в блоке «Баланс и Лавка предметов». Категории: Усиления, Проклятия, Снаряжение, Особое и Сундуки (покупка → инвентарь → открытие с наградой).</p>
@@ -743,7 +805,9 @@ body {
             </table>
         </div>
     </section>
+    </div>
 
+    <div class="territory-tab-panel" id="territoryTabClans" data-tab-panel="clans">
     <section class="admin-section">
         <h2>Кланы</h2>
         <p>Название, цвет заливки захваченной области и флаг клана. Кланы создаются участниками в личном кабинете. Здесь можно просматривать участников, изменить название, цвет и флаг, а также удалить клан.</p>
@@ -778,7 +842,9 @@ body {
             {% endif %}
         </div>
     </section>
+    </div>
 
+    <div class="territory-tab-panel" id="territoryTabUpdates" data-tab-panel="updates">
     <section class="admin-section">
         <h2>Записи об обновлениях игры</h2>
         <p>Записи отображаются на странице «Обновления игры» (ссылка в футере). Здесь можно добавлять, редактировать и удалять записи.</p>
@@ -808,6 +874,20 @@ body {
             </table>
         </div>
     </section>
+    </div>
+
+    <div class="territory-tab-panel" id="territoryTabService" data-tab-panel="service">
+    <section class="admin-section">
+        <h2>Чаты с пользователями</h2>
+        <p>Обращения игроков и гостей из битвы за территорию. Ответы отображаются в чате на странице битвы.</p>
+        <button type="button" class="territory-reset-btn" id="territoryAdminChatsBtn">Открыть чаты с пользователями</button>
+    </section>
+    <section class="admin-section">
+        <h2>Сброс битвы за территорию</h2>
+        <p>Полный сброс карты, кланов, прогресса игроков и связанных данных. Операция необратима — используйте только при начале нового сезона.</p>
+        <button type="button" class="territory-reset-btn" id="territoryResetBtn">Сбросить битву за территорию</button>
+    </section>
+    </div>
 </div>
 
 <div class="clan-members-modal-overlay" id="clanMembersModal">
@@ -993,7 +1073,7 @@ body {
 <div class="territory-reset-modal-overlay" id="territoryResetModal">
     <div class="territory-reset-modal">
         <h3>Сброс битвы за территорию</h3>
-        <p>Все области — без владельца, сила 0; сооружения на карте сняты; армии Демогоргонов и метки кланов удалены. Все кланы удаляются (чаты, заявки, объявления). История и активные дуэли PvP, вызовы на дуэль, чат и список присутствующих на арене очищаются. У каждого игрока (кроме администраторов): уровень 1, опыт и навыки 0, энергия как при регистрации, нумы 0; из лавки битвы удаляются все купленные предметы и выдаётся только стартовый набор, как при регистрации. Аккаунты администраторов: сброс клана и карты, инвентарь и уровень не меняются. Для подтверждения введите пароль администратора.</p>
+        <p>Все области — без владельца, сила 0; сооружения на карте сняты; армии Демогоргонов и метки кланов удалены. Все кланы удаляются (чаты, заявки, объявления). История и активные дуэли PvP, вызовы на дуэль, чат и список присутствующих на арене очищаются. У каждого игрока (кроме администраторов): уровень 1, опыт и навыки 0, древо умений и выбранный класс сбрасываются, энергия как при регистрации, нумы 0; из лавки битвы удаляются все купленные предметы и выдаётся только стартовый набор, как при регистрации. Аккаунты администраторов: сброс клана и карты, инвентарь и уровень не меняются. Для подтверждения введите пароль администратора.</p>
         <div class="form-group">
             <label for="territoryResetPassword">Пароль администратора:</label>
             <input type="password" id="territoryResetPassword" placeholder="Пароль" autocomplete="current-password">
@@ -1030,6 +1110,51 @@ body {
 
 {% block scripts %}
 <script>
+(function territoryAdminTabs() {
+    var tabButtons = document.querySelectorAll('.territory-admin-tab-btn');
+    var tabPanels = document.querySelectorAll('.territory-tab-panel');
+    var validTabs = ['settings', 'map', 'shop', 'clans', 'updates', 'service'];
+
+    function activateTab(tabId, updateHash) {
+        if (validTabs.indexOf(tabId) === -1) tabId = 'settings';
+        tabButtons.forEach(function(btn) {
+            btn.classList.toggle('active', btn.getAttribute('data-tab') === tabId);
+        });
+        tabPanels.forEach(function(panel) {
+            panel.classList.toggle('active', panel.getAttribute('data-tab-panel') === tabId);
+        });
+        if (updateHash !== false && window.location.hash !== '#' + tabId) {
+            history.replaceState(null, '', '#' + tabId);
+        }
+        try { sessionStorage.setItem('territoryAdminTab', tabId); } catch (e) {}
+    }
+
+    tabButtons.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            activateTab(this.getAttribute('data-tab'));
+        });
+    });
+
+    var initialTab = 'settings';
+    if (window.location.hash && window.location.hash.length > 1) {
+        initialTab = window.location.hash.slice(1);
+    } else {
+        try {
+            var saved = sessionStorage.getItem('territoryAdminTab');
+            if (saved && validTabs.indexOf(saved) !== -1) initialTab = saved;
+        } catch (e) {}
+    }
+    activateTab(initialTab, false);
+    if (window.location.hash !== '#' + initialTab) {
+        history.replaceState(null, '', '#' + initialTab);
+    }
+    window.addEventListener('hashchange', function() {
+        if (window.location.hash && window.location.hash.length > 1) {
+            activateTab(window.location.hash.slice(1), false);
+        }
+    });
+})();
+
 (function() {
     var toggle = document.getElementById('registrationEnabledToggle');
     var textEl = document.getElementById('registrationToggleText');

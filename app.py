@@ -40,6 +40,10 @@ try:
         generate_territory_multi_frac_task,
         generate_mixed_numbers_task,
         generate_joint_work_task,
+        generate_decimal_fraction_conversion,
+        generate_decimal_add_sub,
+        generate_decimal_mul_div,
+        generate_decimal_word_tasks,
     )
 except ImportError:
     generate_expression_task = None
@@ -61,6 +65,10 @@ except ImportError:
     generate_territory_multi_frac_task = None
     generate_mixed_numbers_task = None
     generate_joint_work_task = None
+    generate_decimal_fraction_conversion = None
+    generate_decimal_add_sub = None
+    generate_decimal_mul_div = None
+    generate_decimal_word_tasks = None
 import re
 import shutil
 
@@ -455,6 +463,8 @@ USER_MAX_LEVEL = 1000
 XP_BASE_PER_LEVEL = 128
 # Ускоренная прокачка до 10 уровня
 XP_BASE_PER_LEVEL_BELOW_10 = 80
+# Пороги опыта: 1.2 = прокачка на 20% медленнее (нужно на 20% больше XP на уровень)
+XP_LEVEL_THRESHOLD_MULTIPLIER = 1.2
 
 # Демогоргоны (особый предмет)
 DEMOGORGON_MAX_HEALTH = 100_000
@@ -474,14 +484,17 @@ def xp_required_for_level(level):
     Уровни 2–10: база 40 (ускоренная ранняя прокачка).
     Уровни 11+: база 64 за уровень, при этом переход 10→11 равен 64*11 (704),
     чтобы не было скачка по сравнению с 11→12 и далее.
+    Итоговые пороги умножаются на XP_LEVEL_THRESHOLD_MULTIPLIER.
     """
     if level <= 1:
         return 0
     if level <= 10:
-        return XP_BASE_PER_LEVEL_BELOW_10 * level * (level - 1) // 2
-    # Суммарный XP на 10-м уровне + сумма 128*i для i=11..level
-    total_at_10 = XP_BASE_PER_LEVEL_BELOW_10 * 10 * 9 // 2
-    return total_at_10 + 64 * (level * (level + 1) - 110)
+        base = XP_BASE_PER_LEVEL_BELOW_10 * level * (level - 1) // 2
+    else:
+        # Суммарный XP на 10-м уровне + сумма 64*i для i=11..level
+        total_at_10 = XP_BASE_PER_LEVEL_BELOW_10 * 10 * 9 // 2
+        base = total_at_10 + 64 * (level * (level + 1) - 110)
+    return int(base * XP_LEVEL_THRESHOLD_MULTIPLIER)
 
 def xp_to_next_level(current_level):
     """Опыт, нужный для перехода с current_level на current_level+1.
@@ -566,6 +579,10 @@ class TerritoryTask(db.Model):
             if self.correct_answer and '|' in self.correct_answer:
                 parts = self.correct_answer.split('|')
                 d['int_part_zero'] = (len(parts) >= 1 and parts[0].strip() == '0')
+        if self.title == 'Перевод дробей' and self.correct_answer and self.correct_answer.count('|') == 2:
+            d['answer_type'] = 'mixed_fraction'
+            parts = self.correct_answer.split('|')
+            d['int_part_zero'] = (len(parts) >= 1 and parts[0].strip() == '0')
         return d
 
 
@@ -587,6 +604,7 @@ class User(UserMixin, db.Model):
     nums_balance = db.Column(db.Integer, default=0, nullable=False)  # Нумы (валюта за правильные решения задач)
     clan_join_ban_until = db.Column(db.DateTime, nullable=True)  # штраф после выхода из клана: до этого времени нельзя вступать в клан и подавать заявки
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
+    ability_class = db.Column(db.String(20), nullable=True)  # warrior|guardian|sage|tactician|duelist
     created_at = db.Column(db.DateTime, default=datetime.now)
 
     clan_obj = db.relationship('Clan', back_populates='members_rel', foreign_keys=[clan_id], lazy=True)
@@ -632,31 +650,34 @@ class User(UserMixin, db.Model):
 
     @property
     def damage(self):
-        """Текущий урон персонажа: база 5 + очки навыков + бонусы снаряжения."""
+        """Текущий урон персонажа: база + навыки + снаряжение + умения."""
         base = USER_BASE_DAMAGE + (self.damage_skill or 0)
         try:
             bonuses = _get_equipment_bonuses(self.id)
-            return base + int(bonuses.get('damage_add', 0) or 0)
+            ab = _get_ability_bonuses(self.id)
+            return base + int(bonuses.get('damage_add', 0) or 0) + int(ab.get('damage_add', 0) or 0)
         except Exception:
             return base
 
     @property
     def defense(self):
-        """Защита: база 5 + очки навыков + бонусы снаряжения."""
+        """Защита: база + навыки + снаряжение + умения."""
         base = USER_BASE_DEFENSE + (self.defense_skill or 0)
         try:
             bonuses = _get_equipment_bonuses(self.id)
-            return base + int(bonuses.get('defense_add', 0) or 0)
+            ab = _get_ability_bonuses(self.id)
+            return base + int(bonuses.get('defense_add', 0) or 0) + int(ab.get('defense_add', 0) or 0)
         except Exception:
             return base
 
     @property
     def energy(self):
-        """Макс. энергия: база 5 + очки навыков + бонусы снаряжения."""
+        """Макс. энергия: база + навыки + снаряжение + умения."""
         base = USER_BASE_ENERGY + (self.energy_skill or 0)
         try:
             bonuses = _get_equipment_bonuses(self.id)
-            return base + int(bonuses.get('max_energy_add', 0) or 0)
+            ab = _get_ability_bonuses(self.id)
+            return base + int(bonuses.get('max_energy_add', 0) or 0) + int(ab.get('max_energy_add', 0) or 0)
         except Exception:
             return base
 
@@ -728,6 +749,36 @@ class UserTerritoryStats(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), unique=True, nullable=False)
     total_damage_dealt = db.Column(db.Integer, default=0, nullable=False)  # урон при атаке чужих областей
     total_influence_points = db.Column(db.Integer, default=0, nullable=False)  # очки при защите своей области
+
+
+class UserStatCounter(db.Model):
+    """Счётчики для достижений и статистики."""
+    __tablename__ = 'user_stat_counter'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    counter_key = db.Column(db.String(80), nullable=False)
+    value = db.Column(db.Integer, default=0, nullable=False)
+    __table_args__ = (db.UniqueConstraint('user_id', 'counter_key', name='uq_user_stat_counter'),)
+
+
+class UserAchievement(db.Model):
+    """Разблокированные достижения."""
+    __tablename__ = 'user_achievement'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    achievement_code = db.Column(db.String(80), nullable=False)
+    unlocked_at = db.Column(db.DateTime, default=datetime.now, nullable=False)
+    __table_args__ = (db.UniqueConstraint('user_id', 'achievement_code', name='uq_user_achievement'),)
+
+
+class UserAbility(db.Model):
+    """Прокачанные умения (дерево навыков RPG)."""
+    __tablename__ = 'user_ability'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    ability_code = db.Column(db.String(50), nullable=False)
+    rank = db.Column(db.Integer, default=0, nullable=False)
+    __table_args__ = (db.UniqueConstraint('user_id', 'ability_code', name='uq_user_ability'),)
 
 
 # --- Лавка предметов (усиления / проклятия / снаряжение / особое), покупка за Нумы ---
@@ -1624,6 +1675,13 @@ def _invalidate_territory_settings_cache():
     _territory_capture_cache = None
 
 
+def _check_achievements(user_id):
+    """Синхронизировать счётчики и разблокировать достижения (без commit)."""
+    from achievements import sync_user_achievement_counters, check_and_unlock_achievements
+    sync_user_achievement_counters(user_id)
+    return check_and_unlock_achievements(user_id)
+
+
 def get_territory_registration_enabled():
     """Проверить, включена ли регистрация участников в битве за территорию."""
     cache_ttl = app.config.get('TERRITORY_SETTINGS_CACHE_SECONDS', 60)
@@ -1964,9 +2022,80 @@ def get_next_sunday_9am():
     next_sunday = now.replace(hour=9, minute=0, second=0, microsecond=0) + timedelta(days=days_until_sunday)
     return next_sunday
 
+
+def ensure_database_tables():
+    """Создаёт все таблицы из моделей SQLAlchemy, если их ещё нет в БД."""
+    from sqlalchemy import inspect
+
+    inspector = inspect(db.engine)
+    if db.engine.dialect.name == 'postgresql':
+        before = set(inspector.get_table_names(schema='public'))
+    else:
+        before = set(inspector.get_table_names())
+    db.create_all()
+    if db.engine.dialect.name == 'postgresql':
+        after = set(inspector.get_table_names(schema='public'))
+    else:
+        after = set(inspector.get_table_names())
+    created = sorted(after - before)
+    if created:
+        print(f"Созданы таблицы: {', '.join(created)}")
+    fix_postgresql_sequences()
+
+
+def _pg_quote_table(table_name):
+    """Экранирование имени таблицы для SQL (зарезервированное user)."""
+    if table_name == 'user':
+        return '"user"'
+    return table_name
+
+
+def fix_postgresql_sequences():
+    """Синхронизирует serial/identity sequences PostgreSQL с фактическим MAX(id).
+
+    Нужно после импорта данных или миграции с SQLite, иначе INSERT падает с user_pkey duplicate.
+    """
+    if db.engine.dialect.name != 'postgresql':
+        return
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(db.engine)
+    table_names = set(inspector.get_table_names(schema='public'))
+    fixed = []
+    for table in db.metadata.sorted_tables:
+        if table.name not in table_names:
+            continue
+        pk_cols = list(table.primary_key.columns)
+        if len(pk_cols) != 1 or pk_cols[0].name != 'id':
+            continue
+        qt = _pg_quote_table(table.name)
+        try:
+            with db.engine.begin() as conn:
+                seq = conn.execute(
+                    text('SELECT pg_get_serial_sequence(:tbl, :col)'),
+                    {'tbl': table.name, 'col': 'id'},
+                ).scalar()
+                if not seq:
+                    continue
+                conn.execute(
+                    text(
+                        f'SELECT setval('
+                        f"pg_get_serial_sequence(:tbl, 'id'), "
+                        f'COALESCE((SELECT MAX(id) FROM {qt}), 0) + 1, '
+                        f'false)'
+                    ),
+                    {'tbl': table.name},
+                )
+            fixed.append(table.name)
+        except Exception as e:
+            print(f'Не удалось синхронизировать sequence для {table.name}: {e}')
+    if fixed:
+        print(f'Синхронизированы PostgreSQL sequences: {", ".join(fixed)}')
+
+
 # Создание таблиц и инициализация при первом старте
 with app.app_context():
-    db.create_all()
+    ensure_database_tables()
     is_pg = db.engine.dialect.name == 'postgresql'
     _datetime_type = 'TIMESTAMP' if is_pg else 'DATETIME'
     _bool_true = 'TRUE' if is_pg else '1'
@@ -2499,6 +2628,9 @@ with app.app_context():
                 if 'clan_join_ban_until' not in columns:
                     conn.execute(text('ALTER TABLE "user" ADD COLUMN clan_join_ban_until TIMESTAMP'))
                     print("Добавлена колонка clan_join_ban_until в user")
+                if 'ability_class' not in columns:
+                    conn.execute(text('ALTER TABLE "user" ADD COLUMN ability_class VARCHAR(20)'))
+                    print("Добавлена колонка ability_class в user")
         if 'clan' in tables:
             clan_columns = [col['name'] for col in inspector.get_columns('clan')]
             if 'can_use_gif_flag' not in clan_columns:
@@ -2548,6 +2680,9 @@ with app.app_context():
     except Exception as e:
         print(f"Ошибка при миграции кланов: {e}")
         db.create_all()
+
+    # Повторно: создать таблицы новых моделей, добавленных после миграций выше
+    ensure_database_tables()
 
     # Создание директорий для загрузки изображений
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -2670,7 +2805,7 @@ def login():
 def logout():
     logout_user()
     flash('Вы успешно вышли из системы', 'info')
-    return redirect(url_for('territory_battle_page'))
+    return redirect(url_for('index'))
 
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -2718,7 +2853,7 @@ def register():
         db.session.commit()
         login_user(user)
         flash('Регистрация успешна! Добро пожаловать.', 'info')
-        return redirect(url_for('cabinet'))
+        return redirect(url_for('territory_battle_rules'))
     return render_template('register.html')
 
 
@@ -2789,9 +2924,14 @@ def cabinet():
             'can_manage_requests': can_accept,
             'can_kick_members': can_kick,
         }
+    from achievements import get_achievements_payload, get_extended_stats
+    from abilities import ability_points_available
+    _check_achievements(user.id)
+    db.session.commit()
     return render_template(
         'cabinet.html',
         user=user,
+        ability_points_available=ability_points_available(user),
         clan_data=clan_data,
         pending_request=pending_request,
         avatar_url=url_for('static', filename=_avatar_static_filename(user.avatar_filename)) if user.avatar_filename else None,
@@ -2800,7 +2940,27 @@ def cabinet():
         clan_extra_slot_price=CLAN_EXTRA_SLOT_PRICE,
         clan_max_members_limit=CLAN_MAX_MEMBERS_LIMIT,
         character_rename_price=CHARACTER_RENAME_PRICE,
+        extended_stats=get_extended_stats(user.id),
+        achievements_payload=get_achievements_payload(user.id),
     )
+
+
+@app.route('/api/cabinet/achievements')
+@login_required
+def api_cabinet_achievements():
+    """Достижения и расширенная статистика."""
+    if current_user.is_admin:
+        return jsonify({'success': False, 'error': 'Недоступно'}), 403
+    from achievements import get_achievements_payload, get_extended_stats
+    sync_newly = _check_achievements(current_user.id)
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'stats': get_extended_stats(current_user.id),
+        'achievements': get_achievements_payload(current_user.id),
+        'newly_unlocked': sync_newly,
+        'nums_balance': current_user.nums_balance or 0,
+    })
 
 
 @app.route('/api/cabinet/profile', methods=['POST'])
@@ -2809,6 +2969,7 @@ def api_cabinet_profile():
     """Обновить профиль: avatar (имя персонажа меняется только платно через /api/cabinet/rename-character)."""
     user = current_user
     data = request.form
+    avatar_changed = False
     if 'avatar' in request.files:
         f = request.files['avatar']
         if f and f.filename and f.filename.rsplit('.', 1)[-1].lower() in ALLOWED_EXTENSIONS:
@@ -2818,8 +2979,18 @@ def api_cabinet_profile():
             f.save(os.path.join(folder, filename))
             # Путь относительно static (без "static/"), иначе url_for даёт /static/static/...
             user.avatar_filename = f'uploads/avatars/{filename}'
+            avatar_changed = True
+    newly = []
+    if avatar_changed:
+        from achievements import increment_counter, COUNTER_AVATAR_SET
+        increment_counter(user.id, COUNTER_AVATAR_SET)
+        newly = _check_achievements(user.id)
     db.session.commit()
-    return jsonify({'success': True, 'avatar_url': url_for('static', filename=_avatar_static_filename(user.avatar_filename)) if user.avatar_filename else None})
+    return jsonify({
+        'success': True,
+        'avatar_url': url_for('static', filename=_avatar_static_filename(user.avatar_filename)) if user.avatar_filename else None,
+        'newly_unlocked': newly,
+    })
 
 
 @app.route('/api/cabinet/rename-character', methods=['POST'])
@@ -2847,11 +3018,15 @@ def api_cabinet_rename_character():
         }), 400
     current_user.nums_balance = balance - CHARACTER_RENAME_PRICE
     current_user.character_name = new_name
+    from achievements import increment_counter, COUNTER_RENAMES
+    increment_counter(current_user.id, COUNTER_RENAMES)
+    newly = _check_achievements(current_user.id)
     db.session.commit()
     return jsonify({
         'success': True,
         'character_name': current_user.character_name,
         'balance': current_user.nums_balance,
+        'newly_unlocked': newly,
     })
 
 
@@ -2879,6 +3054,7 @@ def api_cabinet_skills():
     user.damage_skill = d
     user.defense_skill = df
     user.energy_skill = e
+    newly = _check_achievements(user.id)
     db.session.commit()
     user.ensure_energy_refill()
     return jsonify({
@@ -2888,6 +3064,63 @@ def api_cabinet_skills():
         'energy': user.energy,
         'current_energy': user.current_energy_value,
         'skill_points_available': user.skill_points_available,
+        'newly_unlocked': newly,
+    })
+
+
+@app.route('/api/cabinet/abilities')
+@login_required
+def api_cabinet_abilities():
+    """Дерево умений: каталог, прогресс и бонусы."""
+    if current_user.is_admin:
+        return jsonify({'success': False, 'error': 'Недоступно'}), 403
+    from abilities import get_abilities_payload
+    return jsonify({'success': True, **get_abilities_payload(current_user)})
+
+
+@app.route('/api/cabinet/abilities/choose-class', methods=['POST'])
+@login_required
+def api_cabinet_abilities_choose_class():
+    """Однократный выбор класса умений (ветки дерева)."""
+    if current_user.is_admin:
+        return jsonify({'success': False, 'error': 'Недоступно'}), 403
+    data = request.get_json() or {}
+    branch_id = (data.get('branch_id') or data.get('class_id') or '').strip()
+    if not branch_id:
+        return jsonify({'success': False, 'error': 'branch_id обязателен'}), 400
+    from abilities import choose_ability_class, get_abilities_payload
+    ok, err = choose_ability_class(current_user, branch_id)
+    if not ok:
+        return jsonify({'success': False, 'error': err}), 400
+    db.session.commit()
+    return jsonify({'success': True, **get_abilities_payload(current_user)})
+
+
+@app.route('/api/cabinet/abilities/upgrade', methods=['POST'])
+@login_required
+def api_cabinet_abilities_upgrade():
+    """Прокачать умение на 1 ранг."""
+    if current_user.is_admin:
+        return jsonify({'success': False, 'error': 'Недоступно'}), 403
+    data = request.get_json() or {}
+    code = (data.get('ability_code') or '').strip()
+    if not code:
+        return jsonify({'success': False, 'error': 'ability_code обязателен'}), 400
+    from abilities import upgrade_ability, get_abilities_payload
+    ok, err = upgrade_ability(current_user, code)
+    if not ok:
+        return jsonify({'success': False, 'error': err}), 400
+    db.session.commit()
+    current_user.ensure_energy_refill()
+    db.session.commit()
+    payload = get_abilities_payload(current_user)
+    return jsonify({
+        'success': True,
+        'damage': current_user.damage,
+        'defense': current_user.defense,
+        'energy': current_user.energy,
+        'current_energy': current_user.current_energy_value,
+        **payload,
     })
 
 
@@ -3297,6 +3530,21 @@ def _get_equipment_bonuses(user_id: int | None):
     return result
 
 
+def _get_ability_bonuses(user_id):
+    """Суммарные бонусы от дерева умений (только выбранный класс)."""
+    try:
+        from abilities import aggregate_ability_bonuses, get_user_ability_class
+        chosen = get_user_ability_class(User.query.get(user_id))
+        return aggregate_ability_bonuses(user_id=user_id, chosen_class=chosen)
+    except Exception:
+        return {
+            'damage_add': 0, 'defense_add': 0, 'max_energy_add': 0,
+            'damage_pct': 0.0, 'defense_pct': 0.0,
+            'xp_reward_pct': 0.0, 'nums_reward_pct': 0.0,
+            'pvp_damage_pct': 0.0, 'pvp_damage_add': 0, 'pvp_hp_add': 0,
+        }
+
+
 def _get_multipliers_for_action(user_id, clan_id, region_index, is_attack):
     """
     Суммарные множители (1 + sum(percent/100)) по типам эффектов для одного действия.
@@ -3350,6 +3598,12 @@ def _get_multipliers_for_action(user_id, clan_id, region_index, is_attack):
         if isinstance(eq, dict):
             xp_reward_pct += eq.get('xp_pct', 0.0) or 0.0
             nums_reward_pct += eq.get('nums_pct', 0.0) or 0.0
+        ab = _get_ability_bonuses(user_id)
+        if isinstance(ab, dict):
+            damage_pct += ab.get('damage_pct', 0.0) or 0.0
+            defense_pct += ab.get('defense_pct', 0.0) or 0.0
+            xp_reward_pct += ab.get('xp_reward_pct', 0.0) or 0.0
+            nums_reward_pct += ab.get('nums_reward_pct', 0.0) or 0.0
 
     return {
         'damage_pct': damage_pct,
@@ -3456,11 +3710,15 @@ def api_shop_purchase():
     current_user.nums_balance = balance - price
     purchase = UserShopPurchase(user_id=current_user.id, shop_item_id=item.id)
     db.session.add(purchase)
+    from achievements import increment_counter, COUNTER_NUMS_SPENT
+    increment_counter(current_user.id, COUNTER_NUMS_SPENT, price)
+    newly = _check_achievements(current_user.id)
     db.session.commit()
     return jsonify({
         'success': True,
         'balance': current_user.nums_balance,
         'purchase_id': purchase.id,
+        'newly_unlocked': newly,
     })
 
 
@@ -3490,11 +3748,15 @@ def api_nums_transfer():
         return jsonify({'success': False, 'error': 'Недостаточно Нумов', 'balance': balance}), 400
     current_user.nums_balance = balance - amount
     recipient.nums_balance = (recipient.nums_balance or 0) + amount
+    from achievements import increment_counter, COUNTER_NUMS_TRANSFERRED
+    increment_counter(current_user.id, COUNTER_NUMS_TRANSFERRED, amount)
+    newly = _check_achievements(current_user.id)
     db.session.commit()
     return jsonify({
         'success': True,
         'balance': current_user.nums_balance,
         'recipient_name': recipient.character_name or recipient.username,
+        'newly_unlocked': newly,
     })
 
 
@@ -3669,6 +3931,9 @@ def api_cabinet_equipment_equip():
         if prev:
             db.session.delete(prev)
         db.session.add(UserEquipment(user_id=current_user.id, purchase_id=purchase.id, slot=slot))
+    from achievements import increment_counter, COUNTER_EQUIP_ACTIONS
+    increment_counter(current_user.id, COUNTER_EQUIP_ACTIONS)
+    newly = _check_achievements(current_user.id)
     db.session.commit()
     return api_cabinet_equipment_state()
 
@@ -3729,11 +3994,15 @@ def api_cabinet_inventory_sell(purchase_id):
     refund = max(0, int(price // 2))
     current_user.nums_balance = (current_user.nums_balance or 0) + refund
     db.session.delete(purchase)
+    from achievements import increment_counter, COUNTER_ITEMS_SOLD
+    increment_counter(current_user.id, COUNTER_ITEMS_SOLD)
+    newly = _check_achievements(current_user.id)
     db.session.commit()
     return jsonify({
         'success': True,
         'balance': current_user.nums_balance,
         'refund': refund,
+        'newly_unlocked': newly,
     })
 
 
@@ -3762,9 +4031,12 @@ def api_cabinet_inventory_use(purchase_id):
         return _use_special_shop_item(purchase, item)
     effects = list(item.effects)
     if not effects:
+        from achievements import increment_counter, COUNTER_ITEMS_USED
+        increment_counter(current_user.id, COUNTER_ITEMS_USED)
+        newly = _check_achievements(current_user.id)
         db.session.delete(purchase)
         db.session.commit()
-        return jsonify({'success': True, 'message': 'Предмет использован'})
+        return jsonify({'success': True, 'message': 'Предмет использован', 'newly_unlocked': newly})
 
     data = request.get_json() or {}
     targets = {e.target for e in effects if e.target}
@@ -3855,12 +4127,17 @@ def api_cabinet_inventory_use(purchase_id):
     )
     db.session.add(buff)
     db.session.delete(purchase)
+    from achievements import increment_counter, COUNTER_ITEMS_USED, COUNTER_BUFFS_APPLIED
+    increment_counter(current_user.id, COUNTER_ITEMS_USED)
+    increment_counter(current_user.id, COUNTER_BUFFS_APPLIED)
+    newly = _check_achievements(current_user.id)
     db.session.commit()
     return jsonify({
         'success': True,
         'message': 'Предмет использован',
         'buff_id': buff.id,
         'one_shot': one_shot,
+        'newly_unlocked': newly,
     })
 
 
@@ -3909,6 +4186,9 @@ def api_cabinet_inventory_enchant_weapon():
     if success:
         weapon_p.weapon_enchant_level = cur_lv + 1
         db.session.delete(scroll_p)
+        from achievements import set_counter_max, COUNTER_WEAPON_ENCHANT_MAX
+        set_counter_max(current_user.id, COUNTER_WEAPON_ENCHANT_MAX, cur_lv + 1)
+        newly = _check_achievements(current_user.id)
         db.session.commit()
         return jsonify({
             'success': True,
@@ -3921,6 +4201,7 @@ def api_cabinet_inventory_enchant_weapon():
                 f'Оружие «{weapon_item.name or "Оружие"}»: заточка с +{cur_lv} до +{cur_lv + 1}. '
                 f'Свиток израсходован.'
             ),
+            'newly_unlocked': newly,
         })
 
     removed_any = False
@@ -3999,6 +4280,9 @@ def api_cabinet_chest_open(purchase_id):
         })
     purchase.chest_opened_at = datetime.now()
     purchase.chest_drop_option_id = chosen.id
+    from achievements import increment_counter, COUNTER_CHESTS_OPENED
+    increment_counter(current_user.id, COUNTER_CHESTS_OPENED)
+    newly = _check_achievements(current_user.id)
     db.session.commit()
     theme = _chest_animation_theme(item.chest_type)
     gid = chosen.grant_shop_item_id
@@ -4094,8 +4378,12 @@ def api_clan_create():
                 f.save(os.path.join(folder, filename))
                 clan.flag_filename = f'uploads/clan_flags/{filename}'
     current_user.clan_id = clan.id
+    from achievements import increment_counter, COUNTER_CLAN_CREATED, COUNTER_CLAN_JOINED
+    increment_counter(current_user.id, COUNTER_CLAN_CREATED)
+    increment_counter(current_user.id, COUNTER_CLAN_JOINED)
+    newly = _check_achievements(current_user.id)
     db.session.commit()
-    return jsonify({'success': True, 'clan': clan.to_dict()})
+    return jsonify({'success': True, 'clan': clan.to_dict(), 'newly_unlocked': newly})
 
 
 @app.route('/api/clan/<int:clan_id>/update', methods=['POST'])
@@ -4187,8 +4475,11 @@ def api_clan_join_request():
         return jsonify({'success': False, 'error': 'Сообщение не должно превышать 100 символов'}), 400
     req = ClanJoinRequest(user_id=current_user.id, clan_id=clan_id, status='pending', message=message or None)
     db.session.add(req)
+    from achievements import increment_counter, COUNTER_CLAN_APPLICATIONS
+    increment_counter(current_user.id, COUNTER_CLAN_APPLICATIONS)
+    newly = _check_achievements(current_user.id)
     db.session.commit()
-    return jsonify({'success': True})
+    return jsonify({'success': True, 'newly_unlocked': newly})
 
 
 @app.route('/api/clan/cancel-request', methods=['POST'])
@@ -4231,8 +4522,12 @@ def api_clan_accept_request(clan_id, request_id):
     # Новые участники клана по умолчанию — Вассал
     req.user.clan_rank = CLAN_RANK_VASSAL
     req.status = 'accepted'
+    joiner_id = req.user_id
+    from achievements import increment_counter, COUNTER_CLAN_JOINED
+    increment_counter(joiner_id, COUNTER_CLAN_JOINED)
+    newly_joiner = _check_achievements(joiner_id)
     db.session.commit()
-    return jsonify({'success': True})
+    return jsonify({'success': True, 'newly_unlocked': newly_joiner})
 
 
 @app.route('/api/clan/<int:clan_id>/reject/<int:request_id>', methods=['POST'])
@@ -4433,8 +4728,12 @@ def api_clan_set_rank(clan_id, user_id):
     if rank not in allowed_ranks:
         return jsonify({'success': False, 'error': 'Некорректное звание'}), 400
     target.clan_rank = rank
+    from achievements import set_counter_max, COUNTER_CLAN_RANK_TIER, CLAN_RANK_TIERS
+    tier = CLAN_RANK_TIERS.get(rank, 0)
+    set_counter_max(target.id, COUNTER_CLAN_RANK_TIER, tier)
+    newly = _check_achievements(target.id)
     db.session.commit()
-    return jsonify({'success': True, 'title': target.clan_title})
+    return jsonify({'success': True, 'title': target.clan_title, 'newly_unlocked': newly})
 
 
 @app.route('/api/clan/chat/unread-count')
@@ -4514,6 +4813,9 @@ def api_clan_chat_send():
     text = filter_chat_text(text)
     msg = ClanChatMessage(clan_id=current_user.clan_id, user_id=current_user.id, text=text)
     db.session.add(msg)
+    from achievements import increment_counter, COUNTER_CLAN_CHAT
+    increment_counter(current_user.id, COUNTER_CLAN_CHAT)
+    newly = _check_achievements(current_user.id)
     db.session.commit()
     return jsonify({
         'success': True,
@@ -4523,7 +4825,8 @@ def api_clan_chat_send():
             'author_name': current_user.character_name or current_user.username,
             'text': msg.text,
             'created_at': msg.created_at.isoformat() if msg.created_at else None,
-        }
+        },
+        'newly_unlocked': newly,
     })
 
 
@@ -4631,7 +4934,7 @@ def api_territory_admin_chat_unread_count():
     return jsonify({'success': True, 'count': count})
 
 
-# Главная страница — сразу открывается битва за территорию
+# Главная — карта битвы (как раньше)
 @app.route('/')
 def index():
     return redirect(url_for('territory_battle_page'))
@@ -5757,7 +6060,7 @@ TERRITORY_DEFAULT_NAMES = [
 @app.route('/admin/territory-battle/reset', methods=['POST'])
 @admin_required
 def admin_territory_reset():
-    """Сброс битвы за территорию: карта и сооружения, все кланы, участники без клана; не-админы — как после регистрации (уровень 1, навыки, нумы, только стартовый набор лавки территории). Админы: только сброс клана/карты/статистики территории, прогресс и инвентарь не трогаются. Очищаются дуэли и вызовы PvP, присутствие и чат арены. Требуется пароль администратора."""
+    """Сброс битвы за территорию: карта и сооружения, все кланы, участники без клана; не-админы — как после регистрации (уровень 1, навыки, древо умений, нумы, только стартовый набор лавки территории). Админы: только сброс клана/карты/статистики территории, прогресс и инвентарь не трогаются. Очищаются дуэли и вызовы PvP, присутствие и чат арены. Требуется пароль администратора."""
     data = request.get_json() or {}
     password = (data.get('password') or '').strip()
     if not password:
@@ -5813,6 +6116,7 @@ def admin_territory_reset():
             UserEquipment.query.filter(UserEquipment.purchase_id.in_(pur_ids)).delete(synchronize_session=False)
             UserShopPurchase.query.filter(UserShopPurchase.id.in_(pur_ids)).delete(synchronize_session=False)
 
+        UserAbility.query.filter(UserAbility.user_id.in_(non_admin_ids)).delete(synchronize_session=False)
         User.query.filter_by(is_admin=False).update(
             {
                 User.level: 1,
@@ -5820,6 +6124,7 @@ def admin_territory_reset():
                 User.damage_skill: 0,
                 User.defense_skill: 0,
                 User.energy_skill: 0,
+                User.ability_class: None,
                 User.current_energy: None,
                 User.energy_last_refill_at: None,
                 User.nums_balance: 0,
@@ -6985,6 +7290,11 @@ def api_territory_demogorgons_answer():
         heal = max(0, int(attacker_damage * 0.3))
         if heal > 0:
             army.health = min(int(army.max_health or army.health), int(army.health or 0) + heal)
+    newly = []
+    if is_correct and damage_done > 0:
+        from achievements import increment_counter, COUNTER_DEMOGORGON_HITS
+        increment_counter(current_user.id, COUNTER_DEMOGORGON_HITS)
+        newly = _check_achievements(current_user.id)
     db.session.commit()
     return jsonify({
         'success': True,
@@ -6993,6 +7303,7 @@ def api_territory_demogorgons_answer():
         'army_health': army.health,
         'army_max_health': army.max_health,
         'reward_item': reward_item,
+        'newly_unlocked': newly,
     })
 
 
@@ -7040,10 +7351,14 @@ def api_territory_battle_clan_marker():
         existing.marker_type = marker_type
     else:
         db.session.add(ClanTerritoryMarker(clan_id=clan.id, region_index=region_index, marker_type=marker_type))
+    from achievements import increment_counter, COUNTER_MARKERS_SET
+    increment_counter(current_user.id, COUNTER_MARKERS_SET)
+    newly = _check_achievements(current_user.id)
     db.session.commit()
     return jsonify({
         'success': True,
-        'clan_marker': {'region_index': region_index, 'marker_type': marker_type}
+        'clan_marker': {'region_index': region_index, 'marker_type': marker_type},
+        'newly_unlocked': newly,
     })
 
 
@@ -7085,13 +7400,18 @@ def api_territory_battle_structure_build():
     current_user.nums_balance = (current_user.nums_balance or 0) - cost
     now = datetime.now()
     db.session.add(TerritoryRegionStructure(region_index=region_index, structure_type=structure_type, last_payout_at=now))
+    from achievements import increment_counter, COUNTER_STRUCTURES_BUILT, COUNTER_NUMS_SPENT
+    increment_counter(current_user.id, COUNTER_STRUCTURES_BUILT)
+    increment_counter(current_user.id, COUNTER_NUMS_SPENT, cost)
+    newly = _check_achievements(current_user.id)
     db.session.commit()
     return jsonify({
         'success': True,
         'region_index': region_index,
         'structure_type': structure_type,
         'last_payout_at': now.isoformat(),
-        'nums_balance': current_user.nums_balance
+        'nums_balance': current_user.nums_balance,
+        'newly_unlocked': newly,
     })
 
 
@@ -7124,10 +7444,17 @@ def api_territory_server_time():
     return jsonify({'server_time_ms': int(time.time() * 1000)})
 
 
+@app.route('/territory-battle/main')
+def territory_battle_main_page():
+    """Старый URL лендинга — редирект на обучение."""
+    return redirect(url_for('territory_battle_rules'))
+
+
 @app.route('/territory-battle/rules')
 def territory_battle_rules():
     """Страница с обучением и правилами битвы за территорию."""
-    return render_template('territory_battle_rules.html')
+    featured_update = GameUpdate.query.filter_by(show_on_main=True).order_by(GameUpdate.created_at.desc()).first()
+    return render_template('territory_battle_rules.html', featured_update=featured_update)
 
 
 ADS_PER_PAGE = 10
@@ -7390,6 +7717,14 @@ def api_rating_user_profile(user_id):
         bonuses = _get_equipment_bonuses(u.id)
     except Exception:
         bonuses = {}
+    if not isinstance(bonuses, dict):
+        bonuses = {}
+
+    achievements_unlocked = UserAchievement.query.filter_by(user_id=u.id).count()
+
+    from abilities import get_user_ability_class, BRANCH_BY_ID
+    chosen_class = get_user_ability_class(u)
+    chosen_class_info = BRANCH_BY_ID.get(chosen_class) if chosen_class else None
 
     return jsonify({
         'success': True,
@@ -7411,7 +7746,12 @@ def api_rating_user_profile(user_id):
             'territory_influence': int(t_inf),
             'territory_score': int(t_dmg + t_inf),
             'pvp_wins': int(pvp_wins),
+            'achievements_unlocked': int(achievements_unlocked),
             'created_at': u.created_at.isoformat() if u.created_at else None,
+            'ability_class': chosen_class,
+            'ability_class_name': chosen_class_info['name'] if chosen_class_info else None,
+            'ability_class_icon': chosen_class_info['icon'] if chosen_class_info else None,
+            'ability_class_color': chosen_class_info['color'] if chosen_class_info else None,
         },
         'slots': slots,
         'stats': {
@@ -7419,8 +7759,11 @@ def api_rating_user_profile(user_id):
             'defense': u.defense,
             'max_energy': u.energy,
             'current_energy': u.current_energy_value,
-            'xp_bonus_pct': float(bonuses.get('xp_pct', 0.0) or 0.0) if isinstance(bonuses, dict) else 0.0,
-            'nums_bonus_pct': float(bonuses.get('nums_pct', 0.0) or 0.0) if isinstance(bonuses, dict) else 0.0,
+            'xp_bonus_pct': float(bonuses.get('xp_pct', 0.0) or 0.0),
+            'nums_bonus_pct': float(bonuses.get('nums_pct', 0.0) or 0.0),
+            'damage_add': float(bonuses.get('damage_add', 0.0) or 0.0),
+            'defense_add': float(bonuses.get('defense_add', 0.0) or 0.0),
+            'max_energy_add': float(bonuses.get('max_energy_add', 0.0) or 0.0),
         },
     })
 
@@ -7610,6 +7953,20 @@ def _normalize_answer(s):
     return re.sub(r'\s+', ' ', str(s).strip().lower()) if s else ''
 
 
+def _answers_equal(user_answer, correct_answer):
+    """Сравнение ответов: строки и числовые (в т.ч. десятичные с . или ,)."""
+    u = _normalize_answer(user_answer)
+    c = _normalize_answer(correct_answer)
+    if u == c:
+        return True
+    try:
+        u_n = float(u.replace(',', '.'))
+        c_n = float(c.replace(',', '.'))
+        return abs(u_n - c_n) < 1e-9
+    except (ValueError, TypeError):
+        return False
+
+
 def _check_task_answer(task, answer):
     """Проверка ответа на задачу (та же логика, что в битве за территорию). Возвращает bool."""
     if task.title == 'Основное свойство дроби' and task.correct_answer and '|' in task.correct_answer:
@@ -7710,7 +8067,7 @@ def _check_task_answer(task, answer):
             return False
         except Exception:
             return False
-    return _normalize_answer(answer) == _normalize_answer(task.correct_answer)
+    return _answers_equal(answer, task.correct_answer)
 
 
 def _territory_difficulty_from_level(level: int) -> int:
@@ -7742,6 +8099,10 @@ TERRITORY_GENERATOR_BY_NAME = {
     'Несколько действий с дробями': lambda d: generate_territory_multi_frac_task(difficulty=d) if generate_territory_multi_frac_task else None,
     'Смешанные числа': lambda d: generate_mixed_numbers_task(difficulty=d) if generate_mixed_numbers_task else None,
     'Совместная работа': lambda d: generate_joint_work_task(difficulty=d) if generate_joint_work_task else None,
+    'Перевод дробей': lambda d: generate_decimal_fraction_conversion(difficulty=d) if generate_decimal_fraction_conversion else None,
+    'Сложение и вычитание десятичных': lambda d: generate_decimal_add_sub(difficulty=d) if generate_decimal_add_sub else None,
+    'Умножение и деление десятичных': lambda d: generate_decimal_mul_div(difficulty=d) if generate_decimal_mul_div else None,
+    'Задачи на десятичные дроби': lambda d: generate_decimal_word_tasks(difficulty=d) if generate_decimal_word_tasks else None,
 }
 
 
@@ -7808,6 +8169,10 @@ def api_territory_task():
                                 task_dict['int_part_zero'] = gen_task['int_part_zero']
                             if gen_task.get('multi_frac_expression'):
                                 task_dict['multi_frac_expression'] = True
+                            if gen_task.get('answer_hint'):
+                                task_dict['answer_hint'] = gen_task['answer_hint']
+                            if gen_task.get('display_kind'):
+                                task_dict['display_kind'] = gen_task['display_kind']
                             return jsonify({
                                 'success': True,
                                 'task': task_dict,
@@ -7963,7 +8328,7 @@ def api_territory_apply_action():
         except Exception:
             correct = False
     else:
-        correct = _normalize_answer(answer) == _normalize_answer(task.correct_answer)
+        correct = _answers_equal(answer, task.correct_answer)
     clan_id = current_user.clan_id
     cfg = TerritoryRegionConfig.query.filter_by(region_index=region_index).first()
     if cfg and cfg.is_locked:
@@ -8004,10 +8369,16 @@ def api_territory_apply_action():
     # Начисляем Нумы за правильное решение (с разбросом по уровню)
     nums_gained = max(0, int(round(roll_nums_reward(current_user.level) * nums_mult)))
     current_user.nums_balance = (current_user.nums_balance or 0) + nums_gained
+    was_neutral = state.owner_clan_id is None
+    was_enemy = state.owner_clan_id is not None and state.owner_clan_id != clan_id
+    enemy_strength_before = state.strength if was_enemy else 0
+    captured_neutral = False
+    captured_enemy = False
     if state.owner_clan_id is None:
         state.owner_clan_id = clan_id
         state.strength = min(TERRITORY_MAX_STRENGTH, state.strength + power)
         stats.total_influence_points += power
+        captured_neutral = was_neutral
     elif state.owner_clan_id == clan_id:
         state.strength = min(TERRITORY_MAX_STRENGTH, state.strength + power)
         stats.total_influence_points += power
@@ -8015,10 +8386,25 @@ def api_territory_apply_action():
         state.strength = max(0, state.strength - power)
         stats.total_damage_dealt += power
         if state.strength == 0:
+            captured_enemy = enemy_strength_before > 0
             state.owner_clan_id = clan_id
             state.strength = power
             stats.total_influence_points += power
     _consume_one_shot_buffs(current_user.id, clan_id, region_index)
+    from achievements import (
+        increment_counter, set_counter_max,
+        COUNTER_TERRITORY_CORRECT, COUNTER_NEUTRAL_CAPTURES, COUNTER_TERRITORY_CAPTURES,
+        COUNTER_NUMS_EARNED, COUNTER_NUMS_BALANCE_MAX,
+    )
+    increment_counter(current_user.id, COUNTER_TERRITORY_CORRECT)
+    if captured_neutral:
+        increment_counter(current_user.id, COUNTER_NEUTRAL_CAPTURES)
+    if captured_enemy:
+        increment_counter(current_user.id, COUNTER_TERRITORY_CAPTURES)
+    if nums_gained:
+        increment_counter(current_user.id, COUNTER_NUMS_EARNED, nums_gained)
+    set_counter_max(current_user.id, COUNTER_NUMS_BALANCE_MAX, current_user.nums_balance or 0)
+    newly = _check_achievements(current_user.id)
     db.session.commit()
     xp_needed = current_user.xp_needed_for_next_level
     xp_pct = round((current_user.xp_in_current_level / xp_needed * 100), 1) if xp_needed else 100
@@ -8034,7 +8420,8 @@ def api_territory_apply_action():
         'player_xp_needed': xp_needed,
         'player_xp_pct': xp_pct,
         'player_damage': current_user.damage,
-        'player_defense': current_user.defense
+        'player_defense': current_user.defense,
+        'newly_unlocked': newly,
     })
 
 
@@ -8181,14 +8568,19 @@ def api_pvp_enter():
         return jsonify({'success': False, 'error': f'Вход на арену доступен с {PVP_MIN_LEVEL} уровня'}), 403
     _pvp_arena_cleanup_stale()
     presence = PvPArenaPresence.query.filter_by(user_id=current_user.id).first()
+    first_visit = False
     if not presence:
         presence = PvPArenaPresence(user_id=current_user.id)
         db.session.add(presence)
-        db.session.commit()
+        first_visit = True
     else:
         presence.last_seen_at = datetime.now()
-        db.session.commit()
-    return jsonify({'success': True})
+    from achievements import increment_counter, COUNTER_PVP_ARENA_VISITS
+    if first_visit:
+        increment_counter(current_user.id, COUNTER_PVP_ARENA_VISITS)
+    newly = _check_achievements(current_user.id)
+    db.session.commit()
+    return jsonify({'success': True, 'newly_unlocked': newly})
 
 
 @app.route('/api/pvp/leave', methods=['POST'])
@@ -8420,8 +8812,8 @@ def api_pvp_accept_challenge():
     # Создать дуэль
     ch = challenge.challenger
     de = challenge.defender
-    max_hp_ch = PVP_HEALTH_PER_LEVEL * (ch.level or 1)
-    max_hp_de = PVP_HEALTH_PER_LEVEL * (de.level or 1)
+    max_hp_ch = _pvp_max_health(ch)
+    max_hp_de = _pvp_max_health(de)
     duel = PvPDuel(
         challenger_id=ch.id,
         defender_id=de.id,
@@ -8582,11 +8974,22 @@ def _pvp_duel_check_time_limit(duel):
 
 
 def _pvp_duel_damage(attacker, defender):
-    """Урон в дуэли: max(5, атака атакующего − защита соперника * 0.2)."""
+    """Урон в дуэли: max(5, атака атакующего − защита соперника * 0.2) + бонусы умений."""
     atk = attacker.damage
+    ab = _get_ability_bonuses(attacker.id)
+    pvp_pct = float(ab.get('pvp_damage_pct', 0) or 0)
+    pvp_add = int(ab.get('pvp_damage_add', 0) or 0)
+    atk = int(round(atk * (1 + pvp_pct / 100.0))) + pvp_add
     defense = defender.defense * 0.2
     dmg = max(5, int(round(atk - defense)))
     return dmg
+
+
+def _pvp_max_health(user):
+    """Макс. HP в дуэли с учётом умений."""
+    base = PVP_HEALTH_PER_LEVEL * (user.level or 1)
+    ab = _get_ability_bonuses(user.id)
+    return base + int(ab.get('pvp_hp_add', 0) or 0)
 
 
 @app.route('/pvp-duel/<int:duel_id>')
@@ -8712,6 +9115,10 @@ def _pvp_random_task(difficulty):
                         d['int_part_zero'] = t['int_part_zero']
                     if t.get('multi_frac_expression'):
                         d['multi_frac_expression'] = True
+                    if t.get('answer_hint'):
+                        d['answer_hint'] = t['answer_hint']
+                    if t.get('display_kind'):
+                        d['display_kind'] = t['display_kind']
                     return task, d
             except Exception as e:
                 logger.exception('PvP task gen error: %s', e)
@@ -8776,6 +9183,12 @@ def api_pvp_duel_answer(duel_id):
             if duel.winner_id:
                 _pvp_duel_award_random_item(duel)
             _pvp_duel_apply_stake_result(duel)
+    newly_me = []
+    if duel.status == 'finished':
+        for uid in (duel.challenger_id, duel.defender_id):
+            u_new = _check_achievements(uid)
+            if uid == current_user.id:
+                newly_me = u_new
     db.session.commit()
     me_is_challenger = current_user.id == duel.challenger_id
     return jsonify({
@@ -8792,6 +9205,7 @@ def api_pvp_duel_answer(duel_id):
         'my_max_health': duel.challenger_max_health if me_is_challenger else duel.defender_max_health,
         'opp_health': duel.defender_health if me_is_challenger else duel.challenger_health,
         'opp_max_health': duel.defender_max_health if me_is_challenger else duel.challenger_max_health,
+        'newly_unlocked': newly_me,
     })
 
 
@@ -8829,8 +9243,13 @@ def api_pvp_duel_surrender(duel_id):
     duel.finished_at = datetime.now()
     _pvp_duel_award_random_item(duel)
     _pvp_duel_apply_stake_result(duel)
+    newly_me = []
+    for uid in (duel.challenger_id, duel.defender_id):
+        u_new = _check_achievements(uid)
+        if uid == current_user.id:
+            newly_me = u_new
     db.session.commit()
-    return jsonify({'success': True})
+    return jsonify({'success': True, 'newly_unlocked': newly_me})
 
 
 # Тестовая страница для просмотра анимации сундука (без логики рейда/дропа)
@@ -9621,6 +10040,8 @@ def shutdown_scheduler(exception):
 
 
 if __name__ == '__main__':
+    with app.app_context():
+        ensure_database_tables()
     try:
         app.run(debug=True)
     finally:
