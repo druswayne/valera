@@ -1,0 +1,817 @@
+        <div class="tb-demo-rows">
+
+            <!-- 01. Регистрация -->
+            <article class="tb-demo-row">
+                <div class="tb-demo-copy">
+                    <div class="tb-demo-copy-num">01</div>
+                    <h3>Зарегистрируйтесь</h3>
+                    <div class="rules-detail">
+                        <p>Войдите в игру под своим аккаунтом или <a href="{{ url_for('register') }}">зарегистрируйтесь</a>, если его ещё нет. Без авторизации вы сможете только просматривать карту, но не участвовать в битве.</p>
+                    </div>
+                </div>
+                <div class="tb-demo-stage-wrap">
+                    <div class="tb-demo-stage tb-demo-stage--register" data-demo="register">
+                        <div class="demo-step-caption">Карта битвы</div>
+                        <div class="demo-register-scenes">
+                            <div class="demo-register-scene demo-register-guest active">
+                                <div class="demo-register-map-preview">
+                                    <div class="demo-register-map-mini"></div>
+                                    <div class="demo-register-guest-overlay">
+                                        <p class="demo-register-guest-text">Без входа доступен только просмотр карты</p>
+                                        <button type="button" class="demo-register-login-btn">Войти / Регистрация</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="demo-register-scene demo-register-form-scene">
+                                <div class="demo-register-box">
+                                    <h4>Регистрация</h4>
+                                    <label class="demo-reg-label">Логин</label>
+                                    <input type="text" class="demo-reg-username" readonly placeholder="Логин">
+                                    <label class="demo-reg-label">Пароль</label>
+                                    <input type="password" class="demo-reg-password" readonly value="••••••">
+                                    <label class="demo-reg-label">Имя персонажа</label>
+                                    <input type="text" class="demo-reg-character" readonly placeholder="Имя в игре">
+                                    <button type="button" class="demo-reg-submit">Зарегистрироваться</button>
+                                </div>
+                            </div>
+                            <div class="demo-register-scene demo-register-done">
+                                <div class="demo-register-success">✓ Аккаунт создан!</div>
+                                <div class="territory-player-card demo-register-player">
+                                    <div class="territory-player-avatar-placeholder">⚔</div>
+                                    <div class="territory-player-main">
+                                        <p class="territory-player-name-row">
+                                            <span class="territory-player-name demo-reg-player-name">Рыцарь Математики</span>
+                                        </p>
+                                        <div class="territory-player-level-row">
+                                            <span class="territory-player-level">Ур. 1</span>
+                                        </div>
+                                        <p class="demo-register-ready">Теперь можно участвовать в битве!</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </article>
+
+
+            <!-- 7. Поиск клана -->
+            <article class="tb-demo-row">
+                <div class="tb-demo-copy">
+                    <div class="tb-demo-copy-num">02</div>
+                    <h3>Создайте или вступите в клан</h3>
+                    <div class="rules-detail">
+                        <p>Битва идёт между кланами. Зайдите в личный кабинет и создайте свой клан или подайте заявку на вступление в существующий.</p>
+                        <p>Клан можно найти через страницу поиска — <a href="{{ url_for('territory_clan_search_page') }}" class="rules-clan-search-link">/territory-battle/clan-search</a>. Без клана участвовать в захвате территорий нельзя.</p>
+                    </div>
+                </div>
+                <div class="tb-demo-stage-wrap">
+                    <div class="tb-demo-stage tb-demo-stage--clan-search" data-demo="clan-search">
+                        <div class="demo-step-caption">Объявления кланов</div>
+                        <div class="demo-clan-search-list">
+                            <div class="clan-search-ad-card demo-clan-ad demo-clan-ad-secondary">
+                                <div class="clan-search-ad-main">
+                                    <div class="clan-search-ad-flag-placeholder" style="background:#ef4444">Д</div>
+                                    <div class="clan-search-ad-body">
+                                        <div class="clan-search-ad-clan-name">Драконы</div>
+                                    </div>
+                                    <div class="clan-search-ad-actions">
+                                        <button type="button" class="btn-apply">Подать заявку</button>
+                                    </div>
+                                </div>
+                                <div class="clan-search-ad-text">Набираем сильных счётчиков. Онлайн каждый вечер.</div>
+                            </div>
+                            <div class="clan-search-ad-card demo-clan-ad demo-clan-ad-primary">
+                                <div class="clan-search-ad-main">
+                                    <div class="clan-search-ad-flag-placeholder" style="background:#3b82f6">С</div>
+                                    <div class="clan-search-ad-body">
+                                        <div class="clan-search-ad-clan-name">Соколы</div>
+                                    </div>
+                                    <div class="clan-search-ad-actions">
+                                        <button type="button" class="btn-apply demo-clan-apply-btn">Подать заявку</button>
+                                        <span class="clan-search-ad-pending demo-clan-pending">Заявка подана</span>
+                                    </div>
+                                </div>
+                                <div class="clan-search-ad-text">Ищем активных математиков! Дружный клан, помогаем новичкам.</div>
+                            </div>
+                        </div>
+                        <div class="clan-search-modal-overlay demo-clan-modal">
+                            <div class="clan-search-modal-box">
+                                <h3>Подать заявку</h3>
+                                <p class="demo-clan-modal-text">Вступить в клан «Соколы»?</p>
+                                <div class="clan-search-modal-buttons">
+                                    <button type="button" class="demo-clan-modal-cancel">Отмена</button>
+                                    <button type="button" class="demo-clan-modal-confirm">Подтвердить</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </article>
+
+
+            <!-- 8. Чат -->
+            <article class="tb-demo-row">
+                <div class="tb-demo-copy">
+                    <div class="tb-demo-copy-num">03</div>
+                    <h3>Общение в чате</h3>
+                    <div class="rules-detail">
+                        <p>У клана есть общий чат — координируйте атаки и защиту в реальном времени прямо на карте битвы или в личном кабинете.</p>
+                        <p>На странице поиска клана также доступен общий чат для всех игроков.</p>
+                    </div>
+                </div>
+                <div class="tb-demo-stage-wrap">
+                    <div class="tb-demo-stage tb-demo-stage--chat" data-demo="chat">
+                        <div class="demo-step-caption">Чат клана</div>
+                        <div class="demo-layout-chat">
+                            <div class="clan-chat-modal demo-clan-chat-panel open">
+                                <div class="modal-box">
+                                    <h3>💬 Чат клана «Соколы»</h3>
+                                    <div class="clan-chat-messages demo-chat-messages">
+                                        <div class="clan-chat-msg">
+                                            <span class="chat-author">Алекс</span>
+                                            <span class="chat-time">19:42</span>
+                                            <div class="chat-text">Бьём Sofia-Grad через 5 минут!</div>
+                                        </div>
+                                        <div class="clan-chat-msg">
+                                            <span class="chat-author">Мария</span>
+                                            <span class="chat-time">19:43</span>
+                                            <div class="chat-text">Я готова, энергия полная ⚡</div>
+                                        </div>
+                                        <div class="clan-chat-msg clan-chat-msg-own demo-chat-own-msg">
+                                            <span class="chat-author">Вы</span>
+                                            <span class="chat-time">19:44</span>
+                                            <div class="chat-text demo-chat-own-text"></div>
+                                        </div>
+                                    </div>
+                                    <div class="clan-chat-form">
+                                        <input type="text" class="demo-chat-input" readonly placeholder="Сообщение…">
+                                        <button type="button" class="demo-chat-send">Отправить</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </article>
+
+
+            <!-- 1. Захват -->
+            <article class="tb-demo-row">
+                <div class="tb-demo-copy">
+                    <div class="tb-demo-copy-num">04</div>
+                    <h3>Захват территорий</h3>
+                    <div class="rules-detail">
+                        <p><strong>Основная цель</strong> — захватывать области на карте для своего клана. Каждая область имеет «силу» от 0 до 5000. Клан с наибольшей силой контролирует область. Побеждает клан, который контролирует больше всего территорий к концу битвы.</p>
+                        <p>Нажмите на область на карте и решите математическую задачу. За каждый правильный ответ вы тратите 1 единицу энергии и добавляете силу своему клану (или уменьшаете силу чужого). Энергия восстанавливается каждые 30 минут.</p>
+                        <p>Если область принадлежит вашему клану — правильные ответы укрепляют её. Если область чужая — вы атакуете и снижаете силу врага. Некоторые области могут быть заблокированы.</p>
+                    </div>
+                </div>
+                <div class="tb-demo-stage-wrap">
+                    <div class="tb-demo-stage tb-demo-stage--tall" data-demo="capture">
+                        <div class="demo-step-caption">Карта битвы</div>
+                        <span class="demo-map-cursor">👆</span>
+                        <div class="map-wrap">
+                            <div class="map-viewport">
+                                <svg class="territory-map" viewBox="0 165 125 135" xmlns="http://www.w3.org/2000/svg">
+                                    <g class="region" data-region-id="10">
+                                        <path class="region-path owned" style="--region-color: rgba(59,130,246,0.45)" d="M11.5,206.57L15.51,209.92L21.45,211.89L25.06,221.38L30.66,224.35L31.08,230.67L35.29,237.31L36.53,241.88L42.23,242.9L44.34,246.06L47.19,246.06L47.62,248.76L50.61,247.06L54.77,249.53L56.03,245.87L59.36,244.73L61.55,241.95L68.33,246.24L71.45,245.71L74.53,241.8L75.59,246.17L81.29,249.43L84.4,249.87L87.38,247.61L87.38,247.61L95.8,249.24L98.1,256.32L104.65,261.63L104.65,262.99L99.75,264.81L97.27,270.74L99.15,272.32L105.73,270.15L107.44,275.78L114.55,278.83L114.34,281.23L110.46,284.93L110.46,284.93L107.43,287.76L100.75,289.57L97.71,287.38L82.06,283L76.01,287.7L66.54,290.08L64.29,287.14L60.54,287.31L58.06,281.32L56.18,282.69L54.09,292.3L50.17,294.19L50.17,294.19L48.54,292.79L45.87,293.23L43.42,290.16L41.16,291.15L37.03,290.07L35.07,287.32L31.2,287.63L20.62,280.78L15.3,276.15L14.27,270.7L11.15,269.62L9.07,264.19L0.46,254.88L4.76,252.49L7.48,253.54L9.38,252.22L11.87,244.29L15.9,243.61L19.66,232.88L16.05,226.69L11.02,222.14L7.94,221.41z"/>
+                                    </g>
+                                    <g class="region demo-target-region" data-region-id="22">
+                                        <path class="region-path" d="M56.98,136.58L61.53,135.25L73.32,146.55L92.8,145.21L97.19,140.46L103.59,140.83L103.59,140.83L112.22,142.27L108.63,148.88L109.48,154L115.38,163L118.03,164.73L127.81,156.11L132.85,158.51L142.2,154.22L144.75,156.11L154.33,156.37L159.13,158.81L160.11,154.8L160.11,154.8L166.2,155.11L166.78,158.65L171.67,161.09L172.53,167.37L179.37,171.03L176.24,174.19L179.37,176.4L179.75,181.14L182.36,183.1L178.32,189.94L190.69,190.79L200.58,193.64L200.58,193.64L196.65,202.64L197.01,205.76L204.82,210.07L209.89,215.11L207.52,221.21L201.76,222.22L201.76,222.22L199.21,219.84L196.33,221.54L193.17,211.85L187.04,209.43L178.2,211.79L177.1,216.71L172.35,216.62L166.31,223.16L159.92,220.21L154.13,221.49L154.93,230.6L158.68,236.54L162.23,237.58L167.27,235.4L168.73,238.61L165.04,246.35L157.89,249.35L155.89,255.54L157.36,260.21L154.17,261.92L151.99,259.18L146.85,265.99L139.09,271.97L139.09,271.97L136.37,271.97L137.17,275.7L134.64,276.43L131.26,274.9L129.34,271.07L122.77,271.07L118.87,282.67L116.27,284.7L110.46,284.93L110.46,284.93L114.34,281.23L114.55,278.83L107.44,275.78L105.73,270.15L99.15,272.32L97.27,270.74L99.75,264.81L104.65,262.99L104.65,261.63L98.1,256.32L95.8,249.24L87.38,247.61L87.38,247.61L86.24,234.27L90.09,225.09L90.09,225.09L95.35,227.21L104.47,237.06L106.16,236.07L108.42,227.14L111.14,227.45L114.76,234.36L115.48,242.91L117.34,242.2L121.91,243.92L127.87,241.76L123.35,228.48L118.78,222.58L118.41,211.7L113.83,209.19L114.47,206.75L116.67,205.89L117.82,201.94L122.66,199.44L125.48,188.76L124.22,183.83L118.55,186.05L110.69,180.95L97.5,183.55L94.45,178.01L91.55,175.99L84.58,193.67L86.03,196.03L85.32,198.35L82.5,197.44L80.17,198.77L68.41,199.04L68.41,199.04L67.06,196.91L61.72,194.61L59.74,191.47L47.82,187.31L44.64,182.1L40.63,182.38L38.85,177.91L38.85,177.91L41.37,172.99L40.43,170.85L41.8,166.28L48.05,163.41L52.81,159.22L55.16,153.03L61.22,149.06L62.64,142.94L61.56,141.69L63.53,138.3L60.55,136.56z"/>
+                                    </g>
+                                    <g class="region" data-region-id="14">
+                                        <path class="region-path owned" style="--region-color: rgba(239,68,68,0.45)" d="M26.02,178.08L31.68,181.57L33.29,179.33L37.57,179.17L38.85,177.91L38.85,177.91L40.63,182.38L44.64,182.1L47.82,187.31L59.74,191.47L61.72,194.61L67.06,196.91L68.41,199.04L68.41,199.04L74.73,206.45L78.72,208.89L79.89,215.33L78.94,217.53L83.46,218.31L87.25,223.99L89.84,223.45L90.09,225.09L90.09,225.09L86.24,234.27L87.38,247.61L87.38,247.61L84.4,249.87L81.29,249.43L75.59,246.17L74.53,241.8L71.45,245.71L68.33,246.24L61.55,241.95L59.36,244.73L56.03,245.87L54.77,249.53L50.61,247.06L47.62,248.76L47.19,246.06L44.34,246.06L42.23,242.9L36.53,241.88L35.29,237.31L31.08,230.67L30.66,224.35L25.06,221.38L21.45,211.89L15.51,209.92L11.5,206.57L11.5,206.57L10.1,205.24L13.81,200.77L14.1,198.38L10.25,193.48L8.28,187.34L14.68,183.8L17.33,179.77L21.25,181.94L22.22,178.27z"/>
+                                    </g>
+                                    <g class="region-overlay demo-region-overlay" transform="translate(82, 228)">
+                                        <circle class="region-flag" cx="0" cy="0" r="9" fill="#d4a84b" opacity="0"/>
+                                        <rect class="region-strength-value-bg" x="-14" y="6" width="28" height="11" rx="2" opacity="0"/>
+                                        <text class="region-strength-value demo-strength-text" x="0" y="14" opacity="0">0</text>
+                                    </g>
+                                </svg>
+                            </div>
+                            <div class="territory-confirm-wrap demo-confirm">
+                                <div class="territory-confirm-box">
+                                    <p class="territory-confirm-text">Напасть на территорию «Sofia-Grad»?</p>
+                                    <div class="territory-confirm-buttons">
+                                        <button type="button" class="territory-confirm-btn territory-confirm-yes demo-confirm-yes">Да</button>
+                                        <button type="button" class="territory-confirm-btn territory-confirm-no">Нет</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="task-modal-overlay demo-task-modal">
+                            <div class="task-modal">
+                                <div class="task-modal-header"><h2>Задание</h2></div>
+                                <div class="task-modal-body">
+                                    <div class="task-text">Найдите значение выражения: 7 + 5 = ?</div>
+                                    <div class="task-answer-wrap">
+                                        <label>Ваш ответ:</label>
+                                        <input type="text" class="demo-task-input" value="" readonly>
+                                    </div>
+                                </div>
+                                <div class="task-modal-footer">
+                                    <button type="button" class="submit-task-btn demo-submit-flash">Ответить</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="task-result-toast correct demo-toast">Верно! +25 к силе клана</div>
+                    </div>
+                </div>
+            </article>
+
+
+            <!-- 2. Задачи -->
+            <article class="tb-demo-row">
+                <div class="tb-demo-copy">
+                    <div class="tb-demo-copy-num">05</div>
+                    <h3>Задачи и прокачка</h3>
+                    <div class="rules-detail">
+                        <p>Решая задачи при захвате и защите, вы получаете опыт и повышаете уровень. С каждым уровнем — очки навыков для улучшения характеристик.</p>
+                        <p>У героя есть <strong>атака</strong> и <strong>защита</strong>: чем выше параметры, тем сильнее удары и надёжнее защита территорий. За верный ответ вы также получаете <strong>Нумы</strong> — внутриигровую валюту битвы.</p>
+                    </div>
+                </div>
+                <div class="tb-demo-stage-wrap">
+                    <div class="tb-demo-stage" data-demo="task">
+                        <div class="demo-step-caption">Решение задачи</div>
+                        <div class="demo-layout-task">
+                            <div class="territory-player-card">
+                                <div class="territory-player-avatar-placeholder">⚔</div>
+                                <div class="territory-player-main">
+                                    <p class="territory-player-name-row">
+                                        <span class="territory-player-name">Рыцарь Математики</span>
+                                    </p>
+                                    <div class="territory-player-level-row">
+                                        <span class="territory-player-level">Ур. 12</span>
+                                        <div class="territory-player-xp-wrap">
+                                            <div class="territory-player-xp-fill demo-xp-fill" style="width: 45%"></div>
+                                        </div>
+                                    </div>
+                                    <div class="territory-player-stats">
+                                        <span><strong>Атака:</strong> <span class="demo-atk">18</span></span>
+                                        <span><strong>Защита:</strong> 14</span>
+                                        <span class="territory-player-energy">⚡ <span class="demo-energy">8</span>/10</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="task-modal-overlay demo-task-modal">
+                                <div class="task-modal">
+                                    <div class="task-modal-header"><h2>Задание</h2></div>
+                                    <div class="task-modal-body">
+                                        <div class="task-text demo-task-text">Вычислите: 15 − 7 = ?</div>
+                                        <div class="task-answer-wrap">
+                                            <label>Ваш ответ:</label>
+                                            <input type="text" class="demo-task-input" readonly>
+                                        </div>
+                                    </div>
+                                    <div class="task-modal-footer">
+                                        <button type="button" class="submit-task-btn">Ответить</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="task-result-toast correct demo-toast">Верно! +16 XP · +12 Нумов · −1 ⚡</div>
+                        </div>
+                    </div>
+                </div>
+            </article>
+
+
+            <!-- 6. Навыки и умения -->
+            <article class="tb-demo-row">
+                <div class="tb-demo-copy">
+                    <div class="tb-demo-copy-num">06</div>
+                    <h3>Навыки и умения</h3>
+                    <div class="rules-detail">
+                        <p>В личном кабинете откройте <strong>«Навыки и умения»</strong>. На вкладке <strong>Характеристики</strong> распределяйте очки между атакой, защитой и максимальной энергией — они усиливают героя на карте и в PvP.</p>
+                        <p>На вкладке <strong>Умения</strong> один раз выберите класс: воин, страж, мудрец, тактик или дуэлянт. Сменить класс нельзя. Прокачивайте дерево умений — на ярусе II выберите одну из двух веток. Очки умений появляются с 5 уровня и далее каждые 5 уровней.</p>
+                        <p>Бонусы зависят от класса: воин и тактик усиливают захват, страж — оборону, мудрец — опыт и нумы, дуэлянт — PvP-дуэли.</p>
+                    </div>
+                </div>
+                <div class="tb-demo-stage-wrap">
+                    <div class="tb-demo-stage tb-demo-stage--skills" data-demo="skills">
+                        <div class="demo-step-caption">Навыки и умения</div>
+                        <div class="demo-skills-panel">
+                            <div class="demo-skills-tabs">
+                                <button type="button" class="demo-skills-tab demo-skills-tab--stats active">Характеристики</button>
+                                <button type="button" class="demo-skills-tab demo-skills-tab--abilities">Умения</button>
+                            </div>
+
+                            <div class="demo-skills-scene demo-skills-scene--stats active">
+                                <div class="demo-skills-points-row">
+                                    <span class="demo-skills-points-label">Свободно очков:</span>
+                                    <span class="demo-skills-points-val">3</span>
+                                </div>
+                                <div class="demo-skills-stat-cards">
+                                    <div class="demo-skills-stat-card" data-stat="atk">
+                                        <span class="demo-skills-stat-icon">⚔</span>
+                                        <div class="demo-skills-stat-body">
+                                            <span class="demo-skills-stat-name">Атака</span>
+                                            <span class="demo-skills-stat-desc">Урон при захвате</span>
+                                        </div>
+                                        <div class="demo-skills-stat-stepper">
+                                            <span class="demo-skills-stat-value">12</span>
+                                            <button type="button" class="demo-skills-stat-plus">+</button>
+                                        </div>
+                                    </div>
+                                    <div class="demo-skills-stat-card" data-stat="def">
+                                        <span class="demo-skills-stat-icon">🛡</span>
+                                        <div class="demo-skills-stat-body">
+                                            <span class="demo-skills-stat-name">Защита</span>
+                                            <span class="demo-skills-stat-desc">Оборона областей</span>
+                                        </div>
+                                        <div class="demo-skills-stat-stepper">
+                                            <span class="demo-skills-stat-value">10</span>
+                                            <button type="button" class="demo-skills-stat-plus">+</button>
+                                        </div>
+                                    </div>
+                                    <div class="demo-skills-stat-card" data-stat="en">
+                                        <span class="demo-skills-stat-icon">⚡</span>
+                                        <div class="demo-skills-stat-body">
+                                            <span class="demo-skills-stat-name">Энергия</span>
+                                            <span class="demo-skills-stat-desc">Макс. запас</span>
+                                        </div>
+                                        <div class="demo-skills-stat-stepper">
+                                            <span class="demo-skills-stat-value">10</span>
+                                            <button type="button" class="demo-skills-stat-plus">+</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" class="demo-skills-save-btn">Сохранить</button>
+                            </div>
+
+                            <div class="demo-skills-scene demo-skills-scene--class">
+                                <p class="demo-skills-intro-text">Выберите класс персонажа. Это необратимый выбор.</p>
+                                <div class="demo-skills-classes-scroll">
+                                    <div class="demo-skills-classes">
+                                        <div class="demo-skills-class" data-class="warrior"><span class="demo-skills-class-icon">⚔</span><span class="demo-skills-class-name">Воин</span></div>
+                                        <div class="demo-skills-class demo-skills-class--target" data-class="guardian"><span class="demo-skills-class-icon">🛡</span><span class="demo-skills-class-name">Страж</span></div>
+                                        <div class="demo-skills-class" data-class="sage"><span class="demo-skills-class-icon">📜</span><span class="demo-skills-class-name">Мудрец</span></div>
+                                        <div class="demo-skills-class" data-class="tactician"><span class="demo-skills-class-icon">🏹</span><span class="demo-skills-class-name">Тактик</span></div>
+                                        <div class="demo-skills-class" data-class="duelist"><span class="demo-skills-class-icon">⚔️</span><span class="demo-skills-class-name">Дуэлянт</span></div>
+                                    </div>
+                                </div>
+                                <button type="button" class="demo-skills-choose-btn">Выбрать класс «Страж»</button>
+                            </div>
+
+                            <div class="demo-skills-scene demo-skills-scene--tree">
+                                <div class="demo-skills-abilities-head">
+                                    <div class="demo-skills-ability-points">
+                                        <span class="demo-skills-ability-points-label">Очки умений</span>
+                                        <span class="demo-skills-ability-points-val">2</span>
+                                    </div>
+                                    <div class="demo-skills-legend">
+                                        <span class="demo-skills-legend-item demo-skills-legend-item--available"><i></i>Доступно</span>
+                                        <span class="demo-skills-legend-item demo-skills-legend-item--progress"><i></i>В процессе</span>
+                                        <span class="demo-skills-legend-item demo-skills-legend-item--locked"><i></i>Заблок.</span>
+                                    </div>
+                                </div>
+                                <div class="demo-skills-class-banner">Класс: <strong>Страж</strong> · сменить нельзя</div>
+                                <div class="demo-skills-tree-viewport">
+                                    <div class="demo-skills-tree-track">
+                                        <div class="demo-skills-branch demo-skills-branch--foreign" aria-hidden="true">
+                                            <div class="demo-skills-branch-head"><span>⚔ Воин</span></div>
+                                            <div class="demo-skills-branch-ghost"></div>
+                                        </div>
+                                        <div class="demo-skills-branch demo-skills-branch--active" style="--sk-color:#5a8ac4">
+                                            <div class="demo-skills-branch-head">
+                                                <span class="demo-skills-branch-name">🛡 Страж</span>
+                                                <span class="demo-skills-branch-desc">Защита и удержание областей</span>
+                                            </div>
+                                            <div class="demo-skills-branch-body">
+                                                <div class="demo-sk-tier">
+                                                    <div class="demo-sk-tier-side">
+                                                        <span class="demo-sk-tier-roman">I</span>
+                                                        <span class="demo-sk-tier-name">Основа</span>
+                                                    </div>
+                                                    <div class="demo-sk-tier-main">
+                                                        <div class="demo-sk-node demo-sk-node--root demo-sk-node--available">
+                                                            <div class="demo-sk-node-orb-wrap"><div class="demo-sk-node-orb">🛡</div></div>
+                                                            <div class="demo-sk-node-pips demo-sk-node-pips--root"><span></span><span></span><span></span></div>
+                                                            <div class="demo-sk-node-title">Стойкость</div>
+                                                            <span class="demo-sk-node-status demo-sk-node-status--available">Доступно</span>
+                                                            <div class="demo-sk-node-card">
+                                                                <div class="demo-sk-node-bonus">+3% к защите за ранг</div>
+                                                                <button type="button" class="demo-sk-node-btn">Улучшить</button>
+                                                                <span class="demo-sk-node-cost">1 оч. за ранг · <span class="demo-sk-node-rank">0</span>/3</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="demo-sk-link demo-sk-link--fork">
+                                                    <div class="demo-sk-link-stem"></div>
+                                                    <div class="demo-sk-link-bar"></div>
+                                                    <div class="demo-sk-link-legs"><div></div><div></div></div>
+                                                </div>
+                                                <div class="demo-sk-tier">
+                                                    <div class="demo-sk-tier-side">
+                                                        <span class="demo-sk-tier-roman">II</span>
+                                                        <span class="demo-sk-tier-name">Развитие</span>
+                                                    </div>
+                                                    <div class="demo-sk-tier-main">
+                                                        <div class="demo-sk-tier-hint">Развилка — выберите путь</div>
+                                                        <div class="demo-sk-tier-split">
+                                                            <div class="demo-sk-node demo-sk-node--fork-left demo-sk-node--locked">
+                                                                <div class="demo-sk-node-orb-wrap"><div class="demo-sk-node-orb">🧱</div></div>
+                                                                <div class="demo-sk-node-pips"><span></span><span></span></div>
+                                                                <div class="demo-sk-node-title">Крепкая броня</div>
+                                                                <span class="demo-sk-node-status demo-sk-node-status--locked">Заблокировано</span>
+                                                                <div class="demo-sk-node-card">
+                                                                    <div class="demo-sk-node-bonus">+2 к защите за ранг</div>
+                                                                    <div class="demo-sk-node-lock">Требуется: Стойкость (ранг 2)</div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="demo-sk-node demo-sk-node--fork-right demo-sk-node--locked">
+                                                                <div class="demo-sk-node-orb-wrap"><div class="demo-sk-node-orb">✦</div></div>
+                                                                <div class="demo-sk-node-pips"><span></span><span></span></div>
+                                                                <div class="demo-sk-node-title">Оберег</div>
+                                                                <span class="demo-sk-node-status demo-sk-node-status--locked">Заблокировано</span>
+                                                                <div class="demo-sk-node-card">
+                                                                    <div class="demo-sk-node-bonus">+4% к защите за ранг</div>
+                                                                    <div class="demo-sk-node-lock">Требуется: Стойкость (ранг 2)</div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="demo-sk-link demo-sk-link--merge">
+                                                    <div class="demo-sk-link-legs"><div></div><div></div></div>
+                                                    <div class="demo-sk-link-bar"></div>
+                                                    <div class="demo-sk-link-stem"></div>
+                                                </div>
+                                                <div class="demo-sk-tier">
+                                                    <div class="demo-sk-tier-side">
+                                                        <span class="demo-sk-tier-roman">III</span>
+                                                        <span class="demo-sk-tier-name">Мастер.</span>
+                                                    </div>
+                                                    <div class="demo-sk-tier-main">
+                                                        <div class="demo-sk-tier-hint">Мастерство ветки</div>
+                                                        <div class="demo-sk-tier-split">
+                                                            <div class="demo-sk-node demo-sk-node--cap demo-sk-node--locked">
+                                                                <div class="demo-sk-node-orb-wrap"><div class="demo-sk-node-orb">✨</div></div>
+                                                                <div class="demo-sk-node-title">Эгида</div>
+                                                                <span class="demo-sk-node-status demo-sk-node-status--locked">Заблок.</span>
+                                                            </div>
+                                                            <div class="demo-sk-node demo-sk-node--cap demo-sk-node--locked">
+                                                                <div class="demo-sk-node-orb-wrap"><div class="demo-sk-node-orb">🏰</div></div>
+                                                                <div class="demo-sk-node-title">Бастион</div>
+                                                                <span class="demo-sk-node-status demo-sk-node-status--locked">Заблок.</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="demo-skills-branch demo-skills-branch--foreign" aria-hidden="true">
+                                            <div class="demo-skills-branch-head"><span>📜 Мудрец</span></div>
+                                            <div class="demo-skills-branch-ghost"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="demo-skills-bonuses-line demo-skills-bonuses-line--empty">Активные бонусы появятся после прокачки</div>
+                                <div class="demo-skills-bonus-toast">+3% к защите · ранг <span class="demo-sk-toast-rank">1</span>/3</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </article>
+
+
+            <!-- 7. Предметы — детальный сценарий -->
+            <article class="tb-demo-row">
+                <div class="tb-demo-copy">
+                    <div class="tb-demo-copy-num">07</div>
+                    <h3>Лавка: усиления и проклятия</h3>
+                    <div class="rules-detail">
+                        <p><strong>Нумы</strong> отображаются в личном кабинете в блоке «Баланс и Лавка предметов». Их можно тратить на покупку товаров.</p>
+                        <p><strong>Усиления</strong> улучшают атаку, защиту, энергию, опыт или награду в Нумах. <strong>Проклятия</strong> накладываются на вражеский клан или область. Купленные предметы хранятся в инвентаре — используйте их перед боем или для ослабления противника.</p>
+                    </div>
+                </div>
+                <div class="tb-demo-stage-wrap">
+                    <div class="tb-demo-stage tb-demo-stage--items" data-demo="item">
+                        <div class="demo-step-caption">Лавка предметов</div>
+                        <div class="demo-shop-balance">
+                            <div class="nums-balance-block">
+                                <span class="nums-value demo-nums-balance">340</span>
+                                <span class="nums-suffix">Нумов</span>
+                            </div>
+                        </div>
+                        <div class="shop-item-modal demo-shop-modal">
+                            <div class="modal-box">
+                                <h3>Усиление атаки</h3>
+                                <img class="item-image" src="{{ demo_buff_img }}" alt="">
+                                <p class="demo-shop-desc">+6 к атаке на 30 минут</p>
+                                <div class="item-price">120 Нумов</div>
+                                <button type="button" class="btn-buy demo-btn-buy">Купить</button>
+                            </div>
+                        </div>
+                        <div class="demo-item-flow">
+                            <div class="demo-item-col demo-shop-col active">
+                                <span class="demo-col-label">Лавка</span>
+                                <div class="shop-item-tile demo-shop-tile">
+                                    <img src="{{ demo_buff_img }}" alt="">
+                                    <div class="tile-name">Усиление атаки</div>
+                                    <div class="tile-price demo-shop-price">120 Нумов</div>
+                                </div>
+                                <span class="demo-nums-cost">−120 Нумов</span>
+                            </div>
+                            <div class="demo-item-connector demo-conn-1"><span class="demo-flow-arrow">→</span></div>
+                            <div class="demo-item-col demo-inventory-col dim">
+                                <span class="demo-col-label">Инвентарь</span>
+                                <div class="inventory-tile demo-inventory-source">
+                                    <div class="inventory-tile-img-wrap">
+                                        <img class="item-icon-main" src="{{ demo_buff_img }}" alt="">
+                                    </div>
+                                    <div class="tile-name">Усиление атаки</div>
+                                </div>
+                                <button type="button" class="demo-use-btn">Использовать</button>
+                            </div>
+                            <div class="demo-item-connector demo-conn-2"><span class="demo-flow-arrow">→</span></div>
+                            <div class="demo-item-col demo-target-col dim">
+                                <span class="demo-col-label">Эффект</span>
+                                <div class="territory-player-card demo-buff-target-card">
+                                    <div class="territory-player-avatar-placeholder">🛡</div>
+                                    <div class="territory-player-main">
+                                        <p class="territory-player-name-row">
+                                            <span class="territory-player-name">Воин</span>
+                                            <span class="territory-buff-icons territory-buff-icons-user">
+                                                <img class="territory-buff-icon demo-buff-slot" src="{{ demo_buff_img }}" alt="">
+                                            </span>
+                                        </p>
+                                        <div class="territory-player-stats">
+                                            <span><strong>Атака:</strong> <span class="demo-atk-value demo-atk-before">10</span></span>
+                                        </div>
+                                        <span class="demo-buff-timer">⏱ 30 мин</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="demo-use-popover">Применить на себя</div>
+                        <span class="demo-stat-pop">+6 атака</span>
+                        <img class="demo-flying-item" src="{{ demo_buff_img }}" alt="">
+                    </div>
+                </div>
+            </article>
+
+
+            <!-- 8. Экипировка -->
+            <article class="tb-demo-row">
+                <div class="tb-demo-copy">
+                    <div class="tb-demo-copy-num">08</div>
+                    <h3>Снаряжение</h3>
+                    <div class="rules-detail">
+                        <p><strong>Снаряжение</strong> — постоянные предметы экипировки (шлем, нагрудник, оружие и др.). В лавке предметы разбиты по грейдам: <strong>D, C, B, A, S</strong> — чем выше грейд, тем ценнее предмет.</p>
+                        <p>Купленное снаряжение попадает в инвентарь: выберите слот и наденьте предмет — бонусы к атаке и защите действуют постоянно, пока предмет надет.</p>
+                    </div>
+                </div>
+                <div class="tb-demo-stage-wrap">
+                    <div class="tb-demo-stage tb-demo-stage--equip" data-demo="equip"
+                         data-equip-helmet="{{ demo_equip_helmet }}"
+                         data-equip-weapon="{{ demo_equip_weapon }}"
+                         data-equip-chest="{{ demo_equip_chest }}"
+                         data-equip-gloves="{{ demo_equip_gloves }}">
+                        <div class="demo-step-caption">Экипировка героя</div>
+                        <div class="demo-layout-equip">
+                            <div class="demo-equip-center">
+                                <div class="demo-equip-inventory">
+                                    <div class="demo-equip-inv-item" data-for="helmet">
+                                        <img src="{{ demo_equip_helmet }}" alt="">
+                                        <span>Шлем</span>
+                                    </div>
+                                    <div class="demo-equip-inv-item" data-for="weapon_main">
+                                        <img src="{{ demo_equip_weapon }}" alt="">
+                                        <span>Оружие</span>
+                                    </div>
+                                    <div class="demo-equip-inv-item" data-for="chest">
+                                        <img src="{{ demo_equip_chest }}" alt="">
+                                        <span>Броня</span>
+                                    </div>
+                                    <div class="demo-equip-inv-item" data-for="gloves">
+                                        <img src="{{ demo_equip_gloves }}" alt="">
+                                        <span>Перчатки</span>
+                                    </div>
+                                </div>
+                                <div class="equipment-grid">
+                                <div class="equipment-slot equipment-slot--helmet equipment-slot--inactive" data-slot="helmet">
+                                    <div class="equipment-slot-body equipment-slot-body--helmet"></div>
+                                </div>
+                                <div class="equipment-slot equipment-slot--weapon equipment-slot--inactive" data-slot="weapon_main">
+                                    <div class="equipment-slot-body equipment-slot-body--weapon"></div>
+                                </div>
+                                <div class="equipment-slot equipment-slot--offhand equipment-slot--inactive" data-slot="weapon_off">
+                                    <div class="equipment-slot-body equipment-slot-body--offhand"></div>
+                                </div>
+                                <div class="equipment-slot equipment-slot--chest equipment-slot--inactive" data-slot="chest">
+                                    <div class="equipment-slot-body equipment-slot-body--chest"></div>
+                                </div>
+                                <div class="equipment-slot equipment-slot--pants equipment-slot--inactive" data-slot="pants">
+                                    <div class="equipment-slot-body equipment-slot-body--pants"></div>
+                                </div>
+                                <div class="equipment-slot equipment-slot--gloves equipment-slot--inactive" data-slot="gloves">
+                                    <div class="equipment-slot-body equipment-slot-body--gloves"></div>
+                                </div>
+                                <div class="equipment-slot equipment-slot--boots equipment-slot--inactive" data-slot="boots">
+                                    <div class="equipment-slot-body equipment-slot-body--boots"></div>
+                                </div>
+                            </div>
+                            </div>
+                            <div class="demo-equip-stats">
+                                <div class="demo-equip-stat"><strong>Атака:</strong> <span class="demo-equip-atk">12</span></div>
+                                <div class="demo-equip-stat"><strong>Защита:</strong> <span class="demo-equip-def">10</span></div>
+                            </div>
+                            <img class="demo-equip-flying" src="" alt="" aria-hidden="true">
+                        </div>
+                    </div>
+                </div>
+            </article>
+
+
+            <!-- 9. Сундук -->
+            <article class="tb-demo-row">
+                <div class="tb-demo-copy">
+                    <div class="tb-demo-copy-num">09</div>
+                    <h3>Награда из сундука</h3>
+                    <div class="rules-detail">
+                        <p>Сундуки покупают в лавке или получают за активность. При открытии выпадает случайный предмет — усиление, экипировка или другой дроп.</p>
+                    </div>
+                </div>
+                <div class="tb-demo-stage-wrap">
+                    <div class="tb-demo-stage tb-demo-stage--chest" data-demo="chest">
+                        <div class="demo-step-caption">Сундук в инвентаре</div>
+                        <div class="demo-layout-chest">
+                            <div class="inventory-tile demo-chest-tile">
+                                <div class="inventory-tile-img-wrap">
+                                    <span class="demo-chest-emoji">📦</span>
+                                </div>
+                                <div class="tile-name">Сундук D</div>
+                            </div>
+                            <div class="demo-chest-open-scene">
+                                <div class="drop-chest-wrap demo-chest-wrap">
+                                    <div class="demo-chest-sparkles" aria-hidden="true"></div>
+                                    <span class="demo-chest-icon">🎁</span>
+                                </div>
+                                <div class="drop-result demo-drop-result">
+                                    <div class="drop-result-inner">
+                                        <img class="drop-result-grant-icon" src="{{ demo_chest_img }}" alt="">
+                                        <span class="drop-result-caption">Усиление атаки!</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="inventory-tile demo-chest-reward-tile">
+                                <div class="inventory-tile-img-wrap">
+                                    <img class="item-icon-main" src="{{ demo_chest_img }}" alt="">
+                                </div>
+                                <div class="tile-name">Усиление атаки</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </article>
+
+
+            <!-- 4. Кланы -->
+            <article class="tb-demo-row">
+                <div class="tb-demo-copy">
+                    <div class="tb-demo-copy-num">10</div>
+                    <h3>Кланы: команда и роли</h3>
+                    <div class="rules-detail">
+                        <p>Клан — команда игроков, которая сражается за территории вместе. У клана есть название, флаг и владелец (Великий князь).</p>
+                        <p>Внутри клана — звания с разными правами: приём заявок, исключение игроков, метки нападения и защиты на карте. На карте видно, какой клан лидирует по числу захваченных областей.</p>
+                    </div>
+                </div>
+                <div class="tb-demo-stage-wrap">
+                    <div class="tb-demo-stage" data-demo="clans">
+                        <div class="demo-step-caption">Топ кланов</div>
+                        <div class="demo-layout-clans">
+                            <div class="demo-clans-row">
+                                <div class="territory-player-clan">
+                                    <div class="territory-player-clan-flag-placeholder" style="background:#3b82f6">С</div>
+                                    <span class="territory-player-clan-name">Соколы</span>
+                                </div>
+                                <div class="territory-player-clan">
+                                    <div class="territory-player-clan-flag-placeholder" style="background:#ef4444">Д</div>
+                                    <span class="territory-player-clan-name">Драконы</span>
+                                </div>
+                            </div>
+                            <div class="global-progress">
+                                <div class="global-progress-title">Лидирует</div>
+                                <div class="global-leader-row demo-leader-row">
+                                    <span class="global-class-avatar demo-leader-avatar" style="background:#3b82f6">С</span>
+                                    <span class="global-class-name demo-leader-name">Соколы</span>
+                                    <span class="global-class-count demo-leader-count">8 из 28 обл.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </article>
+
+
+            <!-- 9. PvP -->
+            <article class="tb-demo-row">
+                <div class="tb-demo-copy">
+                    <div class="tb-demo-copy-num">11</div>
+                    <h3>PvP-дуэли</h3>
+                    <div class="rules-detail">
+                        <p>На <strong>PvP Арене</strong> вы сражаетесь с другими игроками один на один. Выберите соперника или примите вызов — после подтверждения начнётся бой.</p>
+                        <p>Игрокам по очереди выдаются задачи: правильные ответы наносят урон, промахи дают шанс оппоненту отыграться. На силу удара влияют атака и защита (включая усиления из лавки). За дуэли можно получить Нумы.</p>
+                    </div>
+                </div>
+                <div class="tb-demo-stage-wrap">
+                    <div class="tb-demo-stage tb-demo-stage--pvp" data-demo="pvp">
+                        <div class="demo-step-caption">Дуэль на арене</div>
+                        <div class="demo-pvp-challenge-scene">
+                            <div class="demo-pvp-arena-block">
+                                <h4 class="demo-pvp-arena-title">Участники арены</h4>
+                                <div class="pvp-participant-btn demo-pvp-participant">
+                                    <div class="demo-pvp-participant-avatar">⚔</div>
+                                    <div class="pvp-participant-info">
+                                        <span class="pvp-participant-name">Соперник</span>
+                                        <span class="pvp-participant-level">Ур. 12 · Атака 18 · Защита 14</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="demo-pvp-wager-modal">
+                                <div class="demo-pvp-wager-box">
+                                    <h4>Ставка на дуэль</h4>
+                                    <p class="demo-pvp-wager-opp">Соперник · ур. 12</p>
+                                    <p class="demo-pvp-wager-amount">Ставка: <strong>10</strong> нумов</p>
+                                    <button type="button" class="pvp-btn demo-pvp-wager-submit">Вызвать</button>
+                                </div>
+                            </div>
+                            <div class="demo-pvp-start-banner">⚔️ Дуэль началась!</div>
+                        </div>
+                        <div class="demo-layout-pvp">
+                            <div class="pvp-duel-opponent demo-pvp-opp">
+                                <div class="avatar-placeholder">⚔</div>
+                                <div class="main">
+                                    <div class="name-row"><span class="name">Соперник</span></div>
+                                    <div class="pvp-duel-hp-wrap">
+                                        <div class="pvp-duel-hp-fill demo-opp-hp" style="width:100%"></div>
+                                    </div>
+                                    <div class="pvp-duel-hp-text demo-opp-hp-text">100 / 100</div>
+                                </div>
+                            </div>
+                            <div class="pvp-duel-task-area">
+                                <h2>Ваш ход</h2>
+                                <p class="pvp-duel-task-text demo-pvp-task">Найдите значение: 2³ = ?</p>
+                                <div class="pvp-duel-task-answer">
+                                    <input type="text" class="demo-pvp-input" readonly>
+                                    <button type="button" class="submit-btn demo-pvp-submit">Ответить</button>
+                                </div>
+                            </div>
+                            <div class="demo-pvp-hit">−22</div>
+                        </div>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 11. Время -->
+            <article class="tb-demo-row">
+                <div class="tb-demo-copy">
+                    <div class="tb-demo-copy-num">12</div>
+                    <h3>Время проведения</h3>
+                    <div class="rules-detail">
+                        <p>Битва может иметь время старта и окончания. До старта вы увидите обратный отсчёт. Во время битвы отображается таймер до конца. После окончания подводятся итоги — следите за топом кланов!</p>
+                    </div>
+                </div>
+                <div class="tb-demo-stage-wrap">
+                    <div class="tb-demo-stage tb-demo-stage--time" data-demo="time">
+                        <div class="demo-step-caption">До старта битвы</div>
+                        <div class="demo-time-scenes">
+                            <div class="demo-time-scene demo-time-start active">
+                                <div class="global-progress demo-time-block">
+                                    <div class="global-progress-title">До старта Битвы за территорию</div>
+                                    <div class="capture-countdown-value demo-countdown-start">02:15:00</div>
+                                </div>
+                            </div>
+                            <div class="demo-time-scene demo-time-battle">
+                                <div class="global-progress demo-time-block demo-time-end-row">
+                                    <span class="global-progress-title">До конца битвы</span>
+                                    <span class="capture-countdown-value demo-countdown-end">05:42:18</span>
+                                </div>
+                                <div class="global-progress demo-time-block">
+                                    <div class="global-progress-title">Лидирует</div>
+                                    <div class="global-leader-row demo-time-leader">
+                                        <span class="global-class-avatar demo-time-leader-avatar" style="background:#3b82f6">С</span>
+                                        <span class="global-class-name">Соколы</span>
+                                        <span class="global-class-count">8 из 28 обл.</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="demo-time-scene demo-time-results">
+                                <div class="demo-time-finished-banner">🏆 Битва завершена!</div>
+                                <div class="global-progress demo-time-block demo-time-winner-block">
+                                    <div class="global-progress-title">Победитель</div>
+                                    <div class="global-leader-row demo-time-winner">
+                                        <span class="global-class-avatar" style="background:#3b82f6">С</span>
+                                        <span class="global-class-name">Соколы</span>
+                                        <span class="global-class-count">12 обл.</span>
+                                    </div>
+                                </div>
+                                <p class="demo-time-results-hint">Итоги сохранены в топе кланов</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </article>
+        </div>

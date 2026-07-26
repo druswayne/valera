@@ -1,0 +1,437 @@
+/* Главная страница — Битва за территорию */
+
+* { box-sizing: border-box; }
+
+.tb-main-page {
+    min-height: 100vh;
+    background: #3d2914 linear-gradient(180deg, rgba(61,41,20,0.97) 0%, #2c1810 50%, #1a0f08 100%);
+    color: #e8dcc4;
+    position: relative;
+    overflow-x: hidden;
+}
+
+.tb-main-page::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+}
+
+.tb-main-page > * { position: relative; z-index: 1; }
+
+.tb-main-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 16px 24px;
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+.tb-main-nav-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.tb-main-nav a {
+    color: #d4a84b;
+    text-decoration: none;
+    font-weight: bold;
+    padding: 10px 18px;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    border: 2px solid #5c4033;
+    border-radius: 4px;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.9rem;
+    transition: color 0.2s, border-color 0.2s, transform 0.2s;
+}
+
+.tb-main-nav a:hover {
+    color: #e8c86a;
+    border-color: #8b6914;
+    transform: translateY(-1px);
+}
+
+.tb-main-nav a.tb-cta-primary {
+    background: linear-gradient(145deg, #f6e3b2 0%, #d4a84b 35%, #b88120 100%);
+    color: #1a0f08;
+    border-color: #f7e5b9;
+    box-shadow: 0 0 12px rgba(212,168,75,0.35);
+}
+
+.tb-main-nav a.tb-cta-primary:hover {
+    color: #1a0f08;
+    box-shadow: 0 0 18px rgba(252,238,190,0.7);
+}
+
+/* Hero */
+.tb-hero {
+    text-align: center;
+    padding: 48px 24px 56px;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.tb-hero-badge {
+    display: inline-block;
+    padding: 6px 16px;
+    border-radius: 999px;
+    border: 1px solid rgba(212,168,75,0.45);
+    color: #d4a84b;
+    font-size: 0.82rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    font-family: 'Cinzel', Georgia, serif;
+    animation: tb-badge-pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes tb-badge-pulse {
+    0%, 100% { box-shadow: 0 0 0 rgba(212,168,75,0); }
+    50% { box-shadow: 0 0 16px rgba(212,168,75,0.25); }
+}
+
+.tb-hero h1 {
+    font-family: 'Cinzel Decorative', 'Cinzel', Georgia, serif;
+    font-size: clamp(2rem, 5vw, 3rem);
+    font-weight: 700;
+    color: #d4a84b;
+    text-shadow: 0 0 30px rgba(212,168,75,0.35), 0 2px 6px rgba(0,0,0,0.5);
+    letter-spacing: 0.06em;
+    margin: 0 0 16px;
+    line-height: 1.2;
+}
+
+.tb-hero-sub {
+    font-size: 1.15rem;
+    color: #c4b49a;
+    line-height: 1.65;
+    margin: 0 auto 32px;
+    max-width: 640px;
+}
+
+.tb-hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 14px;
+}
+
+.tb-hero-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 28px;
+    border-radius: 6px;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 1rem;
+    font-weight: 700;
+    text-decoration: none;
+    letter-spacing: 0.06em;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.tb-hero-btn:hover { transform: translateY(-2px); }
+
+.tb-hero-btn-primary {
+    background: linear-gradient(145deg, #f6e3b2 0%, #d4a84b 35%, #b88120 100%);
+    color: #1a0f08;
+    border: 2px solid #f7e5b9;
+    box-shadow: 0 4px 20px rgba(212,168,75,0.4);
+}
+
+.tb-hero-btn-primary:hover {
+    box-shadow: 0 6px 28px rgba(252,238,190,0.55);
+    color: #1a0f08;
+}
+
+.tb-hero-btn-secondary {
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    color: #d4a84b;
+    border: 2px solid #5c4033;
+}
+
+.tb-hero-btn-secondary:hover {
+    color: #e8c86a;
+    border-color: #8b6914;
+}
+
+/* Featured update */
+.tb-featured-update {
+    max-width: 760px;
+    margin: 0 auto 48px;
+    padding: 0 24px;
+}
+
+.tb-featured-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 22px;
+    background: linear-gradient(135deg, rgba(212,168,75,0.18) 0%, rgba(74,53,32,0.9) 100%);
+    border: 2px solid #8b6914;
+    border-radius: 10px;
+    text-decoration: none;
+    color: #e8dcc4;
+    transition: transform 0.2s, box-shadow 0.2s;
+    animation: tb-featured-glow 2s ease-in-out infinite alternate;
+}
+
+.tb-featured-card:hover {
+    transform: translateY(-2px);
+    color: #fff;
+    box-shadow: 0 8px 28px rgba(212,168,75,0.3);
+}
+
+@keyframes tb-featured-glow {
+    from { box-shadow: 0 0 8px rgba(212,168,75,0.2); }
+    to { box-shadow: 0 0 20px rgba(212,168,75,0.45); }
+}
+
+.tb-featured-icon { font-size: 1.8rem; flex-shrink: 0; }
+
+.tb-featured-text strong {
+    display: block;
+    color: #d4a84b;
+    font-family: 'Cinzel', Georgia, serif;
+    margin-bottom: 4px;
+}
+
+.tb-featured-text span { font-size: 0.9rem; color: #b8a088; }
+
+/* About */
+.tb-about {
+    max-width: 1060px;
+    margin: 0 auto 56px;
+    padding: 0 24px;
+}
+
+.tb-section-title {
+    font-family: 'Cinzel Decorative', 'Cinzel', Georgia, serif;
+    text-align: center;
+    color: #d4a84b;
+    font-size: 1.6rem;
+    margin: 0 0 12px;
+    letter-spacing: 0.06em;
+}
+
+.tb-section-lead {
+    text-align: center;
+    color: #b8a088;
+    margin: 0 auto 36px;
+    max-width: 620px;
+    line-height: 1.6;
+}
+
+.tb-about-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 18px;
+}
+
+.tb-about-card {
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    border: 2px solid #5c4033;
+    border-radius: 10px;
+    padding: 22px;
+    text-align: center;
+    box-shadow: inset 0 1px 0 rgba(212,168,75,0.1), 0 4px 14px rgba(0,0,0,0.3);
+}
+
+.tb-about-card-icon {
+    font-size: 2.2rem;
+    margin-bottom: 12px;
+    display: block;
+}
+
+.tb-about-card h3 {
+    font-family: 'Cinzel', Georgia, serif;
+    color: #d4a84b;
+    margin: 0 0 8px;
+    font-size: 1rem;
+}
+
+.tb-about-card p {
+    margin: 0;
+    font-size: 0.92rem;
+    line-height: 1.55;
+    color: #d8ccb4;
+}
+
+/* Demos — строки: слева текст, справа анимация */
+.tb-demos {
+    max-width: 1060px;
+    margin: 0 auto 64px;
+    padding: 0 24px;
+}
+
+.tb-demo-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+}
+
+.tb-demo-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr);
+    gap: 28px;
+    align-items: stretch;
+    background: linear-gradient(145deg, #4a3520 0%, #3d2914 100%);
+    border: 2px solid #5c4033;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+}
+
+.tb-demo-copy {
+    padding: 30px 28px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border-right: 2px solid rgba(92,64,51,0.55);
+}
+
+.tb-demo-copy-num {
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.82rem;
+    letter-spacing: 0.14em;
+    color: #8b6914;
+    margin-bottom: 10px;
+}
+
+.tb-demo-copy h3 {
+    font-family: 'Cinzel', Georgia, serif;
+    color: #d4a84b;
+    margin: 0 0 14px;
+    font-size: 1.38rem;
+    letter-spacing: 0.04em;
+}
+
+.tb-demo-copy > p {
+    margin: 0 0 18px;
+    font-size: 1.02rem;
+    line-height: 1.65;
+    color: #c4b49a;
+}
+
+.tb-demo-steps-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.tb-demo-steps-list li {
+    position: relative;
+    padding-left: 18px;
+    margin-bottom: 10px;
+    font-size: 0.96rem;
+    line-height: 1.55;
+    color: #b8a088;
+}
+
+.tb-demo-steps-list li::before {
+    content: '›';
+    position: absolute;
+    left: 0;
+    color: #d4a84b;
+    font-weight: bold;
+}
+
+.tb-demo-stage-wrap {
+    background: linear-gradient(180deg, #2a1a10 0%, #1e1208 100%);
+    min-height: 280px;
+    display: flex;
+    align-items: stretch;
+}
+
+.tb-demo-stage {
+    flex: 1;
+    min-height: 280px;
+    position: relative;
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    grid-template-columns: 1fr;
+}
+
+.tb-demo-stage > .demo-step-caption {
+    grid-row: 1;
+    grid-column: 1;
+}
+
+.tb-demo-stage > :not(.demo-step-caption) {
+    grid-row: 2;
+    grid-column: 1;
+    min-height: 0;
+}
+
+.tb-demo-stage--tall { min-height: 260px; }
+.tb-demo-stage--items { min-height: 320px; }
+.tb-demo-stage--equip { min-height: 340px; }
+.tb-demo-stage--pvp { min-height: 300px; }
+.tb-demo-stage--skills { min-height: 420px; }
+.demo-skills-panel--tree {
+    max-width: 100%;
+    min-height: 360px;
+    padding: 8px 10px 12px;
+}
+
+/* Footer CTA */
+.tb-footer-cta {
+    text-align: center;
+    padding: 40px 24px 64px;
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.tb-footer-cta p {
+    color: #b8a088;
+    margin: 0 0 24px;
+    line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+    .tb-demo-row {
+        grid-template-columns: 1fr;
+    }
+    .tb-demo-copy {
+        border-right: none;
+        border-bottom: 2px solid rgba(92,64,51,0.55);
+        padding: 22px 20px;
+    }
+    .tb-demo-stage-wrap {
+        min-height: 260px;
+    }
+}
+
+@media (max-width: 600px) {
+    .tb-hero { padding: 32px 16px 40px; }
+    .tb-main-nav { justify-content: center; }
+    .tb-demos {
+        padding: 0 4px;
+        margin-bottom: 40px;
+    }
+    .tb-demo-rows { gap: 20px; }
+    .tb-demo-copy {
+        padding: 18px 16px;
+    }
+    .tb-demo-copy h3 {
+        font-size: 1.12rem;
+    }
+    .tb-demo-copy > p {
+        font-size: 0.94rem;
+    }
+    .tb-demo-stage-wrap,
+    .tb-demo-stage {
+        min-height: 220px;
+    }
+    .tb-demo-stage--items,
+    .tb-demo-stage--equip {
+        min-height: 260px;
+    }
+}
