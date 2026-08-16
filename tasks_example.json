@@ -1,0 +1,23 @@
+{
+    "tasks": [
+        {
+            "title": "Пример задачи 1",
+            "description": "Это описание первой задачи",
+            "correct_answer": "ответ1",
+            "points": 10,
+            "image_path": "path/to/image1.png"
+        },
+        {
+            "title": "Пример задачи 2",
+            "description": "Это описание второй задачи",
+            "correct_answer": "ответ2",
+            "points": 15
+        },
+        {
+            "title": "Пример задачи 3",
+            "correct_answer": "ответ3",
+            "points": 5,
+            "image_path": "image3.jpg"
+        }
+    ]
+}

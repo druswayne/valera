@@ -592,7 +592,11 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     character_name = db.Column(db.String(200), nullable=True)
     avatar_filename = db.Column(db.String(255), nullable=True)
-    clan_id = db.Column(db.Integer, db.ForeignKey('clan.id'), nullable=True)
+    clan_id = db.Column(
+        db.Integer,
+        db.ForeignKey('clan.id', use_alter=True, name='fk_user_clan_id'),
+        nullable=True,
+    )
     clan_rank = db.Column(db.String(20), nullable=True)
     level = db.Column(db.Integer, default=1, nullable=False)
     experience = db.Column(db.Integer, default=0, nullable=False)
@@ -2062,7 +2066,8 @@ def fix_postgresql_sequences():
     inspector = inspect(db.engine)
     table_names = set(inspector.get_table_names(schema='public'))
     fixed = []
-    for table in db.metadata.sorted_tables:
+    # sorted_tables предупреждает из-за взаимных FK clan.owner_id ↔ user.clan_id
+    for table in db.metadata.tables.values():
         if table.name not in table_names:
             continue
         pk_cols = list(table.primary_key.columns)

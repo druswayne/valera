@@ -1,0 +1,962 @@
+[
+  {
+    "name": "Приём: крепкий удар",
+    "description": "Боевой приём, временно усиливающий личную атаку в начале пути в битве за территорию.",
+    "category": "enhancement",
+    "price": 200,
+    "effects": [
+      {
+        "effect_type": "damage",
+        "percent_change": 20,
+        "target": "self",
+        "duration_minutes": 30
+      }
+    ]
+  },
+  {
+    "name": "Талант чемпиона",
+    "description": "Пассивная способность: на время повышает опыт за каждую решённую задачу. Идеальна для прокачки уровня.",
+    "category": "enhancement",
+    "price": 350,
+    "effects": [
+      {
+        "effect_type": "xp_reward",
+        "percent_change": 40,
+        "target": "self",
+        "duration_minutes": 60
+      }
+    ]
+  },
+  {
+    "name": "Чутьё на трофеи",
+    "description": "Способность, увеличивающая количество Нумов за правильные ответы в битве за территорию.",
+    "category": "enhancement",
+    "price": 400,
+    "effects": [
+      {
+        "effect_type": "nums_reward",
+        "percent_change": 50,
+        "target": "self",
+        "duration_minutes": 60
+      }
+    ]
+  },
+  {
+    "name": "Рывок адреналина",
+    "description": "Мгновенная боевая способность, резко восполняющая часть энергии без ожидания восстановления.",
+    "category": "enhancement",
+    "price": 250,
+    "effects": [
+      {
+        "effect_type": "current_energy",
+        "percent_change": 50,
+        "target": "self",
+        "duration_minutes": null
+      }
+    ]
+  },
+  {
+    "name": "Ярость штурма",
+    "description": "Временная атакующая способность: значительно повышает вашу атаку на короткий период, идеально для штурма сложных областей.",
+    "category": "enhancement",
+    "price": 280,
+    "effects": [
+      {
+        "effect_type": "damage",
+        "percent_change": 30,
+        "target": "self",
+        "duration_minutes": 20
+      }
+    ]
+  },
+  {
+    "name": "Стойка защитника",
+    "description": "Защитная стойка, усиливающая личную броню и позволяющая надёжнее удерживать территории клана.",
+    "category": "enhancement",
+    "price": 260,
+    "effects": [
+      {
+        "effect_type": "defense",
+        "percent_change": 25,
+        "target": "self",
+        "duration_minutes": 30
+      }
+    ]
+  },
+  {
+    "name": "Клановая способность: боевой клич",
+    "description": "Клановая клич-способность, поднимающая боевой дух: атака всех участников растёт на время общего штурма.",
+    "category": "enhancement",
+    "price": 3600,
+    "effects": [
+      {
+        "effect_type": "damage",
+        "percent_change": 15,
+        "target": "clan",
+        "duration_minutes": 45
+      }
+    ]
+  },
+  {
+    "name": "Клановый импульс",
+    "description": "Разовая клановая способность: слегка восполняет текущую энергию всем бойцам клана.",
+    "category": "enhancement",
+    "price": 2400,
+    "effects": [
+      {
+        "effect_type": "current_energy",
+        "percent_change": 20,
+        "target": "clan",
+        "duration_minutes": null
+      }
+    ]
+  },
+  {
+    "name": "Клановый рывок",
+    "description": "Сильная разовая способность клана: заметно увеличивает текущую энергию всех участников.",
+    "category": "enhancement",
+    "price": 3200,
+    "effects": [
+      {
+        "effect_type": "current_energy",
+        "percent_change": 50,
+        "target": "clan",
+        "duration_minutes": null
+      }
+    ]
+  },
+  {
+    "name": "Клановый прорыв",
+    "description": "Максимальная разовая клановая способность: полностью восполняет текущую энергию всего клана перед ключевой атакой.",
+    "category": "enhancement",
+    "price": 4000,
+    "effects": [
+      {
+        "effect_type": "current_energy",
+        "percent_change": 100,
+        "target": "clan",
+        "duration_minutes": null
+      }
+    ]
+  },
+  {
+    "name": "Импульс энергии",
+    "description": "Разовая личная способность: слегка восполняет текущую энергию перед боем.",
+    "category": "enhancement",
+    "price": 150,
+    "effects": [
+      {
+        "effect_type": "current_energy",
+        "percent_change": 20,
+        "target": "self",
+        "duration_minutes": null
+      }
+    ]
+  },
+  {
+    "name": "Энергетический прорыв",
+    "description": "Мощная разовая способность: полностью восполняет текущую энергию перед решающим штурмом.",
+    "category": "enhancement",
+    "price": 400,
+    "effects": [
+      {
+        "effect_type": "current_energy",
+        "percent_change": 100,
+        "target": "self",
+        "duration_minutes": null
+      }
+    ]
+  },
+  {
+    "name": "Клановая способность: общий щит",
+    "description": "Мощная клановая защитная способность: весь клан получает значительный бонус к защите.",
+    "category": "enhancement",
+    "price": 4000,
+    "effects": [
+      {
+        "effect_type": "defense",
+        "percent_change": 20,
+        "target": "clan",
+        "duration_minutes": 45
+      }
+    ]
+  },
+  {
+    "name": "Клановое наставничество",
+    "description": "Клановая аура обучения: повышает опыт, который все участники получают за задачи в битве за территорию.",
+    "category": "enhancement",
+    "price": 3360,
+    "effects": [
+      {
+        "effect_type": "xp_reward",
+        "percent_change": 20,
+        "target": "clan",
+        "duration_minutes": 60
+      }
+    ]
+  },
+  {
+    "name": "Клановая жадность",
+    "description": "Экономическая способность клана: общий бонус к Нумам за задачи для всех участников.",
+    "category": "enhancement",
+    "price": 3440,
+    "effects": [
+      {
+        "effect_type": "nums_reward",
+        "percent_change": 15,
+        "target": "clan",
+        "duration_minutes": 60
+      }
+    ]
+  },
+  {
+    "name": "Формация: каменная стена",
+    "description": "Областная защитная способность: сильно укрепляет выбранную область, делая её трудной целью для врагов.",
+    "category": "enhancement",
+    "price": 2000,
+    "effects": [
+      {
+        "effect_type": "defense",
+        "percent_change": 40,
+        "target": "region",
+        "duration_minutes": 60
+      }
+    ]
+  },
+  {
+    "name": "Формация: наступление",
+    "description": "Областная боевая способность: увеличивает атаку всех боёв в выбранной области, помогая быстрее её захватить.",
+    "category": "enhancement",
+    "price": 1800,
+    "effects": [
+      {
+        "effect_type": "damage",
+        "percent_change": 35,
+        "target": "region",
+        "duration_minutes": 45
+      }
+    ]
+  },
+  {
+    "name": "Дух провинции",
+    "description": "Областная аура вдохновения: за задачи на этой территории дают больше опыта.",
+    "category": "enhancement",
+    "price": 1500,
+    "effects": [
+      {
+        "effect_type": "xp_reward",
+        "percent_change": 25,
+        "target": "region",
+        "duration_minutes": 45
+      }
+    ]
+  },
+  {
+    "name": "Экономический подъём",
+    "description": "Областная экономическая способность: награда в Нумах за задачи на этой территории увеличивается.",
+    "category": "enhancement",
+    "price": 1700,
+    "effects": [
+      {
+        "effect_type": "nums_reward",
+        "percent_change": 30,
+        "target": "region",
+        "duration_minutes": 60
+      }
+    ]
+  },
+  {
+    "name": "Клановая синергия",
+    "description": "Сложная клановая способность: продуманная тактика даёт небольшой, но одновременный рост атаки и защиты всего клана.",
+    "category": "enhancement",
+    "price": 4160,
+    "effects": [
+      {
+        "effect_type": "damage",
+        "percent_change": 10,
+        "target": "clan",
+        "duration_minutes": 60
+      },
+      {
+        "effect_type": "defense",
+        "percent_change": 10,
+        "target": "clan",
+        "duration_minutes": 60
+      }
+    ]
+  },
+  {
+    "name": "Порча клинков",
+    "description": "Клановое проклятие: оружие бойцов цели как будто ржавеет, их атака снижается.",
+    "category": "curse",
+    "price": 4160,
+    "effects": [
+      {
+        "effect_type": "damage",
+        "percent_change": 15,
+        "target": "clan",
+        "duration_minutes": 45
+      }
+    ]
+  },
+  {
+    "name": "Проклятие щитов",
+    "description": "Клановая ослабляющая способность: защита всего клана-цели падает, их территории проще захватить.",
+    "category": "curse",
+    "price": 4400,
+    "effects": [
+      {
+        "effect_type": "defense",
+        "percent_change": 20,
+        "target": "clan",
+        "duration_minutes": 45
+      }
+    ]
+  },
+  {
+    "name": "Аура смуты",
+    "description": "Долговременное клановое проклятие: над кланом-целью висит смута, и за задачи они получают меньше Нумов.",
+    "category": "curse",
+    "price": 4800,
+    "effects": [
+      {
+        "effect_type": "nums_reward",
+        "percent_change": 25,
+        "target": "clan",
+        "duration_minutes": 60
+      }
+    ]
+  },
+  {
+    "name": "Ослабляющая аура области",
+    "description": "Областное проклятие: земля под крепостью врага ослаблена, защищаться на этой территории становится сложнее.",
+    "category": "curse",
+    "price": 2200,
+    "effects": [
+      {
+        "effect_type": "defense",
+        "percent_change": 35,
+        "target": "region",
+        "duration_minutes": 60
+      }
+    ]
+  },
+  {
+    "name": "Спорная провинция",
+    "description": "Областная дебафф-способность: внутренние волнения снижают боевой дух защитников и ослабляют их атаки.",
+    "category": "curse",
+    "price": 2000,
+    "effects": [
+      {
+        "effect_type": "damage",
+        "percent_change": 30,
+        "target": "region",
+        "duration_minutes": 45
+      }
+    ]
+  },
+  {
+    "name": "Порча казны",
+    "description": "Сильное клановое проклятие экономики: часть награды клана будто исчезает, все получают меньше Нумов за задачи.",
+    "category": "curse",
+    "price": 4960,
+    "effects": [
+      {
+        "effect_type": "nums_reward",
+        "percent_change": 15,
+        "target": "clan",
+        "duration_minutes": 120
+      }
+    ]
+  },
+  {
+    "name": "Астральный неурожай",
+    "description": "Областная ослабляющая способность: в регионе метафорический неурожай, награда в Нумах за задачи заметно падает.",
+    "category": "curse",
+    "price": 2100,
+    "effects": [
+      {
+        "effect_type": "nums_reward",
+        "percent_change": 20,
+        "target": "region",
+        "duration_minutes": 60
+      }
+    ]
+  },
+  {
+    "name": "Затухание знаний",
+    "description": "Областное проклятие обучения: учиться на этой территории становится тяжелее, опыт за задачи уменьшается.",
+    "category": "curse",
+    "price": 1700,
+    "effects": [
+      {
+        "effect_type": "xp_reward",
+        "percent_change": 20,
+        "target": "region",
+        "duration_minutes": 60
+      }
+    ]
+  },
+  {
+    "name": "Потерянные знания клана",
+    "description": "Клановая дебафф-способность: в клане-цели царит путаница, и все получают меньше опыта за решённые задачи.",
+    "category": "curse",
+    "price": 4320,
+    "effects": [
+      {
+        "effect_type": "xp_reward",
+        "percent_change": 20,
+        "target": "clan",
+        "duration_minutes": 60
+      }
+    ]
+  },
+  {
+    "name": "Тень поражения",
+    "description": "Клановая психологическая дебафф-способность: мрачные слухи снижают и атаку, и защиту бойцов.",
+    "category": "curse",
+    "price": 4480,
+    "effects": [
+      {
+        "effect_type": "damage",
+        "percent_change": 10,
+        "target": "clan",
+        "duration_minutes": 60
+      },
+      {
+        "effect_type": "defense",
+        "percent_change": 10,
+        "target": "clan",
+        "duration_minutes": 60
+      }
+    ]
+  },
+  {
+    "name": "Рассеивание сил",
+    "description": "Сильное клановое ослабление: часть сил клана-цели как будто растворяется, суммарный запас энергии бойцов уменьшается.",
+    "category": "curse",
+    "price": 4640,
+    "effects": [
+      {
+        "effect_type": "current_energy",
+        "percent_change": 20,
+        "target": "clan",
+        "duration_minutes": null
+      }
+    ]
+  },
+  {
+    "name": "Кризис сил",
+    "description": "Разовое клановое проклятие: серьёзно уменьшает текущую энергию у бойцов клана-цели.",
+    "category": "curse",
+    "price": 5200,
+    "effects": [
+      {
+        "effect_type": "current_energy",
+        "percent_change": 50,
+        "target": "clan",
+        "duration_minutes": null
+      }
+    ]
+  },
+  {
+    "name": "Коллапс энергии",
+    "description": "Максимальное клановое проклятие: на время лишает клан-цель почти всей текущей энергии.",
+    "category": "curse",
+    "price": 5600,
+    "effects": [
+      {
+        "effect_type": "current_energy",
+        "percent_change": 100,
+        "target": "clan",
+        "duration_minutes": null
+      }
+    ]
+  },
+  {
+    "name": "Истощение фронта",
+    "description": "Областная способность-ослабление: отряды на этом участке фронта измотаны и имеют меньший запас энергии.",
+    "category": "curse",
+    "price": 2300,
+    "effects": [
+      {
+        "effect_type": "current_energy",
+        "percent_change": 25,
+        "target": "region",
+        "duration_minutes": null
+      }
+    ]
+  },
+  {
+    "name": "Паника гарнизона",
+    "description": "Областная психологическая способность: гарнизон впадает в панику, и их защита заметно слабеет.",
+    "category": "curse",
+    "price": 2100,
+    "effects": [
+      {
+        "effect_type": "defense",
+        "percent_change": 25,
+        "target": "region",
+        "duration_minutes": 30
+      }
+    ]
+  },
+  {
+    "name": "Лихорадка поля боя",
+    "description": "Областное ослабление: войска в выбранной области словно больны и наносят меньше урона врагам.",
+    "category": "curse",
+    "price": 2200,
+    "effects": [
+      {
+        "effect_type": "damage",
+        "percent_change": 20,
+        "target": "region",
+        "duration_minutes": 60
+      }
+    ]
+  },
+  {
+    "name": "Адреналин форпоста",
+    "description": "Личный рывок: вы моментально восстанавливаете энергию и усиливаете атаку на короткий период.",
+    "category": "enhancement",
+    "price": 420,
+    "effects": [
+      {
+        "effect_type": "current_energy",
+        "percent_change": 35,
+        "target": "self",
+        "duration_minutes": null
+      },
+      {
+        "effect_type": "damage",
+        "percent_change": 18,
+        "target": "self",
+        "duration_minutes": 30
+      }
+    ]
+  },
+  {
+    "name": "Железная стойка",
+    "description": "Защитный импульс: повышает вашу защиту и даёт небольшой бонус к опыту за задачи.",
+    "category": "enhancement",
+    "price": 520,
+    "effects": [
+      {
+        "effect_type": "defense",
+        "percent_change": 18,
+        "target": "self",
+        "duration_minutes": 45
+      },
+      {
+        "effect_type": "xp_reward",
+        "percent_change": 15,
+        "target": "self",
+        "duration_minutes": 45
+      }
+    ]
+  },
+  {
+    "name": "Клановый таран",
+    "description": "Слаженное наступление: клан получает бонус и к атаке, и к защите.",
+    "category": "enhancement",
+    "price": 3800,
+    "effects": [
+      {
+        "effect_type": "damage",
+        "percent_change": 16,
+        "target": "clan",
+        "duration_minutes": 60
+      },
+      {
+        "effect_type": "defense",
+        "percent_change": 12,
+        "target": "clan",
+        "duration_minutes": 60
+      }
+    ]
+  },
+  {
+    "name": "Пробуждение тактики",
+    "description": "Учебный штурм: усиливает опыт клана и повышает награды в Нумах.",
+    "category": "enhancement",
+    "price": 4200,
+    "effects": [
+      {
+        "effect_type": "xp_reward",
+        "percent_change": 25,
+        "target": "clan",
+        "duration_minutes": 60
+      },
+      {
+        "effect_type": "nums_reward",
+        "percent_change": 15,
+        "target": "clan",
+        "duration_minutes": 60
+      }
+    ]
+  },
+  {
+    "name": "Экономика обучения",
+    "description": "Провинциальный резонанс: за задачи в регионе больше опыта и Нумов.",
+    "category": "enhancement",
+    "price": 3000,
+    "effects": [
+      {
+        "effect_type": "xp_reward",
+        "percent_change": 18,
+        "target": "region",
+        "duration_minutes": 45
+      },
+      {
+        "effect_type": "nums_reward",
+        "percent_change": 18,
+        "target": "region",
+        "duration_minutes": 45
+      }
+    ]
+  },
+  {
+    "name": "Пыл наступления",
+    "description": "Фронтовое воодушевление: усиливает атаку в регионе и добавляет награду в Нумах.",
+    "category": "enhancement",
+    "price": 2600,
+    "effects": [
+      {
+        "effect_type": "damage",
+        "percent_change": 22,
+        "target": "region",
+        "duration_minutes": 45
+      },
+      {
+        "effect_type": "nums_reward",
+        "percent_change": 12,
+        "target": "region",
+        "duration_minutes": 45
+      }
+    ]
+  },
+  {
+    "name": "Аура командования",
+    "description": "Клановый приток сил: восстанавливает текущую энергию всем в клане и повышает защиту на время атаки.",
+    "category": "enhancement",
+    "price": 3400,
+    "effects": [
+      {
+        "effect_type": "current_energy",
+        "percent_change": 60,
+        "target": "clan",
+        "duration_minutes": null
+      },
+      {
+        "effect_type": "defense",
+        "percent_change": 14,
+        "target": "clan",
+        "duration_minutes": 45
+      }
+    ]
+  },
+  {
+    "name": "Заряд ритма",
+    "description": "Бодрость перед боем: ускоряет обучение и усиливает награды за задачи в регионе.",
+    "category": "enhancement",
+    "price": 2300,
+    "effects": [
+      {
+        "effect_type": "xp_reward",
+        "percent_change": 20,
+        "target": "region",
+        "duration_minutes": 60
+      },
+      {
+        "effect_type": "nums_reward",
+        "percent_change": 20,
+        "target": "region",
+        "duration_minutes": 60
+      }
+    ]
+  },
+  {
+    "name": "Северная фортуна",
+    "description": "Региональная удача: повышает Нумы за задачи и уменьшает потери при защите.",
+    "category": "enhancement",
+    "price": 2400,
+    "effects": [
+      {
+        "effect_type": "nums_reward",
+        "percent_change": 24,
+        "target": "region",
+        "duration_minutes": 60
+      },
+      {
+        "effect_type": "defense",
+        "percent_change": 10,
+        "target": "region",
+        "duration_minutes": 60
+      }
+    ]
+  },
+  {
+    "name": "Благословение клана",
+    "description": "Клановая поддержка: повышает опыт и защиту на время штурма.",
+    "category": "enhancement",
+    "price": 4400,
+    "effects": [
+      {
+        "effect_type": "xp_reward",
+        "percent_change": 22,
+        "target": "clan",
+        "duration_minutes": 60
+      },
+      {
+        "effect_type": "defense",
+        "percent_change": 14,
+        "target": "clan",
+        "duration_minutes": 60
+      }
+    ]
+  },
+  {
+    "name": "Крепость региона",
+    "description": "Областная оборона: серьёзно укрепляет защиту в выбранной области.",
+    "category": "enhancement",
+    "price": 3600,
+    "effects": [
+      {
+        "effect_type": "defense",
+        "percent_change": 30,
+        "target": "region",
+        "duration_minutes": 60
+      }
+    ]
+  },
+  {
+    "name": "Поддержка экспедиции",
+    "description": "Командный бонус: даёт клану и опыт, и Нумы за задачи на этой территории.",
+    "category": "enhancement",
+    "price": 4100,
+    "effects": [
+      {
+        "effect_type": "xp_reward",
+        "percent_change": 22,
+        "target": "region",
+        "duration_minutes": 60
+      },
+      {
+        "effect_type": "nums_reward",
+        "percent_change": 15,
+        "target": "region",
+        "duration_minutes": 60
+      }
+    ]
+  },
+  {
+    "name": "Яд неудачи",
+    "description": "Клановая порча: повышает урон против клана-цели (для атакующих) и ухудшает их защиту.",
+    "category": "curse",
+    "price": 4700,
+    "effects": [
+      {
+        "effect_type": "damage",
+        "percent_change": 18,
+        "target": "clan",
+        "duration_minutes": 60
+      },
+      {
+        "effect_type": "defense",
+        "percent_change": 12,
+        "target": "clan",
+        "duration_minutes": 60
+      }
+    ]
+  },
+  {
+    "name": "Сломанная воля",
+    "description": "Дебафф опыта: клан-цель получает меньше опыта за задачи.",
+    "category": "curse",
+    "price": 3900,
+    "effects": [
+      {
+        "effect_type": "xp_reward",
+        "percent_change": 28,
+        "target": "clan",
+        "duration_minutes": 60
+      }
+    ]
+  },
+  {
+    "name": "Опустошение казны",
+    "description": "Клановая порча экономики: за задачи платят заметно меньше Нумов.",
+    "category": "curse",
+    "price": 5200,
+    "effects": [
+      {
+        "effect_type": "nums_reward",
+        "percent_change": 28,
+        "target": "clan",
+        "duration_minutes": 120
+      }
+    ]
+  },
+  {
+    "name": "Туман учёбы",
+    "description": "Областное проклятие: в регионе сложнее развиваться — меньше опыта за задачи.",
+    "category": "curse",
+    "price": 2500,
+    "effects": [
+      {
+        "effect_type": "xp_reward",
+        "percent_change": 26,
+        "target": "region",
+        "duration_minutes": 60
+      }
+    ]
+  },
+  {
+    "name": "Обескровленный фронт",
+    "description": "Областная порча: снижает урон и ухудшает экономику региона.",
+    "category": "curse",
+    "price": 3000,
+    "effects": [
+      {
+        "effect_type": "damage",
+        "percent_change": 22,
+        "target": "region",
+        "duration_minutes": 45
+      },
+      {
+        "effect_type": "nums_reward",
+        "percent_change": 12,
+        "target": "region",
+        "duration_minutes": 45
+      }
+    ]
+  },
+  {
+    "name": "Разбитые щиты гарнизона",
+    "description": "Областной дебафф: защитники в регионе теряют устойчивость.",
+    "category": "curse",
+    "price": 3100,
+    "effects": [
+      {
+        "effect_type": "defense",
+        "percent_change": 26,
+        "target": "region",
+        "duration_minutes": 45
+      }
+    ]
+  },
+  {
+    "name": "Клановый спад",
+    "description": "Порча для атакующего клана: дебафф и урона, и защиты на время размена.",
+    "category": "curse",
+    "price": 4600,
+    "effects": [
+      {
+        "effect_type": "damage",
+        "percent_change": 14,
+        "target": "clan",
+        "duration_minutes": 45
+      },
+      {
+        "effect_type": "defense",
+        "percent_change": 18,
+        "target": "clan",
+        "duration_minutes": 45
+      }
+    ]
+  },
+  {
+    "name": "Разлад обучения",
+    "description": "Сочетание дебаффов: снижает и опыт, и Нумы в регионе.",
+    "category": "curse",
+    "price": 2700,
+    "effects": [
+      {
+        "effect_type": "xp_reward",
+        "percent_change": 18,
+        "target": "region",
+        "duration_minutes": 60
+      },
+      {
+        "effect_type": "nums_reward",
+        "percent_change": 18,
+        "target": "region",
+        "duration_minutes": 60
+      }
+    ]
+  },
+  {
+    "name": "Истощение застав",
+    "description": "Клановое подавление энергии: мгновенно уменьшает текущую энергию и мешает держать линию.",
+    "category": "curse",
+    "price": 4100,
+    "effects": [
+      {
+        "effect_type": "current_energy",
+        "percent_change": 45,
+        "target": "clan",
+        "duration_minutes": null
+      },
+      {
+        "effect_type": "defense",
+        "percent_change": 10,
+        "target": "clan",
+        "duration_minutes": 30
+      }
+    ]
+  },
+  {
+    "name": "Плохая примета штурма",
+    "description": "Региональный дебафф: атакующие получают меньше выгоды, и урон падает.",
+    "category": "curse",
+    "price": 2400,
+    "effects": [
+      {
+        "effect_type": "damage",
+        "percent_change": 20,
+        "target": "region",
+        "duration_minutes": 60
+      }
+    ]
+  },
+  {
+    "name": "Кошмар гарнизона",
+    "description": "Сильное областное проклятие: резко снижает защиту и урезает награды в Нумах.",
+    "category": "curse",
+    "price": 5400,
+    "effects": [
+      {
+        "effect_type": "defense",
+        "percent_change": 30,
+        "target": "region",
+        "duration_minutes": 60
+      },
+      {
+        "effect_type": "nums_reward",
+        "percent_change": 18,
+        "target": "region",
+        "duration_minutes": 60
+      }
+    ]
+  },
+  {
+    "name": "Порча координации",
+    "description": "Слабость клана: снижает и урон, и защиту — клан легче пробить.",
+    "category": "curse",
+    "price": 4700,
+    "effects": [
+      {
+        "effect_type": "damage",
+        "percent_change": 18,
+        "target": "clan",
+        "duration_minutes": 45
+      },
+      {
+        "effect_type": "defense",
+        "percent_change": 18,
+        "target": "clan",
+        "duration_minutes": 45
+      }
+    ]
+  }
+]

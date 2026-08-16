@@ -1,0 +1,2970 @@
+{
+  "meta": {
+    "version": 2,
+    "currency": "nums",
+    "notes": [
+      "Названия предметов взяты из Lineage 2 (грейды D/C/B/A/S).",
+      "Сеты названы по классическим сетам/названиям L2 (L2DB High Five), оружие/щиты сверены по PMfun.",
+      "Каждый набор содержит 7 слотов: helmet, chest, pants, gloves, boots, weapon_main, weapon_off",
+      "Для weapon_off используется щит (в вашем проекте это slot=weapon_off, тип предмета в лавке остаётся weapon).",
+      "Бонусы используют модель проекта: damage/defense/max_energy (абсолютные), xp_reward/nums_reward (проценты)."
+    ]
+  },
+  "grades": [
+    {
+      "grade": "d",
+      "sets": [
+        {
+          "set_name": "Brigandine Heavy Armor Set",
+          "theme": "D — тяжёлый старт",
+          "items": [
+            {
+              "slot": "helmet",
+              "name": "Brigandine Helmet",
+              "description": "Classic item.",
+              "price": 260,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 1
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 1
+                }
+              ],
+              "image_filename": "item/Items/d/1/helmet.png"
+            },
+            {
+              "slot": "chest",
+              "name": "Brigandine Tunic",
+              "description": "Classic item.",
+              "price": 360,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 2
+                }
+              ],
+              "image_filename": "item/Items/d/1/breastplate.png"
+            },
+            {
+              "slot": "pants",
+              "name": "Brigandine Gaiters",
+              "description": "Classic item.",
+              "price": 300,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 1
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 1
+                }
+              ],
+              "image_filename": "item/Items/d/1/trousers.png"
+            },
+            {
+              "slot": "gloves",
+              "name": "Brigandine Gauntlets",
+              "description": "Classic item.",
+              "price": 240,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 1
+                }
+              ],
+              "image_filename": "item/Items/d/1/gloves.png"
+            },
+            {
+              "slot": "boots",
+              "name": "Brigandine Boots",
+              "description": "Classic item.",
+              "price": 240,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 1
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 1
+                }
+              ],
+              "image_filename": "item/Items/d/1/boots.png"
+            },
+            {
+              "slot": "weapon_main",
+              "name": "Sword of Revolution",
+              "description": "Classic item.",
+              "price": 420,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 2
+                }
+              ],
+              "image_filename": "item/Items/d/1/weapon.jpg"
+            },
+            {
+              "slot": "weapon_off",
+              "name": "Brigandine Shield",
+              "description": "Classic shield.",
+              "price": 330,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 1
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 1
+                }
+              ],
+              "image_filename": "item/Items/d/1/shield.jpg"
+            }
+          ]
+        },
+        {
+          "set_name": "Mithril Heavy Armor Set",
+          "theme": "D — стойкость",
+          "items": [
+            {
+              "slot": "helmet",
+              "name": "Helmet",
+              "description": "Classic item.",
+              "price": 260,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 1
+                }
+              ],
+              "image_filename": "item/Items/d/2/helmet.png"
+            },
+            {
+              "slot": "chest",
+              "name": "Mithril Breastplate",
+              "description": "Classic item.",
+              "price": 360,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 2
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 1
+                }
+              ],
+              "image_filename": "item/Items/d/2/breastplate.png"
+            },
+            {
+              "slot": "pants",
+              "name": "Mithril Gaiters",
+              "description": "Classic item.",
+              "price": 300,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 1
+                }
+              ],
+              "image_filename": "item/Items/d/2/trousers.png"
+            },
+            {
+              "slot": "gloves",
+              "name": "Mithril Gauntlets",
+              "description": "Classic item.",
+              "price": 240,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 1
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 1
+                }
+              ],
+              "image_filename": "item/Items/d/2/gloves.png"
+            },
+            {
+              "slot": "boots",
+              "name": "Mithril Boots",
+              "description": "Classic item.",
+              "price": 240,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 1
+                }
+              ],
+              "image_filename": "item/Items/d/2/boots.png"
+            },
+            {
+              "slot": "weapon_main",
+              "name": "Elven Long Sword",
+              "description": "Classic item.",
+              "price": 420,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 2
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 1
+                }
+              ],
+              "image_filename": "item/Items/d/2/weapon.jpg"
+            },
+            {
+              "slot": "weapon_off",
+              "name": "Hoplon",
+              "description": "Classic shield.",
+              "price": 330,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 2
+                }
+              ],
+              "image_filename": "item/Items/d/2/shield.jpg"
+            }
+          ]
+        },
+        {
+          "set_name": "Elven Mithril Robe Set",
+          "theme": "D — темп и магический стиль",
+          "items": [
+            {
+              "slot": "helmet",
+              "name": "Brigandine Helmet",
+              "description": "Classic item.",
+              "price": 250,
+              "effects": [
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 1
+                }
+              ],
+              "image_filename": "item/Items/d/3/helmet.png"
+            },
+            {
+              "slot": "chest",
+              "name": "Mithril Tunic",
+              "description": "Classic item.",
+              "price": 350,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 1
+                }
+              ],
+              "image_filename": "item/Items/d/3/breastplate.png"
+            },
+            {
+              "slot": "pants",
+              "name": "Mithril Stockings",
+              "description": "Classic item.",
+              "price": 290,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 2
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 1
+                }
+              ],
+              "image_filename": "item/Items/d/3/trousers.png"
+            },
+            {
+              "slot": "gloves",
+              "name": "Mithril Gloves",
+              "description": "Classic item.",
+              "price": 230,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 1
+                }
+              ],
+              "image_filename": "item/Items/d/3/gloves.png"
+            },
+            {
+              "slot": "boots",
+              "name": "Mithril Boots",
+              "description": "Classic item.",
+              "price": 230,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 1
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 1
+                }
+              ],
+              "image_filename": "item/Items/d/3/boots.png"
+            },
+            {
+              "slot": "weapon_main",
+              "name": "Sword of Magic Fog",
+              "description": "Classic item.",
+              "price": 410,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 2
+                }
+              ],
+              "image_filename": "item/Items/d/3/weapon.jpg"
+            },
+            {
+              "slot": "weapon_off",
+              "name": "Aspis",
+              "description": "Classic shield.",
+              "price": 320,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 1
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 1
+                }
+              ],
+              "image_filename": "item/Items/d/3/shield.jpg"
+            }
+          ]
+        },
+        {
+          "set_name": "Knowledge Set",
+          "theme": "D — прокачка",
+          "items": [
+            {
+              "slot": "helmet",
+              "name": "Helmet",
+              "description": "Classic item.",
+              "price": 260,
+              "effects": [
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 1
+                }
+              ],
+              "image_filename": "item/Items/d/4/helmet.png"
+            },
+            {
+              "slot": "chest",
+              "name": "Tunic of Knowledge",
+              "description": "Classic item.",
+              "price": 360,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 1
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 1
+                }
+              ],
+              "image_filename": "item/Items/d/4/breastplate.png"
+            },
+            {
+              "slot": "pants",
+              "name": "Stockings of Knowledge",
+              "description": "Classic item.",
+              "price": 300,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 1
+                }
+              ],
+              "image_filename": "item/Items/d/4/trousers.png"
+            },
+            {
+              "slot": "gloves",
+              "name": "Gloves of Knowledge",
+              "description": "Classic item.",
+              "price": 240,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 1
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 1
+                }
+              ],
+              "image_filename": "item/Items/d/4/gloves.png"
+            },
+            {
+              "slot": "boots",
+              "name": "Brigandine Boots",
+              "description": "Classic item.",
+              "price": 240,
+              "effects": [
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 1
+                }
+              ],
+              "image_filename": "item/Items/d/4/boots.png"
+            },
+            {
+              "slot": "weapon_main",
+              "name": "Elven Sword",
+              "description": "Classic item.",
+              "price": 420,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 1
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 1
+                }
+              ],
+              "image_filename": "item/Items/d/4/weapon.jpg"
+            },
+            {
+              "slot": "weapon_off",
+              "name": "Square Shield",
+              "description": "Classic shield.",
+              "price": 330,
+              "effects": [
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 1
+                }
+              ],
+              "image_filename": "item/Items/d/4/shield.jpg"
+            }
+          ]
+        },
+        {
+          "set_name": "Manticore Set",
+          "theme": "D — универсальный старт",
+          "items": [
+            {
+              "slot": "helmet",
+              "name": "Helmet",
+              "description": "Classic item.",
+              "price": 260,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 1
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 1
+                }
+              ],
+              "image_filename": "item/Items/d/5/helmet.png"
+            },
+            {
+              "slot": "chest",
+              "name": "Manticore Skin Shirt",
+              "description": "Classic item.",
+              "price": 360,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 1
+                }
+              ],
+              "image_filename": "item/Items/d/5/breastplate.png"
+            },
+            {
+              "slot": "pants",
+              "name": "Manticore Skin Gaiters",
+              "description": "Classic item.",
+              "price": 300,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 1
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 1
+                }
+              ],
+              "image_filename": "item/Items/d/5/trousers.png"
+            },
+            {
+              "slot": "gloves",
+              "name": "Brigandine Gauntlets",
+              "description": "Classic item.",
+              "price": 240,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 1
+                }
+              ],
+              "image_filename": "item/Items/d/5/gloves.png"
+            },
+            {
+              "slot": "boots",
+              "name": "Manticore Skin Boots",
+              "description": "Classic item.",
+              "price": 240,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 1
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 1
+                }
+              ],
+              "image_filename": "item/Items/d/5/boots.png"
+            },
+            {
+              "slot": "weapon_main",
+              "name": "Elven Long Sword",
+              "description": "Classic item.",
+              "price": 420,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 2
+                }
+              ],
+              "image_filename": "item/Items/d/5/weapon.jpg"
+            },
+            {
+              "slot": "weapon_off",
+              "name": "Kite Shield",
+              "description": "Classic shield.",
+              "price": 330,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 1
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 1
+                }
+              ],
+              "image_filename": "item/Items/d/5/shield.jpg"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "grade": "c",
+      "sets": [
+        {
+          "set_name": "Full Plate Heavy Armor Set",
+          "theme": "C — тяжёлый урон/выживаемость",
+          "items": [
+            {
+              "slot": "helmet",
+              "name": "Full Plate Helmet",
+              "description": "Classic item.",
+              "price": 1100,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 4
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 4
+                }
+              ],
+              "image_filename": "item/Items/c/1/armor_helmet_i00_64.png"
+            },
+            {
+              "slot": "chest",
+              "name": "Full Plate Armor",
+              "description": "Classic item.",
+              "price": 1600,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 5
+                }
+              ],
+              "image_filename": "item/Items/c/1/armor_t19_u_i00.png"
+            },
+            {
+              "slot": "pants",
+              "name": "Chain Gaiters",
+              "description": "Classic item.",
+              "price": 1300,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 4
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 4
+                }
+              ],
+              "image_filename": "item/Items/c/1/armor_t19_l_i00.png"
+            },
+            {
+              "slot": "gloves",
+              "name": "Karmian Gloves",
+              "description": "Classic item.",
+              "price": 980,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 4
+                }
+              ],
+              "image_filename": "item/Items/c/1/armor_t20_g_i00.png"
+            },
+            {
+              "slot": "boots",
+              "name": "Reinforced Mithril Boots",
+              "description": "Classic item.",
+              "price": 980,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 4
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 4
+                }
+              ],
+              "image_filename": "item/Items/c/1/armor_t20_b_i00.png"
+            },
+            {
+              "slot": "weapon_main",
+              "name": "Samurai Long Sword",
+              "description": "Classic item.",
+              "price": 2100,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 6
+                }
+              ],
+              "image_filename": "item/Items/c/1/Weapon_caliburs_i01_0.jpg"
+            },
+            {
+              "slot": "weapon_off",
+              "name": "Full Plate Shield",
+              "description": "Classic shield.",
+              "price": 1700,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 4
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 4
+                }
+              ],
+              "image_filename": "item/Items/c/1/Shield_tower_shield_i00_0.jpg"
+            }
+          ]
+        },
+        {
+          "set_name": "Chain Mail Heavy Armor Set",
+          "theme": "C — защита",
+          "items": [
+            {
+              "slot": "helmet",
+              "name": "Chain Hood",
+              "description": "Classic item.",
+              "price": 1100,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 4
+                }
+              ],
+              "image_filename": "item/Items/c/2/armor_helmet_i00_64.png"
+            },
+            {
+              "slot": "chest",
+              "name": "Chain Mail Shirt",
+              "description": "Classic item.",
+              "price": 1600,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 6
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 4
+                }
+              ],
+              "image_filename": "item/Items/c/2/armor_t20_u_i00.png"
+            },
+            {
+              "slot": "pants",
+              "name": "Chain Gaiters",
+              "description": "Classic item.",
+              "price": 1300,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 4
+                }
+              ],
+              "image_filename": "item/Items/c/2/armor_t20_l_i00.png"
+            },
+            {
+              "slot": "gloves",
+              "name": "Demon's Gloves",
+              "description": "Classic item.",
+              "price": 980,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 4
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 4
+                }
+              ],
+              "image_filename": "item/Items/c/2/armor_t21_g_i00.png"
+            },
+            {
+              "slot": "boots",
+              "name": "Plated Leather Boots",
+              "description": "Classic item.",
+              "price": 980,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 4
+                }
+              ],
+              "image_filename": "item/Items/c/2/armor_t21_b_i00.png"
+            },
+            {
+              "slot": "weapon_main",
+              "name": "Sword of Delusion",
+              "description": "Classic item.",
+              "price": 2100,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 5
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 4
+                }
+              ],
+              "image_filename": "item/Items/c/2/Weapon_homunkuluss_sword_i00_0.jpg"
+            },
+            {
+              "slot": "weapon_off",
+              "name": "Chain Shield",
+              "description": "Classic shield.",
+              "price": 1700,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 6
+                }
+              ],
+              "image_filename": "item/Items/c/2/Shield_knight_shield_i00_0.jpg"
+            }
+          ]
+        },
+        {
+          "set_name": "Karmian Set",
+          "theme": "C — энергия и награды",
+          "items": [
+            {
+              "slot": "helmet",
+              "name": "Full Plate Helmet",
+              "description": "Classic item.",
+              "price": 1050,
+              "effects": [
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 4
+                }
+              ],
+              "image_filename": "item/Items/c/3/armor_leather_helmet_i00.png"
+            },
+            {
+              "slot": "chest",
+              "name": "Karmian Tunic",
+              "description": "Classic item.",
+              "price": 1550,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 5
+                }
+              ],
+              "image_filename": "item/Items/c/3/armor_t21_u_i00.png"
+            },
+            {
+              "slot": "pants",
+              "name": "Karmian Stockings",
+              "description": "Classic item.",
+              "price": 1260,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 5
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 4
+                }
+              ],
+              "image_filename": "item/Items/c/3/armor_t21_l_i00.png"
+            },
+            {
+              "slot": "gloves",
+              "name": "Karmian Gloves",
+              "description": "Classic item.",
+              "price": 950,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 4
+                }
+              ],
+              "image_filename": "item/Items/c/3/armor_t30_g_i00.png"
+            },
+            {
+              "slot": "boots",
+              "name": "Karmian Boots",
+              "description": "Classic item.",
+              "price": 950,
+              "effects": [
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 4
+                }
+              ],
+              "image_filename": "item/Items/c/3/armor_t30_b_i00.png"
+            },
+            {
+              "slot": "weapon_main",
+              "name": "Homunkulus's Sword",
+              "description": "Classic item.",
+              "price": 2050,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 6
+                }
+              ],
+              "image_filename": "item/Items/c/3/Weapon_stiletto_i00_0.jpg"
+            },
+            {
+              "slot": "weapon_off",
+              "name": "Knight's Shield",
+              "description": "Classic shield.",
+              "price": 1650,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 4
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 4
+                }
+              ],
+              "image_filename": "item/Items/c/3/Shield_full_plate_shield_i00_0.jpg"
+            }
+          ]
+        },
+        {
+          "set_name": "Theca Leather Light Armor Set",
+          "theme": "C — прокачка/экономика",
+          "items": [
+            {
+              "slot": "helmet",
+              "name": "Composite Helmet",
+              "description": "Classic item.",
+              "price": 1100,
+              "effects": [
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 5
+                }
+              ],
+              "image_filename": "item/Items/c/4/armor_leather_helmet_i00.png"
+            },
+            {
+              "slot": "chest",
+              "name": "Theca Leather Armor",
+              "description": "Classic item.",
+              "price": 1600,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 5
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 4
+                }
+              ],
+              "image_filename": "item/Items/c/4/armor_t47_u_i00.png"
+            },
+            {
+              "slot": "pants",
+              "name": "Theca Leather Gaiters",
+              "description": "Classic item.",
+              "price": 1300,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 4
+                }
+              ],
+              "image_filename": "item/Items/c/4/armor_t47_l_i00.png"
+            },
+            {
+              "slot": "gloves",
+              "name": "Divine Gloves",
+              "description": "Classic item.",
+              "price": 980,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 4
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 4
+                }
+              ],
+              "image_filename": "item/Items/c/4/armor_t47_g_i00.png"
+            },
+            {
+              "slot": "boots",
+              "name": "Theca Leather Boots",
+              "description": "Classic item.",
+              "price": 980,
+              "effects": [
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 5
+                }
+              ],
+              "image_filename": "item/Items/c/4/armor_t47_b_i00.png"
+            },
+            {
+              "slot": "weapon_main",
+              "name": "Ecliptic Sword",
+              "description": "Classic item.",
+              "price": 2100,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 5
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 4
+                }
+              ],
+              "image_filename": "item/Items/c/4/Weapon_stormbringer_i01_0.jpg"
+            },
+            {
+              "slot": "weapon_off",
+              "name": "Composite Shield",
+              "description": "Classic shield.",
+              "price": 1700,
+              "effects": [
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 4
+                }
+              ],
+              "image_filename": "item/Items/c/4/Shield_eldarake_i00_0.jpg"
+            }
+          ]
+        },
+        {
+          "set_name": "Composite Heavy Armor Set",
+          "theme": "C — универсал",
+          "items": [
+            {
+              "slot": "helmet",
+              "name": "Composite Helmet",
+              "description": "Classic item.",
+              "price": 1100,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 4
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 4
+                }
+              ],
+              "image_filename": "item/Items/c/5/armor_leather_helmet_i00.png"
+            },
+            {
+              "slot": "chest",
+              "name": "Composite Armor",
+              "description": "Classic item.",
+              "price": 1600,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 5
+                }
+              ],
+              "image_filename": "item/Items/c/5/armor_t63_u_i00.png"
+            },
+            {
+              "slot": "pants",
+              "name": "Plated Leather Gaiters",
+              "description": "Classic item.",
+              "price": 1300,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 4
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 4
+                }
+              ],
+              "image_filename": "item/Items/c/5/armor_t63_l_i00.png"
+            },
+            {
+              "slot": "gloves",
+              "name": "Demon's Gloves",
+              "description": "Classic item.",
+              "price": 980,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 4
+                }
+              ],
+              "image_filename": "item/Items/c/5/armor_t63_g_i00.png"
+            },
+            {
+              "slot": "boots",
+              "name": "Drake Leather Boots",
+              "description": "Classic item.",
+              "price": 980,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 4
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 4
+                }
+              ],
+              "image_filename": "item/Items/c/5/armor_t63_b_i00.png"
+            },
+            {
+              "slot": "weapon_main",
+              "name": "Tsurugi",
+              "description": "Classic item.",
+              "price": 2100,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 6
+                }
+              ],
+              "image_filename": "item/Items/c/5/Weapon_spirits_sword_i01_0.jpg"
+            },
+            {
+              "slot": "weapon_off",
+              "name": "Composite Shield",
+              "description": "Classic shield.",
+              "price": 1700,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 4
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 4
+                }
+              ],
+              "image_filename": "item/Items/c/5/Shield_dwarven_chain_shield_i00_0.jpg"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "grade": "b",
+      "sets": [
+        {
+          "set_name": "Doom Heavy Armor Set",
+          "theme": "B — тяжелый урон",
+          "items": [
+            {
+              "slot": "helmet",
+              "name": "Doom Helmet",
+              "description": "Classic item.",
+              "price": 3200,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 8
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 8
+                }
+              ],
+              "image_filename": "item/Items/b/1/armor_helmet_i00_64.png"
+            },
+            {
+              "slot": "chest",
+              "name": "Doom Plate Armor",
+              "description": "Classic item.",
+              "price": 4700,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 10
+                }
+              ],
+              "image_filename": "item/Items/b/1/armor_t66_u_i00.png"
+            },
+            {
+              "slot": "pants",
+              "name": "Zubei's Gaiters",
+              "description": "Classic item.",
+              "price": 3900,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 8
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 8
+                }
+              ],
+              "image_filename": "item/Items/b/1/armor_t66_l_i00.png"
+            },
+            {
+              "slot": "gloves",
+              "name": "Doom Gloves",
+              "description": "Classic item.",
+              "price": 2900,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 8
+                }
+              ],
+              "image_filename": "item/Items/b/1/armor_t66_g_i00.png"
+            },
+            {
+              "slot": "boots",
+              "name": "Doom Boots",
+              "description": "Classic item.",
+              "price": 2900,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 7
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 8
+                }
+              ],
+              "image_filename": "item/Items/b/1/armor_t67_b_i00.png"
+            },
+            {
+              "slot": "weapon_main",
+              "name": "Sword of Damascus",
+              "description": "Classic item.",
+              "price": 6200,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 12
+                }
+              ],
+              "image_filename": "item/Items/b/1/Weapon_great_axe_i01_0.jpg"
+            },
+            {
+              "slot": "weapon_off",
+              "name": "Doom Shield",
+              "description": "Classic shield.",
+              "price": 5000,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 8
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 8
+                }
+              ],
+              "image_filename": "item/Items/b/1/Shield_small_shield_i00_0.jpg"
+            }
+          ]
+        },
+        {
+          "set_name": "Zubei's Heavy Armor Set",
+          "theme": "B — защита",
+          "items": [
+            {
+              "slot": "helmet",
+              "name": "Zubei's Helmet",
+              "description": "Classic item.",
+              "price": 3200,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 8
+                }
+              ],
+              "image_filename": "item/Items/b/2/armor_leather_helmet_i00.png"
+            },
+            {
+              "slot": "chest",
+              "name": "Zubei's Breastplate",
+              "description": "Classic item.",
+              "price": 4700,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 12
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 8
+                }
+              ],
+              "image_filename": "item/Items/b/2/armor_t65_u_i00.png"
+            },
+            {
+              "slot": "pants",
+              "name": "Zubei's Gaiters",
+              "description": "Classic item.",
+              "price": 3900,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 8
+                }
+              ],
+              "image_filename": "item/Items/b/2/armor_t65_l_i00.png"
+            },
+            {
+              "slot": "gloves",
+              "name": "Zubei's Gauntlets",
+              "description": "Classic item.",
+              "price": 2900,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 7
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 8
+                }
+              ],
+              "image_filename": "item/Items/b/2/armor_t65_g_i00.png"
+            },
+            {
+              "slot": "boots",
+              "name": "Zubei's Boots",
+              "description": "Classic item.",
+              "price": 2900,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 7
+                }
+              ],
+              "image_filename": "item/Items/b/2/armor_t66_b_i00.png"
+            },
+            {
+              "slot": "weapon_main",
+              "name": "Keshanberk",
+              "description": "Classic item.",
+              "price": 6200,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 10
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 8
+                }
+              ],
+              "image_filename": "item/Items/b/2/Weapon_guardians_sword_i01_0.jpg"
+            },
+            {
+              "slot": "weapon_off",
+              "name": "Zubei's Shield",
+              "description": "Classic shield.",
+              "price": 5000,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 10
+                }
+              ],
+              "image_filename": "item/Items/b/2/Shield_shield_of_victory_i00_0.jpg"
+            }
+          ]
+        },
+        {
+          "set_name": "Blue Wolf Heavy Armor Set",
+          "theme": "B — энергия/темп",
+          "items": [
+            {
+              "slot": "helmet",
+              "name": "Blue Wolf Helmet",
+              "description": "Classic item.",
+              "price": 3100,
+              "effects": [
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 8
+                }
+              ],
+              "image_filename": "item/Items/b/3/armor_helmet_i00_64.png"
+            },
+            {
+              "slot": "chest",
+              "name": "Blue Wolf Breastplate",
+              "description": "Classic item.",
+              "price": 4600,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 9
+                }
+              ],
+              "image_filename": "item/Items/b/3/armor_t68_u_i00.png"
+            },
+            {
+              "slot": "pants",
+              "name": "Blue Wolf Gaiters",
+              "description": "Classic item.",
+              "price": 3800,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 10
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 8
+                }
+              ],
+              "image_filename": "item/Items/b/3/armor_t68_l_i00.png"
+            },
+            {
+              "slot": "gloves",
+              "name": "Blue Wolf Gloves",
+              "description": "Classic item.",
+              "price": 2850,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 8
+                }
+              ],
+              "image_filename": "item/Items/b/3/armor_t68_g_i00.png"
+            },
+            {
+              "slot": "boots",
+              "name": "Blue Wolf Boots",
+              "description": "Classic item.",
+              "price": 2850,
+              "effects": [
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 8
+                }
+              ],
+              "image_filename": "item/Items/b/3/armor_t69_b_i00.png"
+            },
+            {
+              "slot": "weapon_main",
+              "name": "Sword of Valhalla",
+              "description": "Classic item.",
+              "price": 6100,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 12
+                }
+              ],
+              "image_filename": "item/Items/b/3/Weapon_tears_of_wizard_i01_0.jpg"
+            },
+            {
+              "slot": "weapon_off",
+              "name": "Wolf Shield",
+              "description": "Classic shield.",
+              "price": 4900,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 8
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 8
+                }
+              ],
+              "image_filename": "item/Items/b/3/Shield_masterpiece_shield_i00_0.jpg"
+            }
+          ]
+        },
+        {
+          "set_name": "Avadon Breastplate Heavy Armor Set",
+          "theme": "B — прокачка и доход",
+          "items": [
+            {
+              "slot": "helmet",
+              "name": "Avadon Circlet",
+              "description": "Classic item.",
+              "price": 3200,
+              "effects": [
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 9
+                }
+              ],
+              "image_filename": "item/Items/b/4/armor_leather_helmet_i00.png"
+            },
+            {
+              "slot": "chest",
+              "name": "Avadon Breastplate",
+              "description": "Classic item.",
+              "price": 4700,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 9
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 8
+                }
+              ],
+              "image_filename": "item/Items/b/4/armor_t69_u_i00.png"
+            },
+            {
+              "slot": "pants",
+              "name": "Avadon Gaiters",
+              "description": "Classic item.",
+              "price": 3900,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 8
+                }
+              ],
+              "image_filename": "item/Items/b/4/armor_t69_l_i00.png"
+            },
+            {
+              "slot": "gloves",
+              "name": "Avadon Gloves",
+              "description": "Classic item.",
+              "price": 2900,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 7
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 8
+                }
+              ],
+              "image_filename": "item/Items/b/4/armor_t69_g_i00.png"
+            },
+            {
+              "slot": "boots",
+              "name": "Avadon Boots",
+              "description": "Classic item.",
+              "price": 2900,
+              "effects": [
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 9
+                }
+              ],
+              "image_filename": "item/Items/b/4/armor_t70_b_i00.png"
+            },
+            {
+              "slot": "weapon_main",
+              "name": "Wizard's Tear",
+              "description": "Classic item.",
+              "price": 6200,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 10
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 8
+                }
+              ],
+              "image_filename": "item/Items/b/4/Weapon_sword_of_damascus_i01_0.jpg"
+            },
+            {
+              "slot": "weapon_off",
+              "name": "Avadon Shield",
+              "description": "Classic shield.",
+              "price": 5000,
+              "effects": [
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 8
+                }
+              ],
+              "image_filename": "item/Items/b/4/Shield_leather_shield_i00_0.jpg"
+            }
+          ]
+        },
+        {
+          "set_name": "Tunic of Zubei Robe Set",
+          "theme": "B — универсал",
+          "items": [
+            {
+              "slot": "helmet",
+              "name": "Zubei's Helmet",
+              "description": "Classic item.",
+              "price": 3200,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 7
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 8
+                }
+              ],
+              "image_filename": "item/Items/b/5/armor_helmet_i00_64.png"
+            },
+            {
+              "slot": "chest",
+              "name": "Tunic of Zubei",
+              "description": "Classic item.",
+              "price": 4700,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 9
+                }
+              ],
+              "image_filename": "item/Items/b/5/armor_t71_u_i00.png"
+            },
+            {
+              "slot": "pants",
+              "name": "Stockings of Zubei",
+              "description": "Classic item.",
+              "price": 3900,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 8
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 8
+                }
+              ],
+              "image_filename": "item/Items/b/5/armor_t71_l_i00.png"
+            },
+            {
+              "slot": "gloves",
+              "name": "Zubei's Gauntlets",
+              "description": "Classic item.",
+              "price": 2900,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 8
+                }
+              ],
+              "image_filename": "item/Items/b/5/armor_t71_g_i00.png"
+            },
+            {
+              "slot": "boots",
+              "name": "Zubei's Boots",
+              "description": "Classic item.",
+              "price": 2900,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 7
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 8
+                }
+              ],
+              "image_filename": "item/Items/b/5/armor_t72_b_i00.png"
+            },
+            {
+              "slot": "weapon_main",
+              "name": "Sword of Damascus",
+              "description": "Classic item.",
+              "price": 6200,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 12
+                }
+              ],
+              "image_filename": "item/Items/b/5/Weapon_kshanberk_i01_0.jpg"
+            },
+            {
+              "slot": "weapon_off",
+              "name": "Shield of Pledge",
+              "description": "Classic shield.",
+              "price": 5000,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 8
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 8
+                }
+              ],
+              "image_filename": "item/Items/b/5/Shield_doom_shield_i00_0.jpg"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "grade": "a",
+      "sets": [
+        {
+          "set_name": "Majestic Heavy Armor Set",
+          "theme": "A — урон",
+          "items": [
+            {
+              "slot": "helmet",
+              "name": "Majestic Circlet",
+              "description": "Classic item.",
+              "price": 9000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 16
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 15
+                }
+              ],
+              "image_filename": "item/Items/a/1/armor_helmet_i00_64.png"
+            },
+            {
+              "slot": "chest",
+              "name": "Majestic Plate Armor",
+              "description": "Classic item.",
+              "price": 13000,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 20
+                }
+              ],
+              "image_filename": "item/Items/a/1/armor_t74_u_i00.png"
+            },
+            {
+              "slot": "pants",
+              "name": "Dark Crystal Gaiters",
+              "description": "Classic item.",
+              "price": 10500,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 16
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 15
+                }
+              ],
+              "image_filename": "item/Items/a/1/armor_t74_l_i00.png"
+            },
+            {
+              "slot": "gloves",
+              "name": "Majestic Gauntlets",
+              "description": "Classic item.",
+              "price": 7800,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 15
+                }
+              ],
+              "image_filename": "item/Items/a/1/armor_t74_g_i00.png"
+            },
+            {
+              "slot": "boots",
+              "name": "Majestic Boots",
+              "description": "Classic item.",
+              "price": 7800,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 14
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 15
+                }
+              ],
+              "image_filename": "item/Items/a/1/armor_t75_b_i00.png"
+            },
+            {
+              "slot": "weapon_main",
+              "name": "Sirra's Blade",
+              "description": "Classic item.",
+              "price": 19000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 24
+                }
+              ],
+              "image_filename": "item/Items/a/1/Weapon_dasparions_staff_i01_0.jpg"
+            },
+            {
+              "slot": "weapon_off",
+              "name": "Dark Crystal Shield",
+              "description": "Classic shield.",
+              "price": 14500,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 16
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 15
+                }
+              ],
+              "image_filename": "item/Items/a/1/Shield_shield_of_nightmare_i02_0.jpg"
+            }
+          ]
+        },
+        {
+          "set_name": "Dark Crystal Breastplate Heavy Armor Set",
+          "theme": "A — защита",
+          "items": [
+            {
+              "slot": "helmet",
+              "name": "Dark Crystal Helmet",
+              "description": "Classic item.",
+              "price": 9000,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 15
+                }
+              ],
+              "image_filename": "item/Items/a/2/armor_leather_helmet_i00.png"
+            },
+            {
+              "slot": "chest",
+              "name": "Dark Crystal Breastplate",
+              "description": "Classic item.",
+              "price": 13000,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 22
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 15
+                }
+              ],
+              "image_filename": "item/Items/a/2/armor_t77_u_i00.png"
+            },
+            {
+              "slot": "pants",
+              "name": "Dark Crystal Gaiters",
+              "description": "Classic item.",
+              "price": 10500,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 16
+                }
+              ],
+              "image_filename": "item/Items/a/2/armor_t77_l_i00.png"
+            },
+            {
+              "slot": "gloves",
+              "name": "Dark Crystal Gloves",
+              "description": "Classic item.",
+              "price": 7800,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 14
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 15
+                }
+              ],
+              "image_filename": "item/Items/a/2/armor_t77_g_i00.png"
+            },
+            {
+              "slot": "boots",
+              "name": "Dark Crystal Boots",
+              "description": "Classic item.",
+              "price": 7800,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 14
+                }
+              ],
+              "image_filename": "item/Items/a/2/armor_t77_b_i00.png"
+            },
+            {
+              "slot": "weapon_main",
+              "name": "Tallum Blade",
+              "description": "Classic item.",
+              "price": 19000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 20
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 15
+                }
+              ],
+              "image_filename": "item/Items/a/2/Weapon_doom_crusher_i01_0.jpg"
+            },
+            {
+              "slot": "weapon_off",
+              "name": "Dark Crystal Shield",
+              "description": "Classic shield.",
+              "price": 14500,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 20
+                }
+              ],
+              "image_filename": "item/Items/a/2/Shield_shield_of_nightmare_i00_0.jpg"
+            }
+          ]
+        },
+        {
+          "set_name": "Nightmare Heavy Armor Set",
+          "theme": "A — энергия и мобильный урон",
+          "items": [
+            {
+              "slot": "helmet",
+              "name": "Helm of Nightmare",
+              "description": "Classic item.",
+              "price": 8800,
+              "effects": [
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 14
+                }
+              ],
+              "image_filename": "item/Items/a/3/armor_helmet_i00_64.png"
+            },
+            {
+              "slot": "chest",
+              "name": "Armor of Nightmare",
+              "description": "Classic item.",
+              "price": 12800,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 18
+                }
+              ],
+              "image_filename": "item/Items/a/3/armor_t78_u_i00.png"
+            },
+            {
+              "slot": "pants",
+              "name": "Tallum Plate Armor",
+              "description": "Classic item.",
+              "price": 10300,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 20
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 15
+                }
+              ],
+              "image_filename": "item/Items/a/3/armor_t78_l_i00.png"
+            },
+            {
+              "slot": "gloves",
+              "name": "Gauntlets of Nightmare",
+              "description": "Classic item.",
+              "price": 7700,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 15
+                }
+              ],
+              "image_filename": "item/Items/a/3/armor_t78_g_i00.png"
+            },
+            {
+              "slot": "boots",
+              "name": "Boots of Nightmare",
+              "description": "Classic item.",
+              "price": 7700,
+              "effects": [
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 14
+                }
+              ],
+              "image_filename": "item/Items/a/3/armor_t78_b_i00.png"
+            },
+            {
+              "slot": "weapon_main",
+              "name": "Themis' Tongue",
+              "description": "Classic item.",
+              "price": 18800,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 24
+                }
+              ],
+              "image_filename": "item/Items/a/3/Weapon_soul_separator_i00_0.jpg"
+            },
+            {
+              "slot": "weapon_off",
+              "name": "Shield of Nightmare",
+              "description": "Classic shield.",
+              "price": 14200,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 16
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 15
+                }
+              ],
+              "image_filename": "item/Items/a/3/Shield_dark_crystal_shield_i02_0.jpg"
+            }
+          ]
+        },
+        {
+          "set_name": "Tallum Heavy Armor Set",
+          "theme": "A — опыт и доход",
+          "items": [
+            {
+              "slot": "helmet",
+              "name": "Tallum Helm",
+              "description": "Classic item.",
+              "price": 9000,
+              "effects": [
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 16
+                }
+              ],
+              "image_filename": "item/Items/a/4/armor_leather_helmet_i00.png"
+            },
+            {
+              "slot": "chest",
+              "name": "Tallum Plate Armor",
+              "description": "Classic item.",
+              "price": 13000,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 18
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 15
+                }
+              ],
+              "image_filename": "item/Items/a/4/armor_t80_u_i00.png"
+            },
+            {
+              "slot": "pants",
+              "name": "Dark Crystal Gaiters",
+              "description": "Classic item.",
+              "price": 10500,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 16
+                }
+              ],
+              "image_filename": "item/Items/a/4/armor_t80_l_i00.png"
+            },
+            {
+              "slot": "gloves",
+              "name": "Tallum Gloves",
+              "description": "Classic item.",
+              "price": 7800,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 14
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 15
+                }
+              ],
+              "image_filename": "item/Items/a/4/armor_t80_g_i00.png"
+            },
+            {
+              "slot": "boots",
+              "name": "Tallum Boots",
+              "description": "Classic item.",
+              "price": 7800,
+              "effects": [
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 16
+                }
+              ],
+              "image_filename": "item/Items/a/4/armor_t80_b_i00.png"
+            },
+            {
+              "slot": "weapon_main",
+              "name": "Dark Legion's Edge",
+              "description": "Classic item.",
+              "price": 19000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 22
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 15
+                }
+              ],
+              "image_filename": "item/Items/a/4/Weapon_tallum_blade_i00_0.jpg"
+            },
+            {
+              "slot": "weapon_off",
+              "name": "Dark Crystal Shield",
+              "description": "Classic shield.",
+              "price": 14500,
+              "effects": [
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 14
+                }
+              ],
+              "image_filename": "item/Items/a/4/Shield_dark_crystal_shield_i02_0 (1).jpg"
+            }
+          ]
+        },
+        {
+          "set_name": "Dark Crystal Robe Set",
+          "theme": "A — универсал A-tier",
+          "items": [
+            {
+              "slot": "helmet",
+              "name": "Dark Crystal Helmet",
+              "description": "Classic item.",
+              "price": 9000,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 14
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 15
+                }
+              ],
+              "image_filename": "item/Items/a/5/armor_helmet_i00_64.png"
+            },
+            {
+              "slot": "chest",
+              "name": "Dark Crystal Robe",
+              "description": "Classic item.",
+              "price": 13000,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 18
+                }
+              ],
+              "image_filename": "item/Items/a/5/armor_t83_u_i00.png"
+            },
+            {
+              "slot": "pants",
+              "name": "Tallum Stockings",
+              "description": "Classic item.",
+              "price": 10500,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 16
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 15
+                }
+              ],
+              "image_filename": "item/Items/a/5/armor_t83_l_i00.png"
+            },
+            {
+              "slot": "gloves",
+              "name": "Dark Crystal Gloves",
+              "description": "Classic item.",
+              "price": 7800,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 16
+                }
+              ],
+              "image_filename": "item/Items/a/5/armor_t83_g_i00.png"
+            },
+            {
+              "slot": "boots",
+              "name": "Dark Crystal Boots",
+              "description": "Classic item.",
+              "price": 7800,
+              "effects": [
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 14
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 15
+                }
+              ],
+              "image_filename": "item/Items/a/5/armor_t83_b_i00.png"
+            },
+            {
+              "slot": "weapon_main",
+              "name": "Sword of Miracles",
+              "description": "Classic item.",
+              "price": 19000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 24
+                }
+              ],
+              "image_filename": "item/Items/a/5/Weapon_naga_storm_i01_0.jpg"
+            },
+            {
+              "slot": "weapon_off",
+              "name": "Dark Crystal Shield",
+              "description": "Classic shield.",
+              "price": 14500,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 16
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 15
+                }
+              ],
+              "image_filename": "item/Items/a/5/Shield_dark_crystal_shield_i00_0.jpg"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "grade": "s",
+      "sets": [
+        {
+          "set_name": "Imperial Crusader Heavy Armor Set (Forgotten Blade)",
+          "theme": "S — топовый урон",
+          "items": [
+            {
+              "slot": "helmet",
+              "name": "Imperial Crusader Helmet",
+              "description": "Classic item.",
+              "price": 28000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 49
+                },
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": -5
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 18
+                }
+              ]
+            },
+            {
+              "slot": "chest",
+              "name": "Imperial Crusader Breastplate",
+              "description": "Classic item.",
+              "price": 42000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": -6
+                },
+                {
+                  "effect_type": "defense",
+                  "percent_change": 53
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 13
+                }
+              ]
+            },
+            {
+              "slot": "pants",
+              "name": "Imperial Crusader Gaiters",
+              "description": "Classic item.",
+              "price": 34000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": -1
+                },
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 1
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 14
+                }
+              ]
+            },
+            {
+              "slot": "gloves",
+              "name": "Imperial Crusader Gauntlets",
+              "description": "Classic item.",
+              "price": 25000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 40
+                },
+                {
+                  "effect_type": "defense",
+                  "percent_change": -4
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 16
+                }
+              ]
+            },
+            {
+              "slot": "boots",
+              "name": "Imperial Crusader Boots",
+              "description": "Classic item.",
+              "price": 25000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": -1
+                },
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 1
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 18
+                }
+              ]
+            },
+            {
+              "slot": "weapon_main",
+              "name": "Forgotten Blade",
+              "description": "Classic item.",
+              "price": 68000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 37
+                },
+                {
+                  "effect_type": "defense",
+                  "percent_change": -4
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 16
+                }
+              ]
+            },
+            {
+              "slot": "weapon_off",
+              "name": "Imperial Crusader Shield",
+              "description": "Classic shield.",
+              "price": 52000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": -5
+                },
+                {
+                  "effect_type": "defense",
+                  "percent_change": 48
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 14
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "set_name": "Imperial Crusader Heavy Armor Set (God's Blade)",
+          "theme": "S — топовая защита",
+          "items": [
+            {
+              "slot": "helmet",
+              "name": "Imperial Crusader Helmet",
+              "description": "Classic item.",
+              "price": 28000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": -6
+                },
+                {
+                  "effect_type": "defense",
+                  "percent_change": 40
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 13
+                }
+              ]
+            },
+            {
+              "slot": "chest",
+              "name": "Imperial Crusader Breastplate",
+              "description": "Classic item.",
+              "price": 42000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": -11
+                },
+                {
+                  "effect_type": "defense",
+                  "percent_change": 68
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 14
+                }
+              ]
+            },
+            {
+              "slot": "pants",
+              "name": "Imperial Crusader Gaiters",
+              "description": "Classic item.",
+              "price": 34000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": -1
+                },
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 1
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 13
+                }
+              ]
+            },
+            {
+              "slot": "gloves",
+              "name": "Imperial Crusader Gauntlets",
+              "description": "Classic item.",
+              "price": 25000,
+              "effects": [
+                {
+                  "effect_type": "defense",
+                  "percent_change": 43
+                },
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": -7
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 18
+                }
+              ]
+            },
+            {
+              "slot": "boots",
+              "name": "Imperial Crusader Boots",
+              "description": "Classic item.",
+              "price": 25000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": -1
+                },
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 1
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 13
+                }
+              ]
+            },
+            {
+              "slot": "weapon_main",
+              "name": "God's Blade",
+              "description": "Classic item.",
+              "price": 68000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 39
+                },
+                {
+                  "effect_type": "defense",
+                  "percent_change": -6
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 18
+                }
+              ]
+            },
+            {
+              "slot": "weapon_off",
+              "name": "Dragon Shield",
+              "description": "Classic shield.",
+              "price": 52000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": -8
+                },
+                {
+                  "effect_type": "defense",
+                  "percent_change": 46
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 13
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "set_name": "Draconic Light Armor Set",
+          "theme": "S — энергия, мобильность и урон",
+          "items": [
+            {
+              "slot": "helmet",
+              "name": "Draconic Leather Helmet",
+              "description": "Classic item.",
+              "price": 28000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 16
+                },
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": -2
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 18
+                }
+              ]
+            },
+            {
+              "slot": "chest",
+              "name": "Draconic Leather Armor",
+              "description": "Classic item.",
+              "price": 42000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": -6
+                },
+                {
+                  "effect_type": "defense",
+                  "percent_change": 51
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 13
+                }
+              ]
+            },
+            {
+              "slot": "pants",
+              "name": "Imperial Crusader Gaiters",
+              "description": "Classic item.",
+              "price": 34000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": -1
+                },
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 1
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 14
+                }
+              ]
+            },
+            {
+              "slot": "gloves",
+              "name": "Draconic Leather Gloves",
+              "description": "Classic item.",
+              "price": 25000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 40
+                },
+                {
+                  "effect_type": "defense",
+                  "percent_change": -4
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 16
+                }
+              ]
+            },
+            {
+              "slot": "boots",
+              "name": "Draconic Leather Boots",
+              "description": "Classic item.",
+              "price": 25000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": -1
+                },
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 1
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 18
+                }
+              ]
+            },
+            {
+              "slot": "weapon_main",
+              "name": "Forgotten Blade",
+              "description": "Classic item.",
+              "price": 68000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 37
+                },
+                {
+                  "effect_type": "defense",
+                  "percent_change": -4
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 16
+                }
+              ]
+            },
+            {
+              "slot": "weapon_off",
+              "name": "Imperial Crusader Shield",
+              "description": "Classic shield.",
+              "price": 52000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": -5
+                },
+                {
+                  "effect_type": "defense",
+                  "percent_change": 48
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 14
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "set_name": "Major Arcana Robe Set",
+          "theme": "S — максимум XP и дохода",
+          "items": [
+            {
+              "slot": "helmet",
+              "name": "Major Arcana Circlet",
+              "description": "Classic item.",
+              "price": 28000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": -2
+                },
+                {
+                  "effect_type": "defense",
+                  "percent_change": 13
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 13
+                }
+              ]
+            },
+            {
+              "slot": "chest",
+              "name": "Major Arcana Robe",
+              "description": "Classic item.",
+              "price": 42000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": -8
+                },
+                {
+                  "effect_type": "defense",
+                  "percent_change": 54
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 14
+                }
+              ]
+            },
+            {
+              "slot": "pants",
+              "name": "Imperial Crusader Gaiters",
+              "description": "Classic item.",
+              "price": 34000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": -1
+                },
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 1
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 13
+                }
+              ]
+            },
+            {
+              "slot": "gloves",
+              "name": "Major Arcana Gloves",
+              "description": "Classic item.",
+              "price": 25000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 43
+                },
+                {
+                  "effect_type": "defense",
+                  "percent_change": -7
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 18
+                }
+              ]
+            },
+            {
+              "slot": "boots",
+              "name": "Major Arcana Boots",
+              "description": "Classic item.",
+              "price": 25000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": -1
+                },
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 1
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 13
+                }
+              ]
+            },
+            {
+              "slot": "weapon_main",
+              "name": "Forgotten Blade",
+              "description": "Classic item.",
+              "price": 68000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 39
+                },
+                {
+                  "effect_type": "defense",
+                  "percent_change": -6
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 18
+                }
+              ]
+            },
+            {
+              "slot": "weapon_off",
+              "name": "Dragon Shield",
+              "description": "Classic shield.",
+              "price": 52000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": -8
+                },
+                {
+                  "effect_type": "defense",
+                  "percent_change": 46
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 13
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "set_name": "Imperial Crusader + Draconic Mix (S-grade)",
+          "theme": "S — универсальный топ",
+          "items": [
+            {
+              "slot": "helmet",
+              "name": "Imperial Crusader Helmet",
+              "description": "Classic item.",
+              "price": 28000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": -4
+                },
+                {
+                  "effect_type": "defense",
+                  "percent_change": 43
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 18
+                }
+              ]
+            },
+            {
+              "slot": "chest",
+              "name": "Imperial Crusader Breastplate",
+              "description": "Classic item.",
+              "price": 42000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": -6
+                },
+                {
+                  "effect_type": "defense",
+                  "percent_change": 53
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 13
+                }
+              ]
+            },
+            {
+              "slot": "pants",
+              "name": "Imperial Crusader Gaiters",
+              "description": "Classic item.",
+              "price": 34000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": -1
+                },
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 1
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 14
+                }
+              ]
+            },
+            {
+              "slot": "gloves",
+              "name": "Draconic Leather Gloves",
+              "description": "Classic item.",
+              "price": 25000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 40
+                },
+                {
+                  "effect_type": "defense",
+                  "percent_change": -4
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 16
+                }
+              ]
+            },
+            {
+              "slot": "boots",
+              "name": "Draconic Leather Boots",
+              "description": "Classic item.",
+              "price": 25000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": -1
+                },
+                {
+                  "effect_type": "max_energy",
+                  "percent_change": 1
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 18
+                }
+              ]
+            },
+            {
+              "slot": "weapon_main",
+              "name": "Forgotten Blade",
+              "description": "Classic item.",
+              "price": 68000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": 37
+                },
+                {
+                  "effect_type": "defense",
+                  "percent_change": -4
+                },
+                {
+                  "effect_type": "xp_reward",
+                  "percent_change": 16
+                }
+              ]
+            },
+            {
+              "slot": "weapon_off",
+              "name": "Imperial Crusader Shield",
+              "description": "Classic shield.",
+              "price": 52000,
+              "effects": [
+                {
+                  "effect_type": "damage",
+                  "percent_change": -5
+                },
+                {
+                  "effect_type": "defense",
+                  "percent_change": 48
+                },
+                {
+                  "effect_type": "nums_reward",
+                  "percent_change": 14
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
