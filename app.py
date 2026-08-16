@@ -11,7 +11,7 @@ from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.executors.pool import ThreadPoolExecutor
 from sqlalchemy import case, cast, Float, Index, and_, func, text
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import Session, joinedload
 import json
 import random
 import os
@@ -1000,23 +1000,35 @@ class SchedulerInstanceLock(db.Model):
     expires_at = db.Column(db.DateTime, nullable=True)
 
 
+def _open_scheduler_lock_session() -> Session:
+    """Короткая независимая сессия для лока планировщика.
+
+    Flask-SQLAlchemy после SELECT при старте уже держит autobegin-транзакцию,
+    поэтому db.session.begin() падает: "A transaction is already begun on this Session."
+    Фоновые джобы APScheduler тоже не должны делить request-session.
+    """
+    return Session(bind=db.engine)
+
+
 def _scheduler_try_acquire_lock() -> bool:
     """Пытается захватить лок планировщика для текущего экземпляра.
     Возвращает True, если лок успешно захвачен.
     """
     now = datetime.now()
     expires_new = now + timedelta(seconds=SCHEDULER_LOCK_TTL_SECONDS)
+    session = _open_scheduler_lock_session()
     try:
-        with db.session.begin():
+        with session.begin():
             # Берём строку с id=1 под эксклюзивный лок
             lock = (
-                SchedulerInstanceLock.query.filter_by(id=1)
+                session.query(SchedulerInstanceLock)
+                .filter_by(id=1)
                 .with_for_update(nowait=True)
                 .first()
             )
             if lock is None:
                 lock = SchedulerInstanceLock(id=1, owner_id=SCHEDULER_INSTANCE_ID, owner_pid=os.getpid(), expires_at=expires_new)
-                db.session.add(lock)
+                session.add(lock)
                 return True
             # Если владелец живой и срок не истёк — лок занят
             lock_owner_alive = False
@@ -1059,8 +1071,9 @@ def _scheduler_try_acquire_lock() -> bool:
             return False
     except Exception as e:
         logger.error(f'Ошибка при попытке захвата лока планировщика: {e}')
-        db.session.rollback()
         return False
+    finally:
+        session.close()
 
 
 def _scheduler_renew_lock() -> None:
@@ -1068,19 +1081,24 @@ def _scheduler_renew_lock() -> None:
     now = datetime.now()
     expires_new = now + timedelta(seconds=SCHEDULER_LOCK_TTL_SECONDS)
     try:
-        with db.session.begin():
-            lock = (
-                SchedulerInstanceLock.query.filter_by(id=1)
-                .with_for_update(nowait=True)
-                .first()
-            )
-            if not lock or lock.owner_id != SCHEDULER_INSTANCE_ID:
-                return
-            lock.expires_at = expires_new
-            lock.owner_pid = os.getpid()
+        with app.app_context():
+            session = _open_scheduler_lock_session()
+            try:
+                with session.begin():
+                    lock = (
+                        session.query(SchedulerInstanceLock)
+                        .filter_by(id=1)
+                        .with_for_update(nowait=True)
+                        .first()
+                    )
+                    if not lock or lock.owner_id != SCHEDULER_INSTANCE_ID:
+                        return
+                    lock.expires_at = expires_new
+                    lock.owner_pid = os.getpid()
+            finally:
+                session.close()
     except Exception as e:
         logger.error(f'Ошибка продления лока планировщика: {e}')
-        db.session.rollback()
 
 
 def _weapon_enchant_level_clamped(level) -> int:
