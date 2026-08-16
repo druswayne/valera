@@ -2116,6 +2116,98 @@ def fix_postgresql_sequences():
         print(f'Синхронизированы PostgreSQL sequences: {", ".join(fixed)}')
 
 
+def _get_active_demogorgon() -> DemogorgonArmy | None:
+    return DemogorgonArmy.query.filter_by(is_active=True).first()
+
+
+def _demogorgon_finish(army: DemogorgonArmy) -> None:
+    """Завершение жизни армии Демогоргонов: определение победителя и выдача награды.
+    Вызывать только когда army.health <= 0 и army.is_active.
+    """
+    if not army or not army.is_active:
+        return
+    top_row = (
+        DemogorgonDamage.query.filter_by(army_id=army.id)
+        .order_by(DemogorgonDamage.total_damage.desc())
+        .first()
+    )
+    if top_row and top_row.clan_id:
+        clan = Clan.query.get(top_row.clan_id)
+        if clan and clan.owner_id:
+            leader = User.query.get(clan.owner_id)
+            if leader:
+                leader.nums_balance = (leader.nums_balance or 0) + DEMOGORGON_REWARD_NUMS
+    army.is_active = False
+
+
+def _demogorgon_tick():
+    """Фоновая логика Демогоргонов: поедание силы областей, перемещение, завершение."""
+    army = _get_active_demogorgon()
+    if not army:
+        return
+    now = datetime.now()
+    try:
+        current_region_strength = None
+        all_regions_zero = False
+
+        if (now - (army.last_damage_tick_at or army.created_at)).total_seconds() >= DEMOGORGON_DAMAGE_TICK_SECONDS:
+            state = TerritoryRegionState.query.filter_by(region_index=army.region_index).first()
+            if state:
+                state.strength = max(0, int(state.strength or 0) - DEMOGORGON_DAMAGE_PER_TICK)
+                current_region_strength = int(state.strength or 0)
+            army.last_damage_tick_at = now
+
+        def _choose_next_region_prefer_strongest(current_region_index: int | None) -> int | None:
+            states = TerritoryRegionState.query.order_by(TerritoryRegionState.region_index).all()
+            if not states:
+                return None
+            positives = [s for s in states if int(s.strength or 0) > 0]
+            if not positives:
+                return None
+            max_strength = max(int(s.strength or 0) for s in positives)
+            candidates = [s for s in positives if int(s.strength or 0) == max_strength]
+            if current_region_index is not None and len(candidates) > 1:
+                non_current = [s for s in candidates if s.region_index != current_region_index]
+                if non_current:
+                    candidates = non_current
+            target_state = random.choice(candidates)
+            return target_state.region_index
+
+        if current_region_strength == 0 and army.is_active:
+            states = TerritoryRegionState.query.order_by(TerritoryRegionState.region_index).all()
+            if states:
+                positives = [s for s in states if int(s.strength or 0) > 0]
+                if not positives:
+                    all_regions_zero = True
+                else:
+                    next_idx = _choose_next_region_prefer_strongest(army.region_index)
+                    if next_idx is not None:
+                        army.region_index = next_idx
+                        army.pos_x = random.random()
+                        army.pos_y = random.random()
+                        delay_min = random.randint(DEMOGORGON_MIN_MOVE_MINUTES, DEMOGORGON_MAX_MOVE_MINUTES)
+                        army.next_move_at = now + timedelta(minutes=delay_min)
+
+        if army.next_move_at and now >= army.next_move_at and army.is_active and not all_regions_zero:
+            next_idx = _choose_next_region_prefer_strongest(army.region_index)
+            if next_idx is not None:
+                army.region_index = next_idx
+                army.pos_x = random.random()
+                army.pos_y = random.random()
+            delay_min = random.randint(DEMOGORGON_MIN_MOVE_MINUTES, DEMOGORGON_MAX_MOVE_MINUTES)
+            army.next_move_at = now + timedelta(minutes=delay_min)
+
+        if all_regions_zero and army.is_active:
+            army.is_active = False
+
+        if army.health <= 0 and army.is_active:
+            _demogorgon_finish(army)
+        db.session.commit()
+    except Exception as e:
+        logger.error(f'Ошибка в тике Демогоргон-армии: {e}')
+        db.session.rollback()
+
+
 # Создание таблиц и инициализация при первом старте
 with app.app_context():
     ensure_database_tables()
@@ -7050,110 +7142,6 @@ def api_territory_regions():
     """Список областей для выбора (например, при использовании предмета «на область»)."""
     regions = TerritoryRegionConfig.query.order_by(TerritoryRegionConfig.region_index).all()
     return jsonify([{'region_index': r.region_index, 'display_name': r.display_name or f'Область {r.region_index + 1}'} for r in regions])
-
-
-def _get_active_demogorgon() -> DemogorgonArmy | None:
-    return DemogorgonArmy.query.filter_by(is_active=True).first()
-
-
-def _demogorgon_tick():
-    """Фоновая логика Демогоргонов: поедание силы областей, перемещение, завершение."""
-    army = _get_active_demogorgon()
-    if not army:
-        return
-    now = datetime.now()
-    # Поедание силы области раз в DEMOGORGON_DAMAGE_TICK_SECONDS
-    try:
-        current_region_strength = None
-        all_regions_zero = False
-
-        if (now - (army.last_damage_tick_at or army.created_at)).total_seconds() >= DEMOGORGON_DAMAGE_TICK_SECONDS:
-            state = TerritoryRegionState.query.filter_by(region_index=army.region_index).first()
-            if state:
-                # За каждый тик (раз в DEMOGORGON_DAMAGE_TICK_SECONDS) армия съедает DEMOGORGON_DAMAGE_PER_TICK единиц силы
-                state.strength = max(0, int(state.strength or 0) - DEMOGORGON_DAMAGE_PER_TICK)
-                current_region_strength = int(state.strength or 0)
-            army.last_damage_tick_at = now
-
-        def _choose_next_region_prefer_strongest(current_region_index: int | None) -> int | None:
-            """Выбрать индекс следующей области: предпочтение областям с наибольшей силой владения."""
-            states = TerritoryRegionState.query.order_by(TerritoryRegionState.region_index).all()
-            if not states:
-                return None
-            positives = [s for s in states if int(s.strength or 0) > 0]
-            if not positives:
-                # Все области по нулям
-                return None
-            max_strength = max(int(s.strength or 0) for s in positives)
-            candidates = [s for s in positives if int(s.strength or 0) == max_strength]
-            # Если есть текущая область среди кандидатов — можно остаться, но мы всегда хотим движение,
-            # поэтому фильтруем её, если есть другие варианты.
-            if current_region_index is not None and len(candidates) > 1:
-                non_current = [s for s in candidates if s.region_index != current_region_index]
-                if non_current:
-                    candidates = non_current
-            target_state = random.choice(candidates)
-            return target_state.region_index
-
-        # Если сила текущей области дошла до нуля — немедленно переходим
-        if current_region_strength == 0 and army.is_active:
-            states = TerritoryRegionState.query.order_by(TerritoryRegionState.region_index).all()
-            if states:
-                positives = [s for s in states if int(s.strength or 0) > 0]
-                if not positives:
-                    # Все области по нулям — армия умирает, награды нет
-                    all_regions_zero = True
-                else:
-                    next_idx = _choose_next_region_prefer_strongest(army.region_index)
-                    if next_idx is not None:
-                        army.region_index = next_idx
-                        army.pos_x = random.random()
-                        army.pos_y = random.random()
-                        delay_min = random.randint(DEMOGORGON_MIN_MOVE_MINUTES, DEMOGORGON_MAX_MOVE_MINUTES)
-                        army.next_move_at = now + timedelta(minutes=delay_min)
-
-        # Перемещение в случайное время (если ещё живы области с силой > 0)
-        if army.next_move_at and now >= army.next_move_at and army.is_active and not all_regions_zero:
-            next_idx = _choose_next_region_prefer_strongest(army.region_index)
-            if next_idx is not None:
-                army.region_index = next_idx
-                army.pos_x = random.random()
-                army.pos_y = random.random()
-            delay_min = random.randint(DEMOGORGON_MIN_MOVE_MINUTES, DEMOGORGON_MAX_MOVE_MINUTES)
-            army.next_move_at = now + timedelta(minutes=delay_min)
-
-        # Если все области по нулям — армия умирает без награды
-        if all_regions_zero and army.is_active:
-            army.is_active = False
-
-        # Проверка смерти армии
-        if army.health <= 0 and army.is_active:
-            _demogorgon_finish(army)
-        db.session.commit()
-    except Exception as e:
-        logger.error(f'Ошибка в тике Демогorgon-армии: {e}')
-        db.session.rollback()
-
-
-def _demogorgon_finish(army: DemogorgonArmy) -> None:
-    """Завершение жизни армии Демогorgonov: определение победителя и выдача награды.
-    Вызывать только когда army.health <= 0 и army.is_active.
-    """
-    if not army or not army.is_active:
-        return
-    # Определяем клан-победитель
-    top_row = (
-        DemogorgonDamage.query.filter_by(army_id=army.id)
-        .order_by(DemogorgonDamage.total_damage.desc())
-        .first()
-    )
-    if top_row and top_row.clan_id:
-        clan = Clan.query.get(top_row.clan_id)
-        if clan and clan.owner_id:
-            leader = User.query.get(clan.owner_id)
-            if leader:
-                leader.nums_balance = (leader.nums_balance or 0) + DEMOGORGON_REWARD_NUMS
-    army.is_active = False
 
 
 @app.route('/api/territory/demogorgons', methods=['GET'])
